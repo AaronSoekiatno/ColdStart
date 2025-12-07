@@ -21,7 +21,7 @@ interface SentEmailRecord {
   } | null;
 }
 
-export default async function HistoryPage() {
+export default async function TrackerPage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -44,7 +44,7 @@ export default async function HistoryPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/?signup=true&redirect=/history`);
+    redirect(`/?signup=true&redirect=/tracker`);
   }
 
   if (!supabaseAdmin) {
@@ -130,7 +130,7 @@ export default async function HistoryPage() {
       
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Email History</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">Email Tracker</h1>
           <p className="text-white/70">
             View all emails you've sent to startup founders
           </p>

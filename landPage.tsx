@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Upload, FileText, X } from "lucide-react";
@@ -12,7 +11,7 @@ import { HowItWorksJourney } from "@/components/HowItWorksJourney";
 import { SignInModal } from "@/components/SignInModal";
 import { SignUpModal } from "@/components/SignUpModal";
 import { ConnectGmailButton } from "@/components/ConnectGmailButton";
-import { UpgradeModal } from "@/components/UpgradeModal";
+import { Header } from "@/components/Header";
 import {
   Dialog,
   DialogContent,
@@ -21,16 +20,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { User } from "@supabase/supabase-js";
-import { supabase, isSubscribed } from "@/lib/supabase";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import logo from "./images/hermeslogo.png";
 
 const PENDING_RESUME_DATA_KEY = "pendingResumeData";
 const PENDING_RESUME_FILE_KEY = "pendingResumeFile";
@@ -141,16 +132,11 @@ export const Hero = () => {
   const [showGmailConnectModal, setShowGmailConnectModal] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
   const [hasCheckedGmail, setHasCheckedGmail] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [hiddenMatchCount, setHiddenMatchCount] = useState(0);
-  const [isPremium, setIsPremium] = useState(false);
   const { toast } = useToast();
   const checkingGmailRef = useRef(false);
   const gmailCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const modalScheduledRef = useRef(false);
   const lastCheckedUserRef = useRef<string | null>(null); // Track which user email was last checked
-  const fetchingPremiumRef = useRef(false);
-  const lastFetchedEmailRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -719,191 +705,11 @@ export const Hero = () => {
     };
   }, []);
 
-  // Reset hidden match count when premium modal is opened
-  // For landing page, we'll show premium features regardless of match count
-  useEffect(() => {
-    if (showPremiumModal) {
-      // Default to 0 for landing page - modal will still show all premium features
-      setHiddenMatchCount(0);
-    }
-  }, [showPremiumModal]);
-
-  // Fetch candidate info to check premium status - only when email changes
-  useEffect(() => {
-    const fetchCandidateInfo = async () => {
-      const userEmail = user?.email;
-      if (!userEmail) {
-        setIsPremium(false);
-        lastFetchedEmailRef.current = null;
-        return;
-      }
-
-      // Prevent duplicate requests - check if we're already fetching or if we just fetched this email
-      if (fetchingPremiumRef.current || lastFetchedEmailRef.current === userEmail) {
-        return;
-      }
-      
-      fetchingPremiumRef.current = true;
-      try {
-        const response = await fetch('/api/candidate-info', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const candidateInfo = await response.json();
-          setIsPremium(isSubscribed(candidateInfo));
-          lastFetchedEmailRef.current = userEmail;
-        } else {
-          setIsPremium(false);
-        }
-      } catch (error) {
-        console.error('Error fetching candidate info:', error);
-        setIsPremium(false);
-      } finally {
-        fetchingPremiumRef.current = false;
-      }
-    };
-
-    fetchCandidateInfo();
-  }, [user?.email]);
 
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-50 w-full pt-2" style={{ backgroundColor: '#0E1422' }}>
-        <div className="container mx-auto px-16 py-4 flex items-center justify-between">
-          {/* Logo and Title */}
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src={logo}
-              alt="Hermes logo"
-              className="h-9 w-auto rounded-lg"
-              priority
-            />
-            <span className="text-white font-semibold text-2xl">Hermes</span>
-          </Link>
-
-          {/* Sign In Button / Account Indicator */}
-          <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <Link
-                  href="/matches"
-                  className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-                >
-                  Your Matches
-                </Link>
-                <Link
-                  href="/history"
-                  className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-                >
-                  History
-                </Link>
-                <button
-                  onClick={() => setShowPremiumModal(true)}
-                  className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-                >
-                  Premium
-                </button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none">
-                      <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-semibold text-xs">
-                        {user.email?.[0]?.toUpperCase() ?? "U"}
-                      </div>
-                      
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="border-white/30 bg-white/10 text-white px-0 py-0 rounded-2xl overflow-hidden min-w-[200px]">
-                    <div className="px-4 py-2 text-sm text-white/80 border-b border-white/10">
-                      {user.email}
-                    </div>
-                    {isPremium && (
-                      <DropdownMenuItem
-                        className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-b border-white/10"
-                        onSelect={async () => {
-                          try {
-                            const response = await fetch('/api/stripe/create-portal-session', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({ email: user.email ?? '' }),
-                            });
-
-                            const data = await response.json();
-
-                            if (!response.ok) {
-                              throw new Error(data.error || 'Failed to create portal session');
-                            }
-
-                            // Redirect to Stripe Customer Portal
-                            if (data.url) {
-                              window.location.href = data.url;
-                            }
-                          } catch (error: any) {
-                            console.error('Error opening portal:', error);
-                            toast({
-                              title: "Error",
-                              description: error.message || 'Failed to open subscription management',
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                      >
-                        Manage Subscription
-                      </DropdownMenuItem>
-                    )}
-                    {/* Gmail connect functionality temporarily hidden */}
-                    {/* {gmailConnected ? (
-                      <div className="px-4 py-2 text-sm text-white/60 border-b border-white/10 flex items-center justify-center gap-2">
-                        <span className="text-green-500">✓</span> Gmail Connected
-                      </div>
-                    ) : (
-                      <DropdownMenuItem
-                        className="cursor-pointer text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-0"
-                        onSelect={() => {
-                          setShowGmailConnectModal(true);
-                        }}
-                      >
-                        Connect Gmail
-                      </DropdownMenuItem>
-                    )} */}
-                    <DropdownMenuItem
-                      className="cursor-pointer text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-0"
-                      onSelect={async () => {
-                        await supabase.auth.signOut();
-                        setUser(null);
-                        toast({
-                          title: "Signed out",
-                          description: "You have been signed out successfully.",
-                        });
-                      }}
-                    >
-                      Sign out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <div className="flex items-center gap-5">
-                <button
-                  onClick={() => setIsSignUpModalOpen(true)}
-                  className="text-sm font-semibold text-white transition-all border border-transparent bg-white/10 rounded-2xl px-5 py-2 hover:bg-white/20 focus:outline-none"
-                >
-                  Sign up
-                </button>
-                <button
-                  onClick={() => setIsSignInModalOpen(true)}
-                  className="text-sm font-semibold text-white transition-opacity hover:opacity-70 focus:outline-none"
-                >
-                  Log in
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <Header initialUser={user} />
 
       {/* Gmail Connection Modal */}
       <Dialog open={showGmailConnectModal} onOpenChange={(open) => {
@@ -1250,16 +1056,6 @@ export const Hero = () => {
 
       {/* Footer Section */}
       <Footer />
-
-      {/* Premium Modal */}
-      <UpgradeModal
-        open={showPremiumModal}
-        onOpenChange={setShowPremiumModal}
-        hiddenMatchCount={hiddenMatchCount}
-        email={user?.email || ''}
-        onDismiss={() => setShowPremiumModal(false)}
-        customTitle="Our Premium Plan"
-      />
       </div>
   );
 };

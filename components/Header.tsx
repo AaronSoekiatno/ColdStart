@@ -136,20 +136,17 @@ export const Header = ({ initialUser }: HeaderProps) => {
         <div className="flex items-center gap-1">
           {user ? (
             <>
-              <button
-                onClick={() => {
-                  console.log('Matches link clicked, navigating to /matches');
-                  router.push('/matches');
-                }}
+              <Link
+                href="/matches"
                 className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Your Matches
-              </button>
+              </Link>
               <Link
-                href="/history"
+                href="/tracker"
                 className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
-                History
+                Email Tracker
               </Link>
               <button
                 onClick={handlePremiumClick}

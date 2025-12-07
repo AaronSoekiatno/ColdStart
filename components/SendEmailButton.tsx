@@ -371,7 +371,7 @@ export const SendEmailButton = ({
                             src={resumeUrl}
                             className="w-full h-full bg-white"
                             title="Resume Preview"
-                          />
+                          />  
                         </div>
                       )}
                       {resumeSuggestions
