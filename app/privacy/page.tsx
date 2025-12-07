@@ -4,7 +4,7 @@ export default function PrivacyPolicy() {
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="prose prose-lg max-w-none">
           <h1 className="text-4xl font-bold mb-2">PRIVACY POLICY</h1>
-          <p className="text-gray-500 text-sm mb-8">Last updated December 03, 2025</p>
+          <p className="text-gray-500 text-sm mb-8">Last updated January 15, 2025</p>
 
           <div className="space-y-6 text-gray-700">
             <p>
@@ -78,6 +78,8 @@ export default function PrivacyPolicy() {
               <li>email addresses</li>
               <li>mailing addresses</li>
               <li>job titles</li>
+              <li>payment information (processed through Stripe, including billing details and payment method information)</li>
+              <li>subscription information (subscription tier, status, and billing history)</li>
             </ul>
 
             <p>
@@ -90,6 +92,20 @@ export default function PrivacyPolicy() {
 
             <p>
               All personal information that you provide to us must be true, complete, and accurate, and you must notify us of any changes to such personal information.
+            </p>
+
+            <h3 className="text-xl font-bold mt-6 mb-3">Payment and Subscription Information</h3>
+            <p>
+              When you subscribe to our Premium service, we collect and process payment information through our third-party payment processor, <strong>Stripe</strong>. This includes:
+            </p>
+            <ul className="list-disc pl-6 space-y-2 mt-2">
+              <li>Billing information (name, email address, billing address)</li>
+              <li>Payment method information (processed securely by Stripe; we do not store full credit card numbers)</li>
+              <li>Subscription details (tier, status, billing period, renewal dates)</li>
+              <li>Transaction history and payment records</li>
+            </ul>
+            <p className="mt-2">
+              All payment processing is handled securely by Stripe in accordance with their <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Privacy Policy</a> and PCI DSS compliance standards. We only store subscription status, tier, and Stripe customer/subscription identifiers in our systems. You can manage your subscription and payment methods through your account settings or by contacting us.
             </p>
 
             <h3 className="text-xl font-bold mt-6 mb-3">Google API</h3>
@@ -109,7 +125,8 @@ export default function PrivacyPolicy() {
               <li><strong>To deliver and facilitate delivery of services to the user.</strong> We may process your information to provide you with the requested service.</li>
               <li><strong>To respond to user inquiries/offer support to users.</strong> We may process your information to respond to your inquiries and solve any potential issues you might have with the requested service.</li>
               <li><strong>To send administrative information to you.</strong> We may process your information to send you details about our products and services, changes to our terms and policies, and other similar information.</li>
-              <li><strong>To fulfill and manage your orders.</strong> We may process your information to fulfill and manage your orders, payments, returns, and exchanges made through the Services.</li>
+              <li><strong>To fulfill and manage your orders and subscriptions.</strong> We may process your information to fulfill and manage your orders, payments, returns, exchanges, and subscription services (including Premium subscriptions) made through the Services.</li>
+              <li><strong>To process payments and manage subscriptions.</strong> We may process your payment information and subscription data to process payments, manage your Premium subscription, send you invoices, and handle subscription renewals and cancellations.</li>
               <li><strong>To save or protect an individual's vital interest.</strong> We may process your information when necessary to save or protect an individual's vital interest, such as to prevent harm.</li>
             </ul>
 
@@ -141,6 +158,7 @@ export default function PrivacyPolicy() {
             <p>We may need to share your personal information in the following situations:</p>
 
             <ul className="list-disc pl-6 space-y-2">
+              <li><strong>Payment Processors.</strong> We may share your payment information with third-party payment processors, such as <strong>Stripe</strong>, to process payments, manage subscriptions, and handle billing. Stripe's use of your personal information is governed by their <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Privacy Policy</a>. We do not store your full payment card details on our servers; all payment processing is handled securely by Stripe.</li>
               <li><strong>Business Transfers.</strong> We may share or transfer your information in connection with, or during negotiations of, any merger, sale of company assets, financing, or acquisition of all or a portion of our business to another company.</li>
             </ul>
 
@@ -194,7 +212,13 @@ export default function PrivacyPolicy() {
             <p className="italic"><strong>In Short:</strong> We keep your information for as long as necessary to fulfill the purposes outlined in this Privacy Notice unless otherwise required by law.</p>
 
             <p>
-              We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, unless a longer retention period is required or permitted by law (such as tax, accounting, or other legal requirements). No purpose in this notice will require us keeping your personal information for longer than the period of time in which users have an account with us.
+              We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, unless a longer retention period is required or permitted by law (such as tax, accounting, or other legal requirements). 
+            </p>
+            <p className="mt-2">
+              <strong>Subscription and Payment Data:</strong> We retain subscription and payment information for as long as your account is active and for up to 7 years after account termination or subscription cancellation to comply with tax, accounting, and legal requirements. Payment transaction records are maintained in accordance with applicable financial regulations.
+            </p>
+            <p className="mt-2">
+              For other personal information, we generally retain data for as long as your account is active. No purpose in this notice will require us keeping your personal information for longer than the period of time in which users have an account with us, except where required by law.
             </p>
 
             <p>
@@ -296,7 +320,7 @@ export default function PrivacyPolicy() {
                   <tr>
                     <td className="border border-gray-300 px-4 py-2">D. Commercial information</td>
                     <td className="border border-gray-300 px-4 py-2">Transaction information, purchase history, financial details, and payment information</td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">NO</td>
+                    <td className="border border-gray-300 px-4 py-2 text-center">YES</td>
                   </tr>
                   <tr>
                     <td className="border border-gray-300 px-4 py-2">E. Biometric information</td>
@@ -357,6 +381,7 @@ export default function PrivacyPolicy() {
             <ul className="list-disc pl-6 space-y-2">
               <li>Category A - As long as the user has an account with us</li>
               <li>Category B - As long as the user has an account with us</li>
+              <li>Category D - As long as the user has an account with us, and for up to 7 years after account termination for tax and legal compliance purposes</li>
               <li>Category I - As long as the user has an account with us</li>
               <li>Category J - As long as the user has an account with us</li>
             </ul>
@@ -376,7 +401,7 @@ export default function PrivacyPolicy() {
             </p>
 
             <p>
-              We may disclose your personal information with our service providers pursuant to a written contract between us and each service provider. Learn more about how we disclose personal information to in the section, "<a href="#whoshare" className="text-blue-600 hover:underline">WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</a>"
+              We may disclose your personal information with our service providers pursuant to a written contract between us and each service provider. This includes payment processors like <strong>Stripe</strong> for processing payments and managing subscriptions. Learn more about how we disclose personal information in the section, "<a href="#whoshare" className="text-blue-600 hover:underline">WHEN AND WITH WHOM DO WE SHARE YOUR PERSONAL INFORMATION?</a>"
             </p>
 
             <p>
@@ -384,7 +409,7 @@ export default function PrivacyPolicy() {
             </p>
 
             <p>
-              We have not disclosed, sold, or shared any personal information to third parties for a business or commercial purpose in the preceding twelve (12) months. We will not sell or share personal information in the future belonging to website visitors, users, and other consumers.
+              In the preceding twelve (12) months, we have disclosed personal information to third-party service providers, including <strong>Stripe</strong> (for payment processing and subscription management), for business purposes such as processing payments and managing subscriptions. We have not sold or shared personal information to third parties for their own marketing purposes. We will not sell or share personal information in the future belonging to website visitors, users, and other consumers for marketing purposes.
             </p>
 
             <h3 className="text-xl font-bold mt-6 mb-3">Your Rights</h3>
