@@ -335,42 +335,98 @@ export const SendEmailButton = ({
               <div className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-white/90">Your Resume</h3>
-                  {!suggestionsRequested && resumeUrl && (
-                    <Button
-                      onClick={handleLoadSuggestions}
-                      disabled={isLoadingSuggestions}
-                      size="sm"
-                      className="bg-blue-500 hover:bg-blue-600 text-white h-8 text-xs"
-                    >
-                      {isLoadingSuggestions ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          Tailoring...
-                        </span>
-                      ) : (
-                        "Tailor Resume"
-                      )}
-                    </Button>
-                  )}
-                  {resumeSuggestions.length > 0 && (
-                    <span className="text-xs text-white/60">
-                      {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {resumeSuggestions.length > 0 && (
+                      <span className="text-xs text-white/60">
+                        {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
+                      </span>
+                    )}
+                    {!suggestionsRequested && resumeUrl && (
+                      <Button
+                        onClick={handleLoadSuggestions}
+                        disabled={isLoadingSuggestions}
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600 text-white h-8 text-xs"
+                      >
+                        {isLoadingSuggestions ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Tailoring...
+                          </span>
+                        ) : (
+                          "Tailor Resume"
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2">
                   {resumeSuggestions.length > 0 ? (
-                    // Show suggestions
-                    resumeSuggestions.map((suggestion) => (
-                      <DiffBlock
-                        key={suggestion.id}
-                        suggestion={suggestion}
-                        status={suggestionStatuses[suggestion.id] || 'pending'}
-                        onAccept={() => setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'accepted' }))}
-                        onReject={() => setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'rejected' }))}
-                      />
-                    ))
+                    // Inline view: Show resume PDF alongside accepted changes
+                    <div className="space-y-4">
+                      {resumeUrl && (
+                        <div className="h-[400px] rounded-lg overflow-hidden border border-white/10">
+                          <iframe
+                            src={resumeUrl}
+                            className="w-full h-full bg-white"
+                            title="Resume Preview"
+                          />
+                        </div>
+                      )}
+                      {resumeSuggestions
+                        .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
+                        .length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wide">
+                            Accepted Changes
+                          </h4>
+                          {resumeSuggestions
+                            .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
+                            .map((suggestion) => (
+                              <div
+                                key={suggestion.id}
+                                className="border border-green-500/30 bg-green-500/5 rounded-lg p-3"
+                              >
+                                <div className="flex items-start gap-2 mb-2">
+                                  <span className="text-xs text-white/70 font-medium">{suggestion.section}</span>
+                                  <span className="text-xs text-green-400">✓ Accepted</span>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="text-sm text-white/90 line-through text-white/50">
+                                    {suggestion.original}
+                                  </div>
+                                  <div className="text-sm text-green-300 font-medium">
+                                    {suggestion.suggested}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                      {resumeSuggestions
+                        .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
+                        .length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wide">
+                            Pending Review
+                          </h4>
+                          {resumeSuggestions
+                            .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
+                            .map((suggestion) => (
+                              <DiffBlock
+                                key={suggestion.id}
+                                suggestion={suggestion}
+                                status="pending"
+                                onAccept={() => setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'accepted' }))}
+                                onReject={() => {
+                                  setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'rejected' }));
+                                }}
+                              />
+                            ))}
+                        </div>
+                      )}
+                    </div>
                   ) : resumeUrl ? (
                     // Show resume PDF
                     <div className="h-full rounded-lg overflow-hidden border border-white/10">

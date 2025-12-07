@@ -157,11 +157,7 @@ export default function MatchesPage() {
   }, [matches]);
   
   const matchCountText = useMemo(() => {
-    if (!hasMatches) return 'Upload a resume to see personalized startup matches.';
-    const count = perfectFitMatchCount;
-    if (count > 0) {
-      return `Congrats! You directly matched with ${count} startup${count === 1 ? '' : 's'}! Review these companies and send personalized emails.`;
-    }
+    if (!hasMatches) return 'Upload a resume to see personalized startup matches.';    
     return 'Review these companies and send personalized emails.';
   }, [hasMatches, perfectFitMatchCount]);
 
@@ -200,15 +196,6 @@ export default function MatchesPage() {
       <Header initialUser={user} />
       <section className="py-20">
         <div className="container mx-auto px-4 space-y-12">
-          <div className="max-w-4xl mx-auto text-center space-y-12">
-            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-              
-              <p className="text-md md:text-xl text-white/80 max-w-2xl mx-auto">
-                {matchCountText}
-              </p>
-            </div>
-          </div>
-
           {hasMatches ? (
             <div>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
