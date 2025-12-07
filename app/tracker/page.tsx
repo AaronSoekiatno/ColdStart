@@ -130,9 +130,9 @@ export default async function TrackerPage() {
       
       <main className="container mx-auto px-4 py-12 max-w-6xl">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Email Tracker</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">Your Email Tracker</h1>
           <p className="text-white/70">
-            View all emails you've sent to startup founders
+            {sentEmails.length} EMAIL{sentEmails.length === 1 ? '' : 'S'} SENT
           </p>
         </div>
 

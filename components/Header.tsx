@@ -140,13 +140,19 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 href="/matches"
                 className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
-                Your Matches
+                Matches
               </Link>
               <Link
                 href="/tracker"
                 className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Email Tracker
+              </Link>
+              <Link
+                href="/resumes"
+                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+              >
+                Resumes
               </Link>
               <button
                 onClick={handlePremiumClick}
