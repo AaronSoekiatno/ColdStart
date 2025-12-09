@@ -13,7 +13,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { Menu, X } from "lucide-react";
 import logo from "../images/hermeslogo.png";
 
 interface HeaderProps {
@@ -26,6 +28,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
@@ -120,50 +123,50 @@ export const Header = ({ initialUser }: HeaderProps) => {
 
   return (
     <header className="sticky top-0 z-50 w-full pt-2" style={{ backgroundColor: '#0E1422' }}>
-      <div className="container mx-auto px-16 py-4 flex items-center justify-between">
+      <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-16 py-3 md:py-4 flex items-center justify-between">
         {/* Logo and Title */}
-        <Link href="/" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <Image
             src={logo}
             alt="Hermes logo"
-            className="h-9 w-auto rounded-lg"
+            className="h-7 w-auto sm:h-8 md:h-9 rounded-lg"
             priority
           />
-          <span className="text-white font-semibold text-2xl">Hermes</span>
+          <span className="text-white font-semibold text-xl sm:text-2xl">Hermes</span>
         </Link>
 
-        {/* Sign In Button / Account Indicator */}
-        <div className="flex items-center gap-1">
+        {/* Desktop Navigation - Hidden on mobile */}
+        <div className="hidden lg:flex items-center gap-1">
           {user ? (
             <>
               <Link
                 href="/matches"
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Matches
               </Link>
               <Link
                 href="/tracker"
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Email Tracker
               </Link>
               <Link
                 href="/resumes"
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Resumes
               </Link>
               <button
                 onClick={handlePremiumClick}
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Premium
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none">
-                    <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-semibold text-xs">
+                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center font-semibold text-xs">
                       {user.email?.[0]?.toUpperCase() ?? "U"}
                     </div>
                   </button>
@@ -225,16 +228,141 @@ export const Header = ({ initialUser }: HeaderProps) => {
               </DropdownMenu>
             </>
           ) : (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link
                 href="/"
-                className="text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-xs sm:text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
               >
                 Sign In
               </Link>
               <Link
                 href="/"
-                className="text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-xs sm:text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
+              >
+                Sign Up
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Navigation - Hamburger Menu */}
+        <div className="lg:hidden flex items-center gap-2">
+          {user && (
+            <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl px-2 py-1.5 focus:outline-none">
+                  {mobileMenuOpen ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <Menu className="h-5 w-5" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="border-white/30 bg-white/10 text-white px-0 py-2 rounded-2xl overflow-hidden min-w-[200px] mr-4">
+                <div className="px-4 py-2 text-xs text-white/80 border-b border-white/10">
+                  {user.email}
+                </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/matches"
+                    className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Matches
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/tracker"
+                    className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Email Tracker
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/resumes"
+                    className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Resumes
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                  onSelect={() => {
+                    setMobileMenuOpen(false);
+                    handlePremiumClick();
+                  }}
+                >
+                  Premium
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-white/10" />
+                {isPremium && (
+                  <DropdownMenuItem
+                    className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-b border-white/10"
+                    onSelect={async () => {
+                      setMobileMenuOpen(false);
+                      try {
+                        const response = await fetch('/api/stripe/create-portal-session', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({ email: user.email ?? '' }),
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                          throw new Error(data.error || 'Failed to create portal session');
+                        }
+
+                        if (data.url) {
+                          window.location.href = data.url;
+                        }
+                      } catch (error: any) {
+                        console.error('Error opening portal:', error);
+                        toast({
+                          title: "Error",
+                          description: error.message || 'Failed to open subscription management',
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    Manage Subscription
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20"
+                  onSelect={async () => {
+                    setMobileMenuOpen(false);
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    toast({
+                      title: "Signed out",
+                      description: "You have been signed out successfully.",
+                    });
+                  }}
+                >
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {!user && (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="text-xs font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl px-2 py-1.5 focus:outline-none"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/"
+                className="text-xs font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl px-2 py-1.5 focus:outline-none"
               >
                 Sign Up
               </Link>

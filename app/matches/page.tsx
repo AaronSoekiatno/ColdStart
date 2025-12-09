@@ -136,40 +136,44 @@ export default function MatchesPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
       <Header initialUser={user} />
-      <section className="pt-12 pb-20">
-        <div className="container mx-auto px-4">
-          {hasMatches ? (
-            <div className="max-w-4xl mx-auto relative">
-              {/* Left arrow button */}
-              <button
-                onClick={() => setCurrentMatchIndex((prev) => Math.max(0, prev - 1))}
-                disabled={currentMatchIndex === 0}
-                className="absolute -left-5 top-1/2 -translate-y-1/2 -translate-x-8 md:-translate-x-16 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
-                aria-label="Previous match"
-              >
-                <ChevronLeft className="w-6 h-6 md:w-7 md:h-7" />
-              </button>
+      <section className="pt-4 sm:pt-6 md:pt-12 pb-12 md:pb-20">
+        {/* Fixed navigation arrows */}
+        {hasMatches && (
+          <>
+            {/* Left arrow button */}
+            <button
+              onClick={() => setCurrentMatchIndex((prev) => Math.max(0, prev - 1))}
+              disabled={currentMatchIndex === 0}
+              className="fixed left-1 sm:left-2 md:left-4 lg:left-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
+              aria-label="Previous match"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
+            </button>
 
+            {/* Right arrow button */}
+            <button
+              onClick={() => setCurrentMatchIndex((prev) => Math.min(matches.length - 1, prev + 1))}
+              disabled={currentMatchIndex >= matches.length - 1}
+              className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
+              aria-label="Next match"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
+            </button>
+          </>
+        )}
+        <div className="container mx-auto px-3 sm:px-4">
+          {hasMatches ? (
+            <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto relative pl-12 sm:pl-0 pr-12 sm:pr-0 md:pl-0 md:pr-0">
               {/* Single match card display */}
               {matches[currentMatchIndex] && (
                 <div key={matches[currentMatchIndex].id} className="animate-fade-in">
                   <MatchCard match={matches[currentMatchIndex]} />
                 </div>
               )}
-
-              {/* Right arrow button */}
-              <button
-                onClick={() => setCurrentMatchIndex((prev) => Math.min(matches.length - 1, prev + 1))}
-                disabled={currentMatchIndex >= matches.length - 1}
-                className="absolute -right-5 top-1/2 -translate-y-1/2 translate-x-8 md:translate-x-16 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
-                aria-label="Next match"
-              >
-                <ChevronRight className="w-6 h-6 md:w-7 md:h-7" />
-              </button>
             </div>
           ) : (
-            <div className="rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl p-12 text-center text-white">
-              <p className="text-lg text-white">No matches yet. Upload your resume to get started.</p>
+            <div className="rounded-2xl md:rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl p-6 sm:p-8 md:p-12 text-center text-white">
+              <p className="text-sm sm:text-base md:text-lg text-white">No matches yet. Upload your resume to get started.</p>
             </div>
           )}
         </div>
