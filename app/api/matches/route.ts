@@ -112,6 +112,7 @@ export async function GET(request: NextRequest) {
         tags: string;
         website: string;
         founder_emails?: string;
+        batch?: string;
       }
     > = {};
 
@@ -119,7 +120,7 @@ export async function GET(request: NextRequest) {
       const { data: startupRows, error: startupsError } = await supabaseAdmin
         .from('startups')
         .select(
-          'id, name, industry, location, funding_stage, funding_amount, tags, website, founder_emails'
+          'id, name, industry, location, funding_stage, funding_amount, tags, website, founder_emails, batch'
         )
         .in('id', startupIds);
 

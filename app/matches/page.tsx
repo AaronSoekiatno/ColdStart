@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface MatchRecord {
@@ -21,6 +22,7 @@ interface MatchRecord {
     tags: string;
     website: string;
     founder_emails?: string;
+    batch?: string;
   } | null;
 }
 
@@ -37,10 +39,9 @@ export default function MatchesPage() {
   const [user, setUser] = useState<User | null>(null);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [hasError, setHasError] = useState(false);
-  const observerTarget = useRef<HTMLDivElement>(null);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
   // Load initial data
   useEffect(() => {
@@ -82,71 +83,12 @@ export default function MatchesPage() {
     initialize();
   }, [router]);
 
-  // Load more matches - memoized with stable dependencies
-  const loadMoreMatches = useCallback(async () => {
-    if (isLoadingMore) return;
-    
-    // Use functional update to get current pagination state
-    setPagination((currentPagination) => {
-      if (!currentPagination?.hasMore || isLoadingMore) return currentPagination;
-
-      setIsLoadingMore(true);
-      const nextPage = currentPagination.page + 1;
-      
-      // Fetch in background
-      fetch(`/api/matches?page=${nextPage}&limit=6`, {
-        credentials: 'include',
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error('Failed to load more matches');
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setMatches((prev) => {
-            // Filter out duplicates by match ID
-            const existingIds = new Set(prev.map((m: MatchRecord) => m.id));
-            const newMatches = (data.matches || []).filter((m: MatchRecord) => !existingIds.has(m.id));
-            return [...prev, ...newMatches];
-          });
-          setPagination(data.pagination);
-        })
-        .catch((error) => {
-          console.error('Error loading more matches:', error);
-        })
-        .finally(() => {
-          setIsLoadingMore(false);
-        });
-
-      return currentPagination;
-    });
-  }, [isLoadingMore]);
-
-  // Intersection Observer for infinite scroll - stable observer
+  // Reset current match index when matches change
   useEffect(() => {
-    if (!pagination?.hasMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && pagination.hasMore && !isLoadingMore) {
-          loadMoreMatches();
-        }
-      },
-      { threshold: 0.1, rootMargin: '100px' } // Trigger earlier for smoother UX
-    );
-
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
+    if (matches.length > 0 && currentMatchIndex >= matches.length) {
+      setCurrentMatchIndex(0);
     }
-
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [pagination?.hasMore, isLoadingMore, loadMoreMatches]);
+  }, [matches.length, currentMatchIndex]);
 
   // Memoized values - must be called before any conditional returns
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -194,33 +136,36 @@ export default function MatchesPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
       <Header initialUser={user} />
-      <section className="py-20">
-        <div className="container mx-auto px-4 space-y-12">
+      <section className="pt-12 pb-20">
+        <div className="container mx-auto px-4">
           {hasMatches ? (
-            <div>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {matches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
-              </div>
+            <div className="max-w-4xl mx-auto relative">
+              {/* Left arrow button */}
+              <button
+                onClick={() => setCurrentMatchIndex((prev) => Math.max(0, prev - 1))}
+                disabled={currentMatchIndex === 0}
+                className="absolute -left-5 top-1/2 -translate-y-1/2 -translate-x-8 md:-translate-x-16 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
+                aria-label="Previous match"
+              >
+                <ChevronLeft className="w-6 h-6 md:w-7 md:h-7" />
+              </button>
 
-              {/* Loading indicator for infinite scroll */}
-              {pagination?.hasMore && (
-                <div ref={observerTarget} className="py-8 text-center">
-                  {isLoadingMore ? (
-                    <p className="text-white/70">Loading more matches...</p>
-                  ) : (
-                    <div className="h-20" /> // Spacer for intersection observer
-                  )}
+              {/* Single match card display */}
+              {matches[currentMatchIndex] && (
+                <div key={matches[currentMatchIndex].id} className="animate-fade-in">
+                  <MatchCard match={matches[currentMatchIndex]} />
                 </div>
               )}
 
-              {/* End of results */}
-              {!pagination?.hasMore && matches.length > 0 && (
-                <div className="py-8 text-center">
-                  <p className="text-white/70">You've seen all your matches!</p>
-                </div>
-              )}
+              {/* Right arrow button */}
+              <button
+                onClick={() => setCurrentMatchIndex((prev) => Math.min(matches.length - 1, prev + 1))}
+                disabled={currentMatchIndex >= matches.length - 1}
+                className="absolute -right-5 top-1/2 -translate-y-1/2 translate-x-8 md:translate-x-16 z-10 w-12 h-12 md:w-14 md:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
+                aria-label="Next match"
+              >
+                <ChevronRight className="w-6 h-6 md:w-7 md:h-7" />
+              </button>
             </div>
           ) : (
             <div className="rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl p-12 text-center text-white">
