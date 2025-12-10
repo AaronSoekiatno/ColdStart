@@ -16,7 +16,7 @@ export function FounderDataSection() {
         </div>
 
         {/* Optional: Testimonial-style quote */}
-        <div className="mt-12 p-8 border border-gray-200 rounded-2xl bg-gray-50">
+        <div className="mt-12 p-8 border border-gray-300 rounded-2xl bg-white shadow-md">
           <p className="text-lg text-gray-600 leading-relaxed italic">
             "I love turning complex problems into simple, beautiful, and
             user-friendly experiences. With a strong focus on UX/UI, I design

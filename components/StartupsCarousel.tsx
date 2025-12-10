@@ -26,7 +26,7 @@ export const StartupsCarousel = () => {
   return (
     <section className="py-10 sm:py-12 md:py-16 overflow-hidden w-full relative">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-        <h3 className="text-center text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8 px-2 drop-shadow-md">
+        <h3 className="text-center text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8 px-2">
           Trusted by UC & CSU campuses
         </h3>
         

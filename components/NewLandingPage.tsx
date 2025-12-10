@@ -138,69 +138,116 @@ export function NewLandingPage() {
         <div className="relative bg-gradient-to-b from-[#498EDC] via-[#6BA3E3] via-[#8DB8EA] to-white min-h-screen pt-16">
           {/* Pastel Clouds */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Cloud 1 */}
+            {/* Cloud 1 - Soft pastel with gradient */}
             <svg
-              className="absolute top-20 left-10 opacity-50"
+              className="absolute top-20 left-10 opacity-40 blur-sm"
               width="200"
               height="120"
               viewBox="0 0 200 120"
             >
-              <ellipse cx="50" cy="60" rx="40" ry="30" fill="#BFDBFE" />
-              <ellipse cx="80" cy="50" rx="35" ry="25" fill="#BFDBFE" />
-              <ellipse cx="110" cy="60" rx="40" ry="30" fill="#BFDBFE" />
+              <defs>
+                <radialGradient id="cloud1" cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="#E8F4FD" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#D1E9F8" stopOpacity="0.4" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="50" cy="60" rx="40" ry="30" fill="url(#cloud1)" />
+              <ellipse cx="80" cy="50" rx="35" ry="25" fill="url(#cloud1)" />
+              <ellipse cx="110" cy="60" rx="40" ry="30" fill="url(#cloud1)" />
             </svg>
-            {/* Cloud 2 */}
+            {/* Cloud 2 - Larger, softer */}
             <svg
-              className="absolute top-40 right-20 opacity-45"
+              className="absolute top-40 right-20 opacity-35 blur-[2px]"
               width="250"
               height="140"
               viewBox="0 0 250 140"
             >
-              <ellipse cx="60" cy="70" rx="50" ry="35" fill="#93C5FD" />
-              <ellipse cx="100" cy="60" rx="45" ry="30" fill="#93C5FD" />
-              <ellipse cx="140" cy="70" rx="50" ry="35" fill="#93C5FD" />
+              <defs>
+                <radialGradient id="cloud2" cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="#F0F8FF" stopOpacity="0.7" />
+                  <stop offset="100%" stopColor="#D6E9F5" stopOpacity="0.3" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="60" cy="70" rx="50" ry="35" fill="url(#cloud2)" />
+              <ellipse cx="100" cy="60" rx="45" ry="30" fill="url(#cloud2)" />
+              <ellipse cx="140" cy="70" rx="50" ry="35" fill="url(#cloud2)" />
             </svg>
-            {/* Cloud 3 */}
+            {/* Cloud 3 - Medium soft */}
             <svg
-              className="absolute top-60 left-1/3 opacity-50"
+              className="absolute top-60 left-1/3 opacity-38 blur-sm"
               width="180"
               height="100"
               viewBox="0 0 180 100"
             >
-              <ellipse cx="45" cy="50" rx="35" ry="25" fill="#BFDBFE" />
-              <ellipse cx="70" cy="42" rx="30" ry="20" fill="#BFDBFE" />
-              <ellipse cx="95" cy="50" rx="35" ry="25" fill="#BFDBFE" />
+              <defs>
+                <radialGradient id="cloud3" cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="#E8F4FD" stopOpacity="0.75" />
+                  <stop offset="100%" stopColor="#CEE4F2" stopOpacity="0.35" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="45" cy="50" rx="35" ry="25" fill="url(#cloud3)" />
+              <ellipse cx="70" cy="42" rx="30" ry="20" fill="url(#cloud3)" />
+              <ellipse cx="95" cy="50" rx="35" ry="25" fill="url(#cloud3)" />
             </svg>
-            {/* Cloud 4 */}
+            {/* Cloud 4 - Subtle lavender tint */}
             <svg
-              className="absolute top-96 right-1/4 opacity-40"
+              className="absolute top-96 right-1/4 opacity-32 blur-[2px]"
               width="220"
               height="130"
               viewBox="0 0 220 130"
             >
-              <ellipse cx="55" cy="65" rx="45" ry="32" fill="#A5B4FC" />
-              <ellipse cx="90" cy="55" rx="40" ry="28" fill="#A5B4FC" />
-              <ellipse cx="125" cy="65" rx="45" ry="32" fill="#A5B4FC" />
+              <defs>
+                <radialGradient id="cloud4" cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="#F5F9FF" stopOpacity="0.7" />
+                  <stop offset="100%" stopColor="#E1EDF8" stopOpacity="0.3" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="55" cy="65" rx="45" ry="32" fill="url(#cloud4)" />
+              <ellipse cx="90" cy="55" rx="40" ry="28" fill="url(#cloud4)" />
+              <ellipse cx="125" cy="65" rx="45" ry="32" fill="url(#cloud4)" />
             </svg>
-            {/* Cloud 5 - Lower */}
+            {/* Cloud 5 - Lower, very soft */}
             <svg
-              className="absolute top-[500px] left-20 opacity-35"
+              className="absolute top-[500px] left-20 opacity-30 blur-sm"
               width="200"
               height="120"
               viewBox="0 0 200 120"
             >
-              <ellipse cx="50" cy="60" rx="40" ry="30" fill="#DBEAFE" />
-              <ellipse cx="80" cy="50" rx="35" ry="25" fill="#DBEAFE" />
-              <ellipse cx="110" cy="60" rx="40" ry="30" fill="#DBEAFE" />
+              <defs>
+                <radialGradient id="cloud5" cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="#F8FBFF" stopOpacity="0.6" />
+                  <stop offset="100%" stopColor="#E8F4FD" stopOpacity="0.25" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="50" cy="60" rx="40" ry="30" fill="url(#cloud5)" />
+              <ellipse cx="80" cy="50" rx="35" ry="25" fill="url(#cloud5)" />
+              <ellipse cx="110" cy="60" rx="40" ry="30" fill="url(#cloud5)" />
+            </svg>
+            {/* Cloud 6 - Additional subtle cloud */}
+            <svg
+              className="absolute top-[300px] right-10 opacity-28 blur-[3px]"
+              width="160"
+              height="90"
+              viewBox="0 0 160 90"
+            >
+              <defs>
+                <radialGradient id="cloud6" cx="50%" cy="50%">
+                  <stop offset="0%" stopColor="#F0F8FF" stopOpacity="0.65" />
+                  <stop offset="100%" stopColor="#DCE9F5" stopOpacity="0.3" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="40" cy="45" rx="32" ry="22" fill="url(#cloud6)" />
+              <ellipse cx="65" cy="38" rx="28" ry="18" fill="url(#cloud6)" />
+              <ellipse cx="88" cy="45" rx="32" ry="22" fill="url(#cloud6)" />
             </svg>
           </div>
           
           {/* Content with relative positioning */}
           <div className="relative z-10">
             <NewHero onGetStarted={handleGetStarted} />
-            <ProblemSection />
             <TrustBadge />
             <StartupsCarousel />
+            <ProblemSection />
           </div>
         </div>
 

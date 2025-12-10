@@ -33,7 +33,7 @@ export function NewHowItWorks() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
           {steps.map((step, index) => (
-            <div key={index} className="space-y-4">
+            <div key={index} className="space-y-4 bg-white rounded-2xl p-8 shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-300">
               <div className="text-5xl font-light text-gray-400">
                 {step.number}
               </div>
