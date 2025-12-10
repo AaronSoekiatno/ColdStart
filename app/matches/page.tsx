@@ -100,7 +100,7 @@ export default function MatchesPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
         <section className="py-20">
           <div className="container mx-auto px-4">
@@ -115,7 +115,7 @@ export default function MatchesPage() {
 
   if (hasError || !user) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
         <section className="py-20">
           <div className="container mx-auto px-4">
@@ -129,7 +129,7 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
       <section className="pt-4 sm:pt-6 md:pt-12 pb-12 md:pb-20">
         {/* Fixed navigation arrows */}

@@ -122,8 +122,8 @@ export const Header = ({ initialUser }: HeaderProps) => {
   }, [userEmail, isCheckingPremium]);
 
   return (
-    <header className="sticky top-0 z-50 w-full pt-2 bg-white border-b border-gray-200">
-      <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-16 py-3 md:py-4 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200">
+      <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-16 py-2 md:py-2.5 flex items-center justify-between">
         {/* Logo and Title */}
         <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <Image
