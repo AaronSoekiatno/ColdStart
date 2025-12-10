@@ -25,8 +25,8 @@ export function ProblemSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16">
           {problems.map((problem, index) => (
             <div key={index} className="space-y-4">
-              <h3 className="text-2xl font-medium">{problem.title}</h3>
-              <p className="text-lg text-secondary leading-relaxed">
+              <h3 className="text-2xl font-medium text-white drop-shadow-md">{problem.title}</h3>
+              <p className="text-lg text-white leading-relaxed drop-shadow-sm">
                 {problem.description}
               </p>
             </div>

@@ -34,11 +34,11 @@ export function NewHowItWorks() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
           {steps.map((step, index) => (
             <div key={index} className="space-y-4">
-              <div className="text-5xl font-light text-tertiary">
+              <div className="text-5xl font-light text-gray-400">
                 {step.number}
               </div>
-              <h3 className="text-2xl font-medium">{step.title}</h3>
-              <p className="text-base text-secondary leading-relaxed">
+              <h3 className="text-2xl font-medium text-gray-900">{step.title}</h3>
+              <p className="text-base text-gray-600 leading-relaxed">
                 {step.description}
               </p>
             </div>

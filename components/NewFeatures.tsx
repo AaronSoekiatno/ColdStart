@@ -35,12 +35,12 @@ export function NewFeatures() {
             const Icon = feature.icon;
             return (
               <div key={index} className="space-y-4">
-                <div className="flex items-center gap-2 text-tertiary text-sm">
+                <div className="flex items-center gap-2 text-gray-500 text-sm">
                   <Icon className="w-4 h-4" />
                   <span>{feature.label}</span>
                 </div>
-                <h3 className="text-2xl font-medium">{feature.title}</h3>
-                <p className="text-lg text-secondary leading-relaxed">
+                <h3 className="text-2xl font-medium text-gray-900">{feature.title}</h3>
+                <p className="text-lg text-gray-600 leading-relaxed">
                   {feature.description}
                 </p>
               </div>
