@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +14,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { DiffBlock } from "@/components/DiffBlock";
+
+interface ResumeSuggestion {
+  id: string;
+  section: string;
+  original: string;
+  suggested: string;
+  reason: string;
+  keywords: string[];
+}
 
 interface SendEmailButtonProps {
   startupId: string;
@@ -33,13 +46,20 @@ export const SendEmailButton = ({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewBody, setPreviewBody] = useState<string | null>(null);
+  const [resumeSuggestions, setResumeSuggestions] = useState<ResumeSuggestion[]>([]);
+  const [suggestionStatuses, setSuggestionStatuses] = useState<Record<string, 'pending' | 'accepted' | 'rejected'>>({});
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [suggestionsRequested, setSuggestionsRequested] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleOpenPreview = async () => {
     try {
       setIsPreviewLoading(true);
+      setIsDialogOpen(true); // Open dialog immediately to show loading state
 
-      const response = await fetch("/api/send-email/preview", {
+      // Only fetch email preview initially (not suggestions)
+      const emailResponse = await fetch("/api/send-email/preview", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,15 +71,19 @@ export const SendEmailButton = ({
         }),
       });
 
-      const data = await response.json();
+      const emailData = await emailResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
+      if (!emailResponse.ok) {
+        throw new Error(emailData.error || 'Failed to generate email preview');
       }
 
-      setPreviewSubject(data.subject);
-      setPreviewBody(data.body);
-      setIsDialogOpen(true);
+      setPreviewSubject(emailData.subject);
+      setPreviewBody(emailData.body);
+
+      // Fetch resume URL for preview
+      if (emailData.resumeUrl) {
+        setResumeUrl(emailData.resumeUrl);
+      }
 
       toast({
         title: "Email drafted",
@@ -67,9 +91,14 @@ export const SendEmailButton = ({
       });
     } catch (error) {
       console.error('Preview email error:', error);
-      
+
+      // Close dialog on error
+      setIsDialogOpen(false);
+      setPreviewSubject(null);
+      setPreviewBody(null);
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate email preview';
-      
+
       // Provide helpful error messages
       if (errorMessage.includes('Unauthorized')) {
         toast({
@@ -101,6 +130,66 @@ export const SendEmailButton = ({
     }
   };
 
+  const handleLoadSuggestions = async () => {
+    try {
+      setIsLoadingSuggestions(true);
+      setSuggestionsRequested(true);
+
+      const suggestionsResponse = await fetch("/api/resume-suggestions", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          startupId,
+        }),
+      });
+
+      const suggestionsData = await suggestionsResponse.json();
+
+      if (suggestionsResponse.ok && suggestionsData.suggestions) {
+        setResumeSuggestions(suggestionsData.suggestions);
+        // Initialize all suggestions as pending
+        const initialStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = {};
+        suggestionsData.suggestions.forEach((s: ResumeSuggestion) => {
+          initialStatuses[s.id] = 'pending';
+        });
+        setSuggestionStatuses(initialStatuses);
+
+        toast({
+          title: "Suggestions loaded",
+          description: `Found ${suggestionsData.suggestions.length} ways to improve your resume.`,
+        });
+      } else {
+        // Show user-friendly message for errors
+        if (suggestionsResponse.status === 429 || suggestionsData.error?.includes('Too Many Requests')) {
+          toast({
+            title: "Rate limit reached",
+            description: "Please try again in a few moments.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Failed to load suggestions",
+            description: suggestionsData.error || "Please try again.",
+            variant: "destructive",
+          });
+        }
+        setResumeSuggestions([]);
+      }
+    } catch (error) {
+      console.error('Error loading suggestions:', error);
+      toast({
+        title: "Failed to load suggestions",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
   const handleSendEmail = async () => {
     try {
       setIsSending(true);
@@ -114,6 +203,9 @@ export const SendEmailButton = ({
         body: JSON.stringify({
           startupId,
           matchScore,
+          // Include edited subject and body if user made changes
+          subject: previewSubject,
+          body: previewBody,
         }),
       });
 
@@ -127,6 +219,11 @@ export const SendEmailButton = ({
         title: "Email sent!",
         description: "Your email has been sent successfully to the founder.",
       });
+
+      // Close dialog and reset state
+      setIsDialogOpen(false);
+      setPreviewSubject(null);
+      setPreviewBody(null);
 
       if (onSent) {
         onSent();
@@ -161,58 +258,229 @@ export const SendEmailButton = ({
     }
   };
 
+  const handleDialogChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      // Reset state when dialog closes
+      setResumeSuggestions([]);
+      setSuggestionStatuses({});
+      setSuggestionsRequested(false);
+      setResumeUrl(null);
+    }
+  };
+
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
       <Button
         onClick={handleOpenPreview}
         disabled={isPreviewLoading}
         variant={variant}
-        className={className}
+        className={`bg-gray-50 hover:bg-gray-100 text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${className || ''}`}
       >
-        {isPreviewLoading ? "Preparing..." : "Preview & Send"}
+        {isPreviewLoading ? (
+          <span className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Preparing...
+          </span>
+        ) : (
+          "Preview & Send"
+        )}
       </Button>
 
-      <DialogContent className="bg-black border-white/20 text-white sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="bg-black border-white/20 text-white sm:max-w-[90vw] max-h-[90vh] flex flex-col p-0">
+        <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="text-xl font-semibold">
-            Preview your email
+            Review, Optimize, and Send
           </DialogTitle>
-          <DialogDescription className="text-white/70">
-            This is the email that will be sent from your Gmail account to the founder. You can review it before sending.
-          </DialogDescription>
         </DialogHeader>
 
-        {previewSubject && (
-          <div className="space-y-2 text-sm">
-            <div>
-              <span className="font-semibold text-white">Subject:</span>{" "}
-              <span className="text-white/90">{previewSubject}</span>
-            </div>
-            <div className="mt-4">
-              <span className="font-semibold text-white block mb-2">Body:</span>
-              <div className="max-h-80 overflow-y-auto rounded-lg border border-white/20 bg-white/5 p-3 text-sm whitespace-pre-wrap text-white/90">
-                {previewBody}
+        {isPreviewLoading && previewSubject === null && previewBody === null ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <p className="text-white/70 text-sm">Loading your email and resume...</p>
+          </div>
+        ) : previewSubject && previewBody ? (
+          <>
+            {/* Two-column layout */}
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row gap-4 px-6 min-h-0">
+              {/* LEFT: Email Preview */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <h3 className="text-sm font-semibold mb-3 text-white/90">Email</h3>
+                <div className="flex-1 overflow-y-auto space-y-3 pr-2">
+                  <div className="space-y-2">
+                    <label className="text-xs text-white/70 block">Subject:</label>
+                    <Input
+                      value={previewSubject}
+                      onChange={(e) => setPreviewSubject(e.target.value)}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/40"
+                      placeholder="Email subject"
+                    />
+                  </div>
+                  <div className="space-y-2 flex-1 flex flex-col">
+                    <label className="text-xs text-white/70 block">Body:</label>
+                    <Textarea
+                      value={previewBody}
+                      onChange={(e) => setPreviewBody(e.target.value)}
+                      className="flex-1 min-h-[300px] bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 resize-none"
+                      placeholder="Email body"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* DIVIDER */}
+              <div className="hidden lg:block w-px bg-white/20" />
+
+              {/* RIGHT: Resume Preview & Suggestions */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-white/90">Your Resume</h3>
+                  <div className="flex items-center gap-2">
+                    {resumeSuggestions.length > 0 && (
+                      <span className="text-xs text-white/60">
+                        {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
+                      </span>
+                    )}
+                    {!suggestionsRequested && resumeUrl && (
+                      <Button
+                        onClick={handleLoadSuggestions}
+                        disabled={isLoadingSuggestions}
+                        size="sm"
+                        className="bg-blue-500 hover:bg-blue-600 text-white h-8 text-xs"
+                      >
+                        {isLoadingSuggestions ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Tailoring...
+                          </span>
+                        ) : (
+                          "Tailor Resume"
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto pr-2">
+                  {resumeSuggestions.length > 0 ? (
+                    // Inline view: Show resume PDF alongside accepted changes
+                    <div className="space-y-4">
+                      {resumeUrl && (
+                        <div className="h-[400px] rounded-lg overflow-hidden border border-white/10">
+                          <iframe
+                            src={resumeUrl}
+                            className="w-full h-full bg-white"
+                            title="Resume Preview"
+                          />  
+                        </div>
+                      )}
+                      {resumeSuggestions
+                        .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
+                        .length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wide">
+                            Accepted Changes
+                          </h4>
+                          {resumeSuggestions
+                            .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
+                            .map((suggestion) => (
+                              <div
+                                key={suggestion.id}
+                                className="border border-green-500/30 bg-green-500/5 rounded-lg p-3"
+                              >
+                                <div className="flex items-start gap-2 mb-2">
+                                  <span className="text-xs text-white/70 font-medium">{suggestion.section}</span>
+                                  <span className="text-xs text-green-400">✓ Accepted</span>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="text-sm text-white/90 line-through text-white/50">
+                                    {suggestion.original}
+                                  </div>
+                                  <div className="text-sm text-green-300 font-medium">
+                                    {suggestion.suggested}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                      {resumeSuggestions
+                        .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
+                        .length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-semibold text-white/90 uppercase tracking-wide">
+                            Pending Review
+                          </h4>
+                          {resumeSuggestions
+                            .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
+                            .map((suggestion) => (
+                              <DiffBlock
+                                key={suggestion.id}
+                                suggestion={suggestion}
+                                status="pending"
+                                onAccept={() => setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'accepted' }))}
+                                onReject={() => {
+                                  setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'rejected' }));
+                                }}
+                              />
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : resumeUrl ? (
+                    // Show resume PDF
+                    <div className="h-full rounded-lg overflow-hidden border border-white/10">
+                      <iframe
+                        src={resumeUrl}
+                        className="w-full h-full bg-white"
+                        title="Resume Preview"
+                      />
+                    </div>
+                  ) : (
+                    // No resume found
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                      <p className="text-white/60 text-sm">No resume found</p>
+                      <p className="text-white/40 text-xs mt-2">Please upload your resume first</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
 
-        <DialogFooter className="mt-6">
-          <Button
-            variant="ghost"
-            onClick={() => setIsDialogOpen(false)}
-            className="text-white/70 hover:text-white hover:bg-white/10"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSendEmail}
-            disabled={isSending}
-            className="bg-blue-500 hover:bg-blue-400 text-white"
-          >
-            {isSending ? "Sending..." : "Send Email"}
-          </Button>
-        </DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t border-white/10">
+              <div className="flex items-center justify-between w-full">
+                <div className="text-xs text-white/50">
+                  {resumeSuggestions.length > 0 && (
+                    <>Note: Resume improvements are for your reference only</>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setIsDialogOpen(false)}
+                    className="text-white/70 hover:text-white hover:bg-white/10"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSendEmail}
+                    disabled={isSending || isPreviewLoading}
+                    className="bg-gray-50 hover:bg-gray-100 text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSending ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Sending...
+                      </span>
+                    ) : (
+                      "Send Email"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </DialogFooter>
+          </>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

@@ -4,7 +4,7 @@ export default function TermsOfService() {
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="prose prose-lg max-w-none">
           <h1 className="text-4xl font-bold mb-2">TERMS OF SERVICE</h1>
-          <p className="text-gray-500 text-sm mb-8">Last updated <strong>December 03, 2025</strong></p>
+          <p className="text-gray-500 text-sm mb-8">Last updated <strong>January 15, 2025</strong></p>
 
           <div className="space-y-6 text-gray-700">
             <h2 className="text-2xl font-bold mt-8 mb-4">AGREEMENT TO OUR LEGAL TERMS</h2>
@@ -175,16 +175,49 @@ export default function TermsOfService() {
             </p>
 
             <h2 id="purchases" className="text-2xl font-bold mt-8 mb-4">5. PURCHASES AND PAYMENT</h2>
+            
+            <h3 className="text-xl font-bold mt-6 mb-3">Payment Methods</h3>
             <p>
-              We accept the following forms of payment:
+              We accept the following forms of payment through our third-party payment processor, <strong>Stripe</strong>:
+            </p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Credit cards (Visa, Mastercard, American Express, Discover)</li>
+              <li>Debit cards</li>
+              <li>Other payment methods as made available by Stripe</li>
+            </ul>
+
+            <p className="mt-4">
+              You agree to provide current, complete, and accurate purchase and account information for all purchases made via the Services. You further agree to promptly update account and payment information, including email address, payment method, and payment card expiration date, so that we can complete your transactions and contact you as needed. Sales tax will be added to the price of purchases as deemed required by us. We may change prices at any time. All payments shall be in <strong>United States Dollars (USD)</strong>.
             </p>
 
+            <h3 className="text-xl font-bold mt-6 mb-3">Subscription Services</h3>
             <p>
-              You agree to provide current, complete, and accurate purchase and account information for all purchases made via the Services. You further agree to promptly update account and payment information, including email address, payment method, and payment card expiration date, so that we can complete your transactions and contact you as needed. Sales tax will be added to the price of purchases as deemed required by us. We may change prices at any time. All payments shall be in __________.
+              <strong>Premium Subscription:</strong> We offer a Premium subscription service that provides enhanced features and unlimited access to startup matches. By subscribing to Premium, you agree to the following terms:
+            </p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li><strong>Billing Cycle:</strong> Premium subscriptions are billed on a monthly basis. Your subscription will automatically renew each month unless you cancel it.</li>
+              <li><strong>Subscription Fees:</strong> The current monthly subscription fee for Premium is $15.00 USD per month. We reserve the right to change subscription fees at any time. We will provide you with at least 30 days' notice of any price changes via email to the address associated with your account.</li>
+              <li><strong>Payment Authorization:</strong> By subscribing to Premium, you authorize us to charge your payment method on a recurring monthly basis for the subscription fee. You agree to pay all charges at the prices then in effect for your subscription.</li>
+              <li><strong>Automatic Renewal:</strong> Your subscription will automatically renew at the end of each billing period unless you cancel it before the renewal date. You will be charged the then-current subscription fee on each renewal date.</li>
+              <li><strong>Cancellation:</strong> You may cancel your Premium subscription at any time through your account settings or by contacting us at <a href="mailto:blobery90@gmail.com" className="text-blue-600 hover:underline">blobery90@gmail.com</a>. Cancellation will take effect at the end of your current billing period. You will continue to have access to Premium features until the end of your paid billing period. No refunds will be provided for the current billing period upon cancellation.</li>
+              <li><strong>Refunds:</strong> We do not provide refunds for subscription fees except as required by law. If you believe you are entitled to a refund, please contact us at <a href="mailto:blobery90@gmail.com" className="text-blue-600 hover:underline">blobery90@gmail.com</a>.</li>
+              <li><strong>Failed Payments:</strong> If a payment fails, we will attempt to process the payment again. If payment continues to fail, we may suspend or cancel your Premium subscription. You will be notified of any payment failures via email.</li>
+              <li><strong>Subscription Changes:</strong> We reserve the right to modify, suspend, or discontinue the Premium subscription service or any part thereof at any time with or without notice. We will not be liable to you or any third party for any modification, suspension, or discontinuance of the subscription service.</li>
+            </ul>
+
+            <h3 className="text-xl font-bold mt-6 mb-3">Free Tier</h3>
+            <p>
+              We offer a free tier of the Services with limited features. Free tier users have access to 1 startup match. Free tier users may upgrade to Premium at any time to access unlimited matches and premium features.
             </p>
 
+            <h3 className="text-xl font-bold mt-6 mb-3">Payment Processing</h3>
             <p>
-              You agree to pay all charges at the prices then in effect for your purchases and any applicable shipping fees, and you authorize us to charge your chosen payment provider for any such amounts upon placing your order. We reserve the right to correct any errors or mistakes in pricing, even if we have already requested or received payment.
+              All payments are processed securely through <strong>Stripe</strong>, our third-party payment processor. By making a purchase or subscribing to Premium, you agree to be bound by Stripe's <a href="https://stripe.com/legal" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Privacy Policy</a>. We do not store your full payment card details on our servers. All payment information is securely processed and stored by Stripe in accordance with PCI DSS compliance standards.
+            </p>
+
+            <h3 className="text-xl font-bold mt-6 mb-3">General Payment Terms</h3>
+            <p>
+              You agree to pay all charges at the prices then in effect for your purchases and subscriptions, and you authorize us (through Stripe) to charge your chosen payment provider for any such amounts upon placing your order or subscribing to Premium. We reserve the right to correct any errors or mistakes in pricing, even if we have already requested or received payment.
             </p>
 
             <p>
@@ -288,6 +321,10 @@ export default function TermsOfService() {
             </p>
 
             <p>
+              <strong>Subscription Termination:</strong> If you have an active Premium subscription and we terminate or suspend your account, your subscription will be canceled, and you will not be entitled to a refund for any unused portion of your subscription period. If you cancel your subscription, termination will take effect at the end of your current billing period, and you will continue to have access to Premium features until that time.
+            </p>
+
+            <p>
               If we terminate or suspend your account for any reason, you are prohibited from registering and creating a new account under your name, a fake or borrowed name, or the name of any third party, even if you may be acting on behalf of the third party. In addition to terminating or suspending your account, we reserve the right to take appropriate legal action, including without limitation pursuing civil, criminal, and injunctive redress.
             </p>
 
@@ -346,7 +383,7 @@ export default function TermsOfService() {
 
             <h2 id="liability" className="text-2xl font-bold mt-8 mb-4">17. LIMITATIONS OF LIABILITY</h2>
             <p>
-              IN NO EVENT WILL WE OR OUR DIRECTORS, EMPLOYEES, OR AGENTS BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY DIRECT, INDIRECT, CONSEQUENTIAL, EXEMPLARY, INCIDENTAL, SPECIAL, OR PUNITIVE DAMAGES, INCLUDING LOST PROFIT, LOST REVENUE, LOSS OF DATA, OR OTHER DAMAGES ARISING FROM YOUR USE OF THE SERVICES, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. NOTWITHSTANDING ANYTHING TO THE CONTRARY CONTAINED HEREIN, OUR LIABILITY TO YOU FOR ANY CAUSE WHATSOEVER AND REGARDLESS OF THE FORM OF THE ACTION, WILL AT ALL TIMES BE LIMITED TO THE LESSER OF THE AMOUNT PAID, IF ANY, BY YOU TO US. CERTAIN US STATE LAWS AND INTERNATIONAL LAWS DO NOT ALLOW LIMITATIONS ON IMPLIED WARRANTIES OR THE EXCLUSION OR LIMITATION OF CERTAIN DAMAGES. IF THESE LAWS APPLY TO YOU, SOME OR ALL OF THE ABOVE DISCLAIMERS OR LIMITATIONS MAY NOT APPLY TO YOU, AND YOU MAY HAVE ADDITIONAL RIGHTS.
+              IN NO EVENT WILL WE OR OUR DIRECTORS, EMPLOYEES, OR AGENTS BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY DIRECT, INDIRECT, CONSEQUENTIAL, EXEMPLARY, INCIDENTAL, SPECIAL, OR PUNITIVE DAMAGES, INCLUDING LOST PROFIT, LOST REVENUE, LOSS OF DATA, OR OTHER DAMAGES ARISING FROM YOUR USE OF THE SERVICES, EVEN IF WE HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. NOTWITHSTANDING ANYTHING TO THE CONTRARY CONTAINED HEREIN, OUR LIABILITY TO YOU FOR ANY CAUSE WHATSOEVER AND REGARDLESS OF THE FORM OF THE ACTION, WILL AT ALL TIMES BE LIMITED TO THE LESSER OF THE AMOUNT PAID, IF ANY, BY YOU TO US IN THE TWELVE (12) MONTHS PRIOR TO THE EVENT GIVING RISE TO THE CLAIM, OR ONE HUNDRED DOLLARS ($100.00 USD). FOR SUBSCRIPTION SERVICES, THIS LIMITATION SHALL BE LIMITED TO THE AMOUNT PAID FOR THE CURRENT SUBSCRIPTION PERIOD. CERTAIN US STATE LAWS AND INTERNATIONAL LAWS DO NOT ALLOW LIMITATIONS ON IMPLIED WARRANTIES OR THE EXCLUSION OR LIMITATION OF CERTAIN DAMAGES. IF THESE LAWS APPLY TO YOU, SOME OR ALL OF THE ABOVE DISCLAIMERS OR LIMITATIONS MAY NOT APPLY TO YOU, AND YOU MAY HAVE ADDITIONAL RIGHTS.
             </p>
 
             <h2 id="indemnification" className="text-2xl font-bold mt-8 mb-4">18. INDEMNIFICATION</h2>
