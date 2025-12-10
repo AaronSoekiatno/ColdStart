@@ -122,17 +122,17 @@ export const Header = ({ initialUser }: HeaderProps) => {
   }, [userEmail, isCheckingPremium]);
 
   return (
-    <header className="sticky top-0 z-50 w-full pt-2" style={{ backgroundColor: '#0E1422' }}>
+    <header className="sticky top-0 z-50 w-full pt-2 bg-white border-b border-gray-200">
       <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-16 py-3 md:py-4 flex items-center justify-between">
         {/* Logo and Title */}
         <Link href="/" className="flex items-center gap-2 sm:gap-3">
           <Image
             src={logo}
             alt="Hermes logo"
-            className="h-7 w-auto sm:h-8 md:h-9 rounded-lg"
+            className="h-7 w-auto sm:h-8 md:h-9 rounded-lg "
             priority
           />
-          <span className="text-white font-semibold text-xl sm:text-2xl">Hermes</span>
+          <span className="text-gray-900 font-semibold text-xl sm:text-2xl">Hermes</span>
         </Link>
 
         {/* Desktop Navigation - Hidden on mobile */}
@@ -141,43 +141,43 @@ export const Header = ({ initialUser }: HeaderProps) => {
             <>
               <Link
                 href="/matches"
-                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Matches
               </Link>
               <Link
                 href="/tracker"
-                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Email Tracker
               </Link>
               <Link
                 href="/resumes"
-                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Resumes
               </Link>
               <button
                 onClick={handlePremiumClick}
-                className="text-sm md:text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
               >
                 Premium
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none">
-                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-white/20 flex items-center justify-center font-semibold text-xs">
+                  <button className="flex items-center gap-2 text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none">
+                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center font-semibold text-xs text-gray-900">
                       {user.email?.[0]?.toUpperCase() ?? "U"}
                     </div>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="border-white/30 bg-white/10 text-white px-0 py-0 rounded-2xl overflow-hidden min-w-[200px]">
-                  <div className="px-4 py-2 text-sm text-white/80 border-b border-white/10">
+                <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-2xl overflow-hidden min-w-[200px] shadow-lg">
+                  <div className="px-4 py-2 text-sm text-gray-600 border-b border-gray-200">
                     {user.email}
                   </div>
                   {isPremium && (
                     <DropdownMenuItem
-                      className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-b border-white/10"
+                      className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 border-b border-gray-200"
                       onSelect={async () => {
                         try {
                           const response = await fetch('/api/stripe/create-portal-session', {
@@ -212,7 +212,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
-                    className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20"
+                    className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50"
                     onSelect={async () => {
                       await supabase.auth.signOut();
                       setUser(null);
@@ -231,13 +231,13 @@ export const Header = ({ initialUser }: HeaderProps) => {
             <div className="flex items-center gap-2 sm:gap-4">
               <Link
                 href="/"
-                className="text-xs sm:text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
+                className="text-xs sm:text-sm font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
               >
                 Sign In
               </Link>
               <Link
                 href="/"
-                className="text-xs sm:text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
+                className="text-xs sm:text-sm font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
               >
                 Sign Up
               </Link>
@@ -250,7 +250,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
           {user && (
             <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl px-2 py-1.5 focus:outline-none">
+                <button className="flex items-center gap-2 text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl px-2 py-1.5 focus:outline-none">
                   {mobileMenuOpen ? (
                     <X className="h-5 w-5" />
                   ) : (
@@ -258,14 +258,14 @@ export const Header = ({ initialUser }: HeaderProps) => {
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="border-white/30 bg-white/10 text-white px-0 py-2 rounded-2xl overflow-hidden min-w-[200px] mr-4">
-                <div className="px-4 py-2 text-xs text-white/80 border-b border-white/10">
+              <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-2 rounded-2xl overflow-hidden min-w-[200px] mr-4 shadow-lg">
+                <div className="px-4 py-2 text-xs text-gray-600 border-b border-gray-200">
                   {user.email}
                 </div>
                 <DropdownMenuItem asChild>
                   <Link
                     href="/matches"
-                    className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                    className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Matches
@@ -274,7 +274,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/tracker"
-                    className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                    className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Email Tracker
@@ -283,14 +283,14 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/resumes"
-                    className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                    className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Resumes
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="w-full px-4 py-2 text-sm font-semibold text-white hover:bg-white/20 focus:bg-white/20 cursor-pointer"
+                  className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
                   onSelect={() => {
                     setMobileMenuOpen(false);
                     handlePremiumClick();
@@ -298,10 +298,10 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 >
                   Premium
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuSeparator className="bg-gray-200" />
                 {isPremium && (
                   <DropdownMenuItem
-                    className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-b border-white/10"
+                    className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 border-b border-gray-200"
                     onSelect={async () => {
                       setMobileMenuOpen(false);
                       try {
@@ -336,7 +336,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
-                  className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20"
+                  className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50"
                   onSelect={async () => {
                     setMobileMenuOpen(false);
                     await supabase.auth.signOut();
@@ -356,13 +356,13 @@ export const Header = ({ initialUser }: HeaderProps) => {
             <div className="flex items-center gap-2">
               <Link
                 href="/"
-                className="text-xs font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl px-2 py-1.5 focus:outline-none"
+                className="text-xs font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl px-2 py-1.5 focus:outline-none"
               >
                 Sign In
               </Link>
               <Link
                 href="/"
-                className="text-xs font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl px-2 py-1.5 focus:outline-none"
+                className="text-xs font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl px-2 py-1.5 focus:outline-none"
               >
                 Sign Up
               </Link>

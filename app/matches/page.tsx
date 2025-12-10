@@ -93,23 +93,18 @@ export default function MatchesPage() {
   // Memoized values - must be called before any conditional returns
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
   
-  // Count only perfect-fit matches with score >= 50% (0.5)
-  const perfectFitMatchCount = useMemo(() => {
-    return matches.filter(match => match.score >= 0.5).length;
-  }, [matches]);
-  
   const matchCountText = useMemo(() => {
     if (!hasMatches) return 'Upload a resume to see personalized startup matches.';    
     return 'Review these companies and send personalized emails.';
-  }, [hasMatches, perfectFitMatchCount]);
+  }, [hasMatches]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
+      <div className="min-h-screen bg-white">
         <Header initialUser={user} />
         <section className="py-20">
           <div className="container mx-auto px-4">
-            <div className="text-center text-white">
+            <div className="text-center text-gray-900">
               <p>Loading matches...</p>
             </div>
           </div>
@@ -120,11 +115,11 @@ export default function MatchesPage() {
 
   if (hasError || !user) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
+      <div className="min-h-screen bg-white">
         <Header initialUser={user} />
         <section className="py-20">
           <div className="container mx-auto px-4">
-            <div className="text-center text-white">
+            <div className="text-center text-gray-900">
               <p>Failed to load matches. Please try again.</p>
             </div>
           </div>
@@ -134,7 +129,7 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
+    <div className="min-h-screen bg-white">
       <Header initialUser={user} />
       <section className="pt-4 sm:pt-6 md:pt-12 pb-12 md:pb-20">
         {/* Fixed navigation arrows */}
@@ -144,7 +139,7 @@ export default function MatchesPage() {
             <button
               onClick={() => setCurrentMatchIndex((prev) => Math.max(0, prev - 1))}
               disabled={currentMatchIndex === 0}
-              className="fixed left-1 sm:left-2 md:left-4 lg:left-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
+              className="fixed left-1 sm:left-2 md:left-4 lg:left-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
               aria-label="Previous match"
             >
               <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
@@ -154,7 +149,7 @@ export default function MatchesPage() {
             <button
               onClick={() => setCurrentMatchIndex((prev) => Math.min(matches.length - 1, prev + 1))}
               disabled={currentMatchIndex >= matches.length - 1}
-              className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full border border-white/30 bg-white/10 backdrop-blur-xl text-white transition hover:bg-white/20 hover:border-white/40 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white/10 flex items-center justify-center shadow-lg"
+              className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
               aria-label="Next match"
             >
               <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
@@ -172,8 +167,8 @@ export default function MatchesPage() {
               )}
             </div>
           ) : (
-            <div className="rounded-2xl md:rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl p-6 sm:p-8 md:p-12 text-center text-white">
-              <p className="text-sm sm:text-base md:text-lg text-white">No matches yet. Upload your resume to get started.</p>
+            <div className="rounded-2xl md:rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 md:p-12 text-center text-gray-900">
+              <p className="text-sm sm:text-base md:text-lg text-gray-900">No matches yet. Upload your resume to get started.</p>
             </div>
           )}
         </div>
