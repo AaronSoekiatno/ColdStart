@@ -1,6 +1,5 @@
-"use client";
+  "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Upload, FileText, X } from "lucide-react";
@@ -12,7 +11,7 @@ import { HowItWorksJourney } from "@/components/HowItWorksJourney";
 import { SignInModal } from "@/components/SignInModal";
 import { SignUpModal } from "@/components/SignUpModal";
 import { ConnectGmailButton } from "@/components/ConnectGmailButton";
-import { UpgradeModal } from "@/components/UpgradeModal";
+import { Header } from "@/components/Header";
 import {
   Dialog,
   DialogContent,
@@ -22,15 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import logo from "./images/hermeslogo.png";
 
 const PENDING_RESUME_DATA_KEY = "pendingResumeData";
 const PENDING_RESUME_FILE_KEY = "pendingResumeFile";
@@ -128,6 +119,7 @@ export const Hero = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [matchedStartups, setMatchedStartups] = useState<string[]>([]);
   const [matchCount, setMatchCount] = useState<number>(0);
+  const [perfectFitCount, setPerfectFitCount] = useState<number>(0);
   const [pendingResumeData, setPendingResumeData] = useState<any>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -140,8 +132,6 @@ export const Hero = () => {
   const [showGmailConnectModal, setShowGmailConnectModal] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
   const [hasCheckedGmail, setHasCheckedGmail] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [hiddenMatchCount, setHiddenMatchCount] = useState(0);
   const { toast } = useToast();
   const checkingGmailRef = useRef(false);
   const gmailCheckTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -277,11 +267,18 @@ export const Hero = () => {
           });
         }
       }
+
+      // Check if user was redirected here to sign up
+      if (urlParams.get('signup') === 'true' && !currentUser) {
+        setIsSignUpModalOpen(true);
+      }
       
-      // Clean up URL if we came from auth callback
-      if (isAuthCallback || urlParams.has('gmail_connected') || urlParams.has('error')) {
+      // Clean up URL if we came from auth callback or signup redirect
+      if (isAuthCallback || urlParams.has('gmail_connected') || urlParams.has('error') || urlParams.has('signup')) {
         // Remove query params and hash
-        window.history.replaceState({}, '', window.location.pathname);
+        const redirectTo = urlParams.get('redirect');
+        const cleanPath = redirectTo ? redirectTo : window.location.pathname;
+        window.history.replaceState({}, '', cleanPath);
       }
     };
     void initializeAuth();
@@ -312,27 +309,35 @@ export const Hero = () => {
         // If same user, keep hasCheckedGmail as is to prevent duplicate checks
       }
 
-      // If user just signed in and we have pending resume data, save it
-      if (
-        event === 'SIGNED_IN' &&
-        newUser &&
-        pendingResumeData &&
-        !pendingResumeData.savedToDatabase &&
-        uploadedFile &&
-        !reuploadInProgress.current
-      ) {
-        setShowSavingModal(true);
-        reuploadPendingResume({ silent: true }).then((success) => {
-          if (success) {
-            // Navigate to matches page after successful save
-            setTimeout(() => {
+      // If user just signed in, handle redirects
+      if (event === 'SIGNED_IN' && newUser) {
+        // Check for redirect parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTo = urlParams.get('redirect');
+        
+        // If user just signed in and we have pending resume data, save it
+        if (
+          pendingResumeData &&
+          !pendingResumeData.savedToDatabase &&
+          uploadedFile &&
+          !reuploadInProgress.current
+        ) {
+          setShowSavingModal(true);
+          reuploadPendingResume({ silent: true }).then((success) => {
+            if (success) {
+              // Navigate to redirect URL or matches page after successful save
+              setTimeout(() => {
+                setShowSavingModal(false);
+                router.push(redirectTo || '/matches');
+              }, 500);
+            } else {
               setShowSavingModal(false);
-              router.push('/matches');
-            }, 500);
-          } else {
-            setShowSavingModal(false);
-          }
-        });
+            }
+          });
+        } else if (redirectTo) {
+          // No pending resume, just redirect
+          router.push(redirectTo);
+        }
       }
 
       // If user signed out, reset Gmail connection state
@@ -430,7 +435,10 @@ export const Hero = () => {
       const data = await response.json();
       const matches = data.matches || [];
       const count = matches.length;
+      const perfectFitMatches = matches.filter((match: any) => match.score >= 0.5);
+      const perfectFitCount = perfectFitMatches.length;
       setMatchCount(count);
+      setPerfectFitCount(perfectFitCount);
       setMatchedStartups(simulateMatches());
 
       const resumePayload = {
@@ -697,117 +705,11 @@ export const Hero = () => {
     };
   }, []);
 
-  // Reset hidden match count when premium modal is opened
-  // For landing page, we'll show premium features regardless of match count
-  useEffect(() => {
-    if (showPremiumModal) {
-      // Default to 0 for landing page - modal will still show all premium features
-      setHiddenMatchCount(0);
-    }
-  }, [showPremiumModal]);
 
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-50 w-full pt-2" style={{ backgroundColor: '#0E1422' }}>
-        <div className="container mx-auto px-16 py-4 flex items-center justify-between">
-          {/* Logo and Title */}
-          <Link href="/" className="flex items-center gap-2">
-            <Image
-              src={logo}
-              alt="Hermes logo"
-              className="h-9 w-auto rounded-lg"
-              priority
-            />
-            <span className="text-white font-semibold text-2xl">Hermes</span>
-          </Link>
-
-          {/* Sign In Button / Account Indicator */}
-          <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <Link
-                  href="/matches"
-                  className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-                >
-                  Your Matches
-                </Link>
-                <Link
-                  href="/history"
-                  className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-                >
-                  History
-                </Link>
-                <button
-                  onClick={() => setShowPremiumModal(true)}
-                  className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-                >
-                  Premium
-                </button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none">
-                      <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-semibold text-xs">
-                        {user.email?.[0]?.toUpperCase() ?? "U"}
-                      </div>
-                      
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="border-white/30 bg-white/10 text-white px-0 py-0 rounded-2xl overflow-hidden min-w-[200px]">
-                    <div className="px-4 py-2 text-sm text-white/80 border-b border-white/10">
-                      {user.email}
-                    </div>
-                    {/* Gmail connect functionality temporarily hidden */}
-                    {/* {gmailConnected ? (
-                      <div className="px-4 py-2 text-sm text-white/60 border-b border-white/10 flex items-center justify-center gap-2">
-                        <span className="text-green-500">✓</span> Gmail Connected
-                      </div>
-                    ) : (
-                      <DropdownMenuItem
-                        className="cursor-pointer text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-0"
-                        onSelect={() => {
-                          setShowGmailConnectModal(true);
-                        }}
-                      >
-                        Connect Gmail
-                      </DropdownMenuItem>
-                    )} */}
-                    <DropdownMenuItem
-                      className="cursor-pointer text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-0"
-                      onSelect={async () => {
-                        await supabase.auth.signOut();
-                        setUser(null);
-                        toast({
-                          title: "Signed out",
-                          description: "You have been signed out successfully.",
-                        });
-                      }}
-                    >
-                      Sign out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <div className="flex items-center gap-5">
-                <button
-                  onClick={() => setIsSignUpModalOpen(true)}
-                  className="text-sm font-semibold text-white transition-all border border-transparent bg-white/10 rounded-2xl px-5 py-2 hover:bg-white/20 focus:outline-none"
-                >
-                  Sign up
-                </button>
-                <button
-                  onClick={() => setIsSignInModalOpen(true)}
-                  className="text-sm font-semibold text-white transition-opacity hover:opacity-70 focus:outline-none"
-                >
-                  Log in
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <Header initialUser={user} />
 
       {/* Gmail Connection Modal */}
       <Dialog open={showGmailConnectModal} onOpenChange={(open) => {
@@ -895,6 +797,7 @@ export const Hero = () => {
           onOpenChange={setIsSignUpModalOpen}
           fromReview={pendingResumeData !== null && !pendingResumeData.savedToDatabase}
           onSwitchToSignIn={() => setIsSignInModalOpen(true)}
+          redirectTo={typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') || undefined : undefined}
         />
 
       {/* Content */}
@@ -1091,11 +994,11 @@ export const Hero = () => {
           <div className="bg-white/5 rounded-2xl p-4 space-y-2 text-left">
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-xs">✓</div>
-              <span className="text-sm text-white">{matchCount} perfect-fit startup{matchCount !== 1 ? 's' : ''} matched</span>
+              <span className="text-sm text-white">{perfectFitCount} Perfect fit startup{perfectFitCount !== 1 ? 's' : ''}</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-xs">✓</div>
-              <span className="text-sm text-white">Personalized cold DMs ready to send</span>
+              <span className="text-sm text-white">Personalized cold DMs ready</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center text-xs">→</div>
@@ -1153,16 +1056,6 @@ export const Hero = () => {
 
       {/* Footer Section */}
       <Footer />
-
-      {/* Premium Modal */}
-      <UpgradeModal
-        open={showPremiumModal}
-        onOpenChange={setShowPremiumModal}
-        hiddenMatchCount={hiddenMatchCount}
-        email={user?.email || ''}
-        onDismiss={() => setShowPremiumModal(false)}
-        customTitle="Our Premium Plan"
-      />
       </div>
   );
 };
