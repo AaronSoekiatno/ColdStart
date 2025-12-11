@@ -104,6 +104,11 @@ export interface ResumeExtractionResult {
   email: string;
   skills: string[];
   summary: string;
+  location: string;
+  education_level: string;
+  university: string;
+  past_internships: string[];
+  technical_projects: string[];
 }
 
 /**
@@ -116,7 +121,18 @@ export interface ResumeProcessingResult {
   email: string;
   skills: string[];
   summary: string;
+  location: string;
+  education_level: string;
+  university: string;
+  past_internships: string[];
+  technical_projects: string[];
   embedding: number[];
   savedToDatabase: boolean;
+  matches: Array<{
+    startup: any;
+    score: number;
+    id: string;
+  }>;
   databaseError?: string;
+  matchingError?: string;
 }
