@@ -364,7 +364,9 @@ def classify_text_section(text: str) -> Optional[str]:
     interview_keywords = [
         'interview', 'process', 'hiring', 'apply', 'application', 'recruiting',
         'phone screen', 'technical interview', 'onsite', 'virtual', 'round',
-        'conversation', 'meeting', 'discussion', 'next steps'
+        'conversation', 'meeting', 'discussion', 'next steps', 'hiring process',
+        'application process', 'how to apply', 'what to expect', 'interview with',
+        'conversation with', 'paid trial', 'trial period', 'interview conversation'
     ]
     
     company_keywords = [
@@ -393,9 +395,13 @@ def classify_text_section(text: str) -> Optional[str]:
     if re.search(r'\$[\d,]+|salary|equity|pto|vacation|insurance', text_lower):
         benefits_score += 1
     
-    # Interview process often mentions steps or stages
-    if re.search(r'(step|stage|round|conversation|interview)', text_lower):
+    # Interview process often mentions steps, stages, or specific interview types
+    if re.search(r'(step|stage|round|conversation|interview|phone screen|technical|onsite|virtual|trial)', text_lower):
         interview_score += 1
+    
+    # Strong indicators of interview process
+    if re.search(r'(interview with|conversation with|paid trial|trial period|hiring process)', text_lower):
+        interview_score += 2
     
     # Company about often starts with "At [Company]" or "We're"
     if re.match(r'^(at\s+[a-z]|we\'re|we are)', text_lower):
@@ -418,6 +424,106 @@ def classify_text_section(text: str) -> Optional[str]:
     if max_score >= 2:  # Require at least 2 keyword matches
         return max(scores, key=scores.get)
     
+    return None
+
+
+def extract_inline_interview_process(text: str) -> Optional[str]:
+    """
+    Extract interview process mentioned inline in any section.
+    Looks for patterns like "Interview Conversation with X", "Paid trial", etc.
+    """
+    if not text:
+        return None
+    
+    # Look for interview process patterns - more comprehensive
+    interview_patterns = [
+        # Specific interview mentions with context
+        r'Interview\s+Conversation\s+with\s+[A-Z][^\n]+(?:\n[^\n]+){0,3}',
+        r'Interview\s+[^\n]+\s+with\s+[A-Z][^\n]+(?:\n[^\n]+){0,3}',
+        r'Conversation\s+with\s+[A-Z][^\n]+(?:\n[^\n]+){0,3}',
+        r'Business\s+Case\s+Conversation[^\n]+(?:\n[^\n]+){0,3}',
+        r'[A-Z][a-z]+\s+Conversation\s+with\s+[A-Z][^\n]+(?:\n[^\n]+){0,3}',
+        # Trial mentions
+        r'Paid\s+trial[^\n]*(?:\n[^\n]+){0,2}',
+        r'Trial\s+period[^\n]*(?:\n[^\n]+){0,2}',
+        # Process mentions
+        r'Interview\s+Process[^\n]+(?:\n[^\n]+){0,10}',
+        r'Hiring\s+Process[^\n]+(?:\n[^\n]+){0,10}',
+        r'Application\s+Process[^\n]+(?:\n[^\n]+){0,10}',
+        # Step-by-step patterns
+        r'(?:Step\s+\d+|Round\s+\d+|Stage\s+\d+)[^\n]+(?:\n[^\n]+){0,2}',
+    ]
+    
+    interview_parts = []
+    
+    for pattern in interview_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE | re.MULTILINE)
+        if matches:
+            for match in matches:
+                if isinstance(match, tuple):
+                    match = ' '.join(match)
+                match = match.strip()
+                if match and len(match) > 10 and len(match) < 500:  # Reasonable length
+                    interview_parts.append(match)
+    
+    # Also look for structured interview steps (numbered or bulleted)
+    lines = text.split('\n')
+    in_interview_section = False
+    interview_lines = []
+    
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check if this line starts an interview section
+        if re.search(r'^(Interview|Hiring Process|Application Process|How to Apply|Next Steps|Interview Process)', line, re.IGNORECASE):
+            in_interview_section = True
+            interview_lines.append(line)
+            continue
+        
+        # If we're in an interview section, collect lines until we hit another section
+        if in_interview_section:
+            # Stop if we hit a new major section
+            if re.search(r'^(About|Requirements|Benefits|What|How|Why|Technology|Compensation|Skills|Why join)', line, re.IGNORECASE):
+                break
+            interview_lines.append(line)
+            # Stop after collecting reasonable amount (15 lines max)
+            if len([l for l in interview_lines if l.strip()]) > 15:
+                break
+    
+    if interview_lines:
+        interview_text = '\n'.join(interview_lines).strip()
+        if interview_text and len(interview_text) > 10:
+            interview_parts.append(interview_text)
+    
+    # Look for interview mentions in the middle of paragraphs
+    # Common pattern: "Interview Conversation with [Name] (Role)" followed by description
+    conversation_pattern = r'(?:Interview|Conversation|Meeting)\s+(?:Conversation\s+)?with\s+[A-Z][a-zA-Z\s]+(?:\([^)]+\))?[^\n]*(?:\n[^\n]+){0,5}'
+    conversation_matches = re.findall(conversation_pattern, text, re.IGNORECASE | re.MULTILINE)
+    if conversation_matches:
+        for match in conversation_matches:
+            match = match.strip()
+            if match and len(match) > 15 and len(match) < 500:
+                interview_parts.append(match)
+    
+    if interview_parts:
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_parts = []
+        for part in interview_parts:
+            part_lower = part.lower().strip()
+            # Skip if it's too short or seems like a false positive
+            if len(part_lower) < 15:
+                continue
+            if part_lower not in seen:
+                seen.add(part_lower)
+                unique_parts.append(part)
+        
+        if unique_parts:
+            return '\n\n'.join(unique_parts)
+    
+    # If no interview process found, return None (this is valid - not all jobs have interview info)
     return None
 
 
@@ -548,8 +654,8 @@ def parse_job_description(description: str) -> dict:
             current_section_text = []
             continue
         
-        # Interview Process section
-        elif re.match(r'^Interview Process$', line, re.IGNORECASE):
+        # Interview Process section - multiple variations
+        elif re.match(r'^(Interview Process|Interview|Hiring Process|Application Process|How to Apply|Next Steps|What to Expect)$', line, re.IGNORECASE):
             if current_section and current_section_text:
                 sections[current_section] = '\n'.join(current_section_text).strip()
             current_section = "interview_process"
@@ -632,6 +738,14 @@ def parse_job_description(description: str) -> dict:
             # Don't start a new section, just continue accumulating if we're in one
             if current_section:
                 current_section_text.append(line)
+            continue
+        
+        # Interview-related headers that might not be exactly "Interview Process"
+        elif re.match(r'^(Interview|Hiring Process|Application Process|How to Apply|Next Steps)$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "interview_process"
+            current_section_text = []
             continue
         
         # If we're in a section, accumulate text
@@ -828,6 +942,12 @@ def parse_with_classification(description: str) -> dict:
         if inline_benefits:
             sections["benefits"] = inline_benefits
     
+    # Extract inline interview process if not found in dedicated section
+    if not sections["interview_process"]:
+        inline_interview = extract_inline_interview_process(description)
+        if inline_interview:
+            sections["interview_process"] = inline_interview
+    
     return sections
 
 
@@ -938,31 +1058,59 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
             if job_links:
                 print(f"   📋 Sample job links (first 3): {job_links[:3]}")
         
-        # Scrape individual job URLs if we have links but no full job data
-        # Note: The library may have already scraped jobs, but job_data might be empty
-        # So we should check if we have job_links and scrape them
+        # Always scrape individual job URLs to get full descriptions
+        # Note: job_data from company page may be incomplete/truncated
+        # Individual job pages have the complete description including interview process
         if job_links:
-            if not jobs:  # Only scrape if we don't have full job data
-                print(f"   📄 Scraping {len(job_links)} individual job URLs...")
-                if limit:
-                    job_links = job_links[:limit]
-                
-                for idx, job_url in enumerate(job_links, 1):
-                    try:
+            print(f"   📄 Scraping {len(job_links)} individual job URLs for full descriptions...")
+            if limit:
+                job_links = job_links[:limit]
+
+            # Create a map of existing jobs by URL to avoid duplicates
+            existing_jobs_by_url = {}
+            if jobs:
+                for job in jobs:
+                    if hasattr(job, 'job_url') and job.job_url:
+                        existing_jobs_by_url[job.job_url] = job
+                    elif hasattr(job, 'model_dump'):
+                        job_dict = job.model_dump()
+                        if job_dict.get('job_url'):
+                            existing_jobs_by_url[job_dict['job_url']] = job
+
+            for idx, job_url in enumerate(job_links, 1):
+                try:
+                    # Skip if we already have this job from job_data
+                    if job_url in existing_jobs_by_url:
+                        print(f"   📄 [{idx}/{len(job_links)}] Job already in job_data, scraping for full description: {job_url}")
+                        # Still scrape to get full description, will replace the incomplete one
+                    else:
                         print(f"   📄 [{idx}/{len(job_links)}] Scraping job: {job_url}")
-                        job_data = scraper.scrape_job_data(job_url)
-                        if job_data:
-                            jobs.append(job_data)
-                            print(f"      ✅ Successfully scraped job")
+                    
+                    job_data = scraper.scrape_job_data(job_url)
+                    if job_data:
+                        # Replace existing job if we had it, or add new one
+                        if job_url in existing_jobs_by_url:
+                            # Find and replace in jobs list
+                            for i, existing_job in enumerate(jobs):
+                                existing_url = None
+                                if hasattr(existing_job, 'job_url'):
+                                    existing_url = existing_job.job_url
+                                elif hasattr(existing_job, 'model_dump'):
+                                    existing_url = existing_job.model_dump().get('job_url')
+                                
+                                if existing_url == job_url:
+                                    jobs[i] = job_data  # Replace with full description
+                                    break
                         else:
-                            print(f"      ⚠️  No data returned for job")
-                    except Exception as e:
-                        print(f"      ⚠️  Error scraping job {job_url}: {e}")
-                        import traceback
-                        traceback.print_exc()
-                        continue
-            else:
-                print(f"   ℹ️  Skipping job link scraping - already have {len(jobs)} jobs from job_data")
+                            jobs.append(job_data)
+                        print(f"      ✅ Successfully scraped job with full description")
+                    else:
+                        print(f"      ⚠️  No data returned for job")
+                except Exception as e:
+                    print(f"      ⚠️  Error scraping job {job_url}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
         
         if limit and jobs:
             jobs = jobs[:limit]
@@ -1006,6 +1154,16 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
             job_url = job_dict.get("job_url")
             salary_range = job_dict.get("job_salary_range")
             description = job_dict.get("job_description")
+            
+            # Debug: Print description length to verify we're getting full text
+            if description:
+                print(f"      📝 Description length: {len(description)} characters")
+                # Check if description seems truncated (common issue)
+                if len(description) < 500:
+                    print(f"      ⚠️  Warning: Description seems short, might be incomplete")
+                # Check if interview process is mentioned
+                if 'interview' in description.lower() or 'process' in description.lower():
+                    print(f"      ✅ Description contains interview/process keywords")
             tags = job_dict.get("job_tags")  # Nested list: [[tag1, tag2, ...]]
 
             # Parse description to extract structured sections
@@ -1028,6 +1186,12 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     inline_benefits = extract_inline_benefits(description)
                     if inline_benefits:
                         benefits = inline_benefits
+                
+                # Extract inline interview process if not found in dedicated section
+                if not interview_process:
+                    inline_interview = extract_inline_interview_process(description)
+                    if inline_interview:
+                        interview_process = inline_interview
 
             # Parse tags to extract location, job_type, visa_requirements, experience_level, and skills
             # Note: jobTags is a nested list: [[location, job_type, visa, experience, ...]]
