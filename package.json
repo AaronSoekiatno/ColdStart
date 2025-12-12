@@ -44,6 +44,8 @@
     "test-resume": "tsx scripts/test-resume-parsing.ts",
     "type-check": "tsc --noEmit",
     "backfill:founders": "tsx scripts/backfill-guessed-founder-emails.ts",
+    "scrape:workatastartup": "tsx yc_companies/scrape_workatastartup.ts",
+    "scrape:workatastartup:python": "python yc_companies/scrape_workatastartup_directory.py",
     "clean": "powershell -ExecutionPolicy Bypass -File scripts/clean.ps1"
   },
   "dependencies": {
