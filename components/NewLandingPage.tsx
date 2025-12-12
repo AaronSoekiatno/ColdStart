@@ -79,7 +79,7 @@ export function NewLandingPage() {
           <Link href="/" className={`flex items-center gap-3 transition-opacity duration-300 ${
             isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
-            <Image src="/images/Hermès (1).png" alt="Hermes" width={32} height={32} />
+            <Image src="/images/hermes.png" alt="Hermes" width={32} height={32} />
             <span className="text-xl font-semibold text-white drop-shadow-md">Hermes</span>
           </Link>
 

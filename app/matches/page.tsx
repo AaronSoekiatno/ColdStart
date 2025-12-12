@@ -108,7 +108,7 @@ export default function MatchesPage() {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
-        <section className="py-20">
+        <section className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20">
           <div className="container mx-auto px-4">
             <div className="text-center text-gray-900">
               <p>Loading matches...</p>
@@ -123,7 +123,7 @@ export default function MatchesPage() {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
-        <section className="py-20">
+        <section className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20">
           <div className="container mx-auto px-4">
             <div className="text-center text-gray-900">
               <p>Failed to load matches. Please try again.</p>
@@ -137,7 +137,7 @@ export default function MatchesPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
-      <section className="pt-4 sm:pt-6 md:pt-12 pb-12 md:pb-20">
+      <section className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 md:pb-20">
         {/* Fixed navigation arrows */}
         {hasMatches && (
           <>

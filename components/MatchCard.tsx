@@ -4,8 +4,6 @@ import { memo, useRef } from "react";
 import Image from "next/image";
 import { DollarSign, ExternalLink } from "lucide-react";
 import { SendEmailButton } from "./SendEmailButton";
-import ycLogo from "../images/ycLogo.svg";
-import linkedinLogo from "../images/linkedinLogo.svg";
 
 interface MatchCardProps {
   match: {
@@ -158,7 +156,7 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                     className="inline-flex items-center justify-center rounded-full bg-gray-50 border border-gray-300 w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <Image
-                      src={ycLogo}
+                      src="/images/ycLogo.svg"
                       alt="Y Combinator"
                       width={14}
                       height={14}
@@ -201,7 +199,7 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                     </h4>
                     {/* LinkedIn Icon */}
                     <Image
-                      src={linkedinLogo}
+                      src="/images/linkedinLogo.svg"
                       alt="LinkedIn"
                       width={16}
                       height={16}

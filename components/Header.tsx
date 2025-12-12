@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Menu, X } from "lucide-react";
-import logo from "../images/hermeslogo.png";
+import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   initialUser?: User | null;
@@ -122,57 +122,59 @@ export const Header = ({ initialUser }: HeaderProps) => {
   }, [userEmail, isCheckingPremium]);
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-200">
-      <div className="container mx-auto px-4 sm:px-6 md:px-8 lg:px-16 py-2 md:py-2.5 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white transition-all duration-300 mb-4 border border-gray-200">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo and Title */}
-        <Link href="/" className="flex items-center gap-2 sm:gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <Image
-            src={logo}
+            src="/images/hermes.png"
             alt="Hermes logo"
-            className="h-7 w-auto sm:h-8 md:h-9 rounded-lg "
+            width={32} 
+            height={32}
             priority
           />
-          <span className="text-gray-900 font-semibold text-xl sm:text-2xl">Hermes</span>
+          <span className="text-xl font-semibold text-gray-800">Hermes</span>
         </Link>
 
         {/* Desktop Navigation - Hidden on mobile */}
-        <div className="hidden lg:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-4">
           {user ? (
             <>
               <Link
                 href="/matches"
-                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
               >
-                Matches
+                Your Matches
               </Link>
               <Link
                 href="/tracker"
-                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
               >
                 Email Tracker
               </Link>
               <Link
                 href="/resumes"
-                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
               >
                 Resumes
               </Link>
               <button
                 onClick={handlePremiumClick}
-                className="text-sm md:text-md font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
               >
                 Premium
               </button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none">
-                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gray-100 border border-gray-300 flex items-center justify-center font-semibold text-xs text-gray-900">
-                      {user.email?.[0]?.toUpperCase() ?? "U"}
-                    </div>
-                  </button>
+                  <Button
+                    variant="ghost"
+                    className="rounded-full h-9 px-4 text-gray-800 hover:text-gray-700"
+                  >
+                    {user.email}
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-2xl overflow-hidden min-w-[200px] shadow-lg">
-                  <div className="px-4 py-2 text-sm text-gray-600 border-b border-gray-200">
+                  <div className="px-4 py-2 text-sm text-gray-800 border-b border-gray-200">
                     {user.email}
                   </div>
                   {isPremium && (
@@ -227,36 +229,24 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
-          ) : (
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link
-                href="/"
-                className="text-xs sm:text-sm font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/"
-                className="text-xs sm:text-sm font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl hover:px-3 hover:py-1.5 px-2 sm:px-3 py-1.5 focus:outline-none"
-              >
-                Sign Up
-              </Link>
-            </div>
-          )}
-        </div>
+          ) : null}
+        </nav>
 
         {/* Mobile Navigation - Hamburger Menu */}
         <div className="lg:hidden flex items-center gap-2">
           {user && (
             <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl px-2 py-1.5 focus:outline-none">
+                <Button
+                  variant="ghost"
+                  className="rounded-full h-9 px-4 text-gray-600 hover:text-gray-700"
+                >
                   {mobileMenuOpen ? (
                     <X className="h-5 w-5" />
                   ) : (
                     <Menu className="h-5 w-5" />
                   )}
-                </button>
+                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-2 rounded-2xl overflow-hidden min-w-[200px] mr-4 shadow-lg">
                 <div className="px-4 py-2 text-xs text-gray-600 border-b border-gray-200">
@@ -352,22 +342,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {!user && (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/"
-                className="text-xs font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl px-2 py-1.5 focus:outline-none"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/"
-                className="text-xs font-semibold text-gray-900 transition-all border border-transparent hover:border-gray-300 hover:bg-gray-50 hover:rounded-xl px-2 py-1.5 focus:outline-none"
-              >
-                Sign Up
-              </Link>
-            </div>
-          )}
+          {!user && null}
         </div>
       </div>
 
