@@ -5,6 +5,7 @@ then scrape jobs for each company using ycombinator-scraper.
 import os
 import sys
 import re
+import requests  # pyright: ignore[reportMissingModuleSource]
 from typing import List, Optional
 from dotenv import load_dotenv  # pyright: ignore[reportMissingImports]
 
@@ -71,6 +72,134 @@ supabase: Client = create_client(supabase_url, supabase_key)
 
 # Initialize scraper (now that credentials are set)
 scraper = Scraper()
+
+
+def company_name_to_yc_slug(company_name: str) -> str:
+    """
+    Convert company name to YC URL slug format.
+    Examples:
+    - "Hey Telo" -> "hey-telo"
+    - "Bluma" -> "bluma"
+    - "Uplift AI" -> "uplift-ai"
+    """
+    if not company_name:
+        return ""
+    
+    # Convert to lowercase
+    slug = company_name.lower().strip()
+    
+    # Replace spaces and underscores with hyphens
+    slug = re.sub(r'[\s_]+', '-', slug)
+    
+    # Remove special characters, keep only alphanumeric and hyphens
+    slug = re.sub(r'[^a-z0-9\-]', '', slug)
+    
+    # Remove multiple consecutive hyphens
+    slug = re.sub(r'-+', '-', slug)
+    
+    # Remove leading/trailing hyphens
+    slug = slug.strip('-')
+    
+    return slug
+
+
+def validate_yc_url(yc_url: str, timeout: int = 5) -> bool:
+    """
+    Validate that a YC URL actually exists by making a HEAD request.
+    Returns True if URL exists (status 200), False otherwise.
+    
+    Uses HEAD request first (faster), falls back to GET if HEAD is not allowed.
+    """
+    if not yc_url:
+        return False
+    
+    # Basic URL format validation
+    if not yc_url.startswith('https://www.ycombinator.com/companies/'):
+        return False
+    
+    try:
+        # Use HEAD request to check if URL exists without downloading content
+        response = requests.head(
+            yc_url,
+            timeout=timeout,
+            allow_redirects=True,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        )
+        # Accept 200 (OK) or 301/302 (redirects to valid page)
+        if response.status_code in [200, 301, 302]:
+            return True
+        
+        # If HEAD returns 405 (Method Not Allowed), try GET request
+        if response.status_code == 405:
+            response = requests.get(
+                yc_url,
+                timeout=timeout,
+                allow_redirects=True,
+                headers={
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                }
+            )
+            return response.status_code in [200, 301, 302]
+        
+        return False
+    except requests.exceptions.Timeout:
+        print(f"      ⚠️  Timeout validating YC URL: {yc_url}")
+        return False
+    except requests.exceptions.RequestException as e:
+        print(f"      ⚠️  Error validating YC URL {yc_url}: {e}")
+        return False
+
+
+def get_or_construct_yc_link(company_name: str, company_url: Optional[str] = None) -> Optional[str]:
+    """
+    Get or construct YC link for a company.
+    
+    First tries to extract from company_url if it's a YC URL.
+    Otherwise, constructs from company name and validates it exists.
+    
+    Returns validated YC link or None if not found/valid.
+    """
+    # If company_url is already a YC link, use it
+    if company_url and 'ycombinator.com/companies/' in company_url:
+        yc_url = company_url.split('?')[0]  # Remove query params
+        if validate_yc_url(yc_url):
+            print(f"      ✅ Found valid YC link from company URL: {yc_url}")
+            return yc_url
+        else:
+            print(f"      ⚠️  Company URL looks like YC link but validation failed: {yc_url}")
+    
+    # Construct YC link from company name
+    slug = company_name_to_yc_slug(company_name)
+    if not slug:
+        print(f"      ⚠️  Could not generate slug from company name: {company_name}")
+        return None
+    
+    yc_url = f"https://www.ycombinator.com/companies/{slug}"
+    
+    # Validate the constructed URL
+    print(f"      🔍 Validating constructed YC URL: {yc_url}")
+    if validate_yc_url(yc_url):
+        print(f"      ✅ Validated YC link: {yc_url}")
+        return yc_url
+    else:
+        print(f"      ⚠️  Constructed YC URL does not exist: {yc_url}")
+        # Try alternative slug variations (e.g., remove common suffixes)
+        alternatives = [
+            slug.replace('-ai', '').strip('-'),
+            slug.replace('-tech', '').strip('-'),
+            slug.replace('-inc', '').strip('-'),
+        ]
+        for alt_slug in alternatives:
+            if alt_slug and alt_slug != slug:
+                alt_url = f"https://www.ycombinator.com/companies/{alt_slug}"
+                print(f"      🔍 Trying alternative: {alt_url}")
+                if validate_yc_url(alt_url):
+                    print(f"      ✅ Found valid alternative YC link: {alt_url}")
+                    return alt_url
+        
+        return None
 
 
 def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
@@ -427,6 +556,86 @@ def classify_text_section(text: str) -> Optional[str]:
     return None
 
 
+def extract_full_job_description_with_selenium(job_url: str, driver) -> Optional[str]:
+    """
+    Extract the complete job description by parsing HTML directly with Selenium.
+    This ensures we get ALL content including Interview Process sections that the library might miss.
+    Uses the authenticated driver session.
+    """
+    try:
+        from bs4 import BeautifulSoup  # pyright: ignore[reportMissingModuleSource]
+        
+        print(f"      🌐 Fetching full page content with Selenium...")
+        driver.get(job_url)
+        time.sleep(2)  # Wait for page to load
+        
+        # Get page source and parse with BeautifulSoup
+        page_source = driver.page_source
+        soup = BeautifulSoup(page_source, 'html.parser')
+        
+        # Find the job description container
+        # Common patterns on workatastartup.com job pages
+        description = None
+        
+        # Strategy 1: Look for main content area
+        main_content = soup.find('main') or soup.find('article')
+        if main_content:
+            # Remove navigation, footer, header elements
+            for tag in main_content(['nav', 'footer', 'header', 'script', 'style']):
+                tag.decompose()
+            
+            # Get all text with proper line breaks
+            description = main_content.get_text(separator='\n', strip=True)
+            
+            # Clean up excessive whitespace but preserve structure
+            lines = [line.strip() for line in description.split('\n') if line.strip()]
+            description = '\n'.join(lines)
+            
+            if description and len(description) > 500:
+                print(f"      ✅ Extracted {len(description)} characters from main content")
+                return description
+        
+        # Strategy 2: Look for specific job description containers
+        selectors = [
+            'div[class*="description"]',
+            'div[class*="job-description"]',
+            'div[class*="content"]',
+            '[data-testid*="description"]',
+        ]
+        
+        for selector in selectors:
+            elements = soup.select(selector)
+            for element in elements:
+                text = element.get_text(separator='\n', strip=True)
+                if text and len(text) > 500:
+                    description = text
+                    print(f"      ✅ Extracted {len(description)} characters using selector: {selector}")
+                    return description
+        
+        # Strategy 3: Get body text (last resort)
+        if not description:
+            body = soup.find('body')
+            if body:
+                # Remove script, style, nav, footer, header
+                for tag in body(['script', 'style', 'nav', 'footer', 'header']):
+                    tag.decompose()
+                description = body.get_text(separator='\n', strip=True)
+                lines = [line.strip() for line in description.split('\n') if line.strip()]
+                description = '\n'.join(lines)
+                if description and len(description) > 500:
+                    print(f"      ✅ Extracted {len(description)} characters from body")
+                    return description
+        
+        print(f"      ⚠️  Could not extract description from page")
+        return None
+        
+    except Exception as e:
+        print(f"      ❌ Error extracting full description: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
 def extract_inline_interview_process(text: str) -> Optional[str]:
     """
     Extract interview process mentioned inline in any section.
@@ -751,9 +960,18 @@ def parse_job_description(description: str) -> dict:
         # If we're in a section, accumulate text
         if current_section:
             # Skip if this line looks like a new section header we haven't caught
-            if re.match(r'^(About|Requirements|Benefits|Interview|What You|How we|Why|Preferred|Technology)', line, re.IGNORECASE) and not current_section_text:
-                continue
-            current_section_text.append(line)
+            # BUT: Don't skip if we're in interview_process section and this might be part of the process
+            if current_section == "interview_process":
+                # For interview process, be more lenient - only skip if it's clearly a new major section
+                if re.match(r'^(About\s+[A-Z]|Requirements|Benefits|Compensation|Skills|Technology|What You|How we|Why join)', line, re.IGNORECASE) and not current_section_text:
+                    continue
+                # Always accumulate lines in interview_process section (they're usually steps)
+                current_section_text.append(line)
+            else:
+                # For other sections, use stricter filtering
+                if re.match(r'^(About|Requirements|Benefits|Interview|What You|How we|Why|Preferred|Technology)', line, re.IGNORECASE) and not current_section_text:
+                    continue
+                current_section_text.append(line)
         elif not current_section:
             # Before any section, this might be company about or general description
             # We'll capture it as company_about if it's substantial
@@ -986,14 +1204,71 @@ def find_or_create_startup(company_name: str, batch: Optional[str] = None, descr
         return None
 
 
-def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None) -> int:
-    """Scrape jobs for a company and save to database."""
+def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None, driver=None) -> int:
+    """Scrape jobs for a company and save to database.
+    
+    Args:
+        company_info: Dict with company_url, company_name, batch
+        limit: Optional limit on number of jobs to scrape
+        driver: Optional Selenium driver for full description extraction (if None, creates one)
+    """
     company_url = company_info["company_url"]
     company_name = company_info["company_name"]
     batch = company_info.get("batch")
     
     print(f"\n📋 Scraping: {company_name} ({batch or 'No batch'})")
     print(f"   URL: {company_url}")
+    
+    # Extract or construct YC link for the company
+    print(f"   🔗 Extracting YC link for {company_name}...")
+    yc_link = get_or_construct_yc_link(company_name, company_url)
+    if yc_link:
+        print(f"   ✅ YC link: {yc_link}")
+    else:
+        print(f"   ⚠️  Could not find/validate YC link for {company_name}")
+    
+    # Create driver if not provided (for full description extraction)
+    should_close_driver = False
+    if driver is None:
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        should_close_driver = True
+        
+        # Login if credentials are provided
+        email = os.getenv("WORKATASTARTUP_EMAIL")
+        password = os.getenv("WORKATASTARTUP_PASSWORD")
+        
+        if email and password:
+            try:
+                # Navigate to login page
+                driver.get("https://www.workatastartup.com/companies")
+                time.sleep(2)
+                
+                # Find and click "Log In" link
+                login_link = driver.find_element(By.XPATH, "//a[contains(@href, 'authenticate') or contains(text(), 'Log In')]")
+                login_link.click()
+                time.sleep(2)
+                
+                # Fill in credentials
+                email_input = driver.find_element(By.NAME, "email")
+                password_input = driver.find_element(By.NAME, "password")
+                email_input.send_keys(email)
+                password_input.send_keys(password)
+                
+                # Submit
+                submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+                submit_button.click()
+                time.sleep(3)
+                print(f"   ✅ Authenticated Selenium driver for full description extraction")
+            except Exception as e:
+                print(f"   ⚠️  Could not authenticate driver: {e}")
     
     try:
         # Scrape company data using ycombinator-scraper library
@@ -1088,6 +1363,55 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     
                     job_data = scraper.scrape_job_data(job_url)
                     if job_data:
+                        # Get description from library
+                        library_description = None
+                        if hasattr(job_data, 'job_description'):
+                            library_description = job_data.job_description
+                        elif hasattr(job_data, 'model_dump'):
+                            job_dict = job_data.model_dump()
+                            library_description = job_dict.get('job_description')
+                        
+                        # Check if description is missing Interview Process section
+                        needs_full_extraction = False
+                        if library_description:
+                            has_interview = 'Interview Process' in library_description or 'interview process' in library_description.lower()
+                            # Check if description ends abruptly (common sign of truncation)
+                            ends_abruptly = library_description.strip().endswith('workouts.') or \
+                                           library_description.strip().endswith('Compensation') or \
+                                           not library_description.strip().endswith('.')
+                            
+                            print(f"      📊 Library description: {len(library_description)} chars")
+                            print(f"         - Has 'Interview Process': {has_interview}")
+                            
+                            if not has_interview or ends_abruptly:
+                                needs_full_extraction = True
+                                print(f"         ⚠️  Missing Interview Process or seems truncated - will extract full description")
+                        else:
+                            needs_full_extraction = True
+                            print(f"         ⚠️  No description from library - will extract full description")
+                        
+                        # Extract full description if needed
+                        if needs_full_extraction and driver:
+                            full_description = extract_full_job_description_with_selenium(job_url, driver)
+                            if full_description:
+                                # Update job_data with full description
+                                if hasattr(job_data, 'job_description'):
+                                    job_data.job_description = full_description
+                                elif hasattr(job_data, 'model_dump'):
+                                    # For Pydantic models, we need to update the dict and potentially recreate
+                                    job_dict = job_data.model_dump()
+                                    job_dict['job_description'] = full_description
+                                    # Try to update in place if possible
+                                    try:
+                                        job_data.job_description = full_description
+                                    except:
+                                        # If that fails, we'll use the dict later
+                                        pass
+                                
+                                # Verify we got Interview Process
+                                if 'Interview Process' in full_description or 'interview process' in full_description.lower():
+                                    print(f"         ✅ Full description now contains 'Interview Process'")
+                        
                         # Replace existing job if we had it, or add new one
                         if job_url in existing_jobs_by_url:
                             # Find and replace in jobs list
@@ -1103,7 +1427,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                                     break
                         else:
                             jobs.append(job_data)
-                        print(f"      ✅ Successfully scraped job with full description")
+                        print(f"      ✅ Successfully scraped job")
                     else:
                         print(f"      ⚠️  No data returned for job")
                 except Exception as e:
@@ -1155,15 +1479,62 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
             salary_range = job_dict.get("job_salary_range")
             description = job_dict.get("job_description")
             
-            # Debug: Print description length to verify we're getting full text
+            # Comprehensive debug logging for description
             if description:
-                print(f"      📝 Description length: {len(description)} characters")
-                # Check if description seems truncated (common issue)
-                if len(description) < 500:
-                    print(f"      ⚠️  Warning: Description seems short, might be incomplete")
-                # Check if interview process is mentioned
-                if 'interview' in description.lower() or 'process' in description.lower():
-                    print(f"      ✅ Description contains interview/process keywords")
+                print(f"      📝 Description Analysis:")
+                print(f"         - Length: {len(description)} characters")
+                print(f"         - Lines: {description.count(chr(10))} newlines")
+                print(f"         - Words: {len(description.split())} words")
+                
+                # Check for key sections
+                has_interview = 'interview process' in description.lower() or 'interview' in description.lower()
+                has_requirements = 'requirements' in description.lower() or 'what we\'re looking for' in description.lower()
+                has_benefits = 'benefits' in description.lower() or 'compensation' in description.lower()
+                has_skills = 'skills:' in description.lower() or 'technologies' in description.lower()
+                
+                print(f"         - Has 'Interview Process' section: {has_interview}")
+                print(f"         - Has 'Requirements' section: {has_requirements}")
+                print(f"         - Has 'Benefits' section: {has_benefits}")
+                print(f"         - Has 'Skills' section: {has_skills}")
+                
+                # Check if description seems complete
+                seems_complete = len(description) > 1000 and description.count('\n') > 10
+                print(f"         - Seems complete (>1000 chars, >10 lines): {seems_complete}")
+                
+                # Show first and last 200 characters to check for truncation
+                print(f"         - First 200 chars: {description[:200]}...")
+                print(f"         - Last 200 chars: ...{description[-200:]}")
+                
+                # Check for common truncation patterns
+                if description.endswith('...') or description.endswith('…'):
+                    print(f"         ⚠️  WARNING: Description ends with '...' - likely truncated!")
+                
+                # Search for "Interview Process" specifically
+                interview_matches = re.findall(r'(?i)interview\s+process[^\n]*', description)
+                if interview_matches:
+                    print(f"         ✅ Found 'Interview Process' mentions: {len(interview_matches)}")
+                    for match in interview_matches[:3]:  # Show first 3
+                        print(f"            - '{match.strip()}'")
+                else:
+                    print(f"         ⚠️  No 'Interview Process' section found in description")
+                
+                # Save full description to file for inspection (first job only)
+                if idx == 1:
+                    debug_file = f"debug_job_description_{company_name.replace(' ', '_')}_{idx}.txt"
+                    try:
+                        with open(debug_file, 'w', encoding='utf-8') as f:
+                            f.write(f"Job URL: {job_url}\n")
+                            f.write(f"Job Title: {job_title}\n")
+                            f.write(f"Description Length: {len(description)} characters\n")
+                            f.write(f"{'='*80}\n")
+                            f.write("FULL DESCRIPTION:\n")
+                            f.write(f"{'='*80}\n")
+                            f.write(description)
+                        print(f"         💾 Saved full description to: {debug_file}")
+                    except Exception as e:
+                        print(f"         ⚠️  Could not save debug file: {e}")
+            else:
+                print(f"      ⚠️  No description found in job data!")
             tags = job_dict.get("job_tags")  # Nested list: [[tag1, tag2, ...]]
 
             # Parse description to extract structured sections
@@ -1181,6 +1552,23 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 company_about = sections.get("company_about")
                 extracted_skills = sections.get("skills")
                 
+                # Debug: Check what we extracted for interview process
+                if 'Interview Process' in description or 'interview process' in description.lower():
+                    print(f"      🔍 Description contains 'Interview Process' text")
+                    if interview_process:
+                        print(f"      ✅ Extracted interview_process: {len(interview_process)} chars")
+                        print(f"         Preview: {interview_process[:200]}...")
+                    else:
+                        print(f"      ⚠️  Found 'Interview Process' in description but didn't extract it!")
+                        # Try to find it manually with regex
+                        interview_match = re.search(r'(?i)Interview\s+Process\s*\n(.*?)(?=\n\n|\n[A-Z][a-z]+\s|$)', description, re.DOTALL)
+                        if interview_match:
+                            manual_extract = interview_match.group(1).strip()
+                            if manual_extract and len(manual_extract) > 10:
+                                interview_process = manual_extract
+                                print(f"      ✅ Manually extracted interview_process: {len(interview_process)} chars")
+                                print(f"         Content: {interview_process[:300]}...")
+                
                 # Extract inline benefits/compensation if not found in dedicated section
                 if not benefits:
                     inline_benefits = extract_inline_benefits(description)
@@ -1192,6 +1580,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     inline_interview = extract_inline_interview_process(description)
                     if inline_interview:
                         interview_process = inline_interview
+                        print(f"      ✅ Extracted interview_process via inline extraction: {len(interview_process)} chars")
 
             # Parse tags to extract location, job_type, visa_requirements, experience_level, and skills
             # Note: jobTags is a nested list: [[location, job_type, visa, experience, ...]]
@@ -1281,6 +1670,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     "interview_process": interview_process,  # Extracted from description "Interview Process" section
                     "full_description": description,  # Full description kept as-is
                     "startup_id": startup_id,
+                    "yc_link": yc_link,  # Y Combinator company page URL
                 }
 
                 # Remove None values

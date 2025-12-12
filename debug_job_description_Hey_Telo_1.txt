@@ -1,0 +1,118 @@
+Job URL: https://www.workatastartup.com/jobs/86073
+Job Title: Founding Software Engineer at Hey Telo (W25)
+Description Length: 3927 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Software Engineer at Hey Telo (W25)
+€60K - €110K EUR
+Voice AI for Home Services
+Munich, BY, DE / Munich, Bavaria, DE
+Full-time
+US citizen/visa only
+Any (new grads ok)
+Apply now
+About Hey Telo
+At 👋 Hey Telo, we’re building Voice AI for the Home Service industry.
+Every time you flip a switch or turn on the heat, a craftsman made it possible. Germany's 1 million craftsman businesses - and the millions more across Europe - don't just maintain our quality of living, they're building our sustainable future through renewable energy and green infrastructure.
+But instead of focusing on this critical work, they're trapped answering phones and shuffling paperwork.
+We're building 👋 Hey Telo to set them free.
+About the role
+Skills:
+Kubernetes, Python, React, TypeScript, Docker, Amazon Web Services (AWS)
+About the role
+At Hey Telo, we’re building Voice AI for the Home Service industry. With our customer base growing fast, we’re expanding our engineering team to continue pushing forward and build a best-in-class agentic system.
+We’re looking for a
+Founding Software Engineer
+to shape the future of how home service providers work in Germany and how people interact with them. In this position, you will play a key role in shaping Hey Telo’s product, technology, and culture from the ground up.
+If you are a builder who thrives in
+full-stack development
+and
+cloud technologies
+- this is your opportunity to set the technical direction from day one.
+What you will be working on
+Collaborate closely with our customers and help them solve their problems to make their work more enjoyable
+Build
+scalable backend infrastructure
+to handle thousands of phone calls per day
+Build
+intuitive user experiences
+in an AI-first world
+Optimize our
+voice agents
+for
+reliability
+,
+accuracy
+, and
+indistinguishability
+from talking to a real human
+Stay ahead of emerging trends in voice AI, LLM agents, and distributed systems
+What we're looking for
+We are looking for engineers with a strong background in SWE - and the capability to thrive in a founding engineer role.
+Technical skills:
+Experience in
+full-stack software engineering
+(React, Typescript, Python) and
+cloud
+technologies
+(Docker, Kubernetes, AWS/GCP/Azure)
+Expertise in building production-ready features with LLMs
+Leverage AI tools that make you more productive (Claude Code, Cursor, Windsurf, etc.)
+Commitment and Mindset:
+You love challenging work and solving hard problems where others give up.
+You have full ownership from day one and aren’t afraid to push hard.
+We’re looking for
+German-speaking candidates
+, as we talk to and visit (German) customers every day.
+Why join now?
+You’ll be one of the first hires - your fingerprints will be all over Hey Telo, and your equity will reflect that.
+You’ll have direct exposure to the founders, customers, and product decisions.
+Compensation
+Total compensation: 60k€ - 110k€ (cash + equity)
+Premium gym and sport membership (Urban Sports Club) - feel free to join our weekly team workouts.
+Interview Process
+20min intro call
+Technical Interview (Take-Home Exercise, including a short presentation and a brief algorithmic coding challenge + System Design Interview)
+Lunch with the team
+Apply now
+Other jobs at Hey Telo
+Founding Software Engineer
+fulltime
+Munich, BY, DE / Munich, Bavaria, DE
+Full stack
+€60K - €110K EUR
+Any (new grads ok)
+Apply
+AI Engineer Internship (4-6 months)
+intern
+Munich, BY, DE / Munich, Bavaria, DE
+Full stack
+€2.5K - €4K EUR / monthly
+Any
+Apply
+Founding Voice Agent Engineer
+fulltime
+Munich, BY, DE / Munich, Bavaria, DE
+Backend
+€60K - €110K EUR
+Any (new grads ok)
+Apply
+Founding AI Engineer
+fulltime
+Munich, BY, DE / Munich, Bavaria, DE
+Full stack
+€60K - €110K EUR
+Any (new grads ok)
+Apply
+Software Engineer Intern (4-6 months)
+intern
+Munich, BY, DE / Munich, Bavaria, DE
+Full stack
+€2.5K - €4K EUR / monthly
+Any
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›
