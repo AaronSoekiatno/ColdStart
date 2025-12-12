@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -280,10 +280,13 @@ export const SendEmailButton = ({
         {isPreviewLoading ? (
           <span className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Preparing...
+            Generating...
           </span>
         ) : (
-          "Preview & Send"
+          <span className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            Generate Email
+          </span>
         )}
       </Button>
 

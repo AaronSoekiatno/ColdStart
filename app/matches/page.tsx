@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface MatchRecord {
@@ -21,6 +22,13 @@ interface MatchRecord {
     tags: string;
     website: string;
     founder_emails?: string;
+    founder_first_name?: string;
+    founder_last_name?: string;
+    founder_backgrounds?: string;
+    batch?: string;
+    description?: string;
+    company_logo?: string;
+    yc_link?: string;
   } | null;
 }
 
@@ -37,10 +45,9 @@ export default function MatchesPage() {
   const [user, setUser] = useState<User | null>(null);
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [hasError, setHasError] = useState(false);
-  const observerTarget = useRef<HTMLDivElement>(null);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
   // Load initial data
   useEffect(() => {
@@ -82,92 +89,28 @@ export default function MatchesPage() {
     initialize();
   }, [router]);
 
-  // Load more matches - memoized with stable dependencies
-  const loadMoreMatches = useCallback(async () => {
-    if (isLoadingMore) return;
-    
-    // Use functional update to get current pagination state
-    setPagination((currentPagination) => {
-      if (!currentPagination?.hasMore || isLoadingMore) return currentPagination;
-
-      setIsLoadingMore(true);
-      const nextPage = currentPagination.page + 1;
-      
-      // Fetch in background
-      fetch(`/api/matches?page=${nextPage}&limit=6`, {
-        credentials: 'include',
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error('Failed to load more matches');
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setMatches((prev) => {
-            // Filter out duplicates by match ID
-            const existingIds = new Set(prev.map((m: MatchRecord) => m.id));
-            const newMatches = (data.matches || []).filter((m: MatchRecord) => !existingIds.has(m.id));
-            return [...prev, ...newMatches];
-          });
-          setPagination(data.pagination);
-        })
-        .catch((error) => {
-          console.error('Error loading more matches:', error);
-        })
-        .finally(() => {
-          setIsLoadingMore(false);
-        });
-
-      return currentPagination;
-    });
-  }, [isLoadingMore]);
-
-  // Intersection Observer for infinite scroll - stable observer
+  // Reset current match index when matches change
   useEffect(() => {
-    if (!pagination?.hasMore) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && pagination.hasMore && !isLoadingMore) {
-          loadMoreMatches();
-        }
-      },
-      { threshold: 0.1, rootMargin: '100px' } // Trigger earlier for smoother UX
-    );
-
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
+    if (matches.length > 0 && currentMatchIndex >= matches.length) {
+      setCurrentMatchIndex(0);
     }
-
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [pagination?.hasMore, isLoadingMore, loadMoreMatches]);
+  }, [matches.length, currentMatchIndex]);
 
   // Memoized values - must be called before any conditional returns
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
   
-  // Count only perfect-fit matches with score >= 50% (0.5)
-  const perfectFitMatchCount = useMemo(() => {
-    return matches.filter(match => match.score >= 0.5).length;
-  }, [matches]);
-  
   const matchCountText = useMemo(() => {
     if (!hasMatches) return 'Upload a resume to see personalized startup matches.';    
     return 'Review these companies and send personalized emails.';
-  }, [hasMatches, perfectFitMatchCount]);
+  }, [hasMatches]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
+      <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
         <section className="py-20">
           <div className="container mx-auto px-4">
-            <div className="text-center text-white">
+            <div className="text-center text-gray-900">
               <p>Loading matches...</p>
             </div>
           </div>
@@ -178,11 +121,11 @@ export default function MatchesPage() {
 
   if (hasError || !user) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
+      <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
         <section className="py-20">
           <div className="container mx-auto px-4">
-            <div className="text-center text-white">
+            <div className="text-center text-gray-900">
               <p>Failed to load matches. Please try again.</p>
             </div>
           </div>
@@ -192,39 +135,46 @@ export default function MatchesPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
-      <section className="py-20">
-        <div className="container mx-auto px-4 space-y-12">
+      <section className="pt-4 sm:pt-6 md:pt-12 pb-12 md:pb-20">
+        {/* Fixed navigation arrows */}
+        {hasMatches && (
+          <>
+            {/* Left arrow button */}
+            <button
+              onClick={() => setCurrentMatchIndex((prev) => Math.max(0, prev - 1))}
+              disabled={currentMatchIndex === 0}
+              className="fixed left-1 sm:left-2 md:left-4 lg:left-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
+              aria-label="Previous match"
+            >
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
+            </button>
+
+            {/* Right arrow button */}
+            <button
+              onClick={() => setCurrentMatchIndex((prev) => Math.min(matches.length - 1, prev + 1))}
+              disabled={currentMatchIndex >= matches.length - 1}
+              className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
+              aria-label="Next match"
+            >
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
+            </button>
+          </>
+        )}
+        <div className="container mx-auto px-3 sm:px-4">
           {hasMatches ? (
-            <div>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {matches.map((match) => (
-                  <MatchCard key={match.id} match={match} />
-                ))}
-              </div>
-
-              {/* Loading indicator for infinite scroll */}
-              {pagination?.hasMore && (
-                <div ref={observerTarget} className="py-8 text-center">
-                  {isLoadingMore ? (
-                    <p className="text-white/70">Loading more matches...</p>
-                  ) : (
-                    <div className="h-20" /> // Spacer for intersection observer
-                  )}
-                </div>
-              )}
-
-              {/* End of results */}
-              {!pagination?.hasMore && matches.length > 0 && (
-                <div className="py-8 text-center">
-                  <p className="text-white/70">You've seen all your matches!</p>
+            <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto relative pl-12 sm:pl-0 pr-12 sm:pr-0 md:pl-0 md:pr-0">
+              {/* Single match card display */}
+              {matches[currentMatchIndex] && (
+                <div key={matches[currentMatchIndex].id} className="animate-fade-in">
+                  <MatchCard match={matches[currentMatchIndex]} />
                 </div>
               )}
             </div>
           ) : (
-            <div className="rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl p-12 text-center text-white">
-              <p className="text-lg text-white">No matches yet. Upload your resume to get started.</p>
+            <div className="rounded-2xl md:rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 md:p-12 text-center text-gray-900">
+              <p className="text-sm sm:text-base md:text-lg text-gray-900">No matches yet. Upload your resume to get started.</p>
             </div>
           )}
         </div>

@@ -1,7 +1,11 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useRef } from "react";
+import Image from "next/image";
+import { DollarSign, ExternalLink } from "lucide-react";
 import { SendEmailButton } from "./SendEmailButton";
+import ycLogo from "../images/ycLogo.svg";
+import linkedinLogo from "../images/linkedinLogo.svg";
 
 interface MatchCardProps {
   match: {
@@ -18,85 +22,204 @@ interface MatchCardProps {
       tags: string;
       website: string;
       founder_emails?: string;
+      founder_first_name?: string;
+      founder_last_name?: string;
+      founder_backgrounds?: string;
+      batch?: string;
+      description?: string;
+      company_logo?: string;
+      yc_link?: string;
     } | null;
   };
 }
 
 const MatchCardComponent = ({ match }: MatchCardProps) => {
+  const companySectionRef = useRef<HTMLDivElement>(null);
+  const foundersSectionRef = useRef<HTMLDivElement>(null);
+
   if (!match.startup) {
     return null;
   }
 
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
-    <article className="relative rounded-3xl border border-white/20 bg-white/10 backdrop-blur-xl p-6 shadow-2xl hover:bg-white/15 hover:border-white/30 transition-all duration-300">
-      {match.score >= 0.5 && (
-        <span className="absolute -top-2 -left-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-1 text-xs font-bold shadow-lg rounded-lg z-10 transform -rotate-14">
-          Perfect-Fit
-        </span>
-      )}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-2xl font-semibold text-white">
-              {match.startup.name}
-            </h2>
+    <article className="relative rounded-2xl md:rounded-3xl bg-white px-3 pt-2 pb-4 sm:px-4 -pt-4 sm:pb-6 md:px-6 md:pb-8 lg:px-8 lg:pb-12 shadow-md w-full max-w-full">
+      {/* Sticky Header Container - Desktop Only */}
+      <div className="lg:sticky lg:top-[64px] lg:z-40 bg-white -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8 px-3 pt-2.5 sm:px-4 md:px-6 lg:px-8 lg:rounded-t-2xl lg:rounded-t-3xl">
+        {/* Top Header with Tabs and Generate Email Button */}
+        <div className="mb-2 flex items-center justify-between gap-4">
+          {/* Tabs */}
+          <div className="flex gap-2 sm:gap-3">
+            <button
+              onClick={() => scrollToSection(companySectionRef)}
+              className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors border-b-2 border-transparent hover:border-blue-300"
+            >
+              Company
+            </button>
+            <button
+              onClick={() => scrollToSection(foundersSectionRef)}
+              className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors border-b-2 border-transparent hover:border-blue-300"
+            >
+              Founders
+            </button>
           </div>
-          <p className="text-sm text-white/70">{match.startup.industry}</p>
+          {/* Generate Email Button */}
+          {match.startup.id && (
+            <div className="flex-shrink-0">
+              <SendEmailButton
+                startupId={match.startup.id}
+                matchScore={match.score}
+                founderEmail={match.startup.founder_emails}
+                variant="default"
+                className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+              />
+            </div>
+          )}
         </div>
-        <div className="text-right ml-4">
-          <p className="text-xs text-white/60 mb-1">Match score</p>
-          <p className="text-2xl font-bold text-blue-300">
-            {Math.min((match.score * 100) + 40, 97).toFixed(0)}%
-          </p>
+
+        {/* Separator below top header */}
+        <div className="mb-4 md:mb-6 border-t border-gray-200"></div>
+      </div>
+
+      {/* Company Section */}
+      <div ref={companySectionRef} className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
+        <div className="flex-1 w-full">
+          {/* Industry and Batch badges with Match score aligned */}
+          <div className="mb-3 md:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              {match.startup.industry && (
+                <span className="inline-block bg-blue-50 border border-blue-500 rounded-xl md:rounded-2xl px-2 py-1 md:px-3 md:py-1 text-xs md:text-sm text-gray-900 font-medium">
+                  {match.startup.industry}
+                </span>
+              )}
+              {match.startup.batch && (
+                <span className="inline-block bg-gray-50 border border-gray-300 rounded-xl md:rounded-2xl px-2 py-1 md:px-3 md:py-1 text-xs md:text-sm text-gray-900 font-medium">
+                  {match.startup.batch}
+                </span>
+              )}
+            </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-3xl md:rounded-4xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-28 sm:w-32">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-blue-300">
+                {Math.min((match.score * 100) + 40, 97).toFixed(0)}% <span className="text-sm md:text-base font-normal text-gray-600 align-top inline-block mt-0.5 md:mt-1">match</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+            {/* Logo */}
+            <div className="flex-shrink-0 flex items-start">
+              {match.startup.company_logo ? (
+                <Image
+                  src={match.startup.company_logo}
+                  alt={`${match.startup.name} logo`}
+                  width={112}
+                  height={112}
+                  className="object-contain w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
+                  unoptimized
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-lg bg-gray-100 border border-gray-300"></div>
+                </div>
+              )}
+            </div>
+            {/* Name, Description, and Links - aligned with logo */}
+            <div className="flex-1 w-full min-w-0 flex flex-col -mt-3">
+              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 mb-1 sm:mb-1.5 break-words leading-tight">
+                {match.startup.name}
+              </h2>
+              {match.startup.description && (
+                <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed">
+                  {match.startup.description}
+                </p>
+              )}
+              {/* Website and YC buttons underneath description */}
+              <div className="flex gap-2 flex-wrap -mt-0.5">
+                {match.startup.website && (
+                  <a
+                    href={match.startup.website.startsWith('http')
+                      ? match.startup.website
+                      : `https://${match.startup.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-xl sm:rounded-2xl bg-gray-50 border border-gray-300 px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-xs sm:text-sm text-gray-900 font-medium w-fit hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                    <span>Website</span>
+                  </a>
+                )}
+                {match.startup.yc_link && (
+                  <a
+                    href={match.startup.yc_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center rounded-full bg-gray-50 border border-gray-300 w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <Image
+                      src={ycLogo}
+                      alt="Y Combinator"
+                      width={14}
+                      height={14}
+                      className="object-contain w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
+                    />
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 space-y-2 text-sm text-white/90">
-        {match.startup.location && (
-          <p className="flex items-center gap-2">
-            <span className="text-white/60">📍</span>
-            <span className="text-white/90">{match.startup.location}</span>
-          </p>
-        )}
-        {match.startup.funding_stage && (
-          <p className="flex items-center gap-2">
-            <span className="text-white/60">💰</span>
-            <span className="text-white/90">
-              {match.startup.funding_stage}
-              {match.startup.funding_amount && ` • ${match.startup.funding_amount}`}
-            </span>
-          </p>
-        )}
-        {match.startup.tags && (
-          <p className="text-xs uppercase tracking-widest text-blue-300 font-semibold mt-3">
-            {match.startup.tags}
-          </p>
-        )}
-      </div>
+      {/* Line separator */}
+      <div className="mt-6 md:mt-8 border-t border-gray-200"></div>
 
-      <div className="mt-6 flex flex-wrap gap-3">
-        {match.startup.website && (
-          <a
-            href={match.startup.website.startsWith('http')
-              ? match.startup.website
-              : `https://${match.startup.website}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-2xl border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20 hover:border-white/40"
-          >
-            Visit website
-          </a>
-        )}
-        {match.startup.id && (
-          <SendEmailButton
-            startupId={match.startup.id}
-            matchScore={match.score}
-            founderEmail={match.startup.founder_emails}
-            variant="default"
-            className="rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white transition hover:from-blue-400 hover:to-indigo-400 shadow-lg hover:shadow-xl"
-          />
-        )}
-      </div>
+      {/* Founders Section */}
+      {(match.startup.founder_first_name || match.startup.founder_last_name || match.startup.founder_backgrounds) && (
+        <div ref={foundersSectionRef} className="mt-6 md:mt-8">
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4 text-left">Active Founders</h3>
+          <div className="flex flex-col gap-3 md:gap-4">
+            {/* Founder Card */}
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5">
+              <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
+                {/* Founder Photo Placeholder */}
+                <div className="flex-shrink-0 w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+                  <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                    <span className="text-gray-400 text-xl sm:text-2xl md:text-3xl font-semibold">
+                      {(match.startup.founder_first_name?.[0] || match.startup.founder_last_name?.[0] || '?').toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                {/* Founder Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
+                      {match.startup.founder_first_name && match.startup.founder_last_name
+                        ? `${match.startup.founder_first_name} ${match.startup.founder_last_name}`
+                        : match.startup.founder_first_name || match.startup.founder_last_name || 'Founder'}
+                    </h4>
+                    {/* LinkedIn Icon */}
+                    <Image
+                      src={linkedinLogo}
+                      alt="LinkedIn"
+                      width={16}
+                      height={16}
+                      className="w-4 h-4 sm:w-4 sm:h-4 cursor-pointer transition-opacity hover:opacity-80"
+                    />
+                  </div>
+                  <p className="text-xs sm:text-sm text-gray-500 mb-2 md:mb-3">Founder</p>
+                  {match.startup.founder_backgrounds && (
+                    <div className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line">
+                      {match.startup.founder_backgrounds}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 };
