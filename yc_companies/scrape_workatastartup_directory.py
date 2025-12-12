@@ -334,6 +334,503 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
         driver.quit()
 
 
+def classify_text_section(text: str) -> Optional[str]:
+    """
+    Classify a block of text to determine what section it belongs to.
+    Uses heuristics and keyword matching since YC job descriptions have no standard structure.
+    Returns: 'requirements', 'benefits', 'interview_process', 'company_about', 'skills', or None
+    """
+    if not text or len(text.strip()) < 10:
+        return None
+    
+    text_lower = text.lower()
+    text_length = len(text)
+    
+    # Keywords that indicate different sections
+    requirements_keywords = [
+        'required', 'requirement', 'must have', 'need', 'looking for', 'qualifications',
+        'experience with', 'proficient in', 'familiar with', 'strong background',
+        'what we\'re looking for', 'what you\'ll need', 'you should have',
+        'technical skills', 'experience in', 'years of experience'
+    ]
+    
+    benefits_keywords = [
+        'benefits', 'compensation', 'salary', 'equity', 'stock options', 'health insurance',
+        'dental', 'vision', '401k', 'pto', 'vacation', 'remote', 'flexible',
+        'what we offer', 'perks', 'wellness', 'gym', 'lunch', 'snacks',
+        'unlimited pto', 'healthcare', 'insurance', 'retirement'
+    ]
+    
+    interview_keywords = [
+        'interview', 'process', 'hiring', 'apply', 'application', 'recruiting',
+        'phone screen', 'technical interview', 'onsite', 'virtual', 'round',
+        'conversation', 'meeting', 'discussion', 'next steps'
+    ]
+    
+    company_keywords = [
+        'about', 'we\'re', 'we are', 'building', 'mission', 'vision', 'values',
+        'company', 'team', 'culture', 'founded', 'startup', 'yc', 'y combinator'
+    ]
+    
+    skills_keywords = [
+        'skills', 'technologies', 'tech stack', 'stack', 'tools', 'languages',
+        'frameworks', 'libraries', 'platforms', 'proficient', 'experience with'
+    ]
+    
+    # Count keyword matches
+    requirements_score = sum(1 for kw in requirements_keywords if kw in text_lower)
+    benefits_score = sum(1 for kw in benefits_keywords if kw in text_lower)
+    interview_score = sum(1 for kw in interview_keywords if kw in text_lower)
+    company_score = sum(1 for kw in company_keywords if kw in text_lower)
+    skills_score = sum(1 for kw in skills_keywords if kw in text_lower)
+    
+    # Additional heuristics
+    # Requirements often have bullet points or lists
+    if text.count('\n') > 3 or text.count('•') > 0 or text.count('-') > 2:
+        requirements_score += 1
+    
+    # Benefits often mention money, time off, or perks
+    if re.search(r'\$[\d,]+|salary|equity|pto|vacation|insurance', text_lower):
+        benefits_score += 1
+    
+    # Interview process often mentions steps or stages
+    if re.search(r'(step|stage|round|conversation|interview)', text_lower):
+        interview_score += 1
+    
+    # Company about often starts with "At [Company]" or "We're"
+    if re.match(r'^(at\s+[a-z]|we\'re|we are)', text_lower):
+        company_score += 2
+    
+    # Skills often have comma-separated lists or technology names
+    if re.search(r'\b(python|javascript|react|typescript|node|aws|docker|kubernetes)\b', text_lower, re.IGNORECASE):
+        skills_score += 1
+    
+    # Return the section with highest score, but only if score is significant
+    scores = {
+        'requirements': requirements_score,
+        'benefits': benefits_score,
+        'interview_process': interview_score,
+        'company_about': company_score,
+        'skills': skills_score
+    }
+    
+    max_score = max(scores.values())
+    if max_score >= 2:  # Require at least 2 keyword matches
+        return max(scores, key=scores.get)
+    
+    return None
+
+
+def extract_inline_benefits(text: str) -> Optional[str]:
+    """
+    Extract compensation/benefits mentioned inline in any section.
+    Looks for patterns like "$30/hr", "equity", "health insurance", etc.
+    """
+    if not text:
+        return None
+    
+    benefits_parts = []
+    
+    # Look for compensation patterns
+    comp_patterns = [
+        r'\$[\d,]+(?:\s*-\s*\$[\d,]+)?\s*/?\s*(?:hr|hour|month|year|annually|EUR|USD)',
+        r'(?:starts? at|up to|range:?|compensation:?)\s*\$?[\d,]+',
+        r'equity|stock\s+options|options',
+        r'(?:health|dental|vision)\s+insurance',
+        r'(?:unlimited\s+)?pto|vacation|sick\s+days',
+        r'remote|flexible\s+work|work\s+from\s+home|hybrid',
+        r'gym|wellness|lunch|snacks|perks',
+    ]
+    
+    for pattern in comp_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        if matches:
+            # Clean up matches
+            for match in matches:
+                if isinstance(match, tuple):
+                    match = ' '.join(match)
+                match = match.strip()
+                if match and len(match) < 100:  # Reasonable length
+                    benefits_parts.append(match)
+    
+    if benefits_parts:
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_parts = []
+        for part in benefits_parts:
+            part_lower = part.lower()
+            if part_lower not in seen:
+                seen.add(part_lower)
+                unique_parts.append(part)
+        return '; '.join(unique_parts)
+    
+    return None
+
+
+def parse_job_description(description: str) -> dict:
+    """
+    Parse job description text to extract structured sections:
+    - requirements
+    - benefits
+    - interview_process
+    - company_about
+    - skills (from "Skills:" line or Technology section)
+    """
+    sections = {
+        "requirements": None,
+        "benefits": None,
+        "interview_process": None,
+        "company_about": None,
+        "skills": None,
+    }
+    
+    if not description:
+        return sections
+    
+    # Strategy 1: Try to find explicit section headers (most reliable)
+    # Strategy 2: If no headers, use content classification (fallback)
+    
+    lines = description.split('\n')
+    current_section = None
+    current_section_text = []
+    found_explicit_headers = False
+    
+    # First pass: Look for explicit section headers
+    for i, line in enumerate(lines):
+        line = line.strip()
+        if not line:
+            continue
+        
+        # Check for section headers
+        line_lower = line.lower()
+        
+        # If we find any explicit header, mark that we have structured content
+        if re.match(r'^(Requirements|Benefits|Interview Process|About\s+[A-Z]|Skills:|Technology|Stack)', line, re.IGNORECASE):
+            found_explicit_headers = True
+        
+        # Requirements section - multiple variations
+        if re.match(r'^Requirements$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "requirements"
+            current_section_text = []
+            continue
+        
+        # "What You'll Do" / "What You'll Be Doing" → requirements (responsibilities)
+        elif re.match(r'^(What You\'ll Do|What You\'ll Be Doing|What You Will Do|Responsibilities|Key Responsibilities|What You\'ll Work On)$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "requirements"
+            current_section_text = []
+            continue
+        
+        # "What We're Looking For" / "What We Need" → requirements (qualifications)
+        elif re.match(r'^(What We\'re Looking For|What We Need|Qualifications|What We Want|What We\'re Seeking)$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "requirements"
+            current_section_text = []
+            continue
+        
+        # "About the role" → often contains requirements/role description
+        elif re.match(r'^(About the role|About The Role|The Role|Role Overview|About This Role)$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "requirements"  # Often contains what the role entails
+            current_section_text = []
+            continue
+        
+        # Benefits section - multiple variations
+        elif re.match(r'^(Benefits|What we offer|Compensation|What we provide|Perks|What You\'ll Get)$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "benefits"
+            current_section_text = []
+            continue
+        
+        # Interview Process section
+        elif re.match(r'^Interview Process$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "interview_process"
+            current_section_text = []
+            continue
+        
+        # Company About section (usually "About [Company Name]")
+        elif re.match(r'^About\s+[A-Z]', line, re.IGNORECASE) and not re.match(r'About the role', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "company_about"
+            current_section_text = []
+            continue
+        
+        # Skills section (usually "Skills:" followed by comma-separated list)
+        elif re.match(r'^Skills:', line, re.IGNORECASE):
+            # Extract skills from this line
+            skills_text = line.replace('Skills:', '').strip()
+            
+            # Check if the skills text itself contains company description (e.g., "AWS)At Hey Telo")
+            # Split on patterns that indicate start of company description
+            if re.search(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, re.IGNORECASE):
+                # Split at the company description start
+                parts = re.split(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, flags=re.IGNORECASE, maxsplit=1)
+                if parts:
+                    skills_text = parts[0].rstrip(')').strip()
+            
+            # Look ahead for continuation (skills often span multiple lines)
+            j = i + 1
+            while j < len(lines) and j < i + 5:  # Check next 4 lines max
+                next_line = lines[j].strip()
+                if not next_line:
+                    j += 1
+                    continue
+                
+                # Stop if we hit a new section header
+                if re.match(r'^(About|Requirements|Benefits|Interview|What|How|Why|Technology|Compensation)', next_line, re.IGNORECASE):
+                    break
+                
+                # Stop if we hit company description (usually starts with "At [Company]" or "We're")
+                if re.match(r'^(At\s+[A-Z]|We\'re|We are|The company|If you)', next_line, re.IGNORECASE):
+                    break
+                
+                # Stop if line is too long (likely description text, not a skill)
+                if len(next_line) > 100:
+                    break
+                
+                # Check if line contains company description pattern
+                if re.search(r'(At\s+[A-Z]|We\'re|We are|building|looking for)', next_line, re.IGNORECASE):
+                    break
+                
+                # Continue if line contains commas (likely part of skills list) or is short (likely a skill name)
+                if next_line and (',' in next_line or len(next_line) < 50):
+                    # Check if this line itself contains company description
+                    if not re.search(r'(At\s+[A-Z]|We\'re|We are)', next_line, re.IGNORECASE):
+                        skills_text += ', ' + next_line
+                        j += 1
+                    else:
+                        break
+                elif next_line and len(next_line) < 30:  # Short line, likely a skill
+                    skills_text += ', ' + next_line
+                    j += 1
+                else:
+                    break
+            
+            sections["skills"] = skills_text.strip()
+            # Don't set current_section, skills is a one-off extraction
+            continue
+        
+        # Technology/Stack section (might contain skills)
+        elif re.match(r'^(Technology|Stack|Our stack|Tech stack)$', line, re.IGNORECASE):
+            if current_section and current_section_text:
+                sections[current_section] = '\n'.join(current_section_text).strip()
+            current_section = "technology"
+            current_section_text = []
+            continue
+        
+        # "About the role" or "The role" - skip, this is usually part of general description
+        elif re.match(r'^(About the role|The role)$', line, re.IGNORECASE):
+            # Don't start a new section, just continue accumulating if we're in one
+            if current_section:
+                current_section_text.append(line)
+            continue
+        
+        # If we're in a section, accumulate text
+        if current_section:
+            # Skip if this line looks like a new section header we haven't caught
+            if re.match(r'^(About|Requirements|Benefits|Interview|What You|How we|Why|Preferred|Technology)', line, re.IGNORECASE) and not current_section_text:
+                continue
+            current_section_text.append(line)
+        elif not current_section:
+            # Before any section, this might be company about or general description
+            # We'll capture it as company_about if it's substantial
+            if len(line) > 20 and not current_section_text:
+                current_section = "company_about"
+                current_section_text = [line]
+    
+    # Save the last section
+    if current_section and current_section_text:
+        sections[current_section] = '\n'.join(current_section_text).strip()
+    
+    # If we found skills in Technology section, extract them
+    if sections.get("technology") and not sections.get("skills"):
+        tech_text = sections["technology"]
+        # Try to extract comma-separated or bullet-pointed technologies
+        tech_list = []
+        for part in tech_text.split(','):
+            part = part.strip()
+            if part and len(part) < 50:  # Reasonable skill name length
+                tech_list.append(part)
+        if tech_list:
+            sections["skills"] = ', '.join(tech_list)
+    
+    # Check if we found any structured sections
+    found_structured = any(sections.values())
+    
+    if not found_structured:
+        # No explicit headers found, use content-based classification
+        return parse_with_classification(description)
+    
+    return sections
+
+
+def parse_with_classification(description: str) -> dict:
+    """
+    Parse description using content-based classification when no explicit headers exist.
+    Splits text into paragraphs and classifies each based on keywords and heuristics.
+    """
+    sections = {
+        "requirements": None,
+        "benefits": None,
+        "interview_process": None,
+        "company_about": None,
+        "skills": None,
+    }
+    
+    if not description:
+        return sections
+    
+    # Split into paragraphs (double newlines or long single lines)
+    paragraphs = []
+    current_para = []
+    
+    lines = description.split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line:
+            if current_para:
+                paragraphs.append('\n'.join(current_para))
+                current_para = []
+            continue
+        
+        current_para.append(line)
+        
+        # If line is very long, it might be a complete paragraph
+        if len(line) > 200:
+            paragraphs.append('\n'.join(current_para))
+            current_para = []
+    
+    if current_para:
+        paragraphs.append('\n'.join(current_para))
+    
+    # Classify each paragraph
+    classified_paragraphs = {
+        "requirements": [],
+        "benefits": [],
+        "interview_process": [],
+        "company_about": [],
+        "skills": [],
+    }
+    
+    for para in paragraphs:
+        if len(para.strip()) < 20:  # Skip very short paragraphs
+            continue
+        
+        section_type = classify_text_section(para)
+        if section_type:
+            classified_paragraphs[section_type].append(para)
+    
+    # Combine paragraphs for each section
+    for section_type, paras in classified_paragraphs.items():
+        if paras:
+            sections[section_type] = '\n\n'.join(paras)
+    
+    # Special handling for skills - try to extract from "Skills:" if present
+    if not sections["skills"]:
+        skills_match = re.search(r'Skills:\s*([^\n]+(?:\n[^\n]+){0,5})', description, re.IGNORECASE)
+        if skills_match:
+            skills_text = skills_match.group(1).strip()
+            # Clean up - remove company description if present
+            if re.search(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, re.IGNORECASE):
+                parts = re.split(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, flags=re.IGNORECASE, maxsplit=1)
+                if parts:
+                    skills_text = parts[0].rstrip(')').strip()
+            sections["skills"] = skills_text
+    
+    return sections
+
+
+def parse_with_classification(description: str) -> dict:
+    """
+    Parse description using content-based classification when no explicit headers exist.
+    Splits text into paragraphs and classifies each based on keywords and heuristics.
+    """
+    sections = {
+        "requirements": None,
+        "benefits": None,
+        "interview_process": None,
+        "company_about": None,
+        "skills": None,
+    }
+    
+    if not description:
+        return sections
+    
+    # Split into paragraphs (double newlines or long single lines)
+    paragraphs = []
+    current_para = []
+    
+    lines = description.split('\n')
+    for line in lines:
+        line = line.strip()
+        if not line:
+            if current_para:
+                paragraphs.append('\n'.join(current_para))
+                current_para = []
+            continue
+        
+        current_para.append(line)
+        
+        # If line is very long, it might be a complete paragraph
+        if len(line) > 200:
+            paragraphs.append('\n'.join(current_para))
+            current_para = []
+    
+    if current_para:
+        paragraphs.append('\n'.join(current_para))
+    
+    # Classify each paragraph
+    classified_paragraphs = {
+        "requirements": [],
+        "benefits": [],
+        "interview_process": [],
+        "company_about": [],
+        "skills": [],
+    }
+    
+    for para in paragraphs:
+        if len(para.strip()) < 20:  # Skip very short paragraphs
+            continue
+        
+        section_type = classify_text_section(para)
+        if section_type:
+            classified_paragraphs[section_type].append(para)
+    
+    # Combine paragraphs for each section
+    for section_type, paras in classified_paragraphs.items():
+        if paras:
+            sections[section_type] = '\n\n'.join(paras)
+    
+    # Special handling for skills - try to extract from "Skills:" if present
+    if not sections["skills"]:
+        skills_match = re.search(r'Skills:\s*([^\n]+(?:\n[^\n]+){0,5})', description, re.IGNORECASE)
+        if skills_match:
+            skills_text = skills_match.group(1).strip()
+            # Clean up - remove company description if present
+            if re.search(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, re.IGNORECASE):
+                parts = re.split(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, flags=re.IGNORECASE, maxsplit=1)
+                if parts:
+                    skills_text = parts[0].rstrip(')').strip()
+            sections["skills"] = skills_text
+    
+    # Extract inline benefits if not found in dedicated section
+    if not sections["benefits"]:
+        inline_benefits = extract_inline_benefits(description)
+        if inline_benefits:
+            sections["benefits"] = inline_benefits
+    
+    return sections
+
+
 def find_or_create_startup(company_name: str, batch: Optional[str] = None, description: Optional[str] = None) -> Optional[str]:
     """Find existing startup or create new one. Returns startup ID."""
     import uuid
@@ -511,6 +1008,27 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
             description = job_dict.get("job_description")
             tags = job_dict.get("job_tags")  # Nested list: [[tag1, tag2, ...]]
 
+            # Parse description to extract structured sections
+            requirements = None
+            benefits = None
+            interview_process = None
+            company_about = None
+            extracted_skills = None
+            
+            if description:
+                sections = parse_job_description(description)
+                requirements = sections.get("requirements")
+                benefits = sections.get("benefits")
+                interview_process = sections.get("interview_process")
+                company_about = sections.get("company_about")
+                extracted_skills = sections.get("skills")
+                
+                # Extract inline benefits/compensation if not found in dedicated section
+                if not benefits:
+                    inline_benefits = extract_inline_benefits(description)
+                    if inline_benefits:
+                        benefits = inline_benefits
+
             # Parse tags to extract location, job_type, visa_requirements, experience_level, and skills
             # Note: jobTags is a nested list: [[location, job_type, visa, experience, ...]]
             location = None
@@ -569,7 +1087,15 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 # Filter out the ones we've already categorized
                 used_tags = {location, job_type, visa_requirements, experience_level}
                 skill_tags = [t.strip() for t in tag_strings if t.strip() and t.strip() not in used_tags]
-                skills = ", ".join(skill_tags) if skill_tags else None
+                skills_from_tags = ", ".join(skill_tags) if skill_tags else None
+                
+                # Combine skills from tags and extracted skills from description
+                if extracted_skills and skills_from_tags:
+                    skills = f"{extracted_skills}, {skills_from_tags}"
+                elif extracted_skills:
+                    skills = extracted_skills
+                else:
+                    skills = skills_from_tags
 
             # Save to database
             try:
@@ -581,11 +1107,15 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     "job_url": job_url,
                     "company_batch": batch,
                     "company_tagline": company_description,
+                    "company_about": company_about,  # Extracted from description "About [Company]" section
                     "salary_range": salary_range,
                     "visa_requirements": visa_requirements,  # Extracted from tags (e.g., "US citizen/visa only")
                     "experience_level": experience_level,  # Extracted from tags (e.g., "Any (new grads ok)")
-                    "skills": skills,  # Remaining tags as comma-separated string
-                    "full_description": description,
+                    "skills": skills,  # Combined from tags and description "Skills:" section
+                    "requirements": requirements,  # Extracted from description "Requirements" section
+                    "benefits": benefits,  # Extracted from description "Benefits" or "What we offer" section
+                    "interview_process": interview_process,  # Extracted from description "Interview Process" section
+                    "full_description": description,  # Full description kept as-is
                     "startup_id": startup_id,
                 }
 
