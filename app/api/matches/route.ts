@@ -112,6 +112,9 @@ export async function GET(request: NextRequest) {
         tags: string;
         website: string;
         founder_emails?: string;
+        founder_first_name?: string;
+        founder_last_name?: string;
+        founder_backgrounds?: string;
         batch?: string;
         description?: string;
         company_logo?: string;
@@ -137,6 +140,9 @@ export async function GET(request: NextRequest) {
             tags: s.tags || '',
             website: s.website || '',
             founder_emails: s.founder_emails ?? undefined,
+            founder_first_name: s.founder_first_name ?? undefined,
+            founder_last_name: s.founder_last_name ?? undefined,
+            founder_backgrounds: s.founder_backgrounds ?? undefined,
             batch: s.batch ?? undefined,
             description: s.description ?? undefined,
             company_logo: s.company_logo ?? undefined,

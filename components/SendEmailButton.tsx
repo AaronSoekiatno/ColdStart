@@ -280,7 +280,7 @@ export const SendEmailButton = ({
         {isPreviewLoading ? (
           <span className="flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Sending...
+            Generating...
           </span>
         ) : (
           <span className="flex items-center gap-2">
