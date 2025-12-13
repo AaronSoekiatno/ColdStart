@@ -4,11 +4,11 @@ import Link from "next/link";
 
 export const Footer = () => {
   return (
-    <footer className="w-full relative border-t border-white/20">
+    <footer className="w-full relative bg-white border-t border-gray-200">
       <div className="w-full max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           {/* Copyright */}
-          <div className="text-white/80 text-sm">
+          <div className="text-gray-600 text-sm">
             © 2025 Hermes. All rights reserved.
           </div>
           
@@ -16,19 +16,19 @@ export const Footer = () => {
           <div className="flex flex-wrap items-center gap-6 text-sm">
             <Link 
               href="/privacy" 
-              className="text-white/80 hover:text-white transition-colors"
+              className="text-gray-600 hover:text-black transition-colors"
             >
               Privacy Policy
             </Link>
             <Link 
               href="/terms" 
-              className="text-white/80 hover:text-white transition-colors"
+              className="text-gray-600 hover:text-black transition-colors"
             >
               Terms of Service
             </Link>
             <Link 
               href="/contact" 
-              className="text-white/80 hover:text-white transition-colors"
+              className="text-gray-600 hover:text-black transition-colors"
             >
               Contact
             </Link>
