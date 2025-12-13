@@ -8,7 +8,11 @@ interface FilePreview {
   preview: string;
 }
 
-export default function ResumeUpload() {
+interface ResumeUploadProps {
+  onSuccess?: () => void;
+}
+
+export default function ResumeUpload({ onSuccess }: ResumeUploadProps = { onSuccess: undefined }) {
   const [file, setFile] = useState<FilePreview | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -132,6 +136,13 @@ export default function ResumeUpload() {
       setFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+      // Call onSuccess callback if provided (e.g., to close modal)
+      if (onSuccess) {
+        // Small delay to show success message
+        setTimeout(() => {
+          onSuccess();
+        }, 1500);
       }
     } catch (error) {
       setUploadStatus('error');
