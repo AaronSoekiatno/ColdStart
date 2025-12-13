@@ -1575,29 +1575,77 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       
       const allTags: string[] = [];
       
-      // Common tag selectors on YC pages
-      const tagSelectors = [
-        'a[href*="/tags/"]', // Tags are often links
-        'span[class*="tag"]', // Tag spans
-        'div[class*="tag"]', // Tag divs
-        'button[class*="tag"]', // Tag buttons
-        '[class*="badge"]', // Badge elements
-        '[class*="chip"]', // Chip elements
-        '[data-testid*="tag"]', // Test IDs
-      ];
-      
-      // Extract all potential tag elements
-      const tagElements: Element[] = [];
-      for (const selector of tagSelectors) {
-        const elements = document.querySelectorAll(selector);
-        tagElements.push(...Array.from(elements));
+      // Strategy 1: Look for links to /tags/ or /tag/ pages (most reliable)
+      const tagLinks = document.querySelectorAll('a[href*="/tags/"], a[href*="/tag/"]');
+      for (const link of Array.from(tagLinks)) {
+        const href = (link as HTMLAnchorElement).href;
+        const tagText = link.textContent?.trim() || '';
+        
+        // Extract tag from URL (most reliable)
+        if (href) {
+          const urlMatch = href.match(/\/tags?\/([^/?]+)/);
+          if (urlMatch && urlMatch[1]) {
+            const tagFromUrl = decodeURIComponent(urlMatch[1])
+              .replace(/[-_]/g, ' ')
+              .split(' ')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+              .join(' ');
+            if (tagFromUrl && tagFromUrl.length > 1 && !allTags.includes(tagFromUrl)) {
+              allTags.push(tagFromUrl);
+            }
+          }
+        }
+        
+        // Also use link text if available and different from URL
+        if (tagText && tagText.length > 1 && tagText.length < 50 && !allTags.includes(tagText)) {
+          allTags.push(tagText);
+        }
       }
       
-      // Extract text from tag elements
-      for (const element of tagElements) {
+      // Strategy 2: Look for elements with tag-related classes (broader search)
+      const tagClassSelectors = [
+        '[class*="tag"]',
+        '[class*="Tag"]',
+        '[class*="badge"]',
+        '[class*="Badge"]',
+        '[class*="chip"]',
+        '[class*="Chip"]',
+        '[class*="label"]',
+        '[class*="Label"]',
+        '[class*="pill"]',
+        '[class*="Pill"]',
+      ];
+      
+      for (const selector of tagClassSelectors) {
+        try {
+          const elements = document.querySelectorAll(selector);
+          for (const element of Array.from(elements)) {
+            const tagText = element.textContent?.trim() || '';
+            // Skip if it's a link (already handled above)
+            if (element.tagName === 'A') continue;
+            // Skip if it contains a link (likely navigation)
+            if (element.querySelector('a')) continue;
+            // Skip if it's too long (likely not a tag)
+            if (tagText && tagText.length > 1 && tagText.length < 50) {
+              const normalized = tagText.replace(/\s+/g, ' ').trim();
+              if (normalized && !allTags.includes(normalized)) {
+                allTags.push(normalized);
+              }
+            }
+          }
+        } catch (e) {
+          // Skip invalid selectors
+        }
+      }
+      
+      // Strategy 3: Look for buttons or clickable elements that might be tags
+      const clickableElements = document.querySelectorAll('button, [role="button"], [onclick]');
+      for (const element of Array.from(clickableElements)) {
         const tagText = element.textContent?.trim() || '';
-        if (tagText && tagText.length > 0 && tagText.length < 50) {
-          // Normalize tag text (remove extra whitespace, convert to title case)
+        // Check if it looks like a tag (short, single word or short phrase)
+        if (tagText && tagText.length > 1 && tagText.length < 30 && 
+            tagText.split(/\s+/).length <= 3 && 
+            !tagText.match(/^(click|view|see|more|less|show|hide|expand|collapse)$/i)) {
           const normalized = tagText.replace(/\s+/g, ' ').trim();
           if (normalized && !allTags.includes(normalized)) {
             allTags.push(normalized);
@@ -1605,25 +1653,14 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         }
       }
       
-      // Also look for tags in data attributes or hrefs
-      const tagLinks = document.querySelectorAll('a[href*="/tags/"], a[href*="/tag/"]');
-      for (const link of Array.from(tagLinks)) {
-        const href = (link as HTMLAnchorElement).href;
-        const tagText = link.textContent?.trim() || '';
-        
-        // Extract tag from URL if text is empty
-        if (!tagText && href) {
-          const urlMatch = href.match(/\/tags?\/([^/?]+)/);
-          if (urlMatch && urlMatch[1]) {
-            const tagFromUrl = decodeURIComponent(urlMatch[1])
-              .replace(/[-_]/g, ' ')
-              .replace(/\b\w/g, l => l.toUpperCase());
-            if (tagFromUrl && !allTags.includes(tagFromUrl)) {
-              allTags.push(tagFromUrl);
-            }
-          }
-        } else if (tagText && !allTags.includes(tagText)) {
-          allTags.push(tagText);
+      // Strategy 4: Look for data attributes that might contain tags
+      const elementsWithDataTags = document.querySelectorAll('[data-tag], [data-keyword], [data-category]');
+      for (const element of Array.from(elementsWithDataTags)) {
+        const dataTag = element.getAttribute('data-tag') || 
+                       element.getAttribute('data-keyword') || 
+                       element.getAttribute('data-category');
+        if (dataTag && dataTag.length > 1 && dataTag.length < 50 && !allTags.includes(dataTag)) {
+          allTags.push(dataTag);
         }
       }
       
@@ -1674,11 +1711,51 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         'design', 'ux', 'ui', 'product', 'growth', 'marketing',
       ];
       
-      // Filter tags: keep technology/skill tags, exclude location tags
+      // Debug: Log all found tags before filtering
+      if (allTags.length > 0) {
+        console.log(`   🔍 Found ${allTags.length} raw tags: ${allTags.join(', ')}`);
+      } else {
+        console.log(`   ⚠️  No tags found on page - trying alternative extraction methods...`);
+        
+        // Fallback: Look for any text that might be tags in common tag containers
+        const possibleTagContainers = document.querySelectorAll('[class*="tag"], [class*="badge"], [class*="chip"], section, div');
+        for (const container of Array.from(possibleTagContainers).slice(0, 50)) {
+          const text = container.textContent?.trim() || '';
+          // Look for short, capitalized words that might be tags
+          const words = text.split(/\s+/).filter(w => 
+            w.length > 2 && w.length < 20 && 
+            /^[A-Z][a-z]+$/.test(w) && 
+            !w.match(/^(The|And|For|With|From|This|That|Company|Location|Team|Jobs|Founded|Website|Batch)$/i)
+          );
+          words.forEach(word => {
+            if (!allTags.includes(word)) {
+              allTags.push(word);
+            }
+          });
+        }
+        
+        if (allTags.length > 0) {
+          console.log(`   🔍 Found ${allTags.length} tags via fallback: ${allTags.join(', ')}`);
+        }
+      }
+      
+      // Filter tags: keep technology/skill tags, exclude location tags and common non-tag words
       const filteredTags: string[] = [];
+      
+      // Common words to exclude (not actual tags)
+      const excludedWords = [
+        'active', 'founders', 'founder', 'company', 'location', 'team', 'size',
+        'jobs', 'status', 'founded', 'website', 'batch', 'view', 'see', 'more',
+        'less', 'show', 'hide', 'expand', 'collapse', 'click', 'apply', 'all'
+      ];
       
       for (const tag of allTags) {
         const tagLower = tag.toLowerCase().trim();
+        
+        // Skip excluded words
+        if (excludedWords.includes(tagLower) || excludedWords.some(word => tagLower === word)) {
+          continue;
+        }
         
         // Skip if it's clearly a location
         const isLocation = locationKeywords.some(loc => 
@@ -1952,6 +2029,43 @@ async function getCompaniesWithTwitterData(): Promise<Set<string>> {
 }
 
 /**
+ * Get companies that already have keywords populated
+ */
+async function getCompaniesWithKeywords(): Promise<Set<string>> {
+  try {
+    // Fetch all YC companies with keywords
+    const { data, error } = await supabase
+      .from('startups')
+      .select('yc_link, keywords')
+      .eq('data_source', 'yc')
+      .not('yc_link', 'is', null);
+
+    if (error) {
+      console.warn('  ⚠️  Could not fetch companies with keywords:', error);
+      return new Set();
+    }
+
+    const links = new Set<string>();
+    data?.forEach((row: any) => {
+      // Check if company has keywords populated
+      const hasKeywords = row.keywords && row.keywords.trim().length > 0;
+      
+      if (row.yc_link && hasKeywords) {
+        // Normalize URL for comparison (lowercase, remove trailing slash)
+        const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
+        links.add(normalized);
+      }
+    });
+
+    return links;
+  } catch (error) {
+    console.warn('  ⚠️  Error fetching companies with keywords:', error);
+    return new Set();
+  }
+}
+
+
+/**
  * Store YC company data in Supabase
  */
 async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData): Promise<boolean> {
@@ -1970,39 +2084,21 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       return value && value.trim() ? value.trim() : null;
     };
 
-    // Format founder Twitter URLs
-    const founderTwitterUrls = pageData.founders
-      .map(f => f.twitterUrl)
-      .filter(twitter => twitter && twitter.length > 0)
-      .join(', ');
-
-    // Debug: Log what we're about to store
-    console.log(`   📝 Founders Twitter URLs to store: ${founderTwitterUrls || '(none)'}`);
-    if (pageData.founders.length > 0) {
-      pageData.founders.forEach((f, idx) => {
-        console.log(`      Founder ${idx + 1}: ${f.firstName} ${f.lastName} - Twitter: ${f.twitterUrl || '(none)'}`);
-      });
-    }
 
     // Format tags as comma-separated string
     const tagsString = pageData.tags && pageData.tags.length > 0 
       ? pageData.tags.join(', ') 
       : undefined;
 
-    // Update Twitter fields and tags for existing company
+    // Update keywords only
     const updateData: {
-      company_twitter_url?: string | null;
-      founder_twitter_urls?: string | null;
-      tags?: string | null;
+      keywords?: string | null;
     } = {
-      // Twitter fields
-      company_twitter_url: toNull(pageData.companyTwitterUrl),
-      founder_twitter_urls: toNull(founderTwitterUrls),
-      // Tags (technology/skills keywords)
-      tags: tagsString ? toNull(tagsString) : null,
+      // Keywords (technology/skills tags) - stored as comma-separated string
+      keywords: tagsString ? toNull(tagsString) : null,
     };
     
-    console.log(`   💾 Updating with: company_twitter_url=${updateData.company_twitter_url || '(null)'}, founder_twitter_urls=${updateData.founder_twitter_urls || '(null)'}, tags=${updateData.tags || '(null)'}`);
+    console.log(`   💾 Updating keywords: ${updateData.keywords || '(null)'}`);
     if (pageData.tags && pageData.tags.length > 0) {
       console.log(`   🏷️  Found ${pageData.tags.length} technology/skill tags: ${pageData.tags.join(', ')}`);
     }
@@ -2025,7 +2121,11 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     }
 
     if (data) {
-      console.log(`   ✅ Update successful. Stored founder_twitter_urls: ${data.founder_twitter_urls || '(null)'}`);
+      if (pageData.tags && pageData.tags.length > 0) {
+        console.log(`   ✅ Keywords stored successfully: ${pageData.tags.join(', ')}`);
+      } else {
+        console.log(`   ⚠️  No keywords found to store`);
+      }
     }
 
     return true;
@@ -2063,10 +2163,10 @@ async function scrapeYCCompanies() {
   const processedLinks = await getAlreadyProcessedLinks();
   console.log(`   Found ${processedLinks.size} already-processed companies`);
 
-  // Get companies that already have Twitter data
-  console.log('🔍 Checking for companies with Twitter data...');
-  const companiesWithTwitter = await getCompaniesWithTwitterData();
-  console.log(`   Found ${companiesWithTwitter.size} companies with Twitter data already populated\n`);
+  // Get companies that already have keywords
+  console.log('🔍 Checking for companies with keywords...');
+  const companiesWithKeywords = await getCompaniesWithKeywords();
+  console.log(`   Found ${companiesWithKeywords.size} companies with keywords already populated\n`);
 
   // Load all companies from CSV files
   console.log('📂 Loading YC companies from CSV files...');
@@ -2103,21 +2203,22 @@ async function scrapeYCCompanies() {
 
   console.log(`\n📊 Total companies to process: ${allCompanies.length}`);
 
-  // Filter to only get companies that ARE in database but DON'T have Twitter data
+  // Filter to get companies that ARE in database but DON'T have keywords
   const companiesToUpdate = allCompanies.filter(company => {
     const normalized = normalizeCompanyData(company);
     if (!normalized.ycLink) return false;
     // Normalize URL for comparison (lowercase, remove trailing slash)
     const normalizedLink = normalized.ycLink.toLowerCase().replace(/\/$/, '');
-    // Only process if: already in database AND doesn't have Twitter data
-    return processedLinks.has(normalizedLink) && !companiesWithTwitter.has(normalizedLink);
+    // Only process if: already in database AND doesn't have keywords
+    const hasKeywords = companiesWithKeywords.has(normalizedLink);
+    return processedLinks.has(normalizedLink) && !hasKeywords;
   });
 
   const initiallySkippedCount = allCompanies.length - companiesToUpdate.length;
-  console.log(`📋 Companies to update Twitter data: ${companiesToUpdate.length} (${initiallySkippedCount} skipped - not in DB or already have Twitter data)\n`);
+  console.log(`📋 Companies to update keywords: ${companiesToUpdate.length} (${initiallySkippedCount} skipped - not in DB or already have keywords)\n`);
 
   if (companiesToUpdate.length === 0) {
-    console.log('✅ All companies already have Twitter data!');
+    console.log('✅ All companies already have keywords!');
     return;
   }
 
@@ -2181,7 +2282,7 @@ async function scrapeYCCompanies() {
 
         if (success) {
           successCount++;
-          console.log('   ✅ Successfully updated Twitter data and tags in Supabase');
+          console.log('   ✅ Successfully updated keywords in Supabase');
         } else {
           skippedCount++;
         }
