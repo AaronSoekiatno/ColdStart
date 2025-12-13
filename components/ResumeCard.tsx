@@ -19,15 +19,15 @@ export function ResumeCard({ fileName, resumeUrl }: ResumeCardProps) {
 
   return (
     <>
-      <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-6 hover:bg-white/15 transition-all flex flex-col">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:bg-gray-50 transition-all flex flex-col shadow-sm">
         <div className="flex-1 mb-4">
-          <h3 className="text-lg font-semibold text-white mb-2 truncate" title={fileName}>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate" title={fileName}>
             {fileName}
           </h3>
         </div>
         <button
           onClick={() => setIsPreviewOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all"
         >
           <Eye className="w-4 h-4" />
           <span className="text-sm font-medium">Preview</span>

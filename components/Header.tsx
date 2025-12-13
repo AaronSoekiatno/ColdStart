@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isSubscribed } from "@/lib/supabase";
@@ -13,19 +12,21 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import logo from "../images/hermeslogo.png";
+import { Menu, X, User as UserIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
   initialUser?: User | null;
 }
 
 export const Header = ({ initialUser }: HeaderProps) => {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
@@ -119,62 +120,64 @@ export const Header = ({ initialUser }: HeaderProps) => {
   }, [userEmail, isCheckingPremium]);
 
   return (
-    <header className="sticky top-0 z-50 w-full pt-2" style={{ backgroundColor: '#0E1422' }}>
-      <div className="container mx-auto px-16 py-4 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white transition-all duration-300 mb-4 border border-gray-200">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo and Title */}
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src={logo}
+            src="/images/blacked.svg"
             alt="Hermes logo"
-            className="h-9 w-auto rounded-lg"
+            width={32} 
+            height={32}
             priority
           />
-          <span className="text-white font-semibold text-2xl">Hermes</span>
+          <span className="text-xl font-semibold text-gray-800">Hermes</span>
         </Link>
 
-        {/* Sign In Button / Account Indicator */}
-        <div className="flex items-center gap-1">
+        {/* Desktop Navigation - Hidden on mobile */}
+        <nav className="hidden lg:flex items-center gap-4">
           {user ? (
             <>
               <Link
                 href="/matches"
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
               >
-                Matches
+                Your Matches
               </Link>
               <Link
                 href="/tracker"
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
               >
                 Email Tracker
               </Link>
               <Link
                 href="/resumes"
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
+                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
               >
                 Resumes
               </Link>
-              <button
-                onClick={handlePremiumClick}
-                className="text-md font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-              >
-                Premium
-              </button>
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none">
-                    <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center font-semibold text-xs">
-                      {user.email?.[0]?.toUpperCase() ?? "U"}
-                    </div>
-                  </button>
+                  <Button
+                    variant="ghost"
+                    className="rounded-full h-9 w-9 p-0 text-gray-800 hover:text-gray-700 cursor-pointer flex items-center justify-center bg-gray-100 hover:bg-gray-200 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 active:scale-100 border-0"
+                  >
+                    <UserIcon className="h-5 w-5" />
+                  </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="border-white/30 bg-white/10 text-white px-0 py-0 rounded-2xl overflow-hidden min-w-[200px]">
-                  <div className="px-4 py-2 text-sm text-white/80 border-b border-white/10">
+                <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-2xl overflow-hidden min-w-[200px] shadow-lg">
+                  <div className="px-4 py-2 text-sm text-gray-800 border-b border-gray-200 rounded-t-2xl">
                     {user.email}
                   </div>
+                  <DropdownMenuItem
+                    className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"
+                    onSelect={handlePremiumClick}
+                  >
+                    Premium Plan
+                  </DropdownMenuItem>
                   {isPremium && (
                     <DropdownMenuItem
-                      className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20 border-b border-white/10"
+                      className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"
                       onSelect={async () => {
                         try {
                           const response = await fetch('/api/stripe/create-portal-session', {
@@ -209,7 +212,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
-                    className="cursor-pointer font-bold text-white w-full px-4 py-2 text-center hover:bg-white/20 focus:bg-white/20"
+                    className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black rounded-b-2xl"
                     onSelect={async () => {
                       await supabase.auth.signOut();
                       setUser(null);
@@ -224,22 +227,120 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
-          ) : (
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/"
-                className="text-sm font-semibold text-white transition-all border border-transparent hover:border-white/30 hover:bg-white/10 hover:rounded-xl hover:px-3 hover:py-1.5 px-3 py-1.5 focus:outline-none"
-              >
-                Sign Up
-              </Link>
-            </div>
+          ) : null}
+        </nav>
+
+        {/* Mobile Navigation - Hamburger Menu */}
+        <div className="lg:hidden flex items-center gap-2">
+          {user && (
+            <DropdownMenu modal={false} open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="rounded-full h-9 px-4 text-gray-600 hover:text-gray-700"
+                >
+                  {mobileMenuOpen ? (
+                    <X className="h-5 w-5" />
+                  ) : (
+                    <Menu className="h-5 w-5" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-2xl overflow-hidden min-w-[200px] mr-4 shadow-lg">
+                <div className="px-4 py-2 text-xs text-gray-600 border-b border-gray-200 rounded-t-2xl">
+                  {user.email}
+                </div>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/matches"
+                    className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Matches
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/tracker"
+                    className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Email Tracker
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/resumes"
+                    className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Resumes
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
+                  onSelect={() => {
+                    setMobileMenuOpen(false);
+                    handlePremiumClick();
+                  }}
+                >
+                  Premium Plan
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-gray-200" />
+                {isPremium && (
+                  <DropdownMenuItem
+                    className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"
+                    onSelect={async () => {
+                      setMobileMenuOpen(false);
+                      try {
+                        const response = await fetch('/api/stripe/create-portal-session', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({ email: user.email ?? '' }),
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                          throw new Error(data.error || 'Failed to create portal session');
+                        }
+
+                        if (data.url) {
+                          window.location.href = data.url;
+                        }
+                      } catch (error: any) {
+                        console.error('Error opening portal:', error);
+                        toast({
+                          title: "Error",
+                          description: error.message || 'Failed to open subscription management',
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    Manage Subscription
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black rounded-b-2xl"
+                  onSelect={async () => {
+                    setMobileMenuOpen(false);
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    toast({
+                      title: "Signed out",
+                      description: "You have been signed out successfully.",
+                    });
+                  }}
+                >
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
+          {!user && null}
         </div>
       </div>
 

@@ -7,7 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/NewHero";
 import { ProblemSection } from "@/components/ProblemSection";
 import { TrustBadge } from "@/components/TrustBadge";
-import { StartupsCarousel } from "@/components/StartupsCarousel";
+import { UniversityCarousel } from "@/components/StartupsCarousel";
 import { AIAgentSection } from "@/components/AIAgentSection";
 import { NewFeatures } from "@/components/NewFeatures";
 import { FounderDataSection } from "@/components/FounderDataSection";
@@ -79,7 +79,7 @@ export function NewLandingPage() {
           <Link href="/" className={`flex items-center gap-3 transition-opacity duration-300 ${
             isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
-            <Image src="/images/Hermès (1).png" alt="Hermes" width={32} height={32} />
+            <Image src="/images/hermes.png" alt="Hermes" width={32} height={32} />
             <span className="text-xl font-semibold text-white drop-shadow-md">Hermes</span>
           </Link>
 
@@ -96,10 +96,16 @@ export function NewLandingPage() {
                   Your Matches
                 </Link>
                 <Link
-                  href="/history"
+                  href="/tracker"
                   className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
                 >
-                  History
+                  Email Tracker
+                </Link>
+                <Link
+                  href="/resumes"
+                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
+                >
+                  Resumes
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -246,7 +252,7 @@ export function NewLandingPage() {
           <div className="relative z-10">
             <NewHero onGetStarted={handleGetStarted} />
             <TrustBadge />
-            <StartupsCarousel />
+            <UniversityCarousel />
             <ProblemSection />
           </div>
         </div>

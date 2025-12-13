@@ -112,22 +112,45 @@ export async function GET(request: NextRequest) {
         tags: string;
         website: string;
         founder_emails?: string;
+        founder_names?: string;
+        founder_linkedin?: string;
+        founder_twitter_urls?: string;
+        founder_backgrounds?: string;
+        batch?: string;
+        description?: string;
+        company_logo?: string;
+        yc_link?: string;
+        company_twitter_url?: string;
       }
     > = {};
 
     if (startupIds.length > 0) {
       const { data: startupRows, error: startupsError } = await supabaseAdmin
         .from('startups')
-        .select(
-          'id, name, industry, location, funding_stage, funding_amount, tags, website, founder_emails'
-        )
+        .select('*')
         .in('id', startupIds);
 
       if (!startupsError && startupRows) {
         for (const s of startupRows) {
           startupsById[s.id] = {
-            ...s,
+            id: s.id,
+            name: s.name,
+            industry: s.industry || '',
+            location: s.location || '',
+            funding_stage: s.funding_stage || '',
+            funding_amount: s.funding_amount || '',
+            tags: s.tags || '',
+            website: s.website || '',
             founder_emails: s.founder_emails ?? undefined,
+            founder_names: s.founder_names ?? undefined,
+            founder_linkedin: s.founder_linkedin ?? undefined,
+            founder_twitter_urls: s.founder_twitter_urls ?? undefined,
+            founder_backgrounds: s.founder_backgrounds ?? undefined,
+            batch: s.batch ?? undefined,
+            description: s.description ?? undefined,
+            company_logo: s.company_logo ?? undefined,
+            yc_link: s.yc_link ?? undefined,
+            company_twitter_url: s.company_twitter_url ?? undefined,
           };
         }
       }
