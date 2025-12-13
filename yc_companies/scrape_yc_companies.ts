@@ -2179,9 +2179,12 @@ async function getCompaniesWithKeywords(): Promise<Set<string>> {
     data?.forEach((row: any) => {
       // Check if company has keywords populated (either actual keywords or placeholder)
       // If keywords field has a value (including 'NO_KEYWORDS' placeholder), it means it was already processed
-      const hasKeywords = row.keywords && row.keywords.trim().length > 0;
+      // Similar to Twitter pattern: we skip companies that have been checked, even if no keywords were found
+      // This prevents rechecking companies that don't have valid keywords (NO_KEYWORDS placeholder)
+      const keywordsValue = row.keywords ? row.keywords.trim() : '';
+      const hasKeywords = keywordsValue.length > 0;
       
-      // If company has keywords (including placeholder), it means it was already processed
+      // If company has keywords (including NO_KEYWORDS placeholder), it means it was already processed
       if (row.yc_link && hasKeywords) {
         // Normalize URL for comparison (lowercase, remove trailing slash)
         const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');

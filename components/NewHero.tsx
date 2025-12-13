@@ -25,7 +25,7 @@ export function NewHero({ onGetStarted }: NewHeroProps) {
             size="lg"
             className="rounded-full px-8 py-6 text-base font-medium border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-300 text-white"
           >
-            Join the Waitlist
+            Upload Resume
           </Button>
         </div>
 
