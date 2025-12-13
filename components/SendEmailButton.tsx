@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface SendEmailButtonProps {
   startupId: string;
@@ -12,29 +13,54 @@ interface SendEmailButtonProps {
   onSent?: () => void;
   variant?: "default" | "outline" | "ghost";
   className?: string;
+  disabled?: boolean;
+  requiresFounderSelection?: boolean;
+  isFounderSelected?: boolean;
 }
 
 export const SendEmailButton = ({
   startupId,
   matchScore,
+  founderEmail,
   variant = "default",
   className,
+  disabled = false,
+  requiresFounderSelection = false,
+  isFounderSelected = false,
 }: SendEmailButtonProps) => {
   const router = useRouter();
   const [isNavigating, setIsNavigating] = useState(false);
+  const { toast } = useToast();
 
   const handleOpenPreview = () => {
+    // Check if founder selection is required but no founder is selected
+    if (requiresFounderSelection && !isFounderSelected) {
+      toast({
+        title: "Select a founder",
+        description: "Please select a founder first before generating an email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsNavigating(true);
-    // Navigate to the generate email page
-    router.push(`/generate-email?startupId=${startupId}&matchScore=${matchScore}`);
+    // Navigate to the generate email page with founder email if available
+    const params = new URLSearchParams({
+      startupId,
+      matchScore: matchScore.toString(),
+    });
+    if (founderEmail) {
+      params.append('founderEmail', founderEmail);
+    }
+    router.push(`/generate-email?${params.toString()}`);
   };
 
   return (
     <Button
       onClick={handleOpenPreview}
-      disabled={isNavigating}
+      disabled={isNavigating || disabled}
       variant={variant}
-      className={`bg-gray-50 hover:bg-gray-100 text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed ${className || ''}`}
+      className={`${className || 'bg-gray-50 hover:bg-gray-100 text-gray-900'} disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       {isNavigating ? (
         <span className="flex items-center gap-2">

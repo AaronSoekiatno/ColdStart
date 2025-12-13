@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef } from "react";
+import { memo, useRef, useState } from "react";
 import Image from "next/image";
 import { DollarSign, ExternalLink } from "lucide-react";
 import { SendEmailButton } from "./SendEmailButton";
@@ -37,6 +37,7 @@ interface MatchCardProps {
 const MatchCardComponent = ({ match }: MatchCardProps) => {
   const companySectionRef = useRef<HTMLDivElement>(null);
   const foundersSectionRef = useRef<HTMLDivElement>(null);
+  const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
 
   if (!match.startup) {
     return null;
@@ -56,6 +57,16 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
   const founderTwitterUrls = startup.founder_twitter_urls
     ? startup.founder_twitter_urls.split(',').map(url => url.trim())
     : [];
+
+  // Parse founder emails (comma-separated, one per founder)
+  const founderEmails = startup.founder_emails
+    ? startup.founder_emails.split(',').map(email => email.trim())
+    : [];
+
+  // Get selected founder email
+  const selectedFounderEmail = selectedFounderIndex !== null && founderEmails[selectedFounderIndex]
+    ? founderEmails[selectedFounderIndex]
+    : undefined;
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -88,8 +99,10 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
               <SendEmailButton
                 startupId={match.startup.id}
                 matchScore={match.score}
-                founderEmail={match.startup.founder_emails}
+                founderEmail={selectedFounderEmail}
                 variant="default"
+                requiresFounderSelection={founderNames.length > 0}
+                isFounderSelected={selectedFounderIndex !== null}
                 className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
               />
             </div>
@@ -212,7 +225,10 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
       {/* Founders Section */}
       {founderNames.length > 0 && (
         <div ref={foundersSectionRef} className="mt-6 md:mt-8">
-          <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4 text-left">Active Founders</h3>
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
+            <p className="text-sm sm:text-base text-gray-600">Select a founder</p>
+          </div>
           <div className="flex flex-col gap-3 md:gap-4">
             {/* Founder Cards - one for each founder */}
             {founderNames.map((founderName, index) => {
@@ -222,7 +238,15 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
               const initial = firstName[0] || lastName[0] || '?';
 
               return (
-                <div key={index} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5">
+                <div 
+                  key={index} 
+                  className={`bg-white rounded-xl md:rounded-2xl shadow-sm border p-3 sm:p-4 md:p-5 cursor-pointer transition-all ${
+                    selectedFounderIndex === index 
+                      ? 'border-blue-300 border-2 bg-blue-50' 
+                      : 'border-gray-100 hover:border-gray-200'
+                  }`}
+                  onClick={() => setSelectedFounderIndex(index)}
+                >
                   <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
                     {/* Founder Photo Placeholder */}
                     <div className="flex-shrink-0 w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
@@ -283,6 +307,17 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                           {startup.founder_backgrounds}
                         </div>
                       )}
+                    </div>
+                    {/* Radio Button on the right */}
+                    <div className="flex-shrink-0 flex items-center">
+                      <input
+                        type="radio"
+                        name="founder-selection"
+                        checked={selectedFounderIndex === index}
+                        onChange={() => setSelectedFounderIndex(index)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
                     </div>
                   </div>
                 </div>

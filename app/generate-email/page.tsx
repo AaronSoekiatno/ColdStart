@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Copy } from "lucide-react";
 import { DiffBlock } from "@/components/DiffBlock";
 import { Header } from "@/components/Header";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +27,7 @@ export default function GenerateEmailPage() {
   const startupId = searchParams.get("startupId");
   const matchScoreParam = searchParams.get("matchScore");
   const matchScore = matchScoreParam ? parseFloat(matchScoreParam) : 0;
+  const founderEmail = searchParams.get("founderEmail");
   
   const [user, setUser] = useState<User | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -217,23 +218,104 @@ export default function GenerateEmailPage() {
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                   <h3 className="text-sm font-semibold mb-2 text-gray-900">Review Email</h3>
                   <div className="flex-1 flex flex-col space-y-3 min-h-0">
+                    {founderEmail && (
+                      <div className="space-y-1.5 flex-shrink-0">
+                        <label className="text-xs text-gray-700 block">To:</label>
+                        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                          <span className="text-sm text-gray-900 font-medium flex-1">
+                            {founderEmail}
+                          </span>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(founderEmail);
+                                toast({
+                                  title: "Copied!",
+                                  description: "Founder email copied to clipboard.",
+                                });
+                              } catch (err) {
+                                toast({
+                                  title: "Failed to copy",
+                                  description: "Could not copy email to clipboard.",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                            className="flex-shrink-0 p-1.5 rounded transition-colors cursor-pointer mr-1"
+                            aria-label="Copy email"
+                          >
+                            <Copy className="w-4 h-4 text-gray-600" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-1.5 flex-shrink-0">
                       <label className="text-xs text-gray-700 block">Subject:</label>
-                      <Input
-                        value={previewSubject}
-                        onChange={(e) => setPreviewSubject(e.target.value)}
-                        className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500"
-                        placeholder="Email subject"
-                      />
+                      <div className="relative">
+                        <Input
+                          value={previewSubject || ''}
+                          onChange={(e) => setPreviewSubject(e.target.value)}
+                          className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 pr-10"
+                          placeholder="Email subject"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!previewSubject) return;
+                            try {
+                              await navigator.clipboard.writeText(previewSubject);
+                              toast({
+                                title: "Copied!",
+                                description: "Subject copied to clipboard.",
+                              });
+                            } catch (err) {
+                              toast({
+                                title: "Failed to copy",
+                                description: "Could not copy subject to clipboard.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded transition-colors cursor-pointer"
+                          aria-label="Copy subject"
+                          disabled={!previewSubject}
+                        >
+                          <Copy className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
                     </div>
                     <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
                       <label className="text-xs text-gray-700 block">Body:</label>
-                      <Textarea
-                        value={previewBody}
-                        onChange={(e) => setPreviewBody(e.target.value)}
-                        className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 resize-none"
-                        placeholder="Email body"
-                      />
+                      <div className="relative flex-1 flex flex-col min-h-0">
+                        <Textarea
+                          value={previewBody || ''}
+                          onChange={(e) => setPreviewBody(e.target.value)}
+                          className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 resize-none pr-10"
+                          placeholder="Email body"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!previewBody) return;
+                            try {
+                              await navigator.clipboard.writeText(previewBody);
+                              toast({
+                                title: "Copied!",
+                                description: "Body copied to clipboard.",
+                              });
+                            } catch (err) {
+                              toast({
+                                title: "Failed to copy",
+                                description: "Could not copy body to clipboard.",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          className="absolute right-4 top-2 p-1.5 rounded transition-colors cursor-pointer"
+                          aria-label="Copy body"
+                          disabled={!previewBody}
+                        >
+                          <Copy className="w-4 h-4 text-gray-600" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
