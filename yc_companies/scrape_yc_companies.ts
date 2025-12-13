@@ -30,6 +30,7 @@ interface YCPageData {
     firstName: string;
     lastName: string;
     linkedIn: string;
+    twitterUrl?: string; // Founder Twitter/X URL
     description?: string; // Founder bio/description
   }>;
   website: string;
@@ -41,10 +42,12 @@ interface YCPageData {
   }>;
   location: string;
   oneLineSummary: string;
+  companyTwitterUrl?: string; // Company Twitter/X URL
   fundingAmount?: string; // Funding amount (e.g., "US$ 500.0K", "$20M")
   roundType?: string; // Funding round type (e.g., "Pre seed", "Seed", "Series A")
   fundingDate?: string; // Funding date (e.g., "Oct 9, 2025", "2025-10-09")
   linkedInCompanyUrl?: string | null; // Constructed LinkedIn URL for future enrichment
+  tags?: string[]; // Technology/skill tags (excluding locations)
 }
 
 interface EnrichedYCData extends YCCompany {
@@ -349,6 +352,43 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                 }
               }
               
+              // Try to find Twitter link (similar to LinkedIn)
+              let twitterUrl = '';
+              const allTwitterLinks = Array.from(document.querySelectorAll('a[href*="x.com/"], a[href*="twitter.com/"]'));
+              const twitterLinkIndex = bodyText.indexOf('x.com/');
+              if (twitterLinkIndex > simpleExtractionIndex && twitterLinkIndex < simpleExtractionIndex + 3000) {
+                for (const link of allTwitterLinks) {
+                  const linkEl = link as HTMLAnchorElement;
+                  const linkHref = linkEl.href;
+                  if (!linkHref) continue;
+                  
+                  const ariaLabel = linkEl.getAttribute('aria-label') || '';
+                  const dataTooltipId = linkEl.getAttribute('data-tooltip-id') || '';
+                  const linkNearbyText = link.parentElement?.textContent || '';
+                  
+                  // Check if this is a founder Twitter link
+                  const isFounderTwitter = (
+                    dataTooltipId.includes('founder-social-tooltip') ||
+                    (ariaLabel.toLowerCase().includes('twitter') && dataTooltipId.includes('founder'))
+                  );
+                  
+                  // If the link is near this name and is a founder Twitter link
+                  if (isFounderTwitter && 
+                      (linkNearbyText.toLowerCase().includes(fullName.toLowerCase().split(' ')[0]) ||
+                       linkNearbyText.toLowerCase().includes(nameParts[0].toLowerCase()))) {
+                    let normalizedUrl = linkHref;
+                    if (normalizedUrl.startsWith('//')) {
+                      normalizedUrl = 'https:' + normalizedUrl;
+                    } else if (!normalizedUrl.startsWith('http')) {
+                      normalizedUrl = 'https://' + normalizedUrl;
+                    }
+                    normalizedUrl = normalizedUrl.replace(/twitter\.com\//g, 'x.com/');
+                    twitterUrl = normalizedUrl;
+                    break;
+                  }
+                }
+              }
+              
               const firstName = nameParts[0];
               const lastName = nameParts.slice(1).join(' ');
               
@@ -357,6 +397,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                 firstName,
                 lastName,
                 linkedIn,
+                twitterUrl: twitterUrl || undefined,
                 description: description || undefined,
               });
             }
@@ -607,6 +648,46 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
             }
           }
           
+          // Extract Twitter/X link - look for Twitter link in the same founder card container
+          let twitterUrl = '';
+          if (founderCard) {
+            // Look for Twitter/X links in the founder card
+            const twitterLinks = founderCard.querySelectorAll('a[href*="x.com/"], a[href*="twitter.com/"]');
+            
+            for (const twitterLink of Array.from(twitterLinks)) {
+              const linkEl = twitterLink as HTMLAnchorElement;
+              const href = linkEl.href;
+              if (!href) continue;
+              
+              // Check if this is a founder Twitter link (not company Twitter)
+              const ariaLabel = linkEl.getAttribute('aria-label') || '';
+              const dataTooltipId = linkEl.getAttribute('data-tooltip-id') || '';
+              const dataTooltipContent = linkEl.getAttribute('data-tooltip-content') || '';
+              
+              // Founder Twitter has data-tooltip-id containing "founder-social-tooltip" OR aria-label="Twitter account"
+              const isFounderTwitter = (
+                dataTooltipId.includes('founder-social-tooltip') ||
+                (ariaLabel.toLowerCase().includes('twitter') && dataTooltipId.includes('founder'))
+              );
+              
+              if (isFounderTwitter) {
+                // Normalize URL - ensure it has https://
+                let normalizedUrl = href;
+                if (normalizedUrl.startsWith('//')) {
+                  normalizedUrl = 'https:' + normalizedUrl;
+                } else if (!normalizedUrl.startsWith('http')) {
+                  normalizedUrl = 'https://' + normalizedUrl;
+                }
+                
+                // Prefer x.com over twitter.com
+                normalizedUrl = normalizedUrl.replace(/twitter\.com\//g, 'x.com/');
+                
+                twitterUrl = normalizedUrl;
+                break;
+              }
+            }
+          }
+          
           // Skip if this is the company name
           if (fullName.toLowerCase() === companyName) return;
           
@@ -656,6 +737,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
               firstName,
               lastName,
               linkedIn,
+              twitterUrl: twitterUrl || undefined,
               description: description || undefined,
             });
           }
@@ -749,6 +831,45 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
               }
             }
             
+            // Look for Twitter link anywhere after the heading (similar to LinkedIn)
+            let twitterUrl = '';
+            const allTwitterLinks = Array.from(document.querySelectorAll('a[href*="x.com/"], a[href*="twitter.com/"]'));
+            for (const link of allTwitterLinks) {
+              const linkEl = link as HTMLAnchorElement;
+              const linkHref = linkEl.href;
+              if (!linkHref) continue;
+              
+              const ariaLabel = linkEl.getAttribute('aria-label') || '';
+              const dataTooltipId = linkEl.getAttribute('data-tooltip-id') || '';
+              
+              // Check if this is a founder Twitter link
+              const isFounderTwitter = (
+                dataTooltipId.includes('founder-social-tooltip') ||
+                (ariaLabel.toLowerCase().includes('twitter') && dataTooltipId.includes('founder'))
+              );
+              
+              if (isFounderTwitter) {
+                const linkIndex = Array.from(document.querySelectorAll('*')).indexOf(link);
+                if (linkIndex > headingIndex && linkIndex < headingIndex + 200) {
+                  const linkContainer = link.closest('div, section, article');
+                  const linkText = linkContainer?.textContent || '';
+                  
+                  // If the name appears near this Twitter link, associate them
+                  if (linkText.toLowerCase().includes(potentialName.toLowerCase().split(' ')[0])) {
+                    let normalizedUrl = linkHref;
+                    if (normalizedUrl.startsWith('//')) {
+                      normalizedUrl = 'https:' + normalizedUrl;
+                    } else if (!normalizedUrl.startsWith('http')) {
+                      normalizedUrl = 'https://' + normalizedUrl;
+                    }
+                    normalizedUrl = normalizedUrl.replace(/twitter\.com\//g, 'x.com/');
+                    twitterUrl = normalizedUrl;
+                    break;
+                  }
+                }
+              }
+            }
+            
             // Extract description - look for text after the name that looks like a bio
             let description = '';
             const lines = sectionText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -779,6 +900,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                 firstName: nameParts[0],
                 lastName: nameParts.slice(1).join(' '),
                 linkedIn,
+                twitterUrl: twitterUrl || undefined,
                 description: description || undefined,
               });
             }
@@ -863,6 +985,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                     firstName,
                     lastName,
                     linkedIn: '',
+                    twitterUrl: undefined,
                     description: description || undefined,
                   });
                 }
@@ -891,6 +1014,47 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                 if (!founder.linkedIn && containerText.includes(founder.firstName.toLowerCase())) {
                   founder.linkedIn = linkHref;
                   break;
+                }
+              }
+            }
+            
+            // Try to associate Twitter links with found founders
+            const allTwitterLinks = Array.from(document.querySelectorAll('a[href*="x.com/"], a[href*="twitter.com/"]'));
+            for (const link of allTwitterLinks) {
+              const linkEl = link as HTMLAnchorElement;
+              const linkHref = linkEl.href;
+              if (!linkHref) continue;
+              
+              // Skip navigation/footer links
+              const parent = link.closest('nav, footer, header');
+              if (parent) continue;
+              
+              const ariaLabel = linkEl.getAttribute('aria-label') || '';
+              const dataTooltipId = linkEl.getAttribute('data-tooltip-id') || '';
+              
+              // Check if this is a founder Twitter link
+              const isFounderTwitter = (
+                dataTooltipId.includes('founder-social-tooltip') ||
+                (ariaLabel.toLowerCase().includes('twitter') && dataTooltipId.includes('founder'))
+              );
+              
+              if (isFounderTwitter) {
+                const linkContainer = link.closest('div, section, article, p');
+                const containerText = (linkContainer?.textContent || '').toLowerCase();
+                
+                // Try to match with a founder
+                for (const founder of data.founders) {
+                  if (!founder.twitterUrl && containerText.includes(founder.firstName.toLowerCase())) {
+                    let normalizedUrl = linkHref;
+                    if (normalizedUrl.startsWith('//')) {
+                      normalizedUrl = 'https:' + normalizedUrl;
+                    } else if (!normalizedUrl.startsWith('http')) {
+                      normalizedUrl = 'https://' + normalizedUrl;
+                    }
+                    normalizedUrl = normalizedUrl.replace(/twitter\.com\//g, 'x.com/');
+                    founder.twitterUrl = normalizedUrl;
+                    break;
+                  }
                 }
               }
             }
@@ -966,6 +1130,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                     firstName,
                     lastName,
                     linkedIn: '',
+                    twitterUrl: undefined,
                     description: description || undefined,
                   });
                 }
@@ -989,6 +1154,42 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                 if (!founder.linkedIn && containerText.includes(founder.firstName.toLowerCase())) {
                   founder.linkedIn = linkHref;
                   break;
+                }
+              }
+            }
+            
+            // Try to associate Twitter links with found founders
+            const allTwitterLinks = Array.from(document.querySelectorAll('a[href*="x.com/"], a[href*="twitter.com/"]'));
+            for (const link of allTwitterLinks) {
+              const linkEl = link as HTMLAnchorElement;
+              const linkHref = linkEl.href;
+              if (!linkHref) continue;
+              
+              const ariaLabel = linkEl.getAttribute('aria-label') || '';
+              const dataTooltipId = linkEl.getAttribute('data-tooltip-id') || '';
+              
+              // Check if this is a founder Twitter link
+              const isFounderTwitter = (
+                dataTooltipId.includes('founder-social-tooltip') ||
+                (ariaLabel.toLowerCase().includes('twitter') && dataTooltipId.includes('founder'))
+              );
+              
+              if (isFounderTwitter) {
+                const linkContainer = link.closest('div, section, article, p');
+                const containerText = (linkContainer?.textContent || '').toLowerCase();
+                
+                for (const founder of data.founders) {
+                  if (!founder.twitterUrl && containerText.includes(founder.firstName.toLowerCase())) {
+                    let normalizedUrl = linkHref;
+                    if (normalizedUrl.startsWith('//')) {
+                      normalizedUrl = 'https:' + normalizedUrl;
+                    } else if (!normalizedUrl.startsWith('http')) {
+                      normalizedUrl = 'https://' + normalizedUrl;
+                    }
+                    normalizedUrl = normalizedUrl.replace(/twitter\.com\//g, 'x.com/');
+                    founder.twitterUrl = normalizedUrl;
+                    break;
+                  }
                 }
               }
             }
@@ -1040,6 +1241,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                     firstName: nameParts[0],
                     lastName: nameParts.slice(1).join(' '),
                     linkedIn,
+                    twitterUrl: undefined,
                     description,
                   });
                 }
@@ -1087,6 +1289,53 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
               data.website = href;
               break;
             }
+          }
+        } catch (linkError) {
+          continue;
+        }
+      }
+
+      // ============================================
+      // 2.5. EXTRACT COMPANY TWITTER
+      // ============================================
+      // Extract from social media icons section (same area as website and LinkedIn)
+      const twitterLinks = Array.from(document.querySelectorAll('a[href*="x.com/"], a[href*="twitter.com/"]'));
+      
+      for (const link of twitterLinks) {
+        try {
+          const href = (link as HTMLAnchorElement).href;
+          if (!href) continue;
+          
+          // Skip if in nav/footer
+          const parent = link.closest('nav, footer, header');
+          if (parent) continue;
+          
+          // Check for company Twitter indicators
+          const ariaLabel = link.getAttribute('aria-label') || '';
+          const dataTooltip = link.getAttribute('data-tooltip-content') || '';
+          const dataTooltipId = link.getAttribute('data-tooltip-id') || '';
+          
+          // Company Twitter has aria-label containing "X" or "Twitter" (but not "founder-social-tooltip")
+          const isCompanyTwitter = (
+            (ariaLabel.toLowerCase().includes('x') || ariaLabel.toLowerCase().includes('twitter')) &&
+            !dataTooltipId.includes('founder-social-tooltip') &&
+            (dataTooltip === 'X' || ariaLabel.toLowerCase().includes('twitter'))
+          );
+          
+          if (isCompanyTwitter) {
+            // Normalize URL - ensure it has https://
+            let normalizedUrl = href;
+            if (normalizedUrl.startsWith('//')) {
+              normalizedUrl = 'https:' + normalizedUrl;
+            } else if (!normalizedUrl.startsWith('http')) {
+              normalizedUrl = 'https://' + normalizedUrl;
+            }
+            
+            // Prefer x.com over twitter.com (Twitter rebranded to X)
+            normalizedUrl = normalizedUrl.replace(/twitter\.com\//g, 'x.com/');
+            
+            data.companyTwitterUrl = normalizedUrl;
+            break;
           }
         } catch (linkError) {
           continue;
@@ -1318,6 +1567,164 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         }
       }
 
+      // ============================================
+      // 8. EXTRACT TAGS (Technology/Skills, excluding locations)
+      // ============================================
+      // YC pages display tags as clickable elements, often in a tags/badges section
+      // We need to extract all tags and filter out location tags
+      
+      const allTags: string[] = [];
+      
+      // Common tag selectors on YC pages
+      const tagSelectors = [
+        'a[href*="/tags/"]', // Tags are often links
+        'span[class*="tag"]', // Tag spans
+        'div[class*="tag"]', // Tag divs
+        'button[class*="tag"]', // Tag buttons
+        '[class*="badge"]', // Badge elements
+        '[class*="chip"]', // Chip elements
+        '[data-testid*="tag"]', // Test IDs
+      ];
+      
+      // Extract all potential tag elements
+      const tagElements: Element[] = [];
+      for (const selector of tagSelectors) {
+        const elements = document.querySelectorAll(selector);
+        tagElements.push(...Array.from(elements));
+      }
+      
+      // Extract text from tag elements
+      for (const element of tagElements) {
+        const tagText = element.textContent?.trim() || '';
+        if (tagText && tagText.length > 0 && tagText.length < 50) {
+          // Normalize tag text (remove extra whitespace, convert to title case)
+          const normalized = tagText.replace(/\s+/g, ' ').trim();
+          if (normalized && !allTags.includes(normalized)) {
+            allTags.push(normalized);
+          }
+        }
+      }
+      
+      // Also look for tags in data attributes or hrefs
+      const tagLinks = document.querySelectorAll('a[href*="/tags/"], a[href*="/tag/"]');
+      for (const link of Array.from(tagLinks)) {
+        const href = (link as HTMLAnchorElement).href;
+        const tagText = link.textContent?.trim() || '';
+        
+        // Extract tag from URL if text is empty
+        if (!tagText && href) {
+          const urlMatch = href.match(/\/tags?\/([^/?]+)/);
+          if (urlMatch && urlMatch[1]) {
+            const tagFromUrl = decodeURIComponent(urlMatch[1])
+              .replace(/[-_]/g, ' ')
+              .replace(/\b\w/g, l => l.toUpperCase());
+            if (tagFromUrl && !allTags.includes(tagFromUrl)) {
+              allTags.push(tagFromUrl);
+            }
+          }
+        } else if (tagText && !allTags.includes(tagText)) {
+          allTags.push(tagText);
+        }
+      }
+      
+      // Filter out location tags and keep only technology/skill tags
+      // Location detection: common city names, country names, state abbreviations, etc.
+      const locationKeywords = [
+        // Major cities
+        'san francisco', 'new york', 'los angeles', 'chicago', 'boston', 'seattle',
+        'austin', 'denver', 'atlanta', 'miami', 'dallas', 'philadelphia', 'phoenix',
+        'london', 'paris', 'berlin', 'tokyo', 'sydney', 'toronto', 'vancouver',
+        'amsterdam', 'dublin', 'stockholm', 'copenhagen', 'zurich', 'singapore',
+        'hong kong', 'tel aviv', 'bangalore', 'mumbai', 'delhi', 'sao paulo',
+        'mexico city', 'buenos aires', 'santiago', 'bogota', 'lima',
+        // US States
+        'california', 'new york', 'texas', 'florida', 'illinois', 'massachusetts',
+        'washington', 'colorado', 'georgia', 'north carolina', 'virginia',
+        // Countries
+        'usa', 'united states', 'united kingdom', 'uk', 'canada', 'australia',
+        'germany', 'france', 'spain', 'italy', 'netherlands', 'belgium',
+        'sweden', 'norway', 'denmark', 'finland', 'switzerland', 'austria',
+        'poland', 'portugal', 'greece', 'ireland', 'israel', 'japan', 'china',
+        'india', 'brazil', 'mexico', 'argentina', 'chile', 'colombia',
+        // State abbreviations
+        'ca', 'ny', 'tx', 'fl', 'il', 'ma', 'wa', 'co', 'ga', 'nc', 'va',
+        // Common location phrases
+        'remote', 'hybrid', 'onsite', 'on-site', 'united states', 'united kingdom',
+        'san francisco bay area', 'silicon valley', 'bay area', 'new york city',
+        'greater boston', 'greater seattle', 'greater chicago',
+      ];
+      
+      // Technology/skill keywords that indicate tech tags (not locations)
+      const techKeywords = [
+        'ai', 'ml', 'machine learning', 'deep learning', 'neural network',
+        'python', 'javascript', 'typescript', 'react', 'vue', 'angular',
+        'node', 'java', 'c++', 'c#', 'go', 'rust', 'swift', 'kotlin',
+        'aws', 'azure', 'gcp', 'cloud', 'docker', 'kubernetes', 'terraform',
+        'blockchain', 'crypto', 'web3', 'defi', 'nft', 'ethereum', 'bitcoin',
+        'saas', 'api', 'rest', 'graphql', 'microservices', 'serverless',
+        'mobile', 'ios', 'android', 'react native', 'flutter',
+        'data science', 'analytics', 'big data', 'sql', 'nosql', 'mongodb',
+        'postgresql', 'redis', 'elasticsearch', 'kafka', 'spark',
+        'devops', 'ci/cd', 'jenkins', 'github actions', 'gitlab',
+        'frontend', 'backend', 'full stack', 'fullstack',
+        'fintech', 'healthtech', 'edtech', 'proptech', 'insurtech',
+        'e-commerce', 'marketplace', 'b2b', 'b2c', 'enterprise',
+        'security', 'cybersecurity', 'encryption', 'authentication',
+        'iot', 'hardware', 'robotics', 'automation',
+        'design', 'ux', 'ui', 'product', 'growth', 'marketing',
+      ];
+      
+      // Filter tags: keep technology/skill tags, exclude location tags
+      const filteredTags: string[] = [];
+      
+      for (const tag of allTags) {
+        const tagLower = tag.toLowerCase().trim();
+        
+        // Skip if it's clearly a location
+        const isLocation = locationKeywords.some(loc => 
+          tagLower === loc || 
+          tagLower.includes(loc) || 
+          loc.includes(tagLower)
+        );
+        
+        // Check if it's a technology/skill tag
+        const isTech = techKeywords.some(tech => 
+          tagLower === tech || 
+          tagLower.includes(tech) || 
+          tech.includes(tagLower)
+        );
+        
+        // Additional heuristics:
+        // - If tag contains common tech terms (api, sdk, framework, etc.)
+        const hasTechTerms = /api|sdk|framework|library|platform|tool|software|app|system/i.test(tag);
+        
+        // - If tag looks like a location (contains comma, has "city" or "state" pattern)
+        const looksLikeLocation = /,|city|state|country|region|area|valley|bay/i.test(tag);
+        
+        // - If tag is a common location abbreviation (SF, NYC, LA, etc.)
+        const isLocationAbbr = /^(sf|nyc|la|chi|bos|sea|aus|den|atl|mia|dal|phi|phx)$/i.test(tagLower);
+        
+        // Keep tag if:
+        // 1. It's identified as tech, OR
+        // 2. It has tech terms and doesn't look like a location, OR
+        // 3. It's not a location and has some tech-like characteristics
+        if (isTech || (hasTechTerms && !looksLikeLocation && !isLocationAbbr)) {
+          if (!isLocation && !isLocationAbbr) {
+            filteredTags.push(tag);
+          }
+        } else if (!isLocation && !looksLikeLocation && !isLocationAbbr && tag.length > 1) {
+          // If it's not clearly a location and not clearly tech, but might be a skill/domain
+          // (e.g., "Sales", "Marketing", "Operations", "Healthcare", etc.)
+          // Keep it if it's a single word or short phrase that doesn't look like a location
+          if (tag.split(/\s+/).length <= 3 && !/^[A-Z]{2,3}$/.test(tag)) {
+            filteredTags.push(tag);
+          }
+        }
+      }
+      
+      // Remove duplicates and sort
+      data.tags = [...new Set(filteredTags)].sort();
+
         return data;
       } catch (evalError) {
         console.error('   ❌ Error in page evaluation:', evalError);
@@ -1332,6 +1739,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           fundingAmount: undefined,
           roundType: undefined,
           fundingDate: undefined,
+          tags: [],
         };
       }
     });
@@ -1507,6 +1915,43 @@ async function getAlreadyProcessedLinks(): Promise<Set<string>> {
 }
 
 /**
+ * Get companies that already have Twitter data populated
+ */
+async function getCompaniesWithTwitterData(): Promise<Set<string>> {
+  try {
+    // Fetch all YC companies with their Twitter fields
+    const { data, error } = await supabase
+      .from('startups')
+      .select('yc_link, company_twitter_url, founder_twitter_urls')
+      .eq('data_source', 'yc')
+      .not('yc_link', 'is', null);
+
+    if (error) {
+      console.warn('  ⚠️  Could not fetch companies with Twitter data:', error);
+      return new Set();
+    }
+
+    const links = new Set<string>();
+    data?.forEach((row: any) => {
+      // Check if company has either Twitter field populated
+      const hasCompanyTwitter = row.company_twitter_url && row.company_twitter_url.trim().length > 0;
+      const hasFounderTwitter = row.founder_twitter_urls && row.founder_twitter_urls.trim().length > 0;
+      
+      if (row.yc_link && (hasCompanyTwitter || hasFounderTwitter)) {
+        // Normalize URL for comparison (lowercase, remove trailing slash)
+        const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
+        links.add(normalized);
+      }
+    });
+
+    return links;
+  } catch (error) {
+    console.warn('  ⚠️  Error fetching companies with Twitter data:', error);
+    return new Set();
+  }
+}
+
+/**
  * Store YC company data in Supabase
  */
 async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData): Promise<boolean> {
@@ -1525,87 +1970,67 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       return value && value.trim() ? value.trim() : null;
     };
 
-    // Format founder data - use existing schema (founder_names as comma-separated string)
-    const founderNames = pageData.founders
-      .map(f => `${f.firstName} ${f.lastName}`.trim())
-      .filter(name => name.length > 0)
+    // Format founder Twitter URLs
+    const founderTwitterUrls = pageData.founders
+      .map(f => f.twitterUrl)
+      .filter(twitter => twitter && twitter.length > 0)
       .join(', ');
 
-    const founderLinkedIns = pageData.founders
-      .map(f => f.linkedIn)
-      .filter(linkedin => linkedin.length > 0)
-      .join(', ');
+    // Debug: Log what we're about to store
+    console.log(`   📝 Founders Twitter URLs to store: ${founderTwitterUrls || '(none)'}`);
+    if (pageData.founders.length > 0) {
+      pageData.founders.forEach((f, idx) => {
+        console.log(`      Founder ${idx + 1}: ${f.firstName} ${f.lastName} - Twitter: ${f.twitterUrl || '(none)'}`);
+      });
+    }
 
-    // Combine founder descriptions
-    const founderDescriptions = pageData.founders
-      .map(f => f.description ? `${f.firstName} ${f.lastName}: ${f.description}` : null)
-      .filter(Boolean)
-      .join('\n\n');
+    // Format tags as comma-separated string
+    const tagsString = pageData.tags && pageData.tags.length > 0 
+      ? pageData.tags.join(', ') 
+      : undefined;
 
-    // Get primary founder for separate fields
-    const firstFounder = pageData.founders[0] || { firstName: '', lastName: '', linkedIn: '', description: undefined };
-
-    // Combine all job titles and descriptions with locations
-    const jobOpenings = pageData.jobPostings.map(j => j.title).join(', ');
-    const hiringRoles = pageData.jobPostings
-      .map(j => {
-        let role = j.title;
-        if (j.location) role += ` (${j.location})`;
-        if (j.description) role += `: ${j.description}`;
-        return role;
-      })
-      .join('\n\n');
-
-    const startupId = randomUUID();
-
+    // Update Twitter fields and tags for existing company
+    const updateData: {
+      company_twitter_url?: string | null;
+      founder_twitter_urls?: string | null;
+      tags?: string | null;
+    } = {
+      // Twitter fields
+      company_twitter_url: toNull(pageData.companyTwitterUrl),
+      founder_twitter_urls: toNull(founderTwitterUrls),
+      // Tags (technology/skills keywords)
+      tags: tagsString ? toNull(tagsString) : null,
+    };
+    
+    console.log(`   💾 Updating with: company_twitter_url=${updateData.company_twitter_url || '(null)'}, founder_twitter_urls=${updateData.founder_twitter_urls || '(null)'}, tags=${updateData.tags || '(null)'}`);
+    if (pageData.tags && pageData.tags.length > 0) {
+      console.log(`   🏷️  Found ${pageData.tags.length} technology/skill tags: ${pageData.tags.join(', ')}`);
+    }
+    
     const { data, error } = await supabase
       .from('startups')
-      .insert({
-        id: startupId,
-        name: normalized.companyName,
-        description: toNull(normalized.description || pageData.oneLineSummary),
-        location: toNull(normalized.location || pageData.location),
-        website: toNull(pageData.website),
-        industry: toNull(normalized.industry),
-        business_type: toNull(normalized.businessType),
-        batch: toNull(normalized.batch),
-        yc_link: toNull(normalized.ycLink),
-        company_logo: toNull(normalized.companyLogo),
-        // Founder data (using existing schema)
-        founder_names: toNull(founderNames), // Comma-separated names
-        founder_linkedin: toNull(founderLinkedIns), // Comma-separated LinkedIn URLs
-        founder_first_name: toNull(firstFounder.firstName), // Primary founder
-        founder_last_name: toNull(firstFounder.lastName), // Primary founder
-        // Store founder descriptions in founder_backgrounds if column exists
-        founder_backgrounds: toNull(founderDescriptions),
-        // Team and jobs
-        team_size: toNull(pageData.teamSize),
-        job_openings: toNull(jobOpenings),
-        hiring_roles: toNull(hiringRoles),
-        // Data source
-        data_source: 'yc',
-        needs_enrichment: true,
-        enrichment_status: 'pending',
-        // Funding data (extracted from YC page or LinkedIn)
-        funding_amount: toNull(pageData.fundingAmount),
-        round_type: toNull(pageData.roundType),
-        date: toNull(pageData.fundingDate),
-      })
+      .update(updateData)
+      .eq('yc_link', normalized.ycLink)
       .select()
       .single();
 
     if (error) {
-      if (error.code === '23505') {
-        // Duplicate - already exists
-        console.log('  ℹ️  Company already exists in database');
+      if (error.code === 'PGRST116') {
+        // Not found - company doesn't exist
+        console.log('  ⚠️  Company not found in database, skipping...');
         return false;
       }
+      console.error(`  ❌ Supabase update error: ${error.message}`);
       throw error;
+    }
+
+    if (data) {
+      console.log(`   ✅ Update successful. Stored founder_twitter_urls: ${data.founder_twitter_urls || '(null)'}`);
     }
 
     return true;
   } catch (error) {
-    console.error(`  ❌ Error storing in Supabase: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`  ❌ Error updating Twitter data in Supabase: ${error instanceof Error ? error.message : String(error)}`);
     return false;
   }
 }
@@ -1636,7 +2061,12 @@ async function scrapeYCCompanies() {
   // Get already processed companies
   console.log('🔍 Checking for already-processed companies...');
   const processedLinks = await getAlreadyProcessedLinks();
-  console.log(`   Found ${processedLinks.size} already-processed companies\n`);
+  console.log(`   Found ${processedLinks.size} already-processed companies`);
+
+  // Get companies that already have Twitter data
+  console.log('🔍 Checking for companies with Twitter data...');
+  const companiesWithTwitter = await getCompaniesWithTwitterData();
+  console.log(`   Found ${companiesWithTwitter.size} companies with Twitter data already populated\n`);
 
   // Load all companies from CSV files
   console.log('📂 Loading YC companies from CSV files...');
@@ -1659,21 +2089,35 @@ async function scrapeYCCompanies() {
     });
   }
 
+  // Filter by company name or URL if specified
+  const companyFilter = args.find(arg => arg.startsWith('--company='))?.split('=')[1];
+  if (companyFilter) {
+    console.log(`\n🔍 Filtering for company: ${companyFilter}`);
+    allCompanies = allCompanies.filter(c => {
+      const normalized = normalizeCompanyData(c);
+      const nameMatch = normalized.companyName.toLowerCase().includes(companyFilter.toLowerCase());
+      const urlMatch = normalized.ycLink.toLowerCase().includes(companyFilter.toLowerCase());
+      return nameMatch || urlMatch;
+    });
+  }
+
   console.log(`\n📊 Total companies to process: ${allCompanies.length}`);
 
-  // Filter out already processed companies
-  const newCompanies = allCompanies.filter(company => {
+  // Filter to only get companies that ARE in database but DON'T have Twitter data
+  const companiesToUpdate = allCompanies.filter(company => {
     const normalized = normalizeCompanyData(company);
     if (!normalized.ycLink) return false;
     // Normalize URL for comparison (lowercase, remove trailing slash)
     const normalizedLink = normalized.ycLink.toLowerCase().replace(/\/$/, '');
-    return !processedLinks.has(normalizedLink);
+    // Only process if: already in database AND doesn't have Twitter data
+    return processedLinks.has(normalizedLink) && !companiesWithTwitter.has(normalizedLink);
   });
 
-  console.log(`📋 New companies to scrape: ${newCompanies.length} (${allCompanies.length - newCompanies.length} already processed)\n`);
+  const initiallySkippedCount = allCompanies.length - companiesToUpdate.length;
+  console.log(`📋 Companies to update Twitter data: ${companiesToUpdate.length} (${initiallySkippedCount} skipped - not in DB or already have Twitter data)\n`);
 
-  if (newCompanies.length === 0) {
-    console.log('✅ All companies already processed!');
+  if (companiesToUpdate.length === 0) {
+    console.log('✅ All companies already have Twitter data!');
     return;
   }
 
@@ -1693,12 +2137,12 @@ async function scrapeYCCompanies() {
   let skippedCount = 0;
 
   try {
-    for (let i = 0; i < newCompanies.length; i++) {
-      const company = newCompanies[i];
+    for (let i = 0; i < companiesToUpdate.length; i++) {
+      const company = companiesToUpdate[i];
       const normalized = normalizeCompanyData(company);
 
       try {
-        console.log(`\n[${i + 1}/${newCompanies.length}] 🏢 Processing: ${normalized.companyName}`);
+        console.log(`\n[${i + 1}/${companiesToUpdate.length}] 🏢 Processing: ${normalized.companyName}`);
         console.log(`   Batch: ${normalized.batch}`);
         console.log(`   URL: ${normalized.ycLink}`);
 
@@ -1715,11 +2159,19 @@ async function scrapeYCCompanies() {
         console.log(`   Found ${pageData.founders.length} founder(s)`);
         if (pageData.founders.length > 0) {
           const foundersWithDescriptions = pageData.founders.filter(f => f.description).length;
+          const foundersWithTwitter = pageData.founders.filter(f => f.twitterUrl).length;
           console.log(`   Founders with descriptions: ${foundersWithDescriptions}/${pageData.founders.length}`);
+          console.log(`   Founders with Twitter: ${foundersWithTwitter}/${pageData.founders.length}`);
         }
         console.log(`   Website: ${pageData.website || 'Not found'}`);
+        console.log(`   Company Twitter: ${pageData.companyTwitterUrl || 'Not found'}`);
         console.log(`   Team size: ${pageData.teamSize || 'Not found'}`);
         console.log(`   Job postings: ${pageData.jobPostings.length}`);
+        if (pageData.tags && pageData.tags.length > 0) {
+          console.log(`   🏷️  Technology/Skill tags (${pageData.tags.length}): ${pageData.tags.join(', ')}`);
+        } else {
+          console.log(`   🏷️  Technology/Skill tags: None found`);
+        }
         if (pageData.fundingAmount || pageData.roundType || pageData.fundingDate) {
           console.log(`   💰 Funding: ${pageData.fundingAmount || 'N/A'} | ${pageData.roundType || 'N/A'} | ${pageData.fundingDate || 'N/A'}`);
         }
@@ -1729,7 +2181,7 @@ async function scrapeYCCompanies() {
 
         if (success) {
           successCount++;
-          console.log('   ✅ Successfully stored in Supabase');
+          console.log('   ✅ Successfully updated Twitter data and tags in Supabase');
         } else {
           skippedCount++;
         }
@@ -1755,8 +2207,8 @@ async function scrapeYCCompanies() {
   console.log('\n' + '='.repeat(60));
   console.log('📊 Scraping Complete');
   console.log('='.repeat(60));
-  console.log(`Total processed: ${newCompanies.length}`);
-  console.log(`Successfully stored: ${successCount}`);
+  console.log(`Total processed: ${companiesToUpdate.length}`);
+  console.log(`Successfully updated: ${successCount}`);
   console.log(`Skipped (duplicates): ${skippedCount}`);
   console.log(`Errors: ${errorCount}`);
   console.log('='.repeat(60));
