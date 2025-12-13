@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
+import { BugReportModal } from '@/components/BugReportModal';
+import { Button } from '@/components/ui/button';
+import { Bug } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface MatchRecord {
@@ -40,6 +43,7 @@ export default function MatchesPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [hasError, setHasError] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
 
   // Load initial data
@@ -196,6 +200,18 @@ export default function MatchesPage() {
       <Header initialUser={user} />
       <section className="py-20">
         <div className="container mx-auto px-4 space-y-12">
+          {/* Report Bug Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setShowBugReport(true)}
+              variant="outline"
+              className="bg-white/5 border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
+            >
+              <Bug className="mr-2 h-4 w-4" />
+              Report Bug
+            </Button>
+          </div>
+
           {hasMatches ? (
             <div>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -229,6 +245,9 @@ export default function MatchesPage() {
           )}
         </div>
       </section>
+
+      {/* Bug Report Modal */}
+      <BugReportModal open={showBugReport} onOpenChange={setShowBugReport} />
     </div>
   );
 }

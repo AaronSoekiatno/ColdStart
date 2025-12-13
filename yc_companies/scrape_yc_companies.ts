@@ -1597,7 +1597,8 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         }
         
         // Also use link text if available and different from URL
-        if (tagText && tagText.length > 1 && tagText.length < 50 && !allTags.includes(tagText)) {
+        // Skip if it's pure numbers (likely an index or count, not a tag)
+        if (tagText && !/^\d+$/.test(tagText) && tagText.length > 1 && tagText.length < 50 && !allTags.includes(tagText)) {
           allTags.push(tagText);
         }
       }
@@ -1625,6 +1626,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
             if (element.tagName === 'A') continue;
             // Skip if it contains a link (likely navigation)
             if (element.querySelector('a')) continue;
+            // Skip if it's pure numbers or mostly numbers
+            if (/^\d+$/.test(tagText) || (tagText.match(/\d/g) || []).length / tagText.length > 0.7) {
+              continue;
+            }
             // Skip if it's too long (likely not a tag)
             if (tagText && tagText.length > 1 && tagText.length < 50) {
               const normalized = tagText.replace(/\s+/g, ' ').trim();
@@ -1642,6 +1647,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       const clickableElements = document.querySelectorAll('button, [role="button"], [onclick]');
       for (const element of Array.from(clickableElements)) {
         const tagText = element.textContent?.trim() || '';
+        // Skip if it's pure numbers or mostly numbers
+        if (/^\d+$/.test(tagText) || (tagText.match(/\d/g) || []).length / tagText.length > 0.7) {
+          continue;
+        }
         // Check if it looks like a tag (short, single word or short phrase)
         if (tagText && tagText.length > 1 && tagText.length < 30 && 
             tagText.split(/\s+/).length <= 3 && 
@@ -1659,7 +1668,8 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const dataTag = element.getAttribute('data-tag') || 
                        element.getAttribute('data-keyword') || 
                        element.getAttribute('data-category');
-        if (dataTag && dataTag.length > 1 && dataTag.length < 50 && !allTags.includes(dataTag)) {
+        // Skip if it's pure numbers (likely an ID, not a tag)
+        if (dataTag && !/^\d+$/.test(dataTag) && dataTag.length > 1 && dataTag.length < 50 && !allTags.includes(dataTag)) {
           allTags.push(dataTag);
         }
       }
@@ -1724,6 +1734,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const allClickable = document.querySelectorAll('a, button, [role="button"]');
         for (const el of Array.from(allClickable).slice(0, 100)) {
           const text = el.textContent?.trim() || '';
+          // Skip if it's pure numbers or mostly numbers
+          if (/^\d+$/.test(text) || (text.match(/\d/g) || []).length / text.length > 0.7) {
+            continue;
+          }
           // Skip navigation, common UI elements
           if (text && text.length > 1 && text.length < 30 && 
               !text.match(/^(click|view|see|more|less|show|hide|expand|collapse|apply|jobs|company|location|team|founded|website|batch|active|founders)$/i) &&
@@ -1739,6 +1753,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const tagContainers = document.querySelectorAll('[class*="tag"], [class*="badge"], [class*="chip"], [class*="label"], [class*="pill"]');
         for (const container of Array.from(tagContainers).slice(0, 50)) {
           const text = container.textContent?.trim() || '';
+          // Skip if it's pure numbers or mostly numbers
+          if (/^\d+$/.test(text) || (text.match(/\d/g) || []).length / text.length > 0.7) {
+            continue;
+          }
           if (text && text.length > 1 && text.length < 50 && !allTags.includes(text)) {
             allTags.push(text);
           }
@@ -1748,6 +1766,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const shortTextElements = document.querySelectorAll('div, span, p');
         for (const el of Array.from(shortTextElements).slice(0, 200)) {
           const text = el.textContent?.trim() || '';
+          // Skip if it's pure numbers or mostly numbers
+          if (/^\d+$/.test(text) || (text.match(/\d/g) || []).length / text.length > 0.7) {
+            continue;
+          }
           // Very short text (1-3 words, < 25 chars) that's capitalized might be a tag
           if (text && text.length > 1 && text.length < 25 && 
               text.split(/\s+/).length <= 3 &&
@@ -1784,29 +1806,51 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         
         // BLACKLIST: Skip only what we know ISN'T a tag
         
-        // 1. Skip activity/status words
+        // 1. Skip pure numbers or mostly numeric (years, versions, etc.)
+        if (/^\d+$/.test(normalizedTag) || // Pure numbers like "2025", "24"
+            /^\d{4}$/.test(normalizedTag) || // 4-digit years
+            /^v?\d+\.?\d*$/.test(normalizedTagLower) || // Version numbers like "v2", "3.0", "1.5"
+            /^\d+%$/.test(normalizedTag) || // Percentages like "50%"
+            /^#\d+$/.test(normalizedTag)) { // Hashtag numbers like "#2025"
+          continue;
+        }
+        
+        // 2. Skip tags that are mostly numbers (more than 50% digits)
+        const digitCount = (normalizedTag.match(/\d/g) || []).length;
+        const totalChars = normalizedTag.replace(/\s/g, '').length;
+        if (totalChars > 0 && digitCount / totalChars > 0.5) {
+          continue;
+        }
+        
+        // 3. Skip activity/status words
         if (['active', 'inactive', 'pending', 'completed', 'failed'].includes(normalizedTagLower)) {
           continue;
         }
         
-        // 2. Skip UI components and navigation
+        // 4. Skip UI components and navigation
         if (/^(open|close|menu|logo|button|icon|nav|header|footer|view|see|more|less|show|hide|expand|collapse|click|apply|all)$/i.test(normalizedTagLower)) {
           continue;
         }
         
-        // 3. Skip batch/year patterns (e.g., "Summer 2025", "W24", "S25")
+        // 5. Skip batch/year patterns (e.g., "Summer 2025", "W24", "S25", "2025 Summer")
         if (/^(summer|winter|spring|fall|w|s)\s*\d{2,4}$/i.test(normalizedTagLower) || 
-            /^\d{4}$/.test(normalizedTagLower) ||
-            /summer \d{4}|winter \d{4}|spring \d{4}|fall \d{4}/i.test(normalizedTagLower)) {
+            /^\d{4}\s*(summer|winter|spring|fall)$/i.test(normalizedTagLower) ||
+            /summer \d{4}|winter \d{4}|spring \d{4}|fall \d{4}/i.test(normalizedTagLower) ||
+            /^[ws]\d{2,4}$/i.test(normalizedTagLower)) { // W24, S25, etc.
           continue;
         }
         
-        // 4. Skip company metadata
+        // 6. Skip tags that end with year numbers (e.g., "Something 2025")
+        if (/\s+\d{4}$/.test(normalizedTag) || /-\d{4}$/.test(normalizedTag)) {
+          continue;
+        }
+        
+        // 7. Skip company metadata
         if (['founders', 'founder', 'company', 'team', 'size', 'jobs', 'status', 'founded', 'website', 'batch'].includes(normalizedTagLower)) {
           continue;
         }
         
-        // 5. Skip locations (exact matches only to avoid false positives)
+        // 8. Skip locations (exact matches only to avoid false positives)
         const isLocation = locationKeywords.some(loc => {
           // Exact match
           if (normalizedTagLower === loc) return true;
@@ -1815,13 +1859,13 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           return false;
         });
         
-        // 6. Skip location abbreviations
+        // 9. Skip location abbreviations
         const isLocationAbbr = /^(sf|nyc|la|chi|bos|sea|aus|den|atl|mia|dal|phi|phx|ca|ny|tx|fl|il|ma|wa|co|ga|nc|va|usa|uk|us)$/i.test(normalizedTagLower);
         
-        // 7. Skip if it looks like a location pattern (contains comma, city/state keywords)
+        // 10. Skip if it looks like a location pattern (contains comma, city/state keywords)
         const looksLikeLocation = /,|city|state|country|region|area|valley|bay|street|avenue|road/i.test(normalizedTag);
         
-        // 8. Skip UI elements with logo/menu patterns
+        // 11. Skip UI elements with logo/menu patterns
         const isUIElement = (normalizedTagLower.includes('logo') || normalizedTagLower.includes('menu')) && 
                            (normalizedTagLower.includes('y combinator') || 
                             normalizedTagLower.includes('summer') ||
@@ -1838,7 +1882,20 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       }
       
       // Remove duplicates and sort
-      data.tags = [...new Set(filteredTags)].sort();
+      // Final safety check: Remove any pure numbers that might have slipped through
+      const finalTags = [...new Set(filteredTags)]
+        .filter(tag => {
+          // Remove pure numbers
+          if (/^\d+$/.test(tag)) return false;
+          // Remove tags that are mostly numbers (>70% digits)
+          const digitCount = (tag.match(/\d/g) || []).length;
+          const totalChars = tag.replace(/\s/g, '').length;
+          if (totalChars > 0 && digitCount / totalChars > 0.7) return false;
+          return true;
+        })
+        .sort();
+      
+      data.tags = finalTags;
       debugInfo.filteredCount = data.tags.length;
 
         // Store debug info in a way we can access it
