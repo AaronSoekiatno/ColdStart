@@ -5,9 +5,6 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
-import { BugReportModal } from '@/components/BugReportModal';
-import { Button } from '@/components/ui/button';
-import { Bug } from 'lucide-react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -50,7 +47,6 @@ export default function MatchesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [hasError, setHasError] = useState(false);
-  const [showBugReport, setShowBugReport] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
   // Load initial data
@@ -167,18 +163,6 @@ export default function MatchesPage() {
           </>
         )}
         <div className="container mx-auto px-3 sm:px-4">
-          {/* Report Bug Button */}
-          <div className="flex justify-end mb-4">
-            <Button
-              onClick={() => setShowBugReport(true)}
-              variant="outline"
-              className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm"
-            >
-              <Bug className="mr-2 h-4 w-4" />
-              Report Bug
-            </Button>
-          </div>
-
           {hasMatches ? (
             <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto relative pl-12 sm:pl-0 pr-12 sm:pr-0 md:pl-0 md:pr-0">
               {/* Single match card display */}
@@ -195,9 +179,6 @@ export default function MatchesPage() {
           )}
         </div>
       </section>
-
-      {/* Bug Report Modal */}
-      <BugReportModal open={showBugReport} onOpenChange={setShowBugReport} />
     </div>
   );
 }
