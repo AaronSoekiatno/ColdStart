@@ -126,15 +126,26 @@ export function NewLandingPage() {
             ) : null}
           </nav>
 
-          {/* Join Waitlist Button - Only visible when scrolled */}
-          <Button
-            onClick={handleGetStarted}
-            className={`rounded-full px-6 py-2 text-white font-medium drop-shadow-md transition-all duration-300 transform ${
-              isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none'
-            }`}
-          >
-            Join the Waitlist
-          </Button>
+          {/* Right side buttons */}
+          <div className="flex items-center gap-3">
+            {!user && (
+              <Button
+                onClick={() => setShowSignIn(true)}
+                className="rounded-full px-6 py-2 text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300"
+              >
+                Sign In
+              </Button>
+            )}
+            {/* Join Waitlist Button - Only visible when scrolled */}
+            <Button
+              onClick={handleGetStarted}
+              className={`rounded-full px-6 py-2 text-white font-medium drop-shadow-md transition-all duration-300 transform ${
+                isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none'
+              }`}
+            >
+              Join the Waitlist
+            </Button>
+          </div>
         </div>
       </header>
 
