@@ -340,7 +340,6 @@ export const Header = ({ initialUser }: HeaderProps) => {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {!user && null}
         </div>
       </div>
 
