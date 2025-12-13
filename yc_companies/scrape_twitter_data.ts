@@ -185,14 +185,23 @@ async function scrapeTwitterData(page: Page, ycUrl: string): Promise<{ companyTw
       // Non-critical
     }
 
-    // Check for error pages
-    const isErrorPage = await page.evaluate(() => {
-      const bodyText = document.body.textContent?.toLowerCase() || '';
-      return bodyText.includes('404') || 
-             bodyText.includes('not found') || 
-             bodyText.includes('page not found') ||
-             bodyText.includes('access denied');
-    });
+    // Check for error pages with retry logic
+    let isErrorPage = false;
+    try {
+      isErrorPage = await page.evaluate(() => {
+        const bodyText = document.body.textContent?.toLowerCase() || '';
+        return bodyText.includes('404') || 
+               bodyText.includes('not found') || 
+               bodyText.includes('page not found') ||
+               bodyText.includes('access denied');
+      });
+    } catch (evalError: any) {
+      const errorMsg = evalError?.message || String(evalError);
+      if (errorMsg.includes('detached') || errorMsg.includes('Target closed')) {
+        throw new Error('Page detached during error page check');
+      }
+      throw evalError;
+    }
     
     if (isErrorPage) {
       console.error(`   ❌ Page appears to be an error page (404/not found)`);
@@ -204,7 +213,9 @@ async function scrapeTwitterData(page: Page, ycUrl: string): Promise<{ companyTw
     }
 
     // Extract Twitter data using comprehensive founder extraction logic
-    const twitterData = await page.evaluate(() => {
+    let twitterData;
+    try {
+      twitterData = await page.evaluate(() => {
       const result: { companyTwitterUrl?: string; founderTwitterUrls: string[] } = {
         founderTwitterUrls: []
       };
@@ -616,7 +627,14 @@ async function scrapeTwitterData(page: Page, ycUrl: string): Promise<{ companyTw
       }
 
       return result;
-    });
+      });
+    } catch (evalError: any) {
+      const errorMsg = evalError?.message || String(evalError);
+      if (errorMsg.includes('detached') || errorMsg.includes('Target closed')) {
+        throw new Error('Page detached during data extraction');
+      }
+      throw evalError;
+    }
 
     return twitterData;
   } catch (error) {
@@ -677,9 +695,14 @@ async function getCompaniesWithTwitterData(): Promise<Set<string>> {
 
     const links = new Set<string>();
     data?.forEach((row: any) => {
-      const hasCompanyTwitter = row.company_twitter_url && row.company_twitter_url.trim().length > 0;
-      const hasFounderTwitter = row.founder_twitter_urls && row.founder_twitter_urls.trim().length > 0;
+      // Check if Twitter data exists (either has actual data or placeholder indicating it was scraped)
+      // If either field has a value (including 'NO_TWITTER' placeholder), it means it was already processed
+      const hasCompanyTwitter = row.company_twitter_url && 
+                                 row.company_twitter_url.trim().length > 0;
+      const hasFounderTwitter = row.founder_twitter_urls && 
+                                row.founder_twitter_urls.trim().length > 0;
       
+      // If company has Twitter data (including placeholder), it means it was already processed
       if (row.yc_link && (hasCompanyTwitter || hasFounderTwitter)) {
         const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
         links.add(normalized);
@@ -706,26 +729,27 @@ async function storeTwitterData(company: YCCompany, twitterData: { companyTwitte
       return false;
     }
 
-    const toNull = (value: string | undefined): string | null => {
-      return value && value.trim() ? value.trim() : null;
+    // Helper to convert empty strings to placeholder (so we know it was scraped but no data found)
+    const toPlaceholder = (value: string | undefined, placeholder: string): string => {
+      return value && value.trim() ? value.trim() : placeholder;
     };
 
     // Format founder Twitter URLs as comma-separated string
     const founderTwitterUrls = twitterData.founderTwitterUrls.length > 0
       ? twitterData.founderTwitterUrls.join(', ')
-      : null;
+      : 'NO_TWITTER';
 
     const updateData: {
-      company_twitter_url?: string | null;
-      founder_twitter_urls?: string | null;
+      company_twitter_url?: string;
+      founder_twitter_urls?: string;
     } = {
-      company_twitter_url: toNull(twitterData.companyTwitterUrl),
-      founder_twitter_urls: founderTwitterUrls ? toNull(founderTwitterUrls) : null,
+      company_twitter_url: toPlaceholder(twitterData.companyTwitterUrl, 'NO_TWITTER'),
+      founder_twitter_urls: founderTwitterUrls,
     };
     
     console.log(`   💾 Updating Twitter data:`);
-    console.log(`      Company Twitter: ${updateData.company_twitter_url || '(null)'}`);
-    console.log(`      Founder Twitter: ${updateData.founder_twitter_urls || '(null)'}`);
+    console.log(`      Company Twitter: ${updateData.company_twitter_url}`);
+    console.log(`      Founder Twitter: ${updateData.founder_twitter_urls}`);
     
     const { data, error } = await supabase
       .from('startups')
@@ -744,16 +768,16 @@ async function storeTwitterData(company: YCCompany, twitterData: { companyTwitte
     }
 
     if (data) {
-      if (updateData.company_twitter_url || updateData.founder_twitter_urls) {
-        console.log(`   ✅ Twitter data stored successfully`);
-        if (updateData.company_twitter_url) {
-          console.log(`      Company: ${updateData.company_twitter_url}`);
-        }
-        if (updateData.founder_twitter_urls) {
-          console.log(`      Founders: ${updateData.founder_twitter_urls}`);
-        }
-      } else {
-        console.log(`   ⚠️  No Twitter data found to store`);
+      if (updateData.company_twitter_url && updateData.company_twitter_url !== 'NO_TWITTER') {
+        console.log(`   ✅ Company Twitter stored: ${updateData.company_twitter_url}`);
+      } else if (updateData.company_twitter_url === 'NO_TWITTER') {
+        console.log(`   ✅ Company Twitter: NO_TWITTER (scraped, no data found)`);
+      }
+      
+      if (updateData.founder_twitter_urls && updateData.founder_twitter_urls !== 'NO_TWITTER') {
+        console.log(`   ✅ Founder Twitter stored: ${updateData.founder_twitter_urls}`);
+      } else if (updateData.founder_twitter_urls === 'NO_TWITTER') {
+        console.log(`   ✅ Founder Twitter: NO_TWITTER (scraped, no data found)`);
       }
     }
 
@@ -886,9 +910,28 @@ async function scrapeTwitterDataForCompanies() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
-  const page = await browser.newPage();
+  let page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+  // Helper function to recreate page if needed
+  const recreatePage = async (): Promise<Page> => {
+    try {
+      if (!page.isClosed()) {
+        try {
+          await page.close();
+        } catch (e) {
+          // Ignore errors when closing
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    const newPage = await browser.newPage();
+    await newPage.setViewport({ width: 1920, height: 1080 });
+    await newPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    return newPage;
+  };
 
   let successCount = 0;
   let errorCount = 0;
@@ -904,11 +947,48 @@ async function scrapeTwitterDataForCompanies() {
         console.log(`   Batch: ${normalized.batch}`);
         console.log(`   URL: ${normalized.ycLink}`);
 
-        // Scrape Twitter data
-        const twitterData = await scrapeTwitterData(page, normalized.ycLink);
+        // Scrape Twitter data with retry logic for detached frames
+        let twitterData = null;
+        let scrapeAttempts = 0;
+        const maxScrapeAttempts = 3;
+        
+        while (!twitterData && scrapeAttempts < maxScrapeAttempts) {
+          try {
+            // Check if page is closed or detached, recreate if needed
+            if (page.isClosed()) {
+              console.log('   🔄 Page is closed, recreating...');
+              page = await recreatePage();
+            }
+            
+            twitterData = await scrapeTwitterData(page, normalized.ycLink);
+            
+            if (twitterData) {
+              break; // Success
+            }
+          } catch (error: any) {
+            scrapeAttempts++;
+            const errorMsg = error?.message || String(error);
+            
+            if (errorMsg.includes('detached') || errorMsg.includes('Target closed') || errorMsg.includes('closed')) {
+              console.warn(`   ⚠️  Detached frame error (attempt ${scrapeAttempts}/${maxScrapeAttempts}), recreating page...`);
+              try {
+                page = await recreatePage();
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+              } catch (recreateError) {
+                console.error(`   ❌ Failed to recreate page: ${recreateError instanceof Error ? recreateError.message : String(recreateError)}`);
+                if (scrapeAttempts >= maxScrapeAttempts) {
+                  throw error; // Re-throw if we've exhausted attempts
+                }
+              }
+            } else {
+              // For other errors, don't retry
+              throw error;
+            }
+          }
+        }
 
         if (!twitterData) {
-          console.log('  ⚠️  Failed to scrape Twitter data, skipping...');
+          console.log('  ⚠️  Failed to scrape Twitter data after retries, skipping...');
           errorCount++;
           continue;
         }
@@ -937,7 +1017,19 @@ async function scrapeTwitterDataForCompanies() {
 
       } catch (error) {
         errorCount++;
-        console.error(`   ❌ Error processing ${normalized.companyName}: ${error instanceof Error ? error.message : String(error)}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`   ❌ Error processing ${normalized.companyName}: ${errorMsg}`);
+        
+        // If it's a detached frame error, try to recreate page for next iteration
+        if (errorMsg.includes('detached') || errorMsg.includes('Target closed') || errorMsg.includes('closed')) {
+          try {
+            console.log('   🔄 Recreating page for next iteration...');
+            page = await recreatePage();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (recreateError) {
+            console.warn(`   ⚠️  Failed to recreate page: ${recreateError instanceof Error ? recreateError.message : String(recreateError)}`);
+          }
+        }
       }
     }
   } finally {

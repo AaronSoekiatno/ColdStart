@@ -234,14 +234,23 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
     const pageTitle = await page.title();
     console.log(`   Page title: ${pageTitle}`);
     
-    // Check for common error pages
-    const isErrorPage = await page.evaluate(() => {
-      const bodyText = document.body.textContent?.toLowerCase() || '';
-      return bodyText.includes('404') || 
-             bodyText.includes('not found') || 
-             bodyText.includes('page not found') ||
-             bodyText.includes('access denied');
-    });
+    // Check for common error pages with retry logic
+    let isErrorPage = false;
+    try {
+      isErrorPage = await page.evaluate(() => {
+        const bodyText = document.body.textContent?.toLowerCase() || '';
+        return bodyText.includes('404') || 
+               bodyText.includes('not found') || 
+               bodyText.includes('page not found') ||
+               bodyText.includes('access denied');
+      });
+    } catch (evalError: any) {
+      const errorMsg = evalError?.message || String(evalError);
+      if (errorMsg.includes('detached') || errorMsg.includes('Target closed')) {
+        throw new Error('Page detached during error page check');
+      }
+      throw evalError;
+    }
     
     if (isErrorPage) {
       console.error(`   ❌ Page appears to be an error page (404/not found)`);
@@ -253,7 +262,9 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       throw new Error('Page was closed before evaluation');
     }
 
-    const pageData = await page.evaluate(() => {
+    let pageData;
+    try {
+      pageData = await page.evaluate(() => {
       try {
       const data: YCPageData = {
         founders: [],
@@ -1918,7 +1929,14 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           tags: [],
         };
       }
-    });
+      });
+    } catch (evalError: any) {
+      const errorMsg = evalError?.message || String(evalError);
+      if (errorMsg.includes('detached') || errorMsg.includes('Target closed')) {
+        throw new Error('Page detached during data extraction');
+      }
+      throw evalError;
+    }
 
     // Check if we got valid data
     if (!pageData) {
@@ -2159,9 +2177,11 @@ async function getCompaniesWithKeywords(): Promise<Set<string>> {
 
     const links = new Set<string>();
     data?.forEach((row: any) => {
-      // Check if company has keywords populated
+      // Check if company has keywords populated (either actual keywords or placeholder)
+      // If keywords field has a value (including 'NO_KEYWORDS' placeholder), it means it was already processed
       const hasKeywords = row.keywords && row.keywords.trim().length > 0;
       
+      // If company has keywords (including placeholder), it means it was already processed
       if (row.yc_link && hasKeywords) {
         // Normalize URL for comparison (lowercase, remove trailing slash)
         const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
@@ -2191,28 +2211,30 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       return false;
     }
 
-    // Helper to convert empty strings to null
-    const toNull = (value: string | undefined): string | null => {
-      return value && value.trim() ? value.trim() : null;
+    // Helper to convert empty strings to placeholder (so we know it was scraped but no data found)
+    const toPlaceholder = (value: string | undefined, placeholder: string): string => {
+      return value && value.trim() ? value.trim() : placeholder;
     };
-
 
     // Format tags as comma-separated string
     const tagsString = pageData.tags && pageData.tags.length > 0 
       ? pageData.tags.join(', ') 
-      : undefined;
+      : 'NO_KEYWORDS';
 
     // Update keywords only
     const updateData: {
-      keywords?: string | null;
+      keywords?: string;
     } = {
       // Keywords (technology/skills tags) - stored as comma-separated string
-      keywords: tagsString ? toNull(tagsString) : null,
+      // Use placeholder if no tags found so we know it was scraped
+      keywords: tagsString,
     };
     
-    console.log(`   💾 Updating keywords: ${updateData.keywords || '(null)'}`);
+    console.log(`   💾 Updating keywords: ${updateData.keywords}`);
     if (pageData.tags && pageData.tags.length > 0) {
       console.log(`   🏷️  Found ${pageData.tags.length} technology/skill tags: ${pageData.tags.join(', ')}`);
+    } else {
+      console.log(`   🏷️  No keywords found (storing NO_KEYWORDS placeholder)`);
     }
     
     const { data, error } = await supabase
@@ -2236,7 +2258,7 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       if (pageData.tags && pageData.tags.length > 0) {
         console.log(`   ✅ Keywords stored successfully: ${pageData.tags.join(', ')}`);
       } else {
-        console.log(`   ⚠️  No keywords found to store`);
+        console.log(`   ✅ Keywords placeholder stored: NO_KEYWORDS (scraped, no data found)`);
       }
     }
 
@@ -2405,9 +2427,28 @@ async function scrapeYCCompanies() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
-  const page = await browser.newPage();
+  let page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+  // Helper function to recreate page if needed
+  const recreatePage = async (): Promise<Page> => {
+    try {
+      if (!page.isClosed()) {
+        try {
+          await page.close();
+        } catch (e) {
+          // Ignore errors when closing
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    const newPage = await browser.newPage();
+    await newPage.setViewport({ width: 1920, height: 1080 });
+    await newPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    return newPage;
+  };
 
   let successCount = 0;
   let errorCount = 0;
@@ -2423,11 +2464,48 @@ async function scrapeYCCompanies() {
         console.log(`   Batch: ${normalized.batch}`);
         console.log(`   URL: ${normalized.ycLink}`);
 
-        // Scrape YC page
-        const pageData = await scrapeYCCompanyPage(page, normalized.ycLink);
+        // Scrape YC page with retry logic for detached frames
+        let pageData = null;
+        let scrapeAttempts = 0;
+        const maxScrapeAttempts = 3;
+        
+        while (!pageData && scrapeAttempts < maxScrapeAttempts) {
+          try {
+            // Check if page is closed or detached, recreate if needed
+            if (page.isClosed()) {
+              console.log('   🔄 Page is closed, recreating...');
+              page = await recreatePage();
+            }
+            
+            pageData = await scrapeYCCompanyPage(page, normalized.ycLink);
+            
+            if (pageData) {
+              break; // Success
+            }
+          } catch (error: any) {
+            scrapeAttempts++;
+            const errorMsg = error?.message || String(error);
+            
+            if (errorMsg.includes('detached') || errorMsg.includes('Target closed') || errorMsg.includes('closed')) {
+              console.warn(`   ⚠️  Detached frame error (attempt ${scrapeAttempts}/${maxScrapeAttempts}), recreating page...`);
+              try {
+                page = await recreatePage();
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+              } catch (recreateError) {
+                console.error(`   ❌ Failed to recreate page: ${recreateError instanceof Error ? recreateError.message : String(recreateError)}`);
+                if (scrapeAttempts >= maxScrapeAttempts) {
+                  throw error; // Re-throw if we've exhausted attempts
+                }
+              }
+            } else {
+              // For other errors, don't retry
+              throw error;
+            }
+          }
+        }
 
         if (!pageData) {
-          console.log('  ⚠️  Failed to scrape page data, skipping...');
+          console.log('  ⚠️  Failed to scrape page data after retries, skipping...');
           errorCount++;
           continue;
         }
@@ -2468,7 +2546,19 @@ async function scrapeYCCompanies() {
 
       } catch (error) {
         errorCount++;
-        console.error(`   ❌ Error processing ${normalized.companyName}: ${error instanceof Error ? error.message : String(error)}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`   ❌ Error processing ${normalized.companyName}: ${errorMsg}`);
+        
+        // If it's a detached frame error, try to recreate page for next iteration
+        if (errorMsg.includes('detached') || errorMsg.includes('Target closed') || errorMsg.includes('closed')) {
+          try {
+            console.log('   🔄 Recreating page for next iteration...');
+            page = await recreatePage();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (recreateError) {
+            console.warn(`   ⚠️  Failed to recreate page: ${recreateError instanceof Error ? recreateError.message : String(recreateError)}`);
+          }
+        }
       }
     }
   } finally {
