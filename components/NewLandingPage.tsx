@@ -7,7 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/NewHero";
 import { ProblemSection } from "@/components/ProblemSection";
 import { TrustBadge } from "@/components/TrustBadge";
-import { StartupsCarousel } from "@/components/StartupsCarousel";
+import { UniversityCarousel } from "@/components/StartupsCarousel";
 import { AIAgentSection } from "@/components/AIAgentSection";
 import { NewFeatures } from "@/components/NewFeatures";
 import { FounderDataSection } from "@/components/FounderDataSection";
@@ -252,7 +252,7 @@ export function NewLandingPage() {
           <div className="relative z-10">
             <NewHero onGetStarted={handleGetStarted} />
             <TrustBadge />
-            <StartupsCarousel />
+            <UniversityCarousel />
             <ProblemSection />
           </div>
         </div>

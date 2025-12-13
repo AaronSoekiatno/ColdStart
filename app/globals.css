@@ -121,7 +121,7 @@
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(calc(-100% / 3));
   }
 }
 
@@ -129,6 +129,7 @@
   animation: scroll 30s linear infinite;
   display: flex;
   width: fit-content;
+  will-change: transform;
 }
 
 .animate-scroll:hover {
