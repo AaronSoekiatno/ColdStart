@@ -168,11 +168,11 @@ export default function MatchesPage() {
         )}
         <div className="container mx-auto px-3 sm:px-4">
           {/* Report Bug Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end mb-4">
             <Button
               onClick={() => setShowBugReport(true)}
               variant="outline"
-              className="bg-white/5 border-white/20 text-white/80 hover:bg-white/10 hover:text-white"
+              className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 shadow-sm"
             >
               <Bug className="mr-2 h-4 w-4" />
               Report Bug
