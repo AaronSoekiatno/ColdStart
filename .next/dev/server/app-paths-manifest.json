@@ -1,3 +1,9 @@
 {
-  "/page": "app/page.js"
+  "/auth/callback/route": "app/auth/callback/route.js",
+  "/api/matches/route": "app/api/matches/route.js",
+  "/api/candidate-info/route": "app/api/candidate-info/route.js",
+  "/page": "app/page.js",
+  "/matches/page": "app/matches/page.js",
+  "/resumes/page": "app/resumes/page.js",
+  "/tracker/page": "app/tracker/page.js"
 }
