@@ -1711,96 +1711,138 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         'design', 'ux', 'ui', 'product', 'growth', 'marketing',
       ];
       
-      // Debug: Log all found tags before filtering
-      if (allTags.length > 0) {
-        console.log(`   🔍 Found ${allTags.length} raw tags: ${allTags.join(', ')}`);
-      } else {
-        console.log(`   ⚠️  No tags found on page - trying alternative extraction methods...`);
-        
-        // Fallback: Look for any text that might be tags in common tag containers
-        const possibleTagContainers = document.querySelectorAll('[class*="tag"], [class*="badge"], [class*="chip"], section, div');
-        for (const container of Array.from(possibleTagContainers).slice(0, 50)) {
-          const text = container.textContent?.trim() || '';
-          // Look for short, capitalized words that might be tags
-          const words = text.split(/\s+/).filter(w => 
-            w.length > 2 && w.length < 20 && 
-            /^[A-Z][a-z]+$/.test(w) && 
-            !w.match(/^(The|And|For|With|From|This|That|Company|Location|Team|Jobs|Founded|Website|Batch)$/i)
-          );
-          words.forEach(word => {
-            if (!allTags.includes(word)) {
-              allTags.push(word);
+      // Store debug info to return
+      const debugInfo: { rawTagsCount: number; rawTags: string[]; filteredCount: number } = {
+        rawTagsCount: allTags.length,
+        rawTags: [...allTags],
+        filteredCount: 0
+      };
+      
+      // If no tags found, try more aggressive extraction
+      if (allTags.length === 0) {
+        // Fallback 1: Look for any clickable elements with short text that might be tags
+        const allClickable = document.querySelectorAll('a, button, [role="button"]');
+        for (const el of Array.from(allClickable).slice(0, 100)) {
+          const text = el.textContent?.trim() || '';
+          // Skip navigation, common UI elements
+          if (text && text.length > 1 && text.length < 30 && 
+              !text.match(/^(click|view|see|more|less|show|hide|expand|collapse|apply|jobs|company|location|team|founded|website|batch|active|founders)$/i) &&
+              !text.includes('http') && !text.includes('@') && !text.includes('://')) {
+            const normalized = text.replace(/\s+/g, ' ').trim();
+            if (normalized && !allTags.includes(normalized)) {
+              allTags.push(normalized);
             }
-          });
+          }
         }
         
-        if (allTags.length > 0) {
-          console.log(`   🔍 Found ${allTags.length} tags via fallback: ${allTags.join(', ')}`);
+        // Fallback 2: Look for text in common tag container patterns
+        const tagContainers = document.querySelectorAll('[class*="tag"], [class*="badge"], [class*="chip"], [class*="label"], [class*="pill"]');
+        for (const container of Array.from(tagContainers).slice(0, 50)) {
+          const text = container.textContent?.trim() || '';
+          if (text && text.length > 1 && text.length < 50 && !allTags.includes(text)) {
+            allTags.push(text);
+          }
         }
+        
+        // Fallback 3: Look for any div/span with very short text that might be a tag
+        const shortTextElements = document.querySelectorAll('div, span, p');
+        for (const el of Array.from(shortTextElements).slice(0, 200)) {
+          const text = el.textContent?.trim() || '';
+          // Very short text (1-3 words, < 25 chars) that's capitalized might be a tag
+          if (text && text.length > 1 && text.length < 25 && 
+              text.split(/\s+/).length <= 3 &&
+              /^[A-Z]/.test(text) &&
+              !text.match(/^(The|And|For|With|From|This|That|Company|Location|Team|Jobs|Founded|Website|Batch|Active|Founders|View|See|More|Less)$/i) &&
+              !allTags.includes(text)) {
+            allTags.push(text);
+          }
+        }
+        
+        debugInfo.rawTagsCount = allTags.length;
+        debugInfo.rawTags = [...allTags];
       }
       
-      // Filter tags: keep technology/skill tags, exclude location tags and common non-tag words
+      // Filter tags: Simple blacklist - exclude only what we know ISN'T a tag
       const filteredTags: string[] = [];
-      
-      // Common words to exclude (not actual tags)
-      const excludedWords = [
-        'active', 'founders', 'founder', 'company', 'location', 'team', 'size',
-        'jobs', 'status', 'founded', 'website', 'batch', 'view', 'see', 'more',
-        'less', 'show', 'hide', 'expand', 'collapse', 'click', 'apply', 'all'
-      ];
       
       for (const tag of allTags) {
         const tagLower = tag.toLowerCase().trim();
         
-        // Skip excluded words
-        if (excludedWords.includes(tagLower) || excludedWords.some(word => tagLower === word)) {
+        // Normalize tag: convert hyphens to spaces and title case
+        const normalizedTag = tag
+          .replace(/[-_]/g, ' ')
+          .split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ')
+          .trim();
+        const normalizedTagLower = normalizedTag.toLowerCase();
+        
+        // Skip if empty or too long (likely not a tag)
+        if (!normalizedTag || normalizedTag.length < 2 || normalizedTag.length > 50) {
           continue;
         }
         
-        // Skip if it's clearly a location
-        const isLocation = locationKeywords.some(loc => 
-          tagLower === loc || 
-          tagLower.includes(loc) || 
-          loc.includes(tagLower)
-        );
+        // BLACKLIST: Skip only what we know ISN'T a tag
         
-        // Check if it's a technology/skill tag
-        const isTech = techKeywords.some(tech => 
-          tagLower === tech || 
-          tagLower.includes(tech) || 
-          tech.includes(tagLower)
-        );
-        
-        // Additional heuristics:
-        // - If tag contains common tech terms (api, sdk, framework, etc.)
-        const hasTechTerms = /api|sdk|framework|library|platform|tool|software|app|system/i.test(tag);
-        
-        // - If tag looks like a location (contains comma, has "city" or "state" pattern)
-        const looksLikeLocation = /,|city|state|country|region|area|valley|bay/i.test(tag);
-        
-        // - If tag is a common location abbreviation (SF, NYC, LA, etc.)
-        const isLocationAbbr = /^(sf|nyc|la|chi|bos|sea|aus|den|atl|mia|dal|phi|phx)$/i.test(tagLower);
-        
-        // Keep tag if:
-        // 1. It's identified as tech, OR
-        // 2. It has tech terms and doesn't look like a location, OR
-        // 3. It's not a location and has some tech-like characteristics
-        if (isTech || (hasTechTerms && !looksLikeLocation && !isLocationAbbr)) {
-          if (!isLocation && !isLocationAbbr) {
-            filteredTags.push(tag);
-          }
-        } else if (!isLocation && !looksLikeLocation && !isLocationAbbr && tag.length > 1) {
-          // If it's not clearly a location and not clearly tech, but might be a skill/domain
-          // (e.g., "Sales", "Marketing", "Operations", "Healthcare", etc.)
-          // Keep it if it's a single word or short phrase that doesn't look like a location
-          if (tag.split(/\s+/).length <= 3 && !/^[A-Z]{2,3}$/.test(tag)) {
-            filteredTags.push(tag);
-          }
+        // 1. Skip activity/status words
+        if (['active', 'inactive', 'pending', 'completed', 'failed'].includes(normalizedTagLower)) {
+          continue;
         }
+        
+        // 2. Skip UI components and navigation
+        if (/^(open|close|menu|logo|button|icon|nav|header|footer|view|see|more|less|show|hide|expand|collapse|click|apply|all)$/i.test(normalizedTagLower)) {
+          continue;
+        }
+        
+        // 3. Skip batch/year patterns (e.g., "Summer 2025", "W24", "S25")
+        if (/^(summer|winter|spring|fall|w|s)\s*\d{2,4}$/i.test(normalizedTagLower) || 
+            /^\d{4}$/.test(normalizedTagLower) ||
+            /summer \d{4}|winter \d{4}|spring \d{4}|fall \d{4}/i.test(normalizedTagLower)) {
+          continue;
+        }
+        
+        // 4. Skip company metadata
+        if (['founders', 'founder', 'company', 'team', 'size', 'jobs', 'status', 'founded', 'website', 'batch'].includes(normalizedTagLower)) {
+          continue;
+        }
+        
+        // 5. Skip locations (exact matches only to avoid false positives)
+        const isLocation = locationKeywords.some(loc => {
+          // Exact match
+          if (normalizedTagLower === loc) return true;
+          // For major cities/states, check if tag is exactly the location
+          if (loc.length > 5 && normalizedTagLower === loc) return true;
+          return false;
+        });
+        
+        // 6. Skip location abbreviations
+        const isLocationAbbr = /^(sf|nyc|la|chi|bos|sea|aus|den|atl|mia|dal|phi|phx|ca|ny|tx|fl|il|ma|wa|co|ga|nc|va|usa|uk|us)$/i.test(normalizedTagLower);
+        
+        // 7. Skip if it looks like a location pattern (contains comma, city/state keywords)
+        const looksLikeLocation = /,|city|state|country|region|area|valley|bay|street|avenue|road/i.test(normalizedTag);
+        
+        // 8. Skip UI elements with logo/menu patterns
+        const isUIElement = (normalizedTagLower.includes('logo') || normalizedTagLower.includes('menu')) && 
+                           (normalizedTagLower.includes('y combinator') || 
+                            normalizedTagLower.includes('summer') ||
+                            normalizedTagLower.includes('open') ||
+                            normalizedTagLower.includes('close'));
+        
+        // Skip if it's a location or UI element
+        if (isLocation || isLocationAbbr || looksLikeLocation || isUIElement) {
+          continue;
+        }
+        
+        // Keep everything else - it's likely a valid tag (technology, skill, industry, domain, etc.)
+        filteredTags.push(normalizedTag);
       }
       
       // Remove duplicates and sort
       data.tags = [...new Set(filteredTags)].sort();
+      debugInfo.filteredCount = data.tags.length;
+
+        // Store debug info in a way we can access it
+        (data as any)._tagDebug = debugInfo;
 
         return data;
       } catch (evalError) {
@@ -1825,6 +1867,19 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
     if (!pageData) {
       console.error(`   ❌ Page evaluation returned null`);
       return null;
+    }
+
+    // Log debug info about tags if available
+    if ((pageData as any)._tagDebug) {
+      const debug = (pageData as any)._tagDebug;
+      if (debug.rawTagsCount > 0) {
+        console.log(`   🔍 Found ${debug.rawTagsCount} raw tags: ${debug.rawTags.slice(0, 10).join(', ')}${debug.rawTags.length > 10 ? '...' : ''}`);
+        console.log(`   🔍 After filtering: ${debug.filteredCount} tags`);
+      } else {
+        console.log(`   ⚠️  No tags found on page - tried multiple extraction strategies`);
+      }
+      // Remove debug info from pageData
+      delete (pageData as any)._tagDebug;
     }
 
     // ============================================
@@ -2193,12 +2248,23 @@ async function scrapeYCCompanies() {
   const companyFilter = args.find(arg => arg.startsWith('--company='))?.split('=')[1];
   if (companyFilter) {
     console.log(`\n🔍 Filtering for company: ${companyFilter}`);
+    const beforeFilter = allCompanies.length;
     allCompanies = allCompanies.filter(c => {
       const normalized = normalizeCompanyData(c);
       const nameMatch = normalized.companyName.toLowerCase().includes(companyFilter.toLowerCase());
       const urlMatch = normalized.ycLink.toLowerCase().includes(companyFilter.toLowerCase());
       return nameMatch || urlMatch;
     });
+    console.log(`   Found ${allCompanies.length} matching company(ies) in CSV (from ${beforeFilter} total)`);
+    if (allCompanies.length > 0) {
+      allCompanies.forEach(c => {
+        const normalized = normalizeCompanyData(c);
+        console.log(`   - ${normalized.companyName} (${normalized.ycLink})`);
+      });
+    } else {
+      console.log(`   ⚠️  No companies found matching "${companyFilter}" in CSV files`);
+      console.log(`   💡 Tip: Check if the company name or URL contains "${companyFilter}"`);
+    }
   }
 
   console.log(`\n📊 Total companies to process: ${allCompanies.length}`);
@@ -2210,15 +2276,68 @@ async function scrapeYCCompanies() {
     // Normalize URL for comparison (lowercase, remove trailing slash)
     const normalizedLink = normalized.ycLink.toLowerCase().replace(/\/$/, '');
     // Only process if: already in database AND doesn't have keywords
+    const inDatabase = processedLinks.has(normalizedLink);
     const hasKeywords = companiesWithKeywords.has(normalizedLink);
-    return processedLinks.has(normalizedLink) && !hasKeywords;
+    
+    // Debug logging for filtered companies when using --company filter
+    if (companyFilter && normalized.companyName.toLowerCase().includes(companyFilter.toLowerCase())) {
+      console.log(`   🔍 ${normalized.companyName}:`);
+      console.log(`      YC Link: ${normalized.ycLink}`);
+      console.log(`      Normalized link: ${normalizedLink}`);
+      console.log(`      In database: ${inDatabase ? '✅' : '❌'}`);
+      console.log(`      Has keywords: ${hasKeywords ? '✅' : '❌'}`);
+      console.log(`      Will process: ${inDatabase && !hasKeywords ? '✅' : '❌'}`);
+      
+      // Additional debug: Check if the link exists in processedLinks with different normalization
+      if (!inDatabase) {
+        console.log(`      🔍 Debug: Checking processedLinks for variations...`);
+        const variations = [
+          normalizedLink,
+          normalized.ycLink.toLowerCase(),
+          normalized.ycLink.toLowerCase() + '/',
+          normalized.ycLink,
+        ];
+        variations.forEach(variant => {
+          if (processedLinks.has(variant)) {
+            console.log(`         ✅ Found variant: "${variant}"`);
+          }
+        });
+        // Show a few sample URLs from processedLinks for comparison
+        const sampleLinks = Array.from(processedLinks).slice(0, 5);
+        if (sampleLinks.length > 0) {
+          console.log(`      🔍 Debug: Sample processedLinks (first 5):`);
+          sampleLinks.forEach(link => console.log(`         - ${link}`));
+        }
+      }
+    }
+    
+    return inDatabase && !hasKeywords;
   });
 
   const initiallySkippedCount = allCompanies.length - companiesToUpdate.length;
   console.log(`📋 Companies to update keywords: ${companiesToUpdate.length} (${initiallySkippedCount} skipped - not in DB or already have keywords)\n`);
+  
+  if (companyFilter && companiesToUpdate.length === 0 && allCompanies.length > 0) {
+    console.log(`   ⚠️  Company "${companyFilter}" found in CSV but:`);
+    const normalized = normalizeCompanyData(allCompanies[0]);
+    const normalizedLink = normalized.ycLink.toLowerCase().replace(/\/$/, '');
+    if (!processedLinks.has(normalizedLink)) {
+      console.log(`      - Not in database (yc_link: ${normalized.ycLink})`);
+      console.log(`      💡 The company needs to be imported to the database first`);
+    } else if (companiesWithKeywords.has(normalizedLink)) {
+      console.log(`      - Already has keywords in database`);
+      console.log(`      💡 Use --force flag to re-scrape (if implemented)`);
+    }
+    console.log();
+  }
 
-  if (companiesToUpdate.length === 0) {
+  if (companiesToUpdate.length === 0 && !companyFilter) {
     console.log('✅ All companies already have keywords!');
+    return;
+  }
+  
+  if (companiesToUpdate.length === 0 && companyFilter) {
+    console.log(`❌ No companies to process for "${companyFilter}"`);
     return;
   }
 
