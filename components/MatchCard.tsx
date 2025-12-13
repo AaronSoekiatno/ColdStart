@@ -23,11 +23,13 @@ interface MatchCardProps {
       founder_emails?: string;
       founder_names?: string;
       founder_linkedin?: string;
+      founder_twitter_urls?: string;
       founder_backgrounds?: string;
       batch?: string;
       description?: string;
       company_logo?: string;
       yc_link?: string;
+      company_twitter_url?: string;
     } | null;
   };
 }
@@ -48,6 +50,11 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
   // Parse LinkedIn URLs (comma-separated, one per founder)
   const founderLinkedInUrls = startup.founder_linkedin
     ? startup.founder_linkedin.split(',').map(url => url.trim())
+    : [];
+
+  // Parse Twitter URLs (comma-separated, one per founder)
+  const founderTwitterUrls = startup.founder_twitter_urls
+    ? startup.founder_twitter_urls.split(',').map(url => url.trim())
     : [];
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -110,7 +117,7 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                 </span>
               )}
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-3xl md:rounded-4xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
+            <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
               <p className="text-lg md:text-xl lg:text-2xl font-bold text-blue-300 whitespace-nowrap">
                 {Math.min((match.score * 100) + 40, 97).toFixed(0)}% <span className="text-sm md:text-base font-normal text-gray-600 align-top inline-block mt-0.5 md:mt-1">match</span>
               </p>
@@ -144,7 +151,7 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                   {match.startup.description}
                 </p>
               )}
-              {/* Website and YC buttons underneath description */}
+              {/* Website, YC, and Twitter buttons underneath description */}
               <div className="flex gap-2 flex-wrap -mt-0.5">
                 {match.startup.website && (
                   <a
@@ -153,7 +160,7 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                       : `https://${match.startup.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-xl sm:rounded-2xl bg-gray-50 border border-gray-300 px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-xs sm:text-sm text-gray-900 font-medium w-fit hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-lg bg-gray-50 border border-gray-300 px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-xs sm:text-sm text-gray-900 font-medium w-fit hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                     <span>Website</span>
@@ -172,6 +179,24 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                       width={14}
                       height={14}
                       className="object-contain w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
+                    />
+                  </a>
+                )}
+                {match.startup.company_twitter_url && (
+                  <a
+                    href={match.startup.company_twitter_url.startsWith('http')
+                      ? match.startup.company_twitter_url
+                      : `https://${match.startup.company_twitter_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center rounded-full bg-gray-50 border border-gray-300 w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 hover:bg-gray-100 transition-colors cursor-pointer"
+                  >
+                    <Image
+                      src="/images/twitterLogo.svg"
+                      alt="Twitter"
+                      width={16}
+                      height={16}
+                      className="w-4 h-4 sm:w-4 sm:h-4"
                     />
                   </a>
                 )}
@@ -221,11 +246,30 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                               : `https://${founderLinkedInUrls[index]}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="cursor-pointer transition-opacity hover:opacity-80"
+                            className="border border-gray-300 rounded-full p-1.5 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
                           >
                             <Image
                               src="/images/linkedinLogo.svg"
                               alt="LinkedIn"
+                              width={16}
+                              height={16}
+                              className="w-4 h-4 sm:w-4 sm:h-4"
+                            />
+                          </a>
+                        )}
+                        {/* Twitter Icon */}
+                        {founderTwitterUrls[index] && (
+                          <a
+                            href={founderTwitterUrls[index].startsWith('http')
+                              ? founderTwitterUrls[index]
+                              : `https://${founderTwitterUrls[index]}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="border border-gray-300 rounded-full p-1.5 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                          >
+                            <Image
+                              src="/images/twitterLogo.svg"
+                              alt="Twitter"
                               width={16}
                               height={16}
                               className="w-4 h-4 sm:w-4 sm:h-4"

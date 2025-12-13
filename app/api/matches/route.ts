@@ -114,11 +114,13 @@ export async function GET(request: NextRequest) {
         founder_emails?: string;
         founder_names?: string;
         founder_linkedin?: string;
+        founder_twitter_urls?: string;
         founder_backgrounds?: string;
         batch?: string;
         description?: string;
         company_logo?: string;
         yc_link?: string;
+        company_twitter_url?: string;
       }
     > = {};
 
@@ -142,11 +144,13 @@ export async function GET(request: NextRequest) {
             founder_emails: s.founder_emails ?? undefined,
             founder_names: s.founder_names ?? undefined,
             founder_linkedin: s.founder_linkedin ?? undefined,
+            founder_twitter_urls: s.founder_twitter_urls ?? undefined,
             founder_backgrounds: s.founder_backgrounds ?? undefined,
             batch: s.batch ?? undefined,
             description: s.description ?? undefined,
             company_logo: s.company_logo ?? undefined,
             yc_link: s.yc_link ?? undefined,
+            company_twitter_url: s.company_twitter_url ?? undefined,
           };
         }
       }
