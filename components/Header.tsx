@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isSubscribed } from "@/lib/supabase";
@@ -15,7 +14,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Menu, X } from "lucide-react";
+import { Menu, X, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface HeaderProps {
@@ -23,7 +22,6 @@ interface HeaderProps {
 }
 
 export const Header = ({ initialUser }: HeaderProps) => {
-  const router = useRouter();
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
@@ -127,7 +125,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
         {/* Logo and Title */}
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/images/hermes.png"
+            src="/images/blacked.svg"
             alt="Hermes logo"
             width={32} 
             height={32}
@@ -158,28 +156,28 @@ export const Header = ({ initialUser }: HeaderProps) => {
               >
                 Resumes
               </Link>
-              <button
-                onClick={handlePremiumClick}
-                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
-              >
-                Premium
-              </button>
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="rounded-full h-9 px-4 text-gray-800 hover:text-gray-700"
+                    className="rounded-full h-9 w-9 p-0 text-gray-800 hover:text-gray-700 cursor-pointer flex items-center justify-center bg-gray-100 hover:bg-gray-200 outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:ring-0 focus:ring-offset-0 active:scale-100 border-0"
                   >
-                    {user.email}
+                    <UserIcon className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-2xl overflow-hidden min-w-[200px] shadow-lg">
-                  <div className="px-4 py-2 text-sm text-gray-800 border-b border-gray-200">
+                  <div className="px-4 py-2 text-sm text-gray-800 border-b border-gray-200 rounded-t-2xl">
                     {user.email}
                   </div>
+                  <DropdownMenuItem
+                    className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"
+                    onSelect={handlePremiumClick}
+                  >
+                    Premium Plan
+                  </DropdownMenuItem>
                   {isPremium && (
                     <DropdownMenuItem
-                      className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 border-b border-gray-200"
+                      className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"
                       onSelect={async () => {
                         try {
                           const response = await fetch('/api/stripe/create-portal-session', {
@@ -214,7 +212,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem
-                    className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50"
+                    className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black rounded-b-2xl"
                     onSelect={async () => {
                       await supabase.auth.signOut();
                       setUser(null);
@@ -235,7 +233,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
         {/* Mobile Navigation - Hamburger Menu */}
         <div className="lg:hidden flex items-center gap-2">
           {user && (
-            <DropdownMenu open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <DropdownMenu modal={false} open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -248,14 +246,14 @@ export const Header = ({ initialUser }: HeaderProps) => {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-2 rounded-2xl overflow-hidden min-w-[200px] mr-4 shadow-lg">
-                <div className="px-4 py-2 text-xs text-gray-600 border-b border-gray-200">
+              <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-2xl overflow-hidden min-w-[200px] mr-4 shadow-lg">
+                <div className="px-4 py-2 text-xs text-gray-600 border-b border-gray-200 rounded-t-2xl">
                   {user.email}
                 </div>
                 <DropdownMenuItem asChild>
                   <Link
                     href="/matches"
-                    className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
+                    className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Matches
@@ -264,7 +262,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/tracker"
-                    className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
+                    className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Email Tracker
@@ -273,25 +271,25 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/resumes"
-                    className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
+                    className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Resumes
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="w-full px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 focus:bg-gray-50 cursor-pointer"
+                  className="w-full px-4 py-2 text-sm font-medium text-black hover:text-black hover:bg-gray-50 focus:bg-gray-50 focus:text-black cursor-pointer"
                   onSelect={() => {
                     setMobileMenuOpen(false);
                     handlePremiumClick();
                   }}
                 >
-                  Premium
+                  Premium Plan
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-gray-200" />
                 {isPremium && (
                   <DropdownMenuItem
-                    className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 border-b border-gray-200"
+                    className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"
                     onSelect={async () => {
                       setMobileMenuOpen(false);
                       try {
@@ -326,7 +324,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
-                  className="cursor-pointer font-bold text-gray-900 w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50"
+                  className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black rounded-b-2xl"
                   onSelect={async () => {
                     setMobileMenuOpen(false);
                     await supabase.auth.signOut();

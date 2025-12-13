@@ -60,13 +60,13 @@ export default async function ResumePage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0E1422' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
       
-      <main className="container mx-auto px-4 py-12 max-w-6xl">
+      <main className="container mx-auto px-4 pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 max-w-6xl">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">My Resume</h1>
-          <p className="text-white/70">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Resume</h1>
+          <p className="text-gray-600">
             Manage all of your tailored resumes here!
           </p>
         </div>
@@ -76,8 +76,8 @@ export default async function ResumePage() {
             <ResumeCard fileName={fileName} resumeUrl={resumeUrl} />
           </div>
         ) : (
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 p-12 text-center">
-            <p className="text-white/70 text-lg">
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
+            <p className="text-gray-600 text-lg">
               No resumes found. Upload your resume to get started!
             </p>
           </div>

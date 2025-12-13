@@ -22,8 +22,8 @@ interface MatchRecord {
     tags: string;
     website: string;
     founder_emails?: string;
-    founder_first_name?: string;
-    founder_last_name?: string;
+    founder_names?: string;
+    founder_linkedin?: string;
     founder_backgrounds?: string;
     batch?: string;
     description?: string;

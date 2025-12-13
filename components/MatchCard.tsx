@@ -4,6 +4,7 @@ import { memo, useRef } from "react";
 import Image from "next/image";
 import { DollarSign, ExternalLink } from "lucide-react";
 import { SendEmailButton } from "./SendEmailButton";
+import { splitFounderNames } from "@/lib/clean-founder-names";
 
 interface MatchCardProps {
   match: {
@@ -20,8 +21,8 @@ interface MatchCardProps {
       tags: string;
       website: string;
       founder_emails?: string;
-      founder_first_name?: string;
-      founder_last_name?: string;
+      founder_names?: string;
+      founder_linkedin?: string;
       founder_backgrounds?: string;
       batch?: string;
       description?: string;
@@ -38,6 +39,16 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
   if (!match.startup) {
     return null;
   }
+
+  const startup = match.startup;
+
+  // Parse founder names (comma-separated) and filter out false positives
+  const founderNames = splitFounderNames(startup.founder_names);
+
+  // Parse LinkedIn URLs (comma-separated, one per founder)
+  const founderLinkedInUrls = startup.founder_linkedin
+    ? startup.founder_linkedin.split(',').map(url => url.trim())
+    : [];
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -99,8 +110,8 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                 </span>
               )}
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-3xl md:rounded-4xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-28 sm:w-32">
-              <p className="text-lg md:text-xl lg:text-2xl font-bold text-blue-300">
+            <div className="bg-gray-50 border border-gray-200 rounded-3xl md:rounded-4xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
+              <p className="text-lg md:text-xl lg:text-2xl font-bold text-blue-300 whitespace-nowrap">
                 {Math.min((match.score * 100) + 40, 97).toFixed(0)}% <span className="text-sm md:text-base font-normal text-gray-600 align-top inline-block mt-0.5 md:mt-1">match</span>
               </p>
             </div>
@@ -174,47 +185,65 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
       <div className="mt-6 md:mt-8 border-t border-gray-200"></div>
 
       {/* Founders Section */}
-      {(match.startup.founder_first_name || match.startup.founder_last_name || match.startup.founder_backgrounds) && (
+      {founderNames.length > 0 && (
         <div ref={foundersSectionRef} className="mt-6 md:mt-8">
-          <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-3 md:mb-4 text-left">Active Founders</h3>
+          <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-3 md:mb-4 text-left">Active Founders</h3>
           <div className="flex flex-col gap-3 md:gap-4">
-            {/* Founder Card */}
-            <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5">
-              <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
-                {/* Founder Photo Placeholder */}
-                <div className="flex-shrink-0 w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
-                  <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                    <span className="text-gray-400 text-xl sm:text-2xl md:text-3xl font-semibold">
-                      {(match.startup.founder_first_name?.[0] || match.startup.founder_last_name?.[0] || '?').toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-                {/* Founder Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
-                      {match.startup.founder_first_name && match.startup.founder_last_name
-                        ? `${match.startup.founder_first_name} ${match.startup.founder_last_name}`
-                        : match.startup.founder_first_name || match.startup.founder_last_name || 'Founder'}
-                    </h4>
-                    {/* LinkedIn Icon */}
-                    <Image
-                      src="/images/linkedinLogo.svg"
-                      alt="LinkedIn"
-                      width={16}
-                      height={16}
-                      className="w-4 h-4 sm:w-4 sm:h-4 cursor-pointer transition-opacity hover:opacity-80"
-                    />
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-500 mb-2 md:mb-3">Founder</p>
-                  {match.startup.founder_backgrounds && (
-                    <div className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line">
-                      {match.startup.founder_backgrounds}
+            {/* Founder Cards - one for each founder */}
+            {founderNames.map((founderName, index) => {
+              const nameParts = founderName.trim().split(' ');
+              const firstName = nameParts[0] || '';
+              const lastName = nameParts.slice(1).join(' ') || '';
+              const initial = firstName[0] || lastName[0] || '?';
+
+              return (
+                <div key={index} className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-5">
+                  <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
+                    {/* Founder Photo Placeholder */}
+                    <div className="flex-shrink-0 w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+                      <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                        <span className="text-gray-400 text-xl sm:text-2xl md:text-3xl font-semibold">
+                          {initial.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                    {/* Founder Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
+                          {founderName}
+                        </h4>
+                        {/* LinkedIn Icon */}
+                        {founderLinkedInUrls[index] && (
+                          <a
+                            href={founderLinkedInUrls[index].startsWith('http')
+                              ? founderLinkedInUrls[index]
+                              : `https://${founderLinkedInUrls[index]}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="cursor-pointer transition-opacity hover:opacity-80"
+                          >
+                            <Image
+                              src="/images/linkedinLogo.svg"
+                              alt="LinkedIn"
+                              width={16}
+                              height={16}
+                              className="w-4 h-4 sm:w-4 sm:h-4"
+                            />
+                          </a>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-2 md:mb-3">Founder</p>
+                      {startup.founder_backgrounds && index === 0 && (
+                        <div className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line">
+                          {startup.founder_backgrounds}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       )}

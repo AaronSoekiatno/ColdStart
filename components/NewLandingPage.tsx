@@ -96,10 +96,16 @@ export function NewLandingPage() {
                   Your Matches
                 </Link>
                 <Link
-                  href="/history"
+                  href="/tracker"
                   className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
                 >
-                  History
+                  Email Tracker
+                </Link>
+                <Link
+                  href="/resumes"
+                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
+                >
+                  Resumes
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
