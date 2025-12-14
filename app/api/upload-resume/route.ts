@@ -4,13 +4,14 @@ import { GoogleAIFileManager } from '@google/generative-ai/server';
 import {
   validateFile,
   extractDocxText,
+  extractPdfText,
   isPdfFile,
   cleanJsonResponse,
   type ResumeExtractionResult,
   type ResumeProcessingResult,
 } from './utils';
 import { upsertCandidate, findMatchingStartups } from '@/lib/pinecone';
-import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByName, findStartupIdsByNames } from '@/lib/supabase';
+import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByName, findStartupIdsByNames, getCandidate } from '@/lib/supabase';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
@@ -29,39 +30,14 @@ function getGeminiClients() {
 }
 
 /**
- * Extracts full text content from a PDF using Gemini
+ * Extracts full text content from a PDF using pdf-parse
  * Used to store the complete resume text for email generation context
+ * This is much faster and cheaper than using Gemini for text extraction
  */
-async function extractFullTextFromPdf(
-  fileManager: GoogleAIFileManager,
-  genAI: GoogleGenerativeAI,
-  fileUri: string,
-  mimeType: string
-): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-  
-  const fullTextPrompt = `Extract and return ALL text content from this resume document as plain text. 
-Preserve the structure, formatting, and all details including:
-- All sections (Education, Experience, Projects, Skills, etc.)
-- All dates, locations, company names, university names
-- All technical details, achievements, descriptions
-- Any links, contact information, or portfolio URLs
-- Everything written in the resume
-
-Return ONLY the text content, no JSON, no explanations, just the raw text.`;
-
+async function extractFullTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    const result = await model.generateContent([
-      { text: fullTextPrompt },
-      {
-        fileData: {
-          fileUri: fileUri,
-          mimeType: mimeType,
-        },
-      },
-    ]);
-    
-    return result.response.text().trim();
+    const text = await extractPdfText(buffer);
+    return text.trim();
   } catch (error) {
     console.warn('Failed to extract full text from PDF:', error);
     return ''; // Return empty string if extraction fails - we'll continue with structured data
@@ -218,19 +194,19 @@ async function extractResumeDataWithGemini(
         parsed.skills = parsed.skills.slice(0, 12);
       }
 
-      // Extract full text - for PDFs use Gemini, for DOCX we already have it
+      // Extract full text - for PDFs use pdf-parse, for DOCX we already have it
       let fullText = '';
-      if (isPdfFile(file) && uploadedFileUri && uploadedFileMimeType) {
-        // Extract full text from PDF using Gemini
-        console.log('Extracting full text from PDF...');
-        fullText = await extractFullTextFromPdf(fileManager, genAI, uploadedFileUri, uploadedFileMimeType);
+      if (isPdfFile(file)) {
+        // Extract full text from PDF using pdf-parse (local, fast, free)
+        console.log('Extracting full text from PDF using pdf-parse...');
+        fullText = await extractFullTextFromPdf(buffer);
         console.log(`Extracted ${fullText.length} characters of full text from PDF`);
         
-        // Clean up: delete the uploaded file after full text extraction
+        // Clean up: delete the uploaded file from Gemini (no longer needed for text extraction)
         if (uploadedFileName) {
           try {
             await fileManager.deleteFile(uploadedFileName);
-            console.log(`[${modelName}] Deleted uploaded file`);
+            console.log(`[${modelName}] Deleted uploaded file from Gemini`);
           } catch (error) {
             console.warn('Failed to delete uploaded file:', error);
             // Continue even if deletion fails
@@ -390,6 +366,25 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // Check resume upload limits for free users
+    if (isAuthenticated && accountEmail) {
+      const existingCandidate = await getCandidate(accountEmail);
+      if (existingCandidate) {
+        const isPremium = isSubscribed(existingCandidate);
+        // Free users can only have 1 resume (check if they already have a resume_path)
+        if (!isPremium && existingCandidate.resume_path) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Free plan allows only one uploaded resume. Upgrade to Premium for unlimited resumes.',
+              upgradeRequired: true,
+            },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     const file = formData.get('resume') as File | null;

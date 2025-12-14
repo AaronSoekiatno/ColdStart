@@ -9,8 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Sparkles, Copy } from "lucide-react";
 import { DiffBlock } from "@/components/DiffBlock";
 import { Header } from "@/components/Header";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 interface ResumeSuggestion {
   id: string;
@@ -28,6 +29,7 @@ export default function GenerateEmailPage() {
   const matchScoreParam = searchParams.get("matchScore");
   const matchScore = matchScoreParam ? parseFloat(matchScoreParam) : 0;
   const founderEmail = searchParams.get("founderEmail");
+  const toneFromUrl = searchParams.get("tone") as 'professional_casual' | 'enthusiastic' | 'conversational' | null;
   
   const [user, setUser] = useState<User | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -39,71 +41,179 @@ export default function GenerateEmailPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [emailTone, setEmailTone] = useState<'professional_casual' | 'enthusiastic' | 'conversational'>(
+    toneFromUrl || 'professional_casual'
+  );
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check auth
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    // Check auth and premium status
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user);
       if (!user || !startupId) {
         router.push("/matches");
         return;
       }
+
+      // Fetch premium status
+      try {
+        const response = await fetch('/api/candidate-info', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (response.ok) {
+          const candidateInfo = await response.json();
+          setIsPremium(isSubscribed(candidateInfo));
+        }
+      } catch (error) {
+        console.error('Error fetching premium status:', error);
+      }
     });
   }, [router, startupId]);
 
-  useEffect(() => {
+  const loadEmailPreview = async () => {
     if (!startupId || !user) return;
 
-    const loadEmailPreview = async () => {
-      try {
-        setIsPreviewLoading(true);
+    try {
+      setIsPreviewLoading(true);
+      setPreviewSubject('');
+      setPreviewBody('');
 
-        const emailResponse = await fetch("/api/send-email/preview", {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            startupId,
-            matchScore,
-          }),
-        });
+      // Use streaming endpoint
+      const response = await fetch("/api/send-email/preview-stream", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          startupId,
+          matchScore,
+          tone: isPremium ? emailTone : undefined,
+        }),
+      });
 
-        const emailData = await emailResponse.json();
-
-        if (!emailResponse.ok) {
-          throw new Error(emailData.error || 'Failed to generate email preview');
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.upgradeRequired) {
+          setShowUpgradeModal(true);
+          throw new Error(errorData.error || 'Premium feature required');
         }
+        throw new Error(errorData.error || 'Failed to generate email preview');
+      }
 
-        setPreviewSubject(emailData.subject);
-        setPreviewBody(emailData.body);
+      if (!response.body) {
+        throw new Error('No response body');
+      }
 
-        if (emailData.resumeUrl) {
-          setResumeUrl(emailData.resumeUrl);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let accumulatedText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === 'metadata') {
+                if (data.resumeUrl) {
+                  setResumeUrl(data.resumeUrl);
+                }
+              } else if (data.type === 'chunk') {
+                // Accumulate text as it streams in
+                accumulatedText += data.text;
+                
+                // Try to extract body text from JSON for real-time display
+                // This creates a ChatGPT-like streaming effect
+                try {
+                  // Look for the body field and extract its value as it streams
+                  const bodyStartIndex = accumulatedText.indexOf('"body"');
+                  if (bodyStartIndex !== -1) {
+                    // Find the start of the body value (after "body":")
+                    const valueStart = accumulatedText.indexOf('"', bodyStartIndex + 7) + 1;
+                    if (valueStart > 0) {
+                      // Extract everything after the opening quote
+                      let bodyValue = accumulatedText.substring(valueStart);
+                      // Remove any trailing JSON structure (closing quote, brace, etc.)
+                      bodyValue = bodyValue.replace(/"[^"]*$/, '').replace(/"}?\s*$/, '');
+                      // Unescape JSON string characters
+                      bodyValue = bodyValue
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\"/g, '"')
+                        .replace(/\\\\/g, '\\')
+                        .replace(/\\t/g, '\t');
+                      if (bodyValue) {
+                        setPreviewBody(bodyValue);
+                      }
+                    }
+                  }
+                  
+                  // Try to extract subject
+                  const subjectMatch = accumulatedText.match(/"subject"\s*:\s*"([^"]*)"/);
+                  if (subjectMatch && subjectMatch[1]) {
+                    setPreviewSubject(subjectMatch[1]);
+                  }
+                } catch {
+                  // If extraction fails, the final 'done' event will have the correct values
+                }
+              } else if (data.type === 'done') {
+                // Final result
+                setPreviewSubject(data.subject || '');
+                setPreviewBody(data.body || '');
+                setIsPreviewLoading(false);
+                toast({
+                  title: "Email drafted",
+                  description: "Review your personalized email before sending.",
+                });
+                return;
+              } else if (data.type === 'error') {
+                throw new Error(data.error || 'Unknown error');
+              }
+            } catch (parseError) {
+              console.error('Error parsing SSE data:', parseError);
+            }
+          }
         }
+      }
 
-        toast({
-          title: "Email drafted",
-          description: "Review your personalized email before sending.",
-        });
-      } catch (error) {
-        console.error('Preview email error:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to generate email preview';
+      setIsPreviewLoading(false);
+    } catch (error) {
+      console.error('Preview email error:', error);
+      setIsPreviewLoading(false);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate email preview';
+      // Don't redirect if it's just a premium feature error
+      if (!errorMessage.includes('Premium feature')) {
         toast({
           title: "Error",
           description: errorMessage,
           variant: "destructive",
         });
         router.push("/matches");
-      } finally {
-        setIsPreviewLoading(false);
+      } else {
+        toast({
+          title: "Premium Feature",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     loadEmailPreview();
-  }, [startupId, matchScore, user, toast, router]);
+  }, [startupId, matchScore, user, toast, router, isPremium, emailTone]);
 
   const handleLoadSuggestions = async () => {
     if (!startupId) return;
@@ -209,9 +319,9 @@ export default function GenerateEmailPage() {
           {isPreviewLoading && previewSubject === null && previewBody === null ? (
             <div className="flex flex-col items-center justify-center flex-1 space-y-4">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-gray-600 text-sm">Loading your email and resume...</p>
+              <p className="text-gray-600 text-sm">Generating your email...</p>
             </div>
-          ) : previewSubject && previewBody ? (
+          ) : (previewSubject || previewBody || isPreviewLoading) ? (
             <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6">
               {/* Two-column layout */}
               <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 min-h-0 overflow-hidden">
@@ -250,6 +360,50 @@ export default function GenerateEmailPage() {
                         </div>
                       </div>
                     )}
+                    {isPremium && (
+                      <div className="space-y-1.5 flex-shrink-0">
+                        <label className="text-xs text-gray-700 block">Email Tone:</label>
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => {
+                              setEmailTone('professional_casual');
+                              // Email will regenerate automatically via useEffect dependency on emailTone
+                            }}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                              emailTone === 'professional_casual'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            Professional
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEmailTone('enthusiastic');
+                            }}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                              emailTone === 'enthusiastic'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            Ambitious
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEmailTone('conversational');
+                            }}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                              emailTone === 'conversational'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            Conversational
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="space-y-1.5 flex-shrink-0">
                       <label className="text-xs text-gray-700 block">Subject:</label>
                       <div className="relative">
@@ -257,7 +411,7 @@ export default function GenerateEmailPage() {
                           value={previewSubject || ''}
                           onChange={(e) => setPreviewSubject(e.target.value)}
                           className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 pr-10"
-                          placeholder="Email subject"
+                          placeholder={isPreviewLoading ? "Generating..." : "Email subject"}
                         />
                         <button
                           onClick={async () => {
@@ -285,13 +439,18 @@ export default function GenerateEmailPage() {
                       </div>
                     </div>
                     <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
-                      <label className="text-xs text-gray-700 block">Body:</label>
+                      <label className="text-xs text-gray-700 block">
+                        Body:
+                        {isPreviewLoading && (
+                          <span className="ml-2 text-blue-500 text-xs">Generating...</span>
+                        )}
+                      </label>
                       <div className="relative flex-1 flex flex-col min-h-0">
                         <Textarea
                           value={previewBody || ''}
                           onChange={(e) => setPreviewBody(e.target.value)}
                           className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 resize-none pr-10"
-                          placeholder="Email body"
+                          placeholder={isPreviewLoading ? "Your email will appear here as it's generated..." : "Email body"}
                         />
                         <button
                           onClick={async () => {
@@ -474,6 +633,16 @@ export default function GenerateEmailPage() {
           ) : null}
         </div>
       </div>
+      {showUpgradeModal && user && (
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          hiddenMatchCount={0}
+          email={user.email}
+          customTitle="Upgrade to Premium"
+          isPremium={isPremium}
+        />
+      )}
     </div>
   );
 }

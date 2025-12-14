@@ -247,4 +247,110 @@ Use this context, but do NOT mention the numeric similarity score or the fact th
   };
 }
 
+/**
+ * Generates a cold email with streaming support.
+ * Returns an async generator that yields text chunks as they're generated.
+ */
+export async function* generateColdEmailStream(
+  candidate: CandidateProfile,
+  startup: StartupInfo,
+  match: MatchContext,
+  options: EmailGenerationOptions = {}
+): AsyncGenerator<string, void, unknown> {
+  const genAI = getGeminiClient();
+  const model = genAI.getGenerativeModel({ model: DEFAULT_EMAIL_MODEL });
+
+  const toneSnippet = toneToPromptSnippet(options.tone);
+  const maxWords = options.maxWords ?? 100;
+  const subjectPrefix = options.includeSubjectPrefix
+    ? `[${options.includeSubjectPrefix}] `
+    : '';
+
+  const tagsText =
+    startup.tags && startup.tags.length > 0
+      ? startup.tags.join(', ')
+      : undefined;
+
+  const matchScorePct = Math.round(match.score * 100);
+
+  const prompt = `
+You are a college student writing a genuinely human cold email to a startup founder or hiring manager.
+
+Write from the first‑person perspective of the candidate. The email should feel like a real person wrote it and MUST follow these high‑level rules:
+- Keep it short (aim for around ${maxWords} words).
+- Get straight to the point in the first 1–2 sentences (why you are reaching out and what you want).
+- Infer the most appropriate role or position for this candidate (for example "software engineer", "product designer", "data scientist") from their skills and summary, and clearly state in the opening what role they want (e.g. "I'd love to intern as a software engineer on your team").
+- Clearly highlight what you are capable of and how those skills are useful to this specific startup.
+- Show real eagerness and commitment without sounding desperate.
+- Keep it casual and friendly, almost like you already know the founder.
+- Avoid generic, over‑formal phrases like "I hope this email finds you well" or "To whom it may concern".
+- Reference specific details about the startup (industry, product, tags, description) so every startup gets a different, tailored email.
+- The subject line must write in this format: "Startup Name (Desired Role)"
+
+Use a consistent structure across emails so they feel like they follow the same format:
+1) A short, direct opening that says who you are, the role you'd like (based on your background), and why you're reaching out. Keep this concise
+2) 2–4 short bullet points or numbered points that call out your most relevant skills, experiences, or projects for THIS startup.
+3) keep each bullet point to a maximum of around 10-20 words. Be very concise.
+4) if the user sending out the email has any technical links, try to include them at the end of the email (github, portfolio, personal website)
+5) use a professional sign off at the end of the email (e.g. "Best regards, [Your Name]"), try to include contact information if they have it on their resume
+6) start the email with "Hi [Founder Name]," or an introduction that includes the founder's name
+
+Even when the candidate and startup profiles look similar, vary the exact wording, phrasing, and examples so that two different startups never receive the same email text.
+
+${toneSnippet}
+
+Return ONLY JSON in this exact shape:
+{
+  "subject": "Concise, specific email subject line",
+  "body": "Plain text email body with line breaks, no markdown, no signatures beyond the candidate's name"
+}
+
+--------------------
+CANDIDATE PROFILE
+Name: ${candidate.name}
+Email: ${candidate.email}
+Summary: ${candidate.summary}
+Skills: ${candidate.skills.join(', ')}
+
+--------------------
+STARTUP INFORMATION
+Name: ${startup.name}
+Industry: ${startup.industry || 'N/A'}
+Description: ${startup.description || 'N/A'}
+Funding stage: ${startup.fundingStage || 'N/A'}
+Funding amount: ${startup.fundingAmount || 'N/A'}
+Location: ${startup.location || 'N/A'}
+Website: ${startup.website || 'N/A'}
+Tags: ${tagsText || 'N/A'}
+
+--------------------
+MATCH CONTEXT
+Similarity score (0‑1): ${match.score.toFixed(3)}
+Approximate match strength: ${matchScorePct}/100
+Rank: ${
+    match.rank != null && match.totalMatches
+      ? `${match.rank} of ${match.totalMatches}`
+      : match.rank != null
+        ? `${match.rank}`
+        : 'N/A'
+  }
+
+Use this context, but do NOT mention the numeric similarity score or the fact that an algorithm matched them. Talk like a human who has done their homework on the startup and is reaching out because the connection genuinely makes sense.
+`.trim();
+
+  try {
+    const result = await model.generateContentStream(prompt);
+    
+    for await (const chunk of result.stream) {
+      const chunkText = chunk.text();
+      if (chunkText) {
+        yield chunkText;
+      }
+    }
+  } catch (error) {
+    console.error('Error in streaming email generation:', error);
+    throw error;
+  }
+}
+
 

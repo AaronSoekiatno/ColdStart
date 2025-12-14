@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { generateColdEmail } from '@/lib/email-generation';
-import { getCandidate, getStartup } from '@/lib/supabase';
+import { getCandidate, getStartup, isSubscribed } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
 // COMMENTED OUT: OAuth client (not needed when not sending emails)
@@ -79,6 +79,47 @@ export async function POST(request: NextRequest) {
         { error: 'Startup not found' },
         { status: 404 }
       );
+    }
+
+    // Check if user is premium
+    const isPremium = isSubscribed(candidate);
+
+    // Check email send limits for free users (1 email per founder)
+    if (!isPremium && candidate.id && providedFounderEmail) {
+      const supabaseForCheck = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll() {},
+          },
+        }
+      );
+
+      const { data: existingEmail, error: checkError } = await supabaseForCheck
+        .from('sent_emails')
+        .select('id')
+        .eq('candidate_id', candidate.id)
+        .eq('recipient_email', providedFounderEmail)
+        .limit(1)
+        .maybeSingle();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing email:', checkError);
+      }
+
+      if (existingEmail) {
+        return NextResponse.json(
+          {
+            error: 'Free plan allows only one email send per founder. Upgrade to Premium for unlimited sends.',
+            upgradeRequired: true,
+          },
+          { status: 403 }
+        );
+      }
     }
 
     // Use provided founder email if available, otherwise guess

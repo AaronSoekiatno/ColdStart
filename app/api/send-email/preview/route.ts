@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { generateColdEmail } from '@/lib/email-generation';
-import { getCandidate, getStartup } from '@/lib/supabase';
+import { generateColdEmail, type EmailTone } from '@/lib/email-generation';
+import { getCandidate, getStartup, isSubscribed } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
 export async function POST(request: NextRequest) {
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startupId, matchScore } = await request.json();
+    const { startupId, matchScore, tone } = await request.json();
 
     if (!startupId || matchScore === undefined) {
       return NextResponse.json(
@@ -57,6 +57,75 @@ export async function POST(request: NextRequest) {
         { error: 'Startup not found' },
         { status: 404 }
       );
+    }
+
+    // Check if user is premium
+    const isPremium = isSubscribed(candidate);
+
+    // Email tone changes are premium-only feature
+    let emailTone: EmailTone | undefined = undefined;
+    if (tone) {
+      if (!isPremium) {
+        return NextResponse.json(
+          {
+            error: 'Email tone customization is a Premium feature. Upgrade to Premium to change email tone.',
+            upgradeRequired: true,
+          },
+          { status: 403 }
+        );
+      }
+      // Validate tone value
+      const validTones: EmailTone[] = ['professional_casual', 'enthusiastic', 'conversational'];
+      if (validTones.includes(tone as EmailTone)) {
+        emailTone = tone as EmailTone;
+      }
+    }
+
+    // Check email generation limits for free users
+    // Free: 3 email generations per day, only 1 per company
+    // Premium: Unlimited
+    if (!isPremium && candidate.id) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const { data: todayGenerations, error: genCheckError } = await supabase
+        .from('sent_emails')
+        .select('id, startup_id, sent_at')
+        .eq('candidate_id', candidate.id)
+        .gte('sent_at', todayStart.toISOString())
+        .lte('sent_at', todayEnd.toISOString());
+
+      if (genCheckError) {
+        console.error('Error checking email generation limits:', genCheckError);
+      } else {
+        // Check daily limit (3 per day for free)
+        if (todayGenerations && todayGenerations.length >= 3) {
+          return NextResponse.json(
+            {
+              error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
+              upgradeRequired: true,
+            },
+            { status: 403 }
+          );
+        }
+
+        // Check per-company limit (1 per company for free)
+        const alreadyGeneratedForCompany = todayGenerations?.some(
+          (email) => email.startup_id === startup.id
+        );
+
+        if (alreadyGeneratedForCompany) {
+          return NextResponse.json(
+            {
+              error: 'Free plan allows only one email generation per company per day. Upgrade to Premium for unlimited generations.',
+              upgradeRequired: true,
+            },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Decide which email address to use (real or guessed)
@@ -96,7 +165,8 @@ export async function POST(request: NextRequest) {
           .map((t: string) => t.trim())
           .filter((t: string) => t.length > 0),
       },
-      { score: matchScore }
+      { score: matchScore },
+      { tone: emailTone }
     );
 
     // Generate signed URL for resume preview

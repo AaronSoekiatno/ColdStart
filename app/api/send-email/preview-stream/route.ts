@@ -1,0 +1,271 @@
+import { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
+import { generateColdEmailStream, type EmailTone } from '@/lib/email-generation';
+import { getCandidate, getStartup, isSubscribed } from '@/lib/supabase';
+import { guessFounderEmailFromStartup } from '@/lib/founder-email';
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll() {},
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user || !user.email) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized. Please sign in.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { startupId, matchScore, tone } = await request.json();
+
+    if (!startupId || matchScore === undefined) {
+      return new Response(
+        JSON.stringify({ error: 'Missing startupId or matchScore' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Get candidate and startup data
+    const candidate = await getCandidate(user.email);
+    const startup = await getStartup(startupId);
+
+    if (!candidate) {
+      return new Response(
+        JSON.stringify({ error: 'Candidate profile not found. Please upload your resume first.' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!startup) {
+      return new Response(
+        JSON.stringify({ error: 'Startup not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if user is premium
+    const isPremium = isSubscribed(candidate);
+
+    // Email tone changes are premium-only feature
+    let emailTone: EmailTone | undefined = undefined;
+    if (tone) {
+      if (!isPremium) {
+        return new Response(
+          JSON.stringify({
+            error: 'Email tone customization is a Premium feature. Upgrade to Premium to change email tone.',
+            upgradeRequired: true,
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      // Validate tone value
+      const validTones: EmailTone[] = ['professional_casual', 'enthusiastic', 'conversational'];
+      if (validTones.includes(tone as EmailTone)) {
+        emailTone = tone as EmailTone;
+      }
+    }
+
+    // Check email generation limits for free users
+    // Free: 3 email generations per day, only 1 per company
+    // Premium: Unlimited
+    if (!isPremium && candidate.id) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const { data: todayGenerations, error: genCheckError } = await supabase
+        .from('sent_emails')
+        .select('id, startup_id, sent_at')
+        .eq('candidate_id', candidate.id)
+        .gte('sent_at', todayStart.toISOString())
+        .lte('sent_at', todayEnd.toISOString());
+
+      if (genCheckError) {
+        console.error('Error checking email generation limits:', genCheckError);
+      } else {
+        // Check daily limit (3 per day for free)
+        if (todayGenerations && todayGenerations.length >= 3) {
+          return new Response(
+            JSON.stringify({
+              error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
+              upgradeRequired: true,
+            }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check per-company limit (1 per company for free)
+        const alreadyGeneratedForCompany = todayGenerations?.some(
+          (email) => email.startup_id === startup.id
+        );
+
+        if (alreadyGeneratedForCompany) {
+          return new Response(
+            JSON.stringify({
+              error: 'Free plan allows only one email generation per company per day. Upgrade to Premium for unlimited generations.',
+              upgradeRequired: true,
+            }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
+    // Decide which email address to use (real or guessed)
+    const { email: targetEmail } = guessFounderEmailFromStartup(startup);
+
+    if (!targetEmail) {
+      return new Response(
+        JSON.stringify({
+          error:
+            'Founder email not available for this startup and could not be guessed from first name + website.',
+        }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Generate signed URL for resume preview
+    let resumeUrl = null;
+    if (candidate.resume_path) {
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceRoleKey) {
+        const supabaseAdmin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          serviceRoleKey
+        );
+
+        const { data } = await supabaseAdmin.storage
+          .from('resumes')
+          .createSignedUrl(candidate.resume_path, 3600); // 1 hour expiry
+
+        if (data?.signedUrl) {
+          resumeUrl = data.signedUrl;
+        }
+      }
+    }
+
+    // Create a ReadableStream for Server-Sent Events
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        
+        try {
+          // Send initial metadata
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'metadata', targetEmail, resumeUrl })}\n\n`)
+          );
+
+          // Stream the email generation
+          let fullText = '';
+          const emailStream = generateColdEmailStream(
+            {
+              name: candidate.name,
+              email: candidate.email,
+              summary: candidate.summary,
+              skills: candidate.skills
+                .split(', ')
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 0),
+            },
+            {
+              name: startup.name,
+              industry: startup.industry,
+              description: startup.description,
+              fundingStage: startup.funding_stage,
+              fundingAmount: startup.funding_amount,
+              location: startup.location,
+              website: startup.website,
+              tags: startup.tags
+                ?.split(', ')
+                .map((t: string) => t.trim())
+                .filter((t: string) => t.length > 0),
+            },
+            { score: matchScore },
+            { tone: emailTone }
+          );
+
+          for await (const chunk of emailStream) {
+            fullText += chunk;
+            // Send each chunk as it arrives
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`)
+            );
+          }
+
+          // Parse the final JSON response
+          let subject = '';
+          let body = '';
+          
+          try {
+            // Clean and parse JSON
+            let cleaned = fullText.trim();
+            if (cleaned.startsWith('```json')) {
+              cleaned = cleaned.slice(7);
+            } else if (cleaned.startsWith('```')) {
+              cleaned = cleaned.slice(3);
+            }
+            if (cleaned.endsWith('```')) {
+              cleaned = cleaned.slice(0, -3);
+            }
+            cleaned = cleaned.trim();
+
+            const parsed = JSON.parse(cleaned) as { subject?: string; body?: string };
+            if (typeof parsed.subject === 'string') {
+              subject = parsed.subject.trim();
+            }
+            if (typeof parsed.body === 'string') {
+              body = parsed.body.trim();
+            }
+          } catch (parseError) {
+            // Fallback: treat the whole response as the body
+            body = fullText.trim();
+            subject = `Intro: ${candidate.name} → ${startup.name} (internship interest)`;
+          }
+
+          // Send final result
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'done', subject, body })}\n\n`)
+          );
+        } catch (error) {
+          console.error('Streaming error:', error);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'error', error: error instanceof Error ? error.message : 'Unknown error' })}\n\n`)
+          );
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+  } catch (error) {
+    console.error('Preview email stream error:', error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to generate email preview' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+}

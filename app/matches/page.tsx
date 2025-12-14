@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSubscribed } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -48,6 +48,7 @@ export default function MatchesPage() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [hasError, setHasError] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const [isPremium, setIsPremium] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -62,7 +63,17 @@ export default function MatchesPage() {
 
         setUser(currentUser);
 
-        // Get candidate info
+        // Get candidate info and premium status
+        const candidateResponse = await fetch('/api/candidate-info', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (candidateResponse.ok) {
+          const candidateInfo = await candidateResponse.json();
+          setIsPremium(isSubscribed(candidateInfo));
+        }
+
+        // Get matches
         const response = await fetch('/api/matches?page=1&limit=6', {
           credentials: 'include',
         });
@@ -168,7 +179,7 @@ export default function MatchesPage() {
               {/* Single match card display */}
               {matches[currentMatchIndex] && (
                 <div key={matches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard match={matches[currentMatchIndex]} />
+                  <MatchCard match={matches[currentMatchIndex]} isPremium={isPremium} />
                 </div>
               )}
             </div>
