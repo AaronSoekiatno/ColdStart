@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/NewHero";
 import { ProblemSection } from "@/components/ProblemSection";
@@ -17,23 +17,35 @@ import { Footer } from "@/components/Footer";
 import { SignInModal } from "@/components/SignInModal";
 import { SignUpModal } from "@/components/SignUpModal";
 import { ResumeUploadModal } from "@/components/ResumeUploadModal";
+import { UpgradeModal } from "@/components/UpgradeModal";
+import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export function NewLandingPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
   const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const fetchingRef = useRef(false);
+  const lastFetchedEmailRef = useRef<string | null>(null);
+
+  // Memoize user email to prevent unnecessary re-fetches
+  const userEmail = useMemo(() => user?.email, [user?.email]);
 
   useEffect(() => {
     // Check initial session
@@ -50,6 +62,45 @@ export function NewLandingPage() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch candidate info to check premium status - only when email changes
+  useEffect(() => {
+    const fetchCandidateInfo = async () => {
+      if (!userEmail) {
+        setIsPremium(false);
+        lastFetchedEmailRef.current = null;
+        return;
+      }
+
+      // Prevent duplicate requests - check if we're already fetching or if we just fetched this email
+      if (fetchingRef.current || lastFetchedEmailRef.current === userEmail) {
+        return;
+      }
+      
+      fetchingRef.current = true;
+      setIsCheckingPremium(true);
+      try {
+        const response = await fetch('/api/candidate-info', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const candidateInfo = await response.json();
+          setIsPremium(isSubscribed(candidateInfo));
+          lastFetchedEmailRef.current = userEmail;
+        } else {
+          setIsPremium(false);
+        }
+      } catch (error) {
+        console.error('Error fetching candidate info:', error);
+        setIsPremium(false);
+      } finally {
+        setIsCheckingPremium(false);
+        fetchingRef.current = false;
+      }
+    };
+
+    fetchCandidateInfo();
+  }, [userEmail]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -70,11 +121,44 @@ export function NewLandingPage() {
     router.push("/");
   };
 
+  // Handle Premium button click - memoized callback
+  const handlePremiumClick = useCallback(async () => {
+    // Open modal immediately for better UX
+    setShowPremiumModal(true);
+    
+    // Sync subscription status in background (non-blocking)
+    if (userEmail && !isCheckingPremium) {
+      setIsCheckingPremium(true);
+      try {
+        const syncResponse = await fetch('/api/stripe/sync-subscription', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        
+        if (syncResponse.ok) {
+          // Refresh premium status after sync
+          const response = await fetch('/api/candidate-info', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          if (response.ok) {
+            const candidateInfo = await response.json();
+            setIsPremium(isSubscribed(candidateInfo));
+          }
+        }
+      } catch (error) {
+        console.error('Error syncing subscription:', error);
+      } finally {
+        setIsCheckingPremium(false);
+      }
+    }
+  }, [userEmail, isCheckingPremium]);
+
   return (
     <div className="min-h-screen">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center relative">
           {/* Logo - Hidden when scrolled */}
           <Link href="/" className={`flex items-center gap-3 transition-opacity duration-300 ${
             isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
@@ -83,8 +167,8 @@ export function NewLandingPage() {
             <span className="text-xl font-semibold text-white drop-shadow-md">Hermes</span>
           </Link>
 
-          {/* Navigation - Hidden when scrolled */}
-          <nav className={`flex items-center gap-4 transition-opacity duration-300 ${
+          {/* Navigation - Centered, Hidden when scrolled */}
+          <nav className={`absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4 transition-opacity duration-300 ${
             isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
             {user ? (
@@ -107,34 +191,86 @@ export function NewLandingPage() {
                 >
                   Resumes
                 </Link>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="rounded-full h-9 px-4 text-white drop-shadow-md"
-                    >
-                      {user.email}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleSignOut}>
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button
+                  onClick={handlePremiumClick}
+                  variant="ghost"
+                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md rounded-full h-9 px-4"
+                >
+                  Premium Plan
+                </Button>
               </>
             ) : null}
           </nav>
 
-          {/* Right side buttons */}
-          <div className="flex items-center gap-3">
-            {!user && (
+          {/* Right side buttons - Positioned to the far right */}
+          <div className="flex items-center gap-3 ml-auto -mr-6">
+            {!user ? (
               <Button
                 onClick={() => setShowSignIn(true)}
                 className="rounded-full px-6 py-2 text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300"
               >
                 Sign In
               </Button>
+            ) : (
+              <>
+                {/* Email Dropdown - Hidden when scrolled, just like navigation */}
+                <div className={`transition-opacity duration-300 ${
+                  isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="rounded-full h-9 px-4 text-white drop-shadow-md"
+                      >
+                        {user.email}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {isPremium && (
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onSelect={async () => {
+                            try {
+                              const response = await fetch('/api/stripe/create-portal-session', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ email: user.email ?? '' }),
+                              });
+
+                              const data = await response.json();
+
+                              if (!response.ok) {
+                                throw new Error(data.error || 'Failed to create portal session');
+                              }
+
+                              // Redirect to Stripe Customer Portal
+                              if (data.url) {
+                                window.location.href = data.url;
+                              }
+                            } catch (error: any) {
+                              console.error('Error opening portal:', error);
+                              toast({
+                                title: "Error",
+                                description: error.message || 'Failed to open subscription management',
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                        >
+                          Manage Subscription
+                        </DropdownMenuItem>
+                      )}
+                      {isPremium && <DropdownMenuSeparator />}
+                      <DropdownMenuItem onClick={handleSignOut}>
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </>
             )}
             {/* Upload Resume Button - Only visible when scrolled */}
             <Button
@@ -297,6 +433,15 @@ export function NewLandingPage() {
       <ResumeUploadModal
         open={showResumeUpload}
         onOpenChange={setShowResumeUpload}
+      />
+      <UpgradeModal
+        open={showPremiumModal}
+        onOpenChange={setShowPremiumModal}
+        hiddenMatchCount={0}
+        email={user?.email || ''}
+        onDismiss={() => setShowPremiumModal(false)}
+        customTitle="Our Premium Plan"
+        isPremium={isPremium}
       />
     </div>
   );
