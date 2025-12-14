@@ -16,10 +16,10 @@ export function ResumeCard({ fileName, resumeUrl }: ResumeCardProps) {
   if (!resumeUrl) {
     return null;
   }
-
+  ResumeCard
   return (
     <>
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 hover:bg-gray-50 transition-all flex flex-col shadow-sm">
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 transition-all flex flex-col shadow-sm">
         <div className="flex-1 mb-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate" title={fileName}>
             {fileName}

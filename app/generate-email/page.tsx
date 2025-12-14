@@ -167,27 +167,28 @@ export default function GenerateEmailPage() {
           subject: previewSubject,
           body: previewBody,
           matchScore,
+          founderEmail: founderEmail || undefined,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to send email');
+        throw new Error(data.error || 'Failed to save email');
       }
 
       toast({
-        title: "Email sent!",
-        description: "Your email has been sent successfully.",
+        title: "Email saved!",
+        description: "Your email has been saved successfully.",
       });
 
-      // Redirect back to matches
-      router.push("/matches");
+      // Redirect to tracker page
+      router.push("/tracker");
     } catch (error) {
-      console.error('Send email error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send email';
+      console.error('Save email error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save email';
       toast({
-        title: "Failed to send email",
+        title: "Failed to save email",
         description: errorMessage,
         variant: "destructive",
       });
@@ -463,7 +464,7 @@ export default function GenerateEmailPage() {
                           Sending...
                         </span>
                       ) : (
-                        "Send Email"
+                        "Sent Email"
                       )}
                     </Button>
                   </div>
