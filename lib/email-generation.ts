@@ -41,8 +41,10 @@ export interface MatchContext {
 }
 
 export type EmailTone =
-  | 'professional_casual'
-  | 'enthusiastic'
+  | 'professional'
+  | 'classy'
+  | 'informative'
+  | 'ambitious'
   | 'conversational';
 
 export interface EmailGenerationOptions {
@@ -93,11 +95,16 @@ function cleanJsonResponse(response: string): string {
 
 function toneToPromptSnippet(tone: EmailTone | undefined): string {
   switch (tone) {
-    case 'enthusiastic':
-      return 'Use an enthusiastic but still professional tone, showing real excitement without sounding salesy.';
+    case 'professional':
+      return 'Use a professional, polished tone appropriate for business communication while remaining approachable.';
+    case 'classy':
+      return 'Use an elegant, sophisticated tone that demonstrates refinement and respect for the recipient.';
+    case 'informative':
+      return 'Use a clear, informative tone that prioritizes conveying information effectively and directly.';
+    case 'ambitious':
+      return 'Use an ambitious, driven tone that shows enthusiasm and determination without being overly aggressive.';
     case 'conversational':
       return 'Use a conversational, human tone, like a thoughtful college student reaching out to a founder.';
-    case 'professional_casual':
     default:
       return 'Use a professional but casual tone, like a strong student writing a thoughtful cold email.';
   }

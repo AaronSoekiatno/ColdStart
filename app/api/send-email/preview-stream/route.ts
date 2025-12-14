@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         );
       }
       // Validate tone value
-      const validTones: EmailTone[] = ['professional_casual', 'enthusiastic', 'conversational'];
+      const validTones: EmailTone[] = ['professional', 'classy', 'informative', 'ambitious', 'conversational'];
       if (validTones.includes(tone as EmailTone)) {
         emailTone = tone as EmailTone;
       }
@@ -140,10 +140,24 @@ export async function POST(request: NextRequest) {
       console.error('Error fetching existing generated email:', fetchError);
     }
 
-    // If we have an existing generated email, ALWAYS return it immediately (no streaming needed)
-    // Gemini should only be called ONCE per user per startup - this ensures that
-    if (existingGeneratedEmail) {
-      console.log('[Generated Email] Found existing email in database, returning stored version (Gemini will NOT be called)');
+    // Check if we should use cached email or regenerate
+    // Regenerate if: tone is provided AND different from stored tone (premium users changing tone)
+    // Otherwise, return cached email if it exists
+    const storedTone = existingGeneratedEmail?.email_tone || null;
+    const requestedTone = emailTone || null;
+    
+    // Regenerate if tone is explicitly provided (for premium users) and differs from stored tone
+    // This handles premium users changing tone after initial generation
+    // Note: We only regenerate if emailTone is provided (premium user) and it's different
+    const shouldRegenerate = existingGeneratedEmail && 
+      emailTone !== undefined && 
+      storedTone !== requestedTone;
+    
+    const shouldUseCached = existingGeneratedEmail && !shouldRegenerate;
+
+    // If we have an existing generated email with matching tone, return it immediately (no streaming needed)
+    if (shouldUseCached) {
+      console.log('[Generated Email] Found existing email in database with matching tone, returning stored version (Gemini will NOT be called)');
       
       // Generate signed URL for resume preview
       let resumeUrl = null;
@@ -206,8 +220,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // No existing email found - generate a new one (this is the ONLY time Gemini will be called for this user-startup pair)
-    console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+    // Generate a new email if:
+    // 1. No existing email found (first time for this user-startup pair)
+    // 2. Existing email found but tone changed (premium user regenerating with new tone)
+    if (shouldRegenerate) {
+      console.log('[Generated Email] Tone change detected - regenerating email with new tone via Gemini API');
+    } else {
+      console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+    }
 
     // Decide which email address to use (real or guessed)
     const { email: targetEmail } = guessFounderEmailFromStartup(startup);
@@ -321,8 +341,8 @@ export async function POST(request: NextRequest) {
           }
 
           // Save generated email to database (upsert - replace if exists for same candidate-startup pair)
-          // Note: Due to the unique constraint, this will only insert ONCE per user-startup pair.
-          // Subsequent requests will find the existing email above and return it without calling Gemini.
+          // When tone changes, this upsert will replace the old email with the new one
+          // The unique constraint on (candidate_id, startup_id) ensures only one email per user-startup pair
           const { error: saveError } = await supabase
             .from('generated_emails')
             .upsert({
@@ -342,7 +362,11 @@ export async function POST(request: NextRequest) {
             console.error('Error saving generated email to database:', saveError);
             // Don't fail the request, just log the error
           } else {
-            console.log('[Generated Email] Successfully saved email to database (this will be the only Gemini call for this user-startup pair)');
+            if (shouldRegenerate) {
+              console.log('[Generated Email] Successfully updated email in database with new tone');
+            } else {
+              console.log('[Generated Email] Successfully saved email to database (first time for this user-startup pair)');
+            }
           }
 
           // Send final result

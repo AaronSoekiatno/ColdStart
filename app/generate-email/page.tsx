@@ -41,7 +41,7 @@ export default function GenerateEmailPage() {
   const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  const [emailTone, setEmailTone] = useState<'professional_casual' | 'enthusiastic' | 'conversational'>('professional_casual');
+  const [emailTone, setEmailTone] = useState<'professional' | 'classy' | 'informative' | 'ambitious' | 'conversational'>('professional');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
 
@@ -370,41 +370,71 @@ export default function GenerateEmailPage() {
                         </div>
                       </div>
                     )}
-                    {isPremium && (
+                    {isPremium && (previewSubject || previewBody) && (
                       <div className="space-y-1.5 flex-shrink-0">
                         <label className="text-xs text-gray-700 block">Email Tone:</label>
                         <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => {
-                              const newTone = 'professional_casual';
+                              const newTone = 'professional';
                               if (newTone !== emailTone) {
                                 setEmailTone(newTone);
-                                // Email will regenerate automatically via useEffect dependency on emailTone
-                                // This will update the stored email in Supabase (one per startup, regardless of tone)
                               }
                             }}
+                            disabled={isPreviewLoading}
                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'professional_casual'
+                              emailTone === 'professional'
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                           >
                             Professional
                           </button>
                           <button
                             onClick={() => {
-                              const newTone = 'enthusiastic';
+                              const newTone = 'classy';
                               if (newTone !== emailTone) {
                                 setEmailTone(newTone);
-                                // Email will regenerate automatically via useEffect dependency on emailTone
-                                // This will update the stored email in Supabase (one per startup, regardless of tone)
                               }
                             }}
+                            disabled={isPreviewLoading}
                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'enthusiastic'
+                              emailTone === 'classy'
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            Classy
+                          </button>
+                          <button
+                            onClick={() => {
+                              const newTone = 'informative';
+                              if (newTone !== emailTone) {
+                                setEmailTone(newTone);
+                              }
+                            }}
+                            disabled={isPreviewLoading}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                              emailTone === 'informative'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            Informative
+                          </button>
+                          <button
+                            onClick={() => {
+                              const newTone = 'ambitious';
+                              if (newTone !== emailTone) {
+                                setEmailTone(newTone);
+                              }
+                            }}
+                            disabled={isPreviewLoading}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                              emailTone === 'ambitious'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                           >
                             Ambitious
                           </button>
@@ -413,19 +443,21 @@ export default function GenerateEmailPage() {
                               const newTone = 'conversational';
                               if (newTone !== emailTone) {
                                 setEmailTone(newTone);
-                                // Email will regenerate automatically via useEffect dependency on emailTone
-                                // This will update the stored email in Supabase (one per startup, regardless of tone)
                               }
                             }}
+                            disabled={isPreviewLoading}
                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                               emailTone === 'conversational'
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                           >
                             Conversational
                           </button>
                         </div>
+                        {isPreviewLoading && (
+                          <p className="text-xs text-gray-500">Regenerating email with new tone...</p>
+                        )}
                       </div>
                     )}
                     <div className="space-y-1.5 flex-shrink-0">
@@ -601,14 +633,12 @@ export default function GenerateEmailPage() {
                                   status="pending"
                                   onAccept={() => {
                                     setSuggestionStatuses(prev => {
-                                      const updated = { ...prev, [suggestion.id]: 'accepted' };
-                                      return updated;
+                                      return { ...prev, [suggestion.id]: 'accepted' as const };
                                     });
                                   }}
                                   onReject={() => {
                                     setSuggestionStatuses(prev => {
-                                      const updated = { ...prev, [suggestion.id]: 'rejected' };
-                                      return updated;
+                                      return { ...prev, [suggestion.id]: 'rejected' as const };
                                     });
                                   }}
                                 />
@@ -681,7 +711,7 @@ export default function GenerateEmailPage() {
           open={showUpgradeModal}
           onOpenChange={setShowUpgradeModal}
           hiddenMatchCount={0}
-          email={user.email}
+          email={user.email || ''}
           customTitle="Upgrade to Premium"
           isPremium={isPremium}
         />
