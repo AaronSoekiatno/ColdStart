@@ -191,6 +191,15 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../app/api/scrape-workatastartup/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/scrape-workatastartup">> = Specific
+  const handler = {} as typeof import("../../../app/api/scrape-workatastartup/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
 // Validate ../../../app/api/send-email/preview/route.ts
 {
   type __IsExpected<Specific extends RouteHandlerConfig<"/api/send-email/preview">> = Specific

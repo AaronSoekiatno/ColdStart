@@ -24,7 +24,7 @@ export function ProblemSection() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16">
           {problems.map((problem, index) => (
-            <div key={index} className="space-y-4 bg-white/15 backdrop-blur-sm rounded-2xl p-8 border border-white/30 shadow-xl">
+            <div key={index} className="space-y-4 bg-white/15 backdrop-blur-sm rounded-2xl p-8 border border-white/30 shadow-xl transition-all duration-300 ease-in-out hover:-translate-y-2 hover:shadow-2xl">
               <h3 className="text-2xl font-medium text-gray-800">{problem.title}</h3>
               <p className="text-lg text-gray-700 leading-relaxed">
                 {problem.description}
