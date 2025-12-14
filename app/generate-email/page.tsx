@@ -334,7 +334,23 @@ export default function GenerateEmailPage() {
               <div className="flex-1 flex flex-col lg:flex-row gap-0 min-h-0 overflow-hidden">
                 {/* LEFT: Email Preview */}
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden border-r border-gray-200 px-6 py-4">
-                  <h3 className="text-lg font-semibold mb-4 text-gray-900">Review Email</h3>
+                  <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                    <h3 className="text-lg font-semibold text-gray-900">Review Email</h3>
+                    <Button
+                      onClick={handleSendEmail}
+                      disabled={isSending || isPreviewLoading}
+                      className="bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-4"
+                    >
+                      {isSending ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Sending...
+                        </span>
+                      ) : (
+                        "Already Sent?"
+                      )}
+                    </Button>
+                  </div>
                   <div className="flex-1 flex flex-col space-y-4 min-h-0">
                     {founderEmail && (
                       <div className="space-y-1.5 flex-shrink-0">
@@ -441,7 +457,7 @@ export default function GenerateEmailPage() {
                 {/* RIGHT: Resume Preview & Suggestions */}
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-6 py-4">
                   <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                    <h3 className="text-lg font-semibold text-gray-900">Edit Resume</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Edit Your Resume</h3>
                     <div className="flex items-center gap-2">
                       {resumeSuggestions.length > 0 && (
                         <>
@@ -465,8 +481,7 @@ export default function GenerateEmailPage() {
                         <Button
                           onClick={handleLoadSuggestions}
                           disabled={isLoadingSuggestions}
-                          size="sm"
-                          className="bg-blue-500 hover:opacity-75 text-white h-8 text-sm font-medium transition-opacity"
+                          className="bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-6"
                         >
                           {isLoadingSuggestions ? (
                             <span className="flex items-center gap-2">
@@ -587,12 +602,6 @@ export default function GenerateEmailPage() {
                       </div>
                     ) : resumeText ? (
                       <div className="h-full flex flex-col">
-                        <div className="mb-3">
-                          <h4 className="text-base font-semibold text-gray-900 mb-1">📄 Your Resume</h4>
-                          <p className="text-sm text-gray-600">
-                            Your resume, structured and styled for easy editing. Click "Tailor" to get AI-powered improvement suggestions for this startup.
-                          </p>
-                        </div>
                         <div className="flex-1 overflow-hidden">
                           {structuredResumeData && structuredResumeData.personal ? (
                             <JakesResumeTemplate
@@ -617,40 +626,6 @@ export default function GenerateEmailPage() {
                         <p className="text-gray-500 text-xs mt-2">Please upload your resume first</p>
                       </div>
                     )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="mt-4 pt-4 border-t border-gray-200 flex-shrink-0">
-                <div className="flex items-center justify-between w-full">
-                  <div className="text-xs text-gray-500">
-                    {resumeSuggestions.length > 0 && (
-                      <>Note: Resume improvements are for your reference only</>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => router.push("/matches")}
-                      className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSendEmail}
-                      disabled={isSending || isPreviewLoading}
-                      className="bg-gray-900 hover:bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isSending ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Sending...
-                        </span>
-                      ) : (
-                        "Sent Email"
-                      )}
-                    </Button>
                   </div>
                 </div>
               </div>
