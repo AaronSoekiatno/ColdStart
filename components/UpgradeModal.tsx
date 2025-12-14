@@ -20,17 +20,17 @@ interface UpgradeModalProps {
 
 const freeFeatures = [
   "Unlimited Matches",
-  "Email Tracking (history)",
+  "Email History",
   "One uploaded resume",
-  "Basic resume keyword matching",
-  "One email send per founder",
-  "3 email generations per day (only one email generation per company)",
+  "One email send per company",
+  "3 email generations per day",
 ];
 
 const premiumFeatures = [
   "All free features",
-  "Unlimited sends for all founders at the same time",
-  "Changes in generated email tone",
+  "Send to multiple founders simultaneously",
+  "Email tone customization",
+  "Resume editor",
   "Unlimited uploaded resumes",
 ];
 
