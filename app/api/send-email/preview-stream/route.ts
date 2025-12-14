@@ -5,6 +5,47 @@ import { generateColdEmailStream, type EmailTone } from '@/lib/email-generation'
 import { getCandidate, getStartup, isSubscribed } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
+/**
+ * Extract links (GitHub, portfolio, etc.) from resume text
+ */
+function extractLinksFromResume(resumeText: string): Record<string, string> {
+  const links: Record<string, string> = {};
+  
+  // Common patterns for links in resumes
+  const patterns = [
+    { key: 'github', regex: /github\.com[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+(?:\/[a-zA-Z0-9\-_.]+)?)/gi },
+    { key: 'portfolio', regex: /(?:portfolio|website|personal site)[\s:]+(https?:\/\/[^\s]+)/gi },
+    { key: 'linkedin', regex: /linkedin\.com\/in[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+)/gi },
+    { key: 'website', regex: /(?:http[s]?:\/\/)?(?:www\.)?([a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi },
+  ];
+
+  for (const pattern of patterns) {
+    const matches = resumeText.match(pattern.regex);
+    if (matches && matches.length > 0) {
+      // Extract the first match and clean it up
+      let link = matches[0];
+      // Remove common prefixes
+      link = link.replace(/^(?:github|portfolio|website|personal site|linkedin)[\s:]+/i, '');
+      link = link.trim();
+      // Ensure it has a protocol
+      if (link && !link.startsWith('http')) {
+        if (pattern.key === 'github') {
+          link = `https://github.com/${link.replace(/github\.com\/?/i, '').trim()}`;
+        } else if (pattern.key === 'linkedin') {
+          link = `https://linkedin.com/in/${link.replace(/linkedin\.com\/in\/?/i, '').trim()}`;
+        } else {
+          link = `https://${link}`;
+        }
+      }
+      if (link) {
+        links[pattern.key] = link;
+      }
+    }
+  }
+
+  return links;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = createServerClient(
@@ -259,6 +300,11 @@ export async function POST(request: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ type: 'metadata', targetEmail, resumeUrl })}\n\n`)
           );
 
+          // Extract founder name (use first founder if multiple)
+          const founderName = startup.founder_names
+            ? startup.founder_names.split(',')[0].trim()
+            : undefined;
+
           // Stream the email generation
           let fullText = '';
           const emailStream = generateColdEmailStream(
@@ -270,6 +316,9 @@ export async function POST(request: NextRequest) {
                 .split(', ')
                 .map((s: string) => s.trim())
                 .filter((s: string) => s.length > 0),
+              resumeFullText: candidate.resume_full_text || undefined,
+              // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
+              links: candidate.resume_full_text ? extractLinksFromResume(candidate.resume_full_text) : undefined,
             },
             {
               name: startup.name,
@@ -283,6 +332,8 @@ export async function POST(request: NextRequest) {
                 ?.split(', ')
                 .map((t: string) => t.trim())
                 .filter((t: string) => t.length > 0),
+              founderName: founderName,
+              scrapedContext: undefined, // Can be added later if scraped intel is stored in database
             },
             { score: matchScore },
             { tone: emailTone }
