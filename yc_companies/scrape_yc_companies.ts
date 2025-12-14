@@ -234,14 +234,23 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
     const pageTitle = await page.title();
     console.log(`   Page title: ${pageTitle}`);
     
-    // Check for common error pages
-    const isErrorPage = await page.evaluate(() => {
-      const bodyText = document.body.textContent?.toLowerCase() || '';
-      return bodyText.includes('404') || 
-             bodyText.includes('not found') || 
-             bodyText.includes('page not found') ||
-             bodyText.includes('access denied');
-    });
+    // Check for common error pages with retry logic
+    let isErrorPage = false;
+    try {
+      isErrorPage = await page.evaluate(() => {
+        const bodyText = document.body.textContent?.toLowerCase() || '';
+        return bodyText.includes('404') || 
+               bodyText.includes('not found') || 
+               bodyText.includes('page not found') ||
+               bodyText.includes('access denied');
+      });
+    } catch (evalError: any) {
+      const errorMsg = evalError?.message || String(evalError);
+      if (errorMsg.includes('detached') || errorMsg.includes('Target closed')) {
+        throw new Error('Page detached during error page check');
+      }
+      throw evalError;
+    }
     
     if (isErrorPage) {
       console.error(`   ❌ Page appears to be an error page (404/not found)`);
@@ -253,7 +262,9 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       throw new Error('Page was closed before evaluation');
     }
 
-    const pageData = await page.evaluate(() => {
+    let pageData;
+    try {
+      pageData = await page.evaluate(() => {
       try {
       const data: YCPageData = {
         founders: [],
@@ -1597,7 +1608,8 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         }
         
         // Also use link text if available and different from URL
-        if (tagText && tagText.length > 1 && tagText.length < 50 && !allTags.includes(tagText)) {
+        // Skip if it's pure numbers (likely an index or count, not a tag)
+        if (tagText && !/^\d+$/.test(tagText) && tagText.length > 1 && tagText.length < 50 && !allTags.includes(tagText)) {
           allTags.push(tagText);
         }
       }
@@ -1625,6 +1637,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
             if (element.tagName === 'A') continue;
             // Skip if it contains a link (likely navigation)
             if (element.querySelector('a')) continue;
+            // Skip if it's pure numbers or mostly numbers
+            if (/^\d+$/.test(tagText) || (tagText.match(/\d/g) || []).length / tagText.length > 0.7) {
+              continue;
+            }
             // Skip if it's too long (likely not a tag)
             if (tagText && tagText.length > 1 && tagText.length < 50) {
               const normalized = tagText.replace(/\s+/g, ' ').trim();
@@ -1642,6 +1658,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       const clickableElements = document.querySelectorAll('button, [role="button"], [onclick]');
       for (const element of Array.from(clickableElements)) {
         const tagText = element.textContent?.trim() || '';
+        // Skip if it's pure numbers or mostly numbers
+        if (/^\d+$/.test(tagText) || (tagText.match(/\d/g) || []).length / tagText.length > 0.7) {
+          continue;
+        }
         // Check if it looks like a tag (short, single word or short phrase)
         if (tagText && tagText.length > 1 && tagText.length < 30 && 
             tagText.split(/\s+/).length <= 3 && 
@@ -1659,7 +1679,8 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const dataTag = element.getAttribute('data-tag') || 
                        element.getAttribute('data-keyword') || 
                        element.getAttribute('data-category');
-        if (dataTag && dataTag.length > 1 && dataTag.length < 50 && !allTags.includes(dataTag)) {
+        // Skip if it's pure numbers (likely an ID, not a tag)
+        if (dataTag && !/^\d+$/.test(dataTag) && dataTag.length > 1 && dataTag.length < 50 && !allTags.includes(dataTag)) {
           allTags.push(dataTag);
         }
       }
@@ -1724,6 +1745,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const allClickable = document.querySelectorAll('a, button, [role="button"]');
         for (const el of Array.from(allClickable).slice(0, 100)) {
           const text = el.textContent?.trim() || '';
+          // Skip if it's pure numbers or mostly numbers
+          if (/^\d+$/.test(text) || (text.match(/\d/g) || []).length / text.length > 0.7) {
+            continue;
+          }
           // Skip navigation, common UI elements
           if (text && text.length > 1 && text.length < 30 && 
               !text.match(/^(click|view|see|more|less|show|hide|expand|collapse|apply|jobs|company|location|team|founded|website|batch|active|founders)$/i) &&
@@ -1739,6 +1764,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const tagContainers = document.querySelectorAll('[class*="tag"], [class*="badge"], [class*="chip"], [class*="label"], [class*="pill"]');
         for (const container of Array.from(tagContainers).slice(0, 50)) {
           const text = container.textContent?.trim() || '';
+          // Skip if it's pure numbers or mostly numbers
+          if (/^\d+$/.test(text) || (text.match(/\d/g) || []).length / text.length > 0.7) {
+            continue;
+          }
           if (text && text.length > 1 && text.length < 50 && !allTags.includes(text)) {
             allTags.push(text);
           }
@@ -1748,6 +1777,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         const shortTextElements = document.querySelectorAll('div, span, p');
         for (const el of Array.from(shortTextElements).slice(0, 200)) {
           const text = el.textContent?.trim() || '';
+          // Skip if it's pure numbers or mostly numbers
+          if (/^\d+$/.test(text) || (text.match(/\d/g) || []).length / text.length > 0.7) {
+            continue;
+          }
           // Very short text (1-3 words, < 25 chars) that's capitalized might be a tag
           if (text && text.length > 1 && text.length < 25 && 
               text.split(/\s+/).length <= 3 &&
@@ -1784,29 +1817,51 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         
         // BLACKLIST: Skip only what we know ISN'T a tag
         
-        // 1. Skip activity/status words
+        // 1. Skip pure numbers or mostly numeric (years, versions, etc.)
+        if (/^\d+$/.test(normalizedTag) || // Pure numbers like "2025", "24"
+            /^\d{4}$/.test(normalizedTag) || // 4-digit years
+            /^v?\d+\.?\d*$/.test(normalizedTagLower) || // Version numbers like "v2", "3.0", "1.5"
+            /^\d+%$/.test(normalizedTag) || // Percentages like "50%"
+            /^#\d+$/.test(normalizedTag)) { // Hashtag numbers like "#2025"
+          continue;
+        }
+        
+        // 2. Skip tags that are mostly numbers (more than 50% digits)
+        const digitCount = (normalizedTag.match(/\d/g) || []).length;
+        const totalChars = normalizedTag.replace(/\s/g, '').length;
+        if (totalChars > 0 && digitCount / totalChars > 0.5) {
+          continue;
+        }
+        
+        // 3. Skip activity/status words
         if (['active', 'inactive', 'pending', 'completed', 'failed'].includes(normalizedTagLower)) {
           continue;
         }
         
-        // 2. Skip UI components and navigation
+        // 4. Skip UI components and navigation
         if (/^(open|close|menu|logo|button|icon|nav|header|footer|view|see|more|less|show|hide|expand|collapse|click|apply|all)$/i.test(normalizedTagLower)) {
           continue;
         }
         
-        // 3. Skip batch/year patterns (e.g., "Summer 2025", "W24", "S25")
+        // 5. Skip batch/year patterns (e.g., "Summer 2025", "W24", "S25", "2025 Summer")
         if (/^(summer|winter|spring|fall|w|s)\s*\d{2,4}$/i.test(normalizedTagLower) || 
-            /^\d{4}$/.test(normalizedTagLower) ||
-            /summer \d{4}|winter \d{4}|spring \d{4}|fall \d{4}/i.test(normalizedTagLower)) {
+            /^\d{4}\s*(summer|winter|spring|fall)$/i.test(normalizedTagLower) ||
+            /summer \d{4}|winter \d{4}|spring \d{4}|fall \d{4}/i.test(normalizedTagLower) ||
+            /^[ws]\d{2,4}$/i.test(normalizedTagLower)) { // W24, S25, etc.
           continue;
         }
         
-        // 4. Skip company metadata
+        // 6. Skip tags that end with year numbers (e.g., "Something 2025")
+        if (/\s+\d{4}$/.test(normalizedTag) || /-\d{4}$/.test(normalizedTag)) {
+          continue;
+        }
+        
+        // 7. Skip company metadata
         if (['founders', 'founder', 'company', 'team', 'size', 'jobs', 'status', 'founded', 'website', 'batch'].includes(normalizedTagLower)) {
           continue;
         }
         
-        // 5. Skip locations (exact matches only to avoid false positives)
+        // 8. Skip locations (exact matches only to avoid false positives)
         const isLocation = locationKeywords.some(loc => {
           // Exact match
           if (normalizedTagLower === loc) return true;
@@ -1815,13 +1870,13 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           return false;
         });
         
-        // 6. Skip location abbreviations
+        // 9. Skip location abbreviations
         const isLocationAbbr = /^(sf|nyc|la|chi|bos|sea|aus|den|atl|mia|dal|phi|phx|ca|ny|tx|fl|il|ma|wa|co|ga|nc|va|usa|uk|us)$/i.test(normalizedTagLower);
         
-        // 7. Skip if it looks like a location pattern (contains comma, city/state keywords)
+        // 10. Skip if it looks like a location pattern (contains comma, city/state keywords)
         const looksLikeLocation = /,|city|state|country|region|area|valley|bay|street|avenue|road/i.test(normalizedTag);
         
-        // 8. Skip UI elements with logo/menu patterns
+        // 11. Skip UI elements with logo/menu patterns
         const isUIElement = (normalizedTagLower.includes('logo') || normalizedTagLower.includes('menu')) && 
                            (normalizedTagLower.includes('y combinator') || 
                             normalizedTagLower.includes('summer') ||
@@ -1838,7 +1893,20 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       }
       
       // Remove duplicates and sort
-      data.tags = [...new Set(filteredTags)].sort();
+      // Final safety check: Remove any pure numbers that might have slipped through
+      const finalTags = [...new Set(filteredTags)]
+        .filter(tag => {
+          // Remove pure numbers
+          if (/^\d+$/.test(tag)) return false;
+          // Remove tags that are mostly numbers (>70% digits)
+          const digitCount = (tag.match(/\d/g) || []).length;
+          const totalChars = tag.replace(/\s/g, '').length;
+          if (totalChars > 0 && digitCount / totalChars > 0.7) return false;
+          return true;
+        })
+        .sort();
+      
+      data.tags = finalTags;
       debugInfo.filteredCount = data.tags.length;
 
         // Store debug info in a way we can access it
@@ -1861,7 +1929,14 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           tags: [],
         };
       }
-    });
+      });
+    } catch (evalError: any) {
+      const errorMsg = evalError?.message || String(evalError);
+      if (errorMsg.includes('detached') || errorMsg.includes('Target closed')) {
+        throw new Error('Page detached during data extraction');
+      }
+      throw evalError;
+    }
 
     // Check if we got valid data
     if (!pageData) {
@@ -2102,9 +2177,14 @@ async function getCompaniesWithKeywords(): Promise<Set<string>> {
 
     const links = new Set<string>();
     data?.forEach((row: any) => {
-      // Check if company has keywords populated
-      const hasKeywords = row.keywords && row.keywords.trim().length > 0;
+      // Check if company has keywords populated (either actual keywords or placeholder)
+      // If keywords field has a value (including 'NO_KEYWORDS' placeholder), it means it was already processed
+      // Similar to Twitter pattern: we skip companies that have been checked, even if no keywords were found
+      // This prevents rechecking companies that don't have valid keywords (NO_KEYWORDS placeholder)
+      const keywordsValue = row.keywords ? row.keywords.trim() : '';
+      const hasKeywords = keywordsValue.length > 0;
       
+      // If company has keywords (including NO_KEYWORDS placeholder), it means it was already processed
       if (row.yc_link && hasKeywords) {
         // Normalize URL for comparison (lowercase, remove trailing slash)
         const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
@@ -2134,28 +2214,30 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       return false;
     }
 
-    // Helper to convert empty strings to null
-    const toNull = (value: string | undefined): string | null => {
-      return value && value.trim() ? value.trim() : null;
+    // Helper to convert empty strings to placeholder (so we know it was scraped but no data found)
+    const toPlaceholder = (value: string | undefined, placeholder: string): string => {
+      return value && value.trim() ? value.trim() : placeholder;
     };
-
 
     // Format tags as comma-separated string
     const tagsString = pageData.tags && pageData.tags.length > 0 
       ? pageData.tags.join(', ') 
-      : undefined;
+      : 'NO_KEYWORDS';
 
     // Update keywords only
     const updateData: {
-      keywords?: string | null;
+      keywords?: string;
     } = {
       // Keywords (technology/skills tags) - stored as comma-separated string
-      keywords: tagsString ? toNull(tagsString) : null,
+      // Use placeholder if no tags found so we know it was scraped
+      keywords: tagsString,
     };
     
-    console.log(`   💾 Updating keywords: ${updateData.keywords || '(null)'}`);
+    console.log(`   💾 Updating keywords: ${updateData.keywords}`);
     if (pageData.tags && pageData.tags.length > 0) {
       console.log(`   🏷️  Found ${pageData.tags.length} technology/skill tags: ${pageData.tags.join(', ')}`);
+    } else {
+      console.log(`   🏷️  No keywords found (storing NO_KEYWORDS placeholder)`);
     }
     
     const { data, error } = await supabase
@@ -2179,7 +2261,7 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       if (pageData.tags && pageData.tags.length > 0) {
         console.log(`   ✅ Keywords stored successfully: ${pageData.tags.join(', ')}`);
       } else {
-        console.log(`   ⚠️  No keywords found to store`);
+        console.log(`   ✅ Keywords placeholder stored: NO_KEYWORDS (scraped, no data found)`);
       }
     }
 
@@ -2348,9 +2430,28 @@ async function scrapeYCCompanies() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
 
-  const page = await browser.newPage();
+  let page = await browser.newPage();
   await page.setViewport({ width: 1920, height: 1080 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+  // Helper function to recreate page if needed
+  const recreatePage = async (): Promise<Page> => {
+    try {
+      if (!page.isClosed()) {
+        try {
+          await page.close();
+        } catch (e) {
+          // Ignore errors when closing
+        }
+      }
+    } catch (e) {
+      // Ignore errors
+    }
+    const newPage = await browser.newPage();
+    await newPage.setViewport({ width: 1920, height: 1080 });
+    await newPage.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    return newPage;
+  };
 
   let successCount = 0;
   let errorCount = 0;
@@ -2366,11 +2467,48 @@ async function scrapeYCCompanies() {
         console.log(`   Batch: ${normalized.batch}`);
         console.log(`   URL: ${normalized.ycLink}`);
 
-        // Scrape YC page
-        const pageData = await scrapeYCCompanyPage(page, normalized.ycLink);
+        // Scrape YC page with retry logic for detached frames
+        let pageData = null;
+        let scrapeAttempts = 0;
+        const maxScrapeAttempts = 3;
+        
+        while (!pageData && scrapeAttempts < maxScrapeAttempts) {
+          try {
+            // Check if page is closed or detached, recreate if needed
+            if (page.isClosed()) {
+              console.log('   🔄 Page is closed, recreating...');
+              page = await recreatePage();
+            }
+            
+            pageData = await scrapeYCCompanyPage(page, normalized.ycLink);
+            
+            if (pageData) {
+              break; // Success
+            }
+          } catch (error: any) {
+            scrapeAttempts++;
+            const errorMsg = error?.message || String(error);
+            
+            if (errorMsg.includes('detached') || errorMsg.includes('Target closed') || errorMsg.includes('closed')) {
+              console.warn(`   ⚠️  Detached frame error (attempt ${scrapeAttempts}/${maxScrapeAttempts}), recreating page...`);
+              try {
+                page = await recreatePage();
+                await new Promise(resolve => setTimeout(resolve, 2000)); // Wait before retry
+              } catch (recreateError) {
+                console.error(`   ❌ Failed to recreate page: ${recreateError instanceof Error ? recreateError.message : String(recreateError)}`);
+                if (scrapeAttempts >= maxScrapeAttempts) {
+                  throw error; // Re-throw if we've exhausted attempts
+                }
+              }
+            } else {
+              // For other errors, don't retry
+              throw error;
+            }
+          }
+        }
 
         if (!pageData) {
-          console.log('  ⚠️  Failed to scrape page data, skipping...');
+          console.log('  ⚠️  Failed to scrape page data after retries, skipping...');
           errorCount++;
           continue;
         }
@@ -2411,7 +2549,19 @@ async function scrapeYCCompanies() {
 
       } catch (error) {
         errorCount++;
-        console.error(`   ❌ Error processing ${normalized.companyName}: ${error instanceof Error ? error.message : String(error)}`);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`   ❌ Error processing ${normalized.companyName}: ${errorMsg}`);
+        
+        // If it's a detached frame error, try to recreate page for next iteration
+        if (errorMsg.includes('detached') || errorMsg.includes('Target closed') || errorMsg.includes('closed')) {
+          try {
+            console.log('   🔄 Recreating page for next iteration...');
+            page = await recreatePage();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (recreateError) {
+            console.warn(`   ⚠️  Failed to recreate page: ${recreateError instanceof Error ? recreateError.message : String(recreateError)}`);
+          }
+        }
       }
     }
   } finally {

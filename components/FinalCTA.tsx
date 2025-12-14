@@ -25,7 +25,7 @@ export function FinalCTA({ onGetStarted }: FinalCTAProps) {
             size="lg"
             className="rounded-full px-12 py-6 text-lg font-medium bg-gray-900 text-white hover:bg-gray-800 transition-all duration-300"
           >
-            Join the Waitlist
+            Upload Resume
           </Button>
         </div>
       </div>

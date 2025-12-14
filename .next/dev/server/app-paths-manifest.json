@@ -1,10 +1,7 @@
 {
-  "/api/matches/route": "app/api/matches/route.js",
-  "/api/candidate-info/route": "app/api/candidate-info/route.js",
-  "/api/send-email/preview/route": "app/api/send-email/preview/route.js",
-  "/matches/page": "app/matches/page.js",
-  "/generate-email/page": "app/generate-email/page.js",
   "/page": "app/page.js",
   "/resumes/page": "app/resumes/page.js",
+  "/matches/page": "app/matches/page.js",
+  "/generate-email/page": "app/generate-email/page.js",
   "/tracker/page": "app/tracker/page.js"
 }

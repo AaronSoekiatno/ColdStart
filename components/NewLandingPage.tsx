@@ -16,7 +16,7 @@ import { FinalCTA } from "@/components/FinalCTA";
 import { Footer } from "@/components/Footer";
 import { SignInModal } from "@/components/SignInModal";
 import { SignUpModal } from "@/components/SignUpModal";
-import { WaitlistModal } from "@/components/WaitlistModal";
+import { ResumeUploadModal } from "@/components/ResumeUploadModal";
 import Image from "next/image";
 import {
   DropdownMenu,
@@ -32,7 +32,7 @@ export function NewLandingPage() {
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
-  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -61,8 +61,8 @@ export function NewLandingPage() {
   }, []);
 
   const handleGetStarted = () => {
-    // Open waitlist modal instead of sign up
-    setShowWaitlist(true);
+    // Open resume upload modal
+    setShowResumeUpload(true);
   };
 
   const handleSignOut = async () => {
@@ -136,14 +136,14 @@ export function NewLandingPage() {
                 Sign In
               </Button>
             )}
-            {/* Join Waitlist Button - Only visible when scrolled */}
+            {/* Upload Resume Button - Only visible when scrolled */}
             <Button
               onClick={handleGetStarted}
               className={`rounded-full px-6 py-2 text-white font-medium drop-shadow-md transition-all duration-300 transform ${
                 isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none'
               }`}
             >
-              Join the Waitlist
+              Upload Resume
             </Button>
           </div>
         </div>
@@ -294,9 +294,9 @@ export function NewLandingPage() {
           setShowSignIn(true);
         }}
       />
-      <WaitlistModal
-        open={showWaitlist}
-        onOpenChange={setShowWaitlist}
+      <ResumeUploadModal
+        open={showResumeUpload}
+        onOpenChange={setShowResumeUpload}
       />
     </div>
   );
