@@ -96,16 +96,73 @@ export default function GenerateEmailPage() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.upgradeRequired) {
-          // Show upgrade modal when limit is exceeded
-          setShowUpgradeModal(true);
-          setIsPreviewLoading(false);
-          // Don't throw error, just show the modal
-          return;
+      // CRITICAL: Check status code FIRST before reading body
+      // If it's a 403, show upgrade modal IMMEDIATELY without reading stream
+      // This ensures instant feedback when limit is exceeded
+      if (response.status === 403) {
+        setIsPreviewLoading(false);
+        setShowUpgradeModal(true);
+        // Cancel any pending stream reading to free resources
+        // We don't need to read the error message - we already know it's a limit error
+        if (response.body) {
+          const reader = response.body.getReader();
+          reader.cancel().catch(() => {
+            // Ignore cancellation errors - we don't need the stream
+          });
         }
-        throw new Error(errorData.error || 'Failed to generate email preview');
+        return; // Exit immediately - modal is already shown
+      }
+
+      if (!response.ok) {
+        
+        // Handle other error statuses (not 403)
+        const contentType = response.headers.get('content-type') || '';
+        
+        if (contentType.includes('text/event-stream')) {
+          // Handle SSE error stream for other errors
+          const reader = response.body?.getReader();
+          if (reader) {
+            const decoder = new TextDecoder();
+            let buffer = '';
+            
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    if (data.type === 'error' && data.upgradeRequired) {
+                      setShowUpgradeModal(true);
+                      setIsPreviewLoading(false);
+                      return;
+                    }
+                  } catch (e) {
+                    // Ignore parse errors in error handling
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Handle JSON error response
+          try {
+            const errorData = await response.json();
+            if (errorData.upgradeRequired) {
+              setShowUpgradeModal(true);
+              setIsPreviewLoading(false);
+              return;
+            }
+            throw new Error(errorData.error || 'Failed to generate email preview');
+          } catch (jsonError) {
+            throw new Error('Failed to generate email preview');
+          }
+        }
       }
 
       if (!response.body) {
@@ -188,6 +245,12 @@ export default function GenerateEmailPage() {
                 });
                 return;
               } else if (data.type === 'error') {
+                // Handle error events from SSE stream
+                setIsPreviewLoading(false);
+                if (data.upgradeRequired) {
+                  setShowUpgradeModal(true);
+                  return; // Don't throw, just show modal
+                }
                 throw new Error(data.error || 'Unknown error');
               }
             } catch (parseError) {
@@ -202,6 +265,13 @@ export default function GenerateEmailPage() {
       console.error('Preview email error:', error);
       setIsPreviewLoading(false);
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate email preview';
+      
+      // Check if this is a limit exceeded error - if so, show upgrade modal instead of redirecting
+      if (errorMessage.includes('3 email generations per day') || errorMessage.includes('Upgrade to Premium')) {
+        setShowUpgradeModal(true);
+        return; // Don't redirect, just show modal
+      }
+      
       // Don't redirect if it's just a premium feature error
       if (!errorMessage.includes('Premium feature')) {
         toast({

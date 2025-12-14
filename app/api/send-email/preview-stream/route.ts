@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if we already have a generated email for this candidate-startup pair (one-to-one mapping)
+    // We check cached emails FIRST so users can view previously generated emails even if they've hit the limit
     const { data: existingGeneratedEmail, error: fetchError } = await supabase
       .from('generated_emails')
       .select('subject, body, recipient_email, email_tone')
@@ -150,6 +151,7 @@ export async function POST(request: NextRequest) {
     const shouldUseCached = existingGeneratedEmail && !shouldRegenerate;
 
     // If we have an existing generated email with matching tone, return it immediately (no streaming needed)
+    // Note: Cached emails don't count toward the limit, so we bypass limit check for cached emails
     if (shouldUseCached) {
       console.log('[Generated Email] Found existing email in database with matching tone, returning stored version (Gemini will NOT be called)');
       
@@ -216,35 +218,88 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check email generation limits for free users BEFORE generating
-    // Free: 3 email generations per day (counts NEW generations, not cached retrievals)
+    // CRITICAL: Check email generation limits for free users BEFORE generating NEW email
+    // This MUST happen BEFORE any email generation logic starts (resume fetching, Gemini API calls, etc.)
+    // Free: 3 email generations per day (counts NEW generations, not cached retrievals or regenerations)
     // Premium: Unlimited
-    if (!isPremium && candidate.id) {
-      // Get today's date range in UTC
+    // Note: We only check limits when generating NEW emails (not cached retrievals or tone regenerations)
+    const isNewEmail = !existingGeneratedEmail; // True if this is a completely new email (not cached, not regeneration)
+    
+    if (!isPremium && candidate.id && isNewEmail) {
+      // CRITICAL: Check limit BEFORE any generation logic
+      // This prevents any email generation from starting if limit is exceeded
+      // Calculate today's date range in UTC using server time
+      // This ensures consistent timezone handling regardless of where the server is located
       const now = new Date();
       const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
       const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
 
-      // Count how many NEW emails were generated today (not cached retrievals)
-      const { data: todayGenerations, error: genCheckError } = await supabase
+      // Count how many emails were created TODAY (not updated - we use created_at)
+      // Each unique candidate-startup pair counts as one generation
+      // Use a more explicit query to ensure we get accurate count
+      const { data: todayEmails, count: todayGenerationCount, error: countError } = await supabase
         .from('generated_emails')
-        .select('id, created_at')
+        .select('id, created_at', { count: 'exact' })
         .eq('candidate_id', candidate.id)
         .gte('created_at', todayStart.toISOString())
         .lte('created_at', todayEnd.toISOString());
 
-      if (genCheckError) {
-        console.error('Error checking email generation limits:', genCheckError);
+      // Use count if available, otherwise fall back to data length
+      const actualCount = todayGenerationCount ?? (todayEmails?.length ?? 0);
+
+      console.log('[Limit Check] Email generation limit check:', {
+        candidateId: candidate.id,
+        todayStart: todayStart.toISOString(),
+        todayEnd: todayEnd.toISOString(),
+        currentTime: now.toISOString(),
+        count: actualCount,
+        limit: 3,
+        willBlock: actualCount >= 3,
+        error: countError?.message,
+      });
+
+      if (countError) {
+        console.error('[Limit Check] Error checking email generation limits:', countError);
+        // On error, be conservative - don't block users due to DB errors, but log it
       } else {
-        // Check daily limit (3 per day for free)
-        if (todayGenerations && todayGenerations.length >= 3) {
-          return new Response(
-            JSON.stringify({
-              error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
-              upgradeRequired: true,
-            }),
-            { status: 403, headers: { 'Content-Type': 'application/json' } }
-          );
+        // Check daily limit (3 per day for free) - block if count is >= 3
+        // This means: 0, 1, 2 emails = allowed; 3+ emails = blocked
+        if (actualCount >= 3) {
+          console.warn('[Limit Check] BLOCKING - Limit exceeded:', {
+            count: actualCount,
+            limit: 3,
+            candidateId: candidate.id,
+          });
+          
+          // Return error as SSE event so frontend can handle it properly
+          const errorStream = new ReadableStream({
+            start(controller) {
+              const encoder = new TextEncoder();
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({
+                  type: 'error',
+                  error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
+                  upgradeRequired: true,
+                })}\n\n`)
+              );
+              controller.close();
+            },
+          });
+
+          return new Response(errorStream, {
+            status: 403,
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+            },
+          });
+        } else {
+          console.log('[Limit Check] ALLOWING - Within limit:', {
+            count: actualCount,
+            limit: 3,
+            remaining: 3 - actualCount,
+          });
         }
       }
     }
@@ -384,9 +439,84 @@ export async function POST(request: NextRequest) {
           // Save generated email to database (upsert - replace if exists for same candidate-startup pair)
           // When tone changes, this upsert will replace the old email with the new one
           // The unique constraint on (candidate_id, startup_id) ensures only one email per user-startup pair
-          const { error: saveError } = await supabase
-            .from('generated_emails')
-            .upsert({
+          const nowISO = new Date().toISOString();
+          
+          // Check if this is a new email or an update to existing email
+          const isNewEmail = !existingGeneratedEmail;
+          
+          // Double-check limit before saving if this is a NEW email (not an update)
+          // This prevents race conditions where limit might have been exceeded between check and save
+          if (!isPremium && isNewEmail && candidate.id) {
+            const now = new Date();
+            const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+            const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+            
+            const { count: finalCount, error: finalCheckError } = await supabase
+              .from('generated_emails')
+              .select('*', { count: 'exact', head: true })
+              .eq('candidate_id', candidate.id)
+              .gte('created_at', todayStart.toISOString())
+              .lte('created_at', todayEnd.toISOString());
+            
+            const finalActualCount = finalCount ?? 0;
+            
+            console.log('[Save Email] Final limit check before saving:', {
+              isNewEmail,
+              count: finalActualCount,
+              limit: 3,
+            });
+            
+            if (!finalCheckError && finalActualCount >= 3) {
+              console.error('[Save Email] BLOCKED - Limit exceeded during save, preventing save:', {
+                count: finalActualCount,
+                limit: 3,
+              });
+              // Don't save the email - limit was exceeded
+              // The email was already streamed to the user, but we won't persist it
+              // This is a fallback safety check - ideally the initial check should have caught this
+            } else {
+              // Proceed with save
+              const upsertData: any = {
+                candidate_id: candidate.id,
+                startup_id: startupId,
+                email_tone: emailTone || null,
+                subject,
+                body,
+                match_score: matchScore,
+                recipient_email: targetEmail,
+                updated_at: nowISO,
+              };
+              
+              // Only set created_at explicitly if this is a NEW email
+              // For updates (regenerations with new tone), created_at should remain unchanged
+              // This ensures limit counting works correctly - regenerations don't count as new generations
+              if (isNewEmail) {
+                upsertData.created_at = nowISO;
+                console.log('[Save Email] Saving NEW email with created_at:', nowISO);
+              } else {
+                console.log('[Save Email] Updating existing email (created_at preserved)');
+              }
+              
+              const { error: saveError } = await supabase
+                .from('generated_emails')
+                .upsert(upsertData, {
+                  onConflict: 'candidate_id,startup_id',
+                });
+
+              if (saveError) {
+                console.error('Error saving generated email to database:', saveError);
+                // Don't fail the request, just log the error
+              } else {
+                if (shouldRegenerate) {
+                  console.log('[Generated Email] Successfully updated email in database with new tone');
+                } else {
+                  console.log('[Generated Email] Successfully saved email to database (first time for this user-startup pair)');
+                }
+              }
+            }
+          } else {
+            // Premium user or updating existing email - save normally (no limit check needed)
+            const upsertData: any = {
               candidate_id: candidate.id,
               startup_id: startupId,
               email_tone: emailTone || null,
@@ -394,19 +524,28 @@ export async function POST(request: NextRequest) {
               body,
               match_score: matchScore,
               recipient_email: targetEmail,
-              updated_at: new Date().toISOString(),
-            }, {
-              onConflict: 'candidate_id,startup_id',
-            });
+              updated_at: nowISO,
+            };
+            
+            // Only set created_at for new emails
+            if (isNewEmail) {
+              upsertData.created_at = nowISO;
+            }
+            
+            const { error: saveError } = await supabase
+              .from('generated_emails')
+              .upsert(upsertData, {
+                onConflict: 'candidate_id,startup_id',
+              });
 
-          if (saveError) {
-            console.error('Error saving generated email to database:', saveError);
-            // Don't fail the request, just log the error
-          } else {
-            if (shouldRegenerate) {
-              console.log('[Generated Email] Successfully updated email in database with new tone');
+            if (saveError) {
+              console.error('Error saving generated email to database:', saveError);
             } else {
-              console.log('[Generated Email] Successfully saved email to database (first time for this user-startup pair)');
+              if (shouldRegenerate) {
+                console.log('[Generated Email] Successfully updated email in database with new tone');
+              } else {
+                console.log('[Generated Email] Successfully saved email to database (first time for this user-startup pair)');
+              }
             }
           }
 
