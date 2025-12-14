@@ -4,7 +4,9 @@
       "Bash(dir:*)",
       "Bash(curl:*)",
       "Bash(npm run build:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(find:*)",
+      "Bash(npx supabase:*)"
     ],
     "deny": [],
     "ask": []

@@ -159,9 +159,8 @@ export interface StartupRow {
   location: string;
   website: string;
   tags: string;
-  founder_first_name?: string;
-  founder_last_name?: string;
   founder_emails?: string;
+  founder_names?: string;
   founder_linkedin?: string;
   batch?: string;
   job_openings?: string;
@@ -206,22 +205,6 @@ export async function saveStartup(startup: StartupRow) {
 
   // Preserve existing founder data if new data isn't explicitly provided
   // This ensures founder emails are never lost when updating from Pinecone matches
-  if (startup.founder_first_name !== undefined) {
-    dataToInsert.founder_first_name = startup.founder_first_name || null;
-  } else if (existing?.founder_first_name) {
-    dataToInsert.founder_first_name = existing.founder_first_name;
-  } else {
-    dataToInsert.founder_first_name = null;
-  }
-  
-  if (startup.founder_last_name !== undefined) {
-    dataToInsert.founder_last_name = startup.founder_last_name || null;
-  } else if (existing?.founder_last_name) {
-    dataToInsert.founder_last_name = existing.founder_last_name;
-  } else {
-    dataToInsert.founder_last_name = null;
-  }
-  
   if (startup.founder_emails !== undefined) {
     dataToInsert.founder_emails = startup.founder_emails || null;
   } else if (existing?.founder_emails) {
@@ -230,7 +213,15 @@ export async function saveStartup(startup: StartupRow) {
   } else {
     dataToInsert.founder_emails = null;
   }
-  
+
+  if (startup.founder_names !== undefined) {
+    dataToInsert.founder_names = startup.founder_names || null;
+  } else if (existing?.founder_names) {
+    dataToInsert.founder_names = existing.founder_names;
+  } else {
+    dataToInsert.founder_names = null;
+  }
+
   if (startup.founder_linkedin !== undefined) {
     dataToInsert.founder_linkedin = startup.founder_linkedin || null;
   } else if (existing?.founder_linkedin) {

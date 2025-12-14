@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
+// COMMENTED OUT: Gmail API imports (not needed when not sending emails)
+// import { google } from 'googleapis';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { generateColdEmail } from '@/lib/email-generation';
 import { getCandidate, getStartup } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/gmail/callback`
-);
+// COMMENTED OUT: OAuth client (not needed when not sending emails)
+// const oauth2Client = new google.auth.OAuth2(
+//   process.env.GOOGLE_CLIENT_ID,
+//   process.env.GOOGLE_CLIENT_SECRET,
+//   `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/gmail/callback`
+// );
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startupId, matchScore, subject: customSubject, body: customBody } = await request.json();
+    const { startupId, matchScore, subject: customSubject, body: customBody, founderEmail: providedFounderEmail } = await request.json();
 
     if (!startupId || matchScore === undefined) {
       return NextResponse.json(
@@ -45,20 +47,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's email connection (OAuth tokens)
-    const { data: emailConnection, error: connectionError } = await supabase
-      .from('user_email_connections')
-      .select('*')
-      .eq('user_email', user.email)
-      .eq('provider', 'gmail')
-      .single();
+    // COMMENTED OUT: Gmail connection check (not needed when not sending emails)
+    // // Get user's email connection (OAuth tokens)
+    // const { data: emailConnection, error: connectionError } = await supabase
+    //   .from('user_email_connections')
+    //   .select('*')
+    //   .eq('user_email', user.email)
+    //   .eq('provider', 'gmail')
+    //   .single();
 
-    if (connectionError || !emailConnection) {
-      return NextResponse.json(
-        { error: 'Gmail not connected. Please connect your Gmail account first.' },
-        { status: 400 }
-      );
-    }
+    // if (connectionError || !emailConnection) {
+    //   return NextResponse.json(
+    //     { error: 'Gmail not connected. Please connect your Gmail account first.' },
+    //     { status: 400 }
+    //   );
+    // }
 
     // Get candidate and startup data
     const candidate = await getCandidate(user.email);
@@ -78,17 +81,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Decide which email address to use (real or guessed)
-    const { email: targetEmail, isGuessed } = guessFounderEmailFromStartup(startup);
-
-    if (!targetEmail) {
-      return NextResponse.json(
-        {
-          error:
-            'Founder email not available for this startup and could not be guessed from first name + website.',
-        },
-        { status: 400 }
-      );
+    // Use provided founder email if available, otherwise guess
+    let targetEmail: string;
+    if (providedFounderEmail) {
+      targetEmail = providedFounderEmail;
+    } else {
+      const { email: guessedEmail } = guessFounderEmailFromStartup(startup);
+      if (!guessedEmail) {
+        return NextResponse.json(
+          {
+            error:
+              'Founder email not available for this startup and could not be guessed from first name + website.',
+          },
+          { status: 400 }
+        );
+      }
+      targetEmail = guessedEmail;
     }
 
     // Use custom subject/body if provided, otherwise generate email
@@ -132,136 +140,137 @@ export async function POST(request: NextRequest) {
       emailBody = generatedEmail.body;
     }
 
-    // Set up OAuth client with stored tokens
-    oauth2Client.setCredentials({
-      access_token: emailConnection.access_token,
-      refresh_token: emailConnection.refresh_token,
-    });
+    // COMMENTED OUT: Gmail OAuth and email sending functionality
+    // // Set up OAuth client with stored tokens
+    // oauth2Client.setCredentials({
+    //   access_token: emailConnection.access_token,
+    //   refresh_token: emailConnection.refresh_token,
+    // });
 
-    // Refresh token if expired
-    if (emailConnection.expires_at && new Date(emailConnection.expires_at) < new Date()) {
-      try {
-        const { credentials } = await oauth2Client.refreshAccessToken();
-        oauth2Client.setCredentials(credentials);
-        
-        // Update stored token
-        await supabase
-          .from('user_email_connections')
-          .update({
-            access_token: credentials.access_token,
-            expires_at: credentials.expiry_date ? new Date(credentials.expiry_date).toISOString() : null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('user_email', user.email)
-          .eq('provider', 'gmail');
-      } catch (refreshError) {
-        console.error('Token refresh failed:', refreshError);
-        return NextResponse.json(
-          { error: 'Gmail connection expired. Please reconnect your Gmail account.' },
-          { status: 401 }
-        );
-      }
-    }
+    // // Refresh token if expired
+    // if (emailConnection.expires_at && new Date(emailConnection.expires_at) < new Date()) {
+    //   try {
+    //     const { credentials } = await oauth2Client.refreshAccessToken();
+    //     oauth2Client.setCredentials(credentials);
+    //     
+    //     // Update stored token
+    //     await supabase
+    //       .from('user_email_connections')
+    //       .update({
+    //         access_token: credentials.access_token,
+    //         expires_at: credentials.expiry_date ? new Date(credentials.expiry_date).toISOString() : null,
+    //         updated_at: new Date().toISOString(),
+    //       })
+    //       .eq('user_email', user.email)
+    //       .eq('provider', 'gmail');
+    //   } catch (refreshError) {
+    //     console.error('Token refresh failed:', refreshError);
+    //     return NextResponse.json(
+    //       { error: 'Gmail connection expired. Please reconnect your Gmail account.' },
+    //       { status: 401 }
+    //     );
+    //   }
+    // }
 
-    // Send email via Gmail API
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    // // Send email via Gmail API
+    // const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-    // Download resume from Supabase Storage if available
-    let resumeAttachment: { data: Buffer; filename: string; mimeType: string } | null = null;
-    if (candidate.resume_path) {
-      try {
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        if (serviceRoleKey) {
-          const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            serviceRoleKey
-          );
+    // // Download resume from Supabase Storage if available
+    // let resumeAttachment: { data: Buffer; filename: string; mimeType: string } | null = null;
+    // if (candidate.resume_path) {
+    //   try {
+    //     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    //     if (serviceRoleKey) {
+    //       const supabaseAdmin = createClient(
+    //         process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    //         serviceRoleKey
+    //       );
 
-          const { data: resumeData, error: downloadError } = await supabaseAdmin.storage
-            .from('resumes')
-            .download(candidate.resume_path);
+    //       const { data: resumeData, error: downloadError } = await supabaseAdmin.storage
+    //         .from('resumes')
+    //         .download(candidate.resume_path);
 
-          if (!downloadError && resumeData) {
-            const arrayBuffer = await resumeData.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
+    //       if (!downloadError && resumeData) {
+    //         const arrayBuffer = await resumeData.arrayBuffer();
+    //         const buffer = Buffer.from(arrayBuffer);
             
-            // Determine filename and MIME type from path
-            const pathParts = candidate.resume_path.split('/');
-            const filename = pathParts[pathParts.length - 1] || 'resume.pdf';
-            const mimeType = filename.endsWith('.pdf') 
-              ? 'application/pdf' 
-              : filename.endsWith('.docx')
-              ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-              : 'application/octet-stream';
+    //         // Determine filename and MIME type from path
+    //         const pathParts = candidate.resume_path.split('/');
+    //         const filename = pathParts[pathParts.length - 1] || 'resume.pdf';
+    //         const mimeType = filename.endsWith('.pdf') 
+    //           ? 'application/pdf' 
+    //           : filename.endsWith('.docx')
+    //           ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    //           : 'application/octet-stream';
 
-            resumeAttachment = {
-              data: buffer,
-              filename,
-              mimeType,
-            };
-            console.log(`Resume attachment prepared: ${filename} (${buffer.length} bytes)`);
-          } else {
-            console.warn('Failed to download resume from Storage:', downloadError);
-          }
-        }
-      } catch (error) {
-        console.warn('Error downloading resume for attachment:', error);
-        // Continue without attachment if download fails
-      }
-    }
+    //         resumeAttachment = {
+    //           data: buffer,
+    //           filename,
+    //           mimeType,
+    //         };
+    //         console.log(`Resume attachment prepared: ${filename} (${buffer.length} bytes)`);
+    //       } else {
+    //         console.warn('Failed to download resume from Storage:', downloadError);
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.warn('Error downloading resume for attachment:', error);
+    //     // Continue without attachment if download fails
+    //   }
+    // }
 
-    // Create email message with optional attachment
-    let message: string;
+    // // Create email message with optional attachment
+    // let message: string;
     
-    if (resumeAttachment) {
-      // Multipart message with attachment
-      const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-      const attachmentBase64 = resumeAttachment.data.toString('base64');
-      const attachmentEncoded = attachmentBase64.match(/.{1,76}/g)?.join('\n') || attachmentBase64;
+    // if (resumeAttachment) {
+    //   // Multipart message with attachment
+    //   const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    //   const attachmentBase64 = resumeAttachment.data.toString('base64');
+    //   const attachmentEncoded = attachmentBase64.match(/.{1,76}/g)?.join('\n') || attachmentBase64;
 
-      message = [
-        `To: ${targetEmail}`,
-        `Subject: ${emailSubject}`,
-        `MIME-Version: 1.0`,
-        `Content-Type: multipart/mixed; boundary="${boundary}"`,
-        '',
-        `--${boundary}`,
-        `Content-Type: text/plain; charset=utf-8`,
-        `Content-Transfer-Encoding: 7bit`,
-        '',
-        emailBody,
-        '',
-        `--${boundary}`,
-        `Content-Type: ${resumeAttachment.mimeType}; name="${resumeAttachment.filename}"`,
-        `Content-Disposition: attachment; filename="${resumeAttachment.filename}"`,
-        `Content-Transfer-Encoding: base64`,
-        '',
-        attachmentEncoded,
-        `--${boundary}--`,
-      ].join('\n');
-    } else {
-      // Simple text message without attachment
-      message = [
-        `To: ${targetEmail}`,
-        `Subject: ${emailSubject}`,
-        'Content-Type: text/plain; charset=utf-8',
-        '',
-        emailBody,
-      ].join('\n');
-    }
+    //   message = [
+    //     `To: ${targetEmail}`,
+    //     `Subject: ${emailSubject}`,
+    //     `MIME-Version: 1.0`,
+    //     `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    //     '',
+    //     `--${boundary}`,
+    //     `Content-Type: text/plain; charset=utf-8`,
+    //     `Content-Transfer-Encoding: 7bit`,
+    //     '',
+    //     emailBody,
+    //     '',
+    //     `--${boundary}`,
+    //     `Content-Type: ${resumeAttachment.mimeType}; name="${resumeAttachment.filename}"`,
+    //     `Content-Disposition: attachment; filename="${resumeAttachment.filename}"`,
+    //     `Content-Transfer-Encoding: base64`,
+    //     '',
+    //     attachmentEncoded,
+    //     `--${boundary}--`,
+    //   ].join('\n');
+    // } else {
+    //   // Simple text message without attachment
+    //   message = [
+    //     `To: ${targetEmail}`,
+    //     `Subject: ${emailSubject}`,
+    //     'Content-Type: text/plain; charset=utf-8',
+    //     '',
+    //     emailBody,
+    //   ].join('\n');
+    // }
 
-    const encodedMessage = Buffer.from(message)
-      .toString('base64')
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
+    // const encodedMessage = Buffer.from(message)
+    //   .toString('base64')
+    //   .replace(/\+/g, '-')
+    //   .replace(/\//g, '_')
+    //   .replace(/=+$/, '');
 
-    await gmail.users.messages.send({
-      userId: 'me',
-      requestBody: {
-        raw: encodedMessage,
-      },
-    });
+    // await gmail.users.messages.send({
+    //   userId: 'me',
+    //   requestBody: {
+    //     raw: encodedMessage,
+    //   },
+    // });
 
     // Save email history to database
     try {
@@ -272,14 +281,23 @@ export async function POST(request: NextRequest) {
           serviceRoleKey
         );
 
-        // Get recipient name (founder name if available)
-        const recipientName = startup.founder_first_name && startup.founder_last_name
-          ? `${startup.founder_first_name} ${startup.founder_last_name}`
-          : startup.founder_first_name || startup.founder_last_name || null;
+        // Get recipient name from founder_names field by matching the email
+        let recipientName = null;
+        if (startup.founder_names && providedFounderEmail) {
+          // Parse founder_names and founder_emails to match them
+          const founderNames = startup.founder_names.split(',').map((n: string) => n.trim());
+          const founderEmails = startup.founder_emails?.split(',').map((e: string) => e.trim()) || [];
+          const emailIndex = founderEmails.indexOf(providedFounderEmail);
+          if (emailIndex !== -1 && founderNames[emailIndex]) {
+            recipientName = founderNames[emailIndex];
+          }
+        }
 
+        // Use upsert to update existing email or create new one
+        // This prevents duplicates based on the unique constraint: (candidate_id, startup_id, recipient_email)
         await supabaseAdmin
           .from('sent_emails')
-          .insert({
+          .upsert({
             candidate_id: candidate.id,
             startup_id: startup.id,
             recipient_email: targetEmail,
@@ -288,67 +306,79 @@ export async function POST(request: NextRequest) {
             body: emailBody,
             match_score: matchScore,
             sent_at: new Date().toISOString(),
+            // Reset status to 'sent' when updating
+            status: 'sent',
+            // Keep email in sent (not archived) when updating
+            archived: false,
+          }, {
+            onConflict: 'candidate_id,startup_id,recipient_email'
           });
 
         console.log('Email history saved successfully');
       }
     } catch (historyError) {
-      // Log error but don't fail the request - email was already sent
+      // Log error and fail the request if we can't save to database
       console.error('Failed to save email history:', historyError);
+      return NextResponse.json(
+        { error: 'Failed to save email to database' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Email sent successfully',
+      message: 'Email saved successfully. Navigate to tracker page.',
+      redirectTo: '/tracker',
     });
   } catch (error) {
-    console.error('Send email error:', error);
+    console.error('Save email error:', error);
     
-    if (error instanceof Error) {
-      // Handle specific Gmail API errors
-      if (error.message.includes('invalid_grant') || error.message.includes('Token has been expired')) {
-        return NextResponse.json(
-          { error: 'Gmail connection expired. Please reconnect your Gmail account.' },
-          { status: 401 }
-        );
-      }
-      
-      if (error.message.includes('insufficient permission')) {
-        return NextResponse.json(
-          { error: 'Insufficient Gmail permissions. Please reconnect your Gmail account.' },
-          { status: 403 }
-        );
-      }
+    // COMMENTED OUT: Gmail-specific error handling (not needed when not sending emails)
+    // if (error instanceof Error) {
+    //   // Handle specific Gmail API errors
+    //   if (error.message.includes('invalid_grant') || error.message.includes('Token has been expired')) {
+    //     return NextResponse.json(
+    //       { error: 'Gmail connection expired. Please reconnect your Gmail account.' },
+    //       { status: 401 }
+    //     );
+    //   }
+    //   
+    //   if (error.message.includes('insufficient permission')) {
+    //     return NextResponse.json(
+    //       { error: 'Insufficient Gmail permissions. Please reconnect your Gmail account.' },
+    //       { status: 403 }
+    //     );
+    //   }
 
-      // If we used a guessed founder email and Gmail reports it invalid,
-      // clear the stored founder_emails back to NULL so we don't reuse a bad guess.
-      if (
-        (error.message.toLowerCase().includes('invalid') ||
-          error.message.toLowerCase().includes('address not found')) &&
-        typeof request !== 'undefined'
-      ) {
-        try {
-          const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          if (serviceRoleKey) {
-            const { createClient } = await import('@supabase/supabase-js');
-            const supabaseAdmin = createClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL!,
-              serviceRoleKey
-            );
-            const { startupId } = await request.json();
-            await supabaseAdmin
-              .from('startups')
-              .update({ founder_emails: null })
-              .eq('id', startupId);
-          }
-        } catch (clearError) {
-          console.error('Failed to clear invalid founder email:', clearError);
-        }
-      }
-    }
+    //   // If we used a guessed founder email and Gmail reports it invalid,
+    //   // clear the stored founder_emails back to NULL so we don't reuse a bad guess.
+    //   if (
+    //     (error.message.toLowerCase().includes('invalid') ||
+    //       error.message.toLowerCase().includes('address not found')) &&
+    //     typeof request !== 'undefined'
+    //   ) {
+    //     try {
+    //       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    //       if (serviceRoleKey) {
+    //         const { createClient } = await import('@supabase/supabase-js');
+    //         const supabaseAdmin = createClient(
+    //           process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    //           serviceRoleKey
+    //         );
+    //         const { startupId } = await request.json();
+    //         await supabaseAdmin
+    //           .from('startups')
+    //           .update({ founder_emails: null })
+    //           .eq('id', startupId);
+    //       }
+    //     } catch (clearError) {
+    //       console.error('Failed to clear invalid founder email:', clearError);
+    //     }
+    //   }
+    // }
     
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to send email' },
+      { error: error instanceof Error ? error.message : 'Failed to save email' },
       { status: 500 }
     );
   }
