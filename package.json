@@ -88,5 +88,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "lightningcss": "^1.30.2"
   }
 }
