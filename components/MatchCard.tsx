@@ -127,15 +127,15 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
               {match.startup.batch && (
                 <span className="inline-block bg-gray-50 border border-gray-300 rounded-xl md:rounded-2xl px-2 py-1 md:px-3 md:py-1 text-xs md:text-sm text-gray-900 font-medium">
                   {match.startup.batch}
-                </span>
-              )}
-            </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
+        </span>
+      )}
+          </div>
+            <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
               <p className="text-lg md:text-xl lg:text-2xl font-bold text-blue-300 whitespace-nowrap">
                 {Math.min((match.score * 100) + 40, 97).toFixed(0)}% <span className="text-sm md:text-base font-normal text-gray-600 align-top inline-block mt-0.5 md:mt-1">match</span>
-              </p>
-            </div>
-          </div>
+          </p>
+        </div>
+      </div>
           <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-start">
@@ -162,17 +162,17 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
               {match.startup.description && (
                 <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed">
                   {match.startup.description}
-                </p>
-              )}
+          </p>
+        )}
               {/* Website, YC, and Twitter buttons underneath description */}
               <div className="flex gap-2 flex-wrap -mt-0.5">
-                {match.startup.website && (
-                  <a
-                    href={match.startup.website.startsWith('http')
-                      ? match.startup.website
-                      : `https://${match.startup.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+        {match.startup.website && (
+          <a
+            href={match.startup.website.startsWith('http')
+              ? match.startup.website
+              : `https://${match.startup.website}`}
+            target="_blank"
+            rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-lg bg-gray-50 border border-gray-300 px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-xs sm:text-sm text-gray-900 font-medium w-fit hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
@@ -279,8 +279,8 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                               height={16}
                               className="w-4 h-4 sm:w-4 sm:h-4"
                             />
-                          </a>
-                        )}
+          </a>
+        )}
                         {/* Twitter Icon */}
                         {founderTwitterUrls[index] && (
                           <a
@@ -306,8 +306,8 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                         <div className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line">
                           {startup.founder_backgrounds}
                         </div>
-                      )}
-                    </div>
+        )}
+      </div>
                     {/* Radio Button on the right */}
                     <div className="flex-shrink-0 flex items-center">
                       <input

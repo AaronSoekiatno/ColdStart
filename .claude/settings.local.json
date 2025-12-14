@@ -3,8 +3,10 @@
     "allow": [
       "Bash(dir:*)",
       "Bash(curl:*)",
-      "Bash(cat:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(findstr:*)",
+      "Bash(find:*)",
+      "Bash(npx supabase:*)"
     ],
     "deny": [],
     "ask": []
