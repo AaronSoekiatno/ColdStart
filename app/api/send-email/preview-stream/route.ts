@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
       console.log('[Generated Email] Found existing email in database with matching tone, returning stored version (Gemini will NOT be called)');
       
       // Generate signed URL for resume preview (get primary/current resume)
+      // Note: No download parameter - we want inline display for iframe, not download
       let resumeUrl = null;
       const resume = await getPrimaryResumeForCandidate(candidate.id);
       if (resume?.resume_path) {
@@ -164,12 +165,9 @@ export async function POST(request: NextRequest) {
             serviceRoleKey
           );
 
-          const originalFileName = resume.file_name || 'resume.pdf';
           const { data } = await supabaseAdmin.storage
             .from('resumes')
-            .createSignedUrl(resume.resume_path, 3600, {
-              download: originalFileName, // Preserve original filename
-            });
+            .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
 
           if (data?.signedUrl) {
             resumeUrl = data.signedUrl;
@@ -274,6 +272,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate signed URL for resume preview (get primary/current resume)
+    // Note: No download parameter - we want inline display for iframe, not download
     let resumeUrl = null;
     const resume = await getPrimaryResumeForCandidate(candidate.id);
     if (resume?.resume_path) {
@@ -284,12 +283,9 @@ export async function POST(request: NextRequest) {
           serviceRoleKey
         );
 
-        const originalFileName = resume.file_name || 'resume.pdf';
         const { data } = await supabaseAdmin.storage
           .from('resumes')
-          .createSignedUrl(resume.resume_path, 3600, {
-            download: originalFileName, // Preserve original filename
-          });
+          .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
 
         if (data?.signedUrl) {
           resumeUrl = data.signedUrl;

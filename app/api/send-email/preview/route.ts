@@ -174,6 +174,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Generate signed URL for resume preview (get primary/current resume)
+    // Note: No download parameter - we want inline display for iframe, not download
     let resumeUrl = null;
     if (resume?.resume_path) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -183,12 +184,9 @@ export async function POST(request: NextRequest) {
           serviceRoleKey
         );
 
-        const originalFileName = resume.file_name || 'resume.pdf';
         const { data } = await supabaseAdmin.storage
           .from('resumes')
-          .createSignedUrl(resume.resume_path, 3600, {
-            download: originalFileName, // Preserve original filename
-          });
+          .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
 
         if (data?.signedUrl) {
           resumeUrl = data.signedUrl;
