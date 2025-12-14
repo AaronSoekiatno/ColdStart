@@ -616,6 +616,10 @@ export async function POST(request: NextRequest) {
           throw new Error('Failed to get candidate ID after saving candidate');
         }
         
+        // Check if this is the first resume (should be set as primary)
+        const resumeCount = await getResumeCountForCandidate(candidateId);
+        const shouldSetAsPrimary = resumeCount === 0; // First resume is automatically primary
+        
         await createResume({
           candidate_id: candidateId,
           name: finalResumeName,
@@ -623,6 +627,7 @@ export async function POST(request: NextRequest) {
           resume_path: resumePath,
           resume_full_text: resumeFullText,
           is_active: true, // New resumes are active by default
+          is_primary: shouldSetAsPrimary, // First resume is automatically primary
         });
 
         console.log('Successfully saved candidate and resume to Supabase:', {

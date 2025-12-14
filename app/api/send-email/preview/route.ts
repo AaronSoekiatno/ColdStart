@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { generateColdEmail, type EmailTone } from '@/lib/email-generation';
-import { getCandidate, getStartup, isSubscribed, getMostRecentResumeForCandidate } from '@/lib/supabase';
+import { getCandidate, getStartup, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
 export async function POST(request: NextRequest) {
@@ -141,8 +141,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get most recent active resume for resume_full_text
-    const resume = await getMostRecentResumeForCandidate(candidate.id);
+    // Get primary/current resume for resume_full_text
+    const resume = await getPrimaryResumeForCandidate(candidate.id);
 
     // Generate email (but do NOT send it)
     const generatedEmail = await generateColdEmail(
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       { tone: emailTone }
     );
 
-    // Generate signed URL for resume preview (get most recent active resume)
+    // Generate signed URL for resume preview (get primary/current resume)
     let resumeUrl = null;
     if (resume?.resume_path) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

@@ -89,6 +89,7 @@ export interface ResumeRow {
   resume_path?: string; // Path to resume file in Supabase Storage
   resume_full_text?: string; // Full extracted text content from resume
   is_active?: boolean; // Whether this resume is active/available for use
+  is_primary?: boolean; // Whether this resume is the primary/current resume for email generation
   created_at?: string;
   updated_at?: string;
 }
@@ -575,10 +576,20 @@ export async function createResume(resume: {
   resume_path?: string;
   resume_full_text?: string;
   is_active?: boolean;
+  is_primary?: boolean;
 }) {
   // Always use admin client for server-side operations to bypass RLS
   if (!supabaseAdmin) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. Cannot create resume without admin access.');
+  }
+
+  // If setting as primary, first unset any existing primary resume
+  if (resume.is_primary) {
+    await supabaseAdmin
+      .from('resumes')
+      .update({ is_primary: false })
+      .eq('candidate_id', resume.candidate_id)
+      .eq('is_primary', true);
   }
 
   const { data, error } = await supabaseAdmin
@@ -586,6 +597,7 @@ export async function createResume(resume: {
     .insert({
       ...resume,
       is_active: resume.is_active !== undefined ? resume.is_active : true, // Default to active
+      is_primary: resume.is_primary !== undefined ? resume.is_primary : false, // Default to false
     })
     .select()
     .single();
@@ -606,6 +618,7 @@ export async function updateResume(resumeId: string, updates: Partial<{
   resume_path: string;
   resume_full_text: string;
   is_active: boolean;
+  is_primary: boolean;
 }>) {
   const client = supabaseAdmin || supabase;
 
@@ -690,6 +703,74 @@ export async function getMostRecentResumeForCandidate(candidateId: string) {
       return null; // Not found
     }
     throw new Error(`Failed to get most recent resume: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get the primary (current) resume for a candidate
+ * This is the resume that will be used for email generation
+ * @param candidateId - Candidate's UUID
+ * @returns The primary resume, or null if none found
+ */
+export async function getPrimaryResumeForCandidate(candidateId: string) {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('resumes')
+    .select('*')
+    .eq('candidate_id', candidateId)
+    .eq('is_active', true)
+    .eq('is_primary', true)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      // No primary resume found, fall back to most recent
+      return getMostRecentResumeForCandidate(candidateId);
+    }
+    throw new Error(`Failed to get primary resume: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Set a resume as the primary (current) resume for a candidate
+ * This will unset any other primary resume for the same candidate
+ * @param candidateId - Candidate's UUID
+ * @param resumeId - Resume ID to set as primary
+ */
+export async function setPrimaryResume(candidateId: string, resumeId: string) {
+  // Always use admin client for server-side operations to bypass RLS
+  if (!supabaseAdmin) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. Cannot set primary resume without admin access.');
+  }
+
+  // First, unset all primary resumes for this candidate
+  const { error: unsetError } = await supabaseAdmin
+    .from('resumes')
+    .update({ is_primary: false })
+    .eq('candidate_id', candidateId)
+    .eq('is_primary', true);
+
+  if (unsetError) {
+    throw new Error(`Failed to unset existing primary resume: ${unsetError.message}`);
+  }
+
+  // Then set the new primary resume
+  const { data, error } = await supabaseAdmin
+    .from('resumes')
+    .update({ is_primary: true })
+    .eq('id', resumeId)
+    .eq('candidate_id', candidateId)
+    .eq('is_active', true)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to set primary resume: ${error.message}`);
   }
 
   return data;

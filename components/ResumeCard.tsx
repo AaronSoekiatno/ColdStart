@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Check, Star } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
 
@@ -9,10 +9,21 @@ interface ResumeCardProps {
   fileName: string;
   resumeUrl: string | null;
   resumeName?: string;
+  isPrimary?: boolean;
+  resumeId?: string;
+  isPremium?: boolean;
 }
 
-export function ResumeCard({ fileName, resumeUrl, resumeName }: ResumeCardProps) {
+export function ResumeCard({ 
+  fileName, 
+  resumeUrl, 
+  resumeName, 
+  isPrimary = false,
+  resumeId,
+  isPremium = false,
+}: ResumeCardProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isSettingPrimary, setIsSettingPrimary] = useState(false);
 
   if (!resumeUrl) {
     return null;
@@ -20,26 +31,93 @@ export function ResumeCard({ fileName, resumeUrl, resumeName }: ResumeCardProps)
 
   const displayName = resumeName || fileName;
 
+  const handleSetPrimary = async () => {
+    if (!resumeId || isPrimary) return;
+    
+    setIsSettingPrimary(true);
+    try {
+      const response = await fetch('/api/resumes/set-primary', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resumeId }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to set primary resume' }));
+        
+        if (errorData.upgradeRequired) {
+          alert('Setting a primary resume is a Premium feature. Please upgrade to Premium.');
+        } else {
+          throw new Error(errorData.error || 'Failed to set primary resume');
+        }
+        return;
+      }
+
+      // Success - reload the page to show updated state
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to set primary resume:', error);
+      alert(error instanceof Error ? error.message : 'Failed to set primary resume. Please try again.');
+    } finally {
+      setIsSettingPrimary(false);
+    }
+  };
+
   return (
     <>
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 transition-all flex flex-col shadow-sm">
+      <div className={cn(
+        "bg-white rounded-2xl border p-6 transition-all flex flex-col shadow-sm",
+        isPrimary ? "border-blue-500 border-2" : "border-gray-200"
+      )}>
         <div className="flex-1 mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate" title={displayName}>
-            {displayName}
-          </h3>
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 truncate flex-1" title={displayName}>
+              {displayName}
+            </h3>
+            {isPrimary && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium flex-shrink-0">
+                <Star className="w-3 h-3 fill-current" />
+                <span>Current</span>
+              </div>
+            )}
+          </div>
           {resumeName && (
             <p className="text-sm text-gray-500 truncate" title={fileName}>
               {fileName}
             </p>
           )}
         </div>
-        <button
-          onClick={() => setIsPreviewOpen(true)}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all"
-        >
-          <Eye className="w-4 h-4" />
-          <span className="text-sm font-medium">Preview</span>
-        </button>
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setIsPreviewOpen(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="text-sm font-medium">Preview</span>
+          </button>
+          {isPremium && !isPrimary && resumeId && (
+            <button
+              onClick={handleSetPrimary}
+              disabled={isSettingPrimary}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-all text-sm font-medium"
+            >
+              {isSettingPrimary ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Setting...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Set as Current</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       <DialogPrimitive.Root open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>

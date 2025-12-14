@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { getCandidate, getMostRecentResumeForCandidate } from '@/lib/supabase';
+import { getCandidate, getPrimaryResumeForCandidate } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -265,8 +265,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get most recent active resume
-    const resume = await getMostRecentResumeForCandidate(candidate.id);
+    // Get primary/current resume
+    const resume = await getPrimaryResumeForCandidate(candidate.id);
 
     if (!resume || !resume.resume_path) {
       return NextResponse.json(

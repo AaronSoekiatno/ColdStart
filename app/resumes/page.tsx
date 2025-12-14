@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@supabase/ssr';
-import { supabaseAdmin, getResumesForCandidate, getCandidate } from '@/lib/supabase';
+import { supabaseAdmin, getResumesForCandidate, getCandidate, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { Header } from '@/components/Header';
 import { ResumeCard } from '@/components/ResumeCard';
 
@@ -42,8 +42,15 @@ export default async function ResumePage() {
     redirect(`/?signup=true&redirect=/resumes`);
   }
 
+  // Check if user is premium
+  const isPremium = isSubscribed(candidate);
+
   // Get all active resumes for this candidate
   const resumes = await getResumesForCandidate(candidate.id);
+
+  // Get the primary resume to identify which one is current
+  const primaryResume = await getPrimaryResumeForCandidate(candidate.id);
+  const primaryResumeId = primaryResume?.id;
 
   // Generate signed URLs for all resumes
   // Note: We don't use the download parameter here because we want inline preview
@@ -88,6 +95,9 @@ export default async function ResumePage() {
                 fileName={resume.fileName} 
                 resumeUrl={resume.resumeUrl || null}
                 resumeName={resume.name}
+                isPrimary={resume.id === primaryResumeId}
+                resumeId={resume.id}
+                isPremium={isPremium}
               />
             ))}
           </div>
