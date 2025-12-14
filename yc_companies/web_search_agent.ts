@@ -1776,7 +1776,92 @@ function extractFounderBackgroundsRegex(results: SearchResult[], companyName: st
 }
 
 /**
- * Extract founder backgrounds (Hybrid: uses regex for now)
+ * Extract full founder descriptions/biographies using LLM
+ * Returns comprehensive biographical information about founders
+ */
+export async function extractFounderDescriptionsWithLLM(
+  results: SearchResult[],
+  companyName: string,
+  founderNames?: string
+): Promise<string> {
+  const genAI = getGeminiClient();
+  if (!genAI) {
+    // Fallback to regex if LLM not available
+    return extractFounderBackgroundsRegex(results, companyName);
+  }
+
+  const context = results
+    .slice(0, 15) // Use more results for better context
+    .map((r, idx) => `[${idx + 1}] ${r.title}\n${r.snippet}\nURL: ${r.url}`)
+    .join('\n\n');
+
+  const founderContext = founderNames ? `\n\nKnown founder names: ${founderNames}` : '';
+
+  const prompt = `You are a data extraction agent. Extract comprehensive biographical descriptions of the founders of "${companyName}" from the search results below.
+
+CRITICAL RULES:
+1. Extract FULL descriptions/biographies, not just company/university names
+2. Include: previous work experience, education, achievements, career highlights
+3. Write in complete sentences describing their background
+4. If multiple founders, describe each separately
+5. ONLY use information EXPLICITLY stated in the search results
+6. DO NOT make up or infer information
+${founderContext}
+
+Search Results:
+${context}
+
+Return ONLY valid JSON (no markdown):
+{
+  "founder_descriptions": "Comprehensive biographical descriptions of all founders. Format: 'Founder Name: Full description of their background, previous companies, education, and experience. [Separate each founder with a newline if multiple]'",
+  "confidence": 0.0-1.0
+}
+
+EXAMPLES OF GOOD DESCRIPTIONS:
+- "John Doe previously worked as a Senior Engineer at Google for 5 years, where he led the development of machine learning infrastructure. He graduated from Stanford University with a degree in Computer Science and has 10 years of experience in AI and distributed systems."
+- "Jane Smith is a former Product Manager at Meta, where she launched several successful products. She holds an MBA from Harvard Business School and has a background in fintech, having worked at Stripe before co-founding this company."
+
+EXAMPLES OF BAD DESCRIPTIONS (too short):
+- "Google, Stanford"
+- "Former engineer"
+- "Worked at tech companies"`;
+
+  try {
+    await rateLimitGemini();
+    const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    const model = genAI.getGenerativeModel({ modelName });
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    const cleanedResponse = cleanJsonResponse(responseText);
+    const parsed = JSON.parse(cleanedResponse);
+
+    const confidence = parsed.confidence || 0;
+    const minConfidence = 0.6; // Lower threshold for descriptions since they're more complex
+
+    if (confidence < minConfidence) {
+      console.warn(`    ⚠️  Low confidence (${confidence.toFixed(2)}) for founder descriptions, using fallback`);
+      return extractFounderBackgroundsRegex(results, companyName);
+    }
+
+    const descriptions = parsed.founder_descriptions || '';
+    if (descriptions && descriptions.trim().length > 20) {
+      return descriptions.trim();
+    }
+
+    // Fallback to regex if LLM result is too short
+    return extractFounderBackgroundsRegex(results, companyName);
+  } catch (error) {
+    if (isQuotaExceededError(error)) {
+      geminiQuotaExceeded = true;
+    }
+    console.warn(`    ⚠️  LLM extraction failed, using regex fallback: ${error instanceof Error ? error.message : String(error)}`);
+    return extractFounderBackgroundsRegex(results, companyName);
+  }
+}
+
+/**
+ * Extract founder backgrounds (Hybrid: LLM for full descriptions, regex fallback)
  */
 export function extractFounderBackgrounds(results: SearchResult[], companyName: string): string {
   return extractFounderBackgroundsRegex(results, companyName);
