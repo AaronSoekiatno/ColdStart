@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +23,7 @@ interface HeaderProps {
 }
 
 export const Header = ({ initialUser }: HeaderProps) => {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(initialUser ?? null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
@@ -220,6 +222,8 @@ export const Header = ({ initialUser }: HeaderProps) => {
                         title: "Signed out",
                         description: "You have been signed out successfully.",
                       });
+                      // Redirect to landing page after sign out
+                      router.push("/");
                     }}
                   >
                     Sign out
@@ -333,6 +337,8 @@ export const Header = ({ initialUser }: HeaderProps) => {
                       title: "Signed out",
                       description: "You have been signed out successfully.",
                     });
+                    // Redirect to landing page after sign out
+                    router.push("/");
                   }}
                 >
                   Sign out
