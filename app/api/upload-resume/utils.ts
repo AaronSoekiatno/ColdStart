@@ -1,9 +1,5 @@
 import mammoth from 'mammoth';
 
-// Note: PDF parsing code removed - PDFs are now sent directly to Gemini
-// which handles PDF processing natively. This eliminates the need for
-// pdfjs-dist and all the associated complexity (polyfills, workers, etc.)
-
 // Maximum file size: 10MB
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
@@ -60,8 +56,25 @@ export function isPdfFile(file: File): boolean {
 }
 
 /**
+ * Extracts text from a PDF buffer using pdf-parse
+ * Uses dynamic import to handle CommonJS module compatibility
+ */
+export async function extractPdfText(buffer: Buffer): Promise<string> {
+  try {
+    // Dynamic import for CommonJS module compatibility
+    // pdf-parse is a CommonJS module, so we need to handle it differently
+    const pdfParseModule = await import('pdf-parse');
+    const pdfParse = pdfParseModule.default || pdfParseModule;
+    const result = await pdfParse(buffer);
+    return result.text || '';
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to parse PDF: ${message}`);
+  }
+}
+
+/**
  * Extracts text from a DOCX buffer using mammoth
- * Note: PDFs are now sent directly to Gemini, so no PDF parsing is needed
  */
 export async function extractDocxText(buffer: Buffer): Promise<string> {
   try {
@@ -72,9 +85,6 @@ export async function extractDocxText(buffer: Buffer): Promise<string> {
     throw new Error(`Failed to parse DOCX: ${message}`);
   }
 }
-
-// Note: extractTextFromFile removed - PDFs are sent directly to Gemini
-// Only DOCX files need text extraction (using extractDocxText)
 
 /**
  * Cleans JSON response from Gemini by removing markdown code blocks

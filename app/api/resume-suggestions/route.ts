@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { getCandidate, getPrimaryResumeForCandidate } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -254,21 +255,20 @@ export async function POST(request: NextRequest) {
       serviceRoleKey
     );
 
-    // Fetch candidate info to get resume_path
-    const { data: candidate, error: candidateError } = await supabaseAdmin
-      .from('candidates')
-      .select('id, resume_path')
-      .eq('email', user.email)
-      .single();
+    // Fetch candidate info
+    const candidate = await getCandidate(user.email);
 
-    if (candidateError || !candidate) {
+    if (!candidate) {
       return NextResponse.json(
         { error: 'Candidate profile not found. Please upload your resume first.' },
         { status: 404 }
       );
     }
 
-    if (!candidate.resume_path) {
+    // Get primary/current resume
+    const resume = await getPrimaryResumeForCandidate(candidate.id);
+
+    if (!resume || !resume.resume_path) {
       return NextResponse.json(
         { error: 'No resume file found. Please upload your resume again.' },
         { status: 404 }
@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
     // Download resume from Supabase Storage
     const { data: resumeData, error: downloadError } = await supabaseAdmin.storage
       .from('resumes')
-      .download(candidate.resume_path);
+      .download(resume.resume_path);
 
     if (downloadError || !resumeData) {
       console.error('Failed to download resume:', downloadError);
@@ -307,14 +307,14 @@ export async function POST(request: NextRequest) {
     const resumeBuffer = Buffer.from(arrayBuffer);
 
     // Determine MIME type from file extension
-    const fileExt = candidate.resume_path.split('.').pop()?.toLowerCase();
+    const fileExt = resume.resume_path.split('.').pop()?.toLowerCase();
     const mimeType = fileExt === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
     // Generate suggestions using Gemini
     const suggestions = await generateResumeSuggestionsWithGemini(
       resumeBuffer,
       mimeType,
-      candidate.resume_path,
+      resume.resume_path,
       {
         name: startup.name,
         industry: startup.industry,

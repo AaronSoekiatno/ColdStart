@@ -32,12 +32,15 @@ interface MatchCardProps {
       company_twitter_url?: string;
     } | null;
   };
+  isPremium?: boolean;
 }
 
-const MatchCardComponent = ({ match }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   const companySectionRef = useRef<HTMLDivElement>(null);
   const foundersSectionRef = useRef<HTMLDivElement>(null);
-  const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
+  // For premium users: array of selected indices (multiple selection)
+  // For free users: array with max 1 item (single selection)
+  const [selectedFounderIndices, setSelectedFounderIndices] = useState<number[]>([]);
 
   if (!match.startup) {
     return null;
@@ -89,9 +92,14 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
     return '';
   });
 
-  // Get selected founder email
-  const selectedFounderEmail = selectedFounderIndex !== null && founderEmails[selectedFounderIndex]
-    ? founderEmails[selectedFounderIndex]
+  // Get selected founder emails (single for free, multiple for premium)
+  const selectedFounderEmails = selectedFounderIndices
+    .map(index => founderEmails[index])
+    .filter((email): email is string => !!email);
+  
+  // For backward compatibility with SendEmailButton, pass comma-separated string for multiple
+  const selectedFounderEmail = selectedFounderEmails.length > 0 
+    ? selectedFounderEmails.join(',') 
     : undefined;
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
@@ -128,7 +136,7 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                 founderEmail={selectedFounderEmail}
                 variant="default"
                 requiresFounderSelection={founderNames.length > 0}
-                isFounderSelected={selectedFounderIndex !== null}
+                isFounderSelected={selectedFounderIndices.length > 0}
                 className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
               />
             </div>
@@ -253,7 +261,9 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
         <div ref={foundersSectionRef} className="mt-6 md:mt-8">
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
-            <p className="text-sm sm:text-base text-gray-600">Select a founder</p>
+            <p className="text-sm sm:text-base text-gray-600">
+              {isPremium ? 'Select founders' : 'Select a founder'}
+            </p>
           </div>
           <div className="flex flex-col gap-3 md:gap-4">
             {/* Founder Cards - one for each founder */}
@@ -263,15 +273,41 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
               const lastName = nameParts.slice(1).join(' ') || '';
               const initial = firstName[0] || lastName[0] || '?';
 
+              const isSelected = selectedFounderIndices.includes(index);
+              
+              const handleFounderToggle = (e?: React.ChangeEvent<HTMLInputElement> | React.MouseEvent) => {
+                if (e) {
+                  e.stopPropagation();
+                }
+                if (isPremium) {
+                  // Premium: toggle selection (multiple allowed)
+                  setSelectedFounderIndices(prev => 
+                    prev.includes(index)
+                      ? prev.filter(i => i !== index)
+                      : [...prev, index]
+                  );
+                } else {
+                  // Free: single selection only
+                  setSelectedFounderIndices(prev => 
+                    prev.includes(index) ? [] : [index]
+                  );
+                }
+              };
+              
+              const handleCardClick = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                handleFounderToggle(e);
+              };
+
               return (
                 <div 
                   key={index} 
                   className={`bg-white rounded-xl md:rounded-2xl shadow-sm border p-3 sm:p-4 md:p-5 cursor-pointer transition-all ${
-                    selectedFounderIndex === index 
+                    isSelected
                       ? 'border-blue-300 border-2 bg-blue-50' 
                       : 'border-gray-100 hover:border-gray-200'
                   }`}
-                  onClick={() => setSelectedFounderIndex(index)}
+                  onClick={handleCardClick}
                 >
                   <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
                     {/* Founder Photo Placeholder */}
@@ -334,14 +370,16 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                         </div>
         )}
       </div>
-                    {/* Radio Button on the right */}
+                    {/* Selection Control - Checkbox for premium, Radio for free */}
                     <div className="flex-shrink-0 flex items-center">
                       <input
-                        type="radio"
-                        name="founder-selection"
-                        checked={selectedFounderIndex === index}
-                        onChange={() => setSelectedFounderIndex(index)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        type={isPremium ? "checkbox" : "radio"}
+                        name={isPremium ? `founder-checkbox-${index}` : "founder-selection"}
+                        checked={isSelected}
+                        onChange={handleFounderToggle}
+                        className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer ${
+                          isPremium ? 'rounded' : ''
+                        }`}
                         onClick={(e) => e.stopPropagation()}
                       />
                     </div>

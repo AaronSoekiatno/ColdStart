@@ -4,13 +4,14 @@ import { GoogleAIFileManager } from '@google/generative-ai/server';
 import {
   validateFile,
   extractDocxText,
+  extractPdfText,
   isPdfFile,
   cleanJsonResponse,
   type ResumeExtractionResult,
   type ResumeProcessingResult,
 } from './utils';
 import { upsertCandidate, findMatchingStartups } from '@/lib/pinecone';
-import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByName, findStartupIdsByNames } from '@/lib/supabase';
+import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByName, findStartupIdsByNames, getCandidate, getResumeCountForCandidate, createResume } from '@/lib/supabase';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 
@@ -29,39 +30,14 @@ function getGeminiClients() {
 }
 
 /**
- * Extracts full text content from a PDF using Gemini
+ * Extracts full text content from a PDF using pdf-parse
  * Used to store the complete resume text for email generation context
+ * This is much faster and cheaper than using Gemini for text extraction
  */
-async function extractFullTextFromPdf(
-  fileManager: GoogleAIFileManager,
-  genAI: GoogleGenerativeAI,
-  fileUri: string,
-  mimeType: string
-): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-  
-  const fullTextPrompt = `Extract and return ALL text content from this resume document as plain text. 
-Preserve the structure, formatting, and all details including:
-- All sections (Education, Experience, Projects, Skills, etc.)
-- All dates, locations, company names, university names
-- All technical details, achievements, descriptions
-- Any links, contact information, or portfolio URLs
-- Everything written in the resume
-
-Return ONLY the text content, no JSON, no explanations, just the raw text.`;
-
+async function extractFullTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    const result = await model.generateContent([
-      { text: fullTextPrompt },
-      {
-        fileData: {
-          fileUri: fileUri,
-          mimeType: mimeType,
-        },
-      },
-    ]);
-    
-    return result.response.text().trim();
+    const text = await extractPdfText(buffer);
+    return text.trim();
   } catch (error) {
     console.warn('Failed to extract full text from PDF:', error);
     return ''; // Return empty string if extraction fails - we'll continue with structured data
@@ -218,19 +194,19 @@ async function extractResumeDataWithGemini(
         parsed.skills = parsed.skills.slice(0, 12);
       }
 
-      // Extract full text - for PDFs use Gemini, for DOCX we already have it
+      // Extract full text - for PDFs use pdf-parse, for DOCX we already have it
       let fullText = '';
-      if (isPdfFile(file) && uploadedFileUri && uploadedFileMimeType) {
-        // Extract full text from PDF using Gemini
-        console.log('Extracting full text from PDF...');
-        fullText = await extractFullTextFromPdf(fileManager, genAI, uploadedFileUri, uploadedFileMimeType);
+      if (isPdfFile(file)) {
+        // Extract full text from PDF using pdf-parse (local, fast, free)
+        console.log('Extracting full text from PDF using pdf-parse...');
+        fullText = await extractFullTextFromPdf(buffer);
         console.log(`Extracted ${fullText.length} characters of full text from PDF`);
         
-        // Clean up: delete the uploaded file after full text extraction
+        // Clean up: delete the uploaded file from Gemini (no longer needed for text extraction)
         if (uploadedFileName) {
           try {
             await fileManager.deleteFile(uploadedFileName);
-            console.log(`[${modelName}] Deleted uploaded file`);
+            console.log(`[${modelName}] Deleted uploaded file from Gemini`);
           } catch (error) {
             console.warn('Failed to delete uploaded file:', error);
             // Continue even if deletion fails
@@ -392,6 +368,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get optional resume name from form data
+    const resumeName = formData.get('resumeName') as string | null;
+
+    // Check resume upload limits for free users
+    if (isAuthenticated && accountEmail) {
+      const existingCandidate = await getCandidate(accountEmail);
+      if (existingCandidate) {
+        const isPremium = isSubscribed(existingCandidate);
+        // Free users can only have 1 resume - check count in resumes table
+        const resumeCount = await getResumeCountForCandidate(existingCandidate.id);
+        if (!isPremium && resumeCount >= 1) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Free plan allows only one uploaded resume. Upgrade to Premium for unlimited resumes.',
+              upgradeRequired: true,
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const file = formData.get('resume') as File | null;
 
     // Validate the uploaded file
@@ -506,11 +505,11 @@ export async function POST(request: NextRequest) {
 
     if (isAuthenticated && accountEmail) {
       // Upload raw resume file to Supabase Storage (resumes bucket)
-      // We only want ONE resume file per user to avoid storage bloat.
+      // Support multiple resumes per user - each resume gets a unique path
       // Strategy:
-      // 1. List any existing files in the user's resumes folder and delete them.
-      // 2. Upload the new resume to a deterministic path like `resumes/{userId}/resume.ext`
-      //    with upsert enabled, so the latest resume always replaces the previous one.
+      // 1. Generate a unique filename using timestamp and original filename
+      // 2. Upload to path: resumes/{userId}/{timestamp}-{sanitized-filename}
+      // 3. This allows multiple resumes without overwriting previous ones
       let resumePath: string | undefined;
       try {
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -523,47 +522,28 @@ export async function POST(request: NextRequest) {
           const userId = user!.id;
           const folderPath = `resumes/${userId}`;
 
-          try {
-            // List and remove any existing files for this user to ensure only one resume is stored
-            const { data: existingFiles, error: listError } = await supabaseAdmin.storage
-              .from('resumes')
-              .list(folderPath, { limit: 100 });
-
-            if (listError) {
-              console.warn('Failed to list existing resume files for user; continuing anyway:', listError);
-            } else if (existingFiles && existingFiles.length > 0) {
-              const pathsToRemove = existingFiles.map((f) => `${folderPath}/${f.name}`);
-              const { error: removeError } = await supabaseAdmin.storage
-                .from('resumes')
-                .remove(pathsToRemove);
-              if (removeError) {
-                console.warn('Failed to remove existing resume files; continuing anyway:', removeError);
-              } else {
-                console.log(`Removed ${pathsToRemove.length} existing resume file(s) for user ${userId}`);
-              }
-            }
-          } catch (cleanupError) {
-            console.warn('Unexpected error while cleaning up existing resume files:', cleanupError);
-          }
-
-          // Derive a stable file name using the original extension if available
+          // Generate unique filename: timestamp-originalname
+          const timestamp = Date.now();
           const originalName = file!.name || 'resume.pdf';
+          // Sanitize filename: remove special chars, keep alphanumeric, dots, dashes, underscores
+          const sanitizedName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
           const ext = originalName.includes('.') ? originalName.split('.').pop() : 'pdf';
           const safeExt = ext || 'pdf';
-          const objectPath = `${folderPath}/resume.${safeExt}`;
+          const uniqueFileName = `${timestamp}-${sanitizedName}`;
+          const objectPath = `${folderPath}/${uniqueFileName}`;
 
           const { error: uploadError } = await supabaseAdmin.storage
             .from('resumes')
             .upload(objectPath, buffer, {
               contentType: file!.type || 'application/octet-stream',
-              upsert: true,
+              upsert: false, // Don't overwrite - each resume should be unique
             });
 
           if (uploadError) {
             console.error('Failed to upload resume file to Storage:', uploadError);
           } else {
             console.log('Uploaded resume file to Storage at path:', objectPath);
-            resumePath = objectPath; // Store the path to attach when saving candidate
+            resumePath = objectPath; // Store the path to attach when saving resume
           }
         } else {
           console.warn('SUPABASE_SERVICE_ROLE_KEY is not set; skipping resume file upload.');
@@ -620,28 +600,58 @@ export async function POST(request: NextRequest) {
           university: extractionResult.university,
           past_internships: extractionResult.past_internships.join(', '),
           technical_projects: extractionResult.technical_projects.join(', '),
-          resume_path: resumePath, // Attach the resume file path from Storage
-          resume_full_text: resumeFullText, // Store full extracted text for email generation
+          // Note: resume_path and resume_full_text are deprecated - using resumes table instead
         });
         candidateId = savedCandidate.id; // Get the UUID
         subscriptionTier = savedCandidate.subscription_tier || 'free';
         subscriptionStatus = savedCandidate.subscription_status || 'inactive';
-        console.log('Successfully saved candidate to Supabase:', {
+
+        // Save resume to the new resumes table
+        // Use provided resume name, or generate one from candidate name
+        const finalResumeName = resumeName?.trim() || `${extractionResult.name || 'Unknown'} Resume`;
+        const resumeFileName = file!.name;
+        
+        // Ensure candidateId is valid before creating resume
+        if (!candidateId) {
+          throw new Error('Failed to get candidate ID after saving candidate');
+        }
+        
+        // Check if this is the first resume (should be set as primary)
+        const resumeCount = await getResumeCountForCandidate(candidateId);
+        const shouldSetAsPrimary = resumeCount === 0; // First resume is automatically primary
+        
+        await createResume({
+          candidate_id: candidateId,
+          name: finalResumeName,
+          file_name: resumeFileName,
+          resume_path: resumePath,
+          resume_full_text: resumeFullText,
+          is_active: true, // New resumes are active by default
+          is_primary: shouldSetAsPrimary, // First resume is automatically primary
+        });
+
+        console.log('Successfully saved candidate and resume to Supabase:', {
           name: extractionResult.name,
           email: accountEmail,
-          id: candidateId,
+          candidateId,
+          resumeName: finalResumeName,
           subscriptionTier,
           subscriptionStatus,
         });
       } catch (error) {
-        console.error('Failed to save candidate to Supabase:', {
-          error: error instanceof Error ? error.message : 'Unknown error',
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('Failed to save candidate/resume to Supabase:', {
+          error: errorMessage,
           candidate: {
             name: extractionResult.name,
             email: accountEmail,
+            candidateId,
           },
+          fullError: error,
         });
-        // Continue even if Supabase save fails
+        // Re-throw the error so it's properly handled by the outer error handler
+        // This ensures the API returns an error response instead of silently failing
+        throw new Error(`Failed to save resume: ${errorMessage}`);
       }
     } else {
       console.log('User not authenticated - skipping database save. Results will be returned for preview.');
