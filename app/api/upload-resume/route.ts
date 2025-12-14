@@ -29,15 +29,60 @@ function getGeminiClients() {
 }
 
 /**
+ * Extracts full text content from a PDF using Gemini
+ * Used to store the complete resume text for email generation context
+ */
+async function extractFullTextFromPdf(
+  fileManager: GoogleAIFileManager,
+  genAI: GoogleGenerativeAI,
+  fileUri: string,
+  mimeType: string
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+  
+  const fullTextPrompt = `Extract and return ALL text content from this resume document as plain text. 
+Preserve the structure, formatting, and all details including:
+- All sections (Education, Experience, Projects, Skills, etc.)
+- All dates, locations, company names, university names
+- All technical details, achievements, descriptions
+- Any links, contact information, or portfolio URLs
+- Everything written in the resume
+
+Return ONLY the text content, no JSON, no explanations, just the raw text.`;
+
+  try {
+    const result = await model.generateContent([
+      { text: fullTextPrompt },
+      {
+        fileData: {
+          fileUri: fileUri,
+          mimeType: mimeType,
+        },
+      },
+    ]);
+    
+    return result.response.text().trim();
+  } catch (error) {
+    console.warn('Failed to extract full text from PDF:', error);
+    return ''; // Return empty string if extraction fails - we'll continue with structured data
+  }
+}
+
+/**
  * Extracts name, email, skills, and summary from resume using Gemini
  * Supports both PDF (sent directly as base64) and DOCX (text extracted first)
+ * Also extracts full text for storage
  */
 async function extractResumeDataWithGemini(
   file: File,
   buffer: Buffer,
   arrayBuffer: ArrayBuffer
-): Promise<ResumeExtractionResult> {
+): Promise<{ extraction: ResumeExtractionResult; fullText: string }> {
   const { genAI, fileManager } = getGeminiClients();
+  let uploadedFileUri: string | null = null;
+  let uploadedFileMimeType: string | null = null;
+  let uploadedFileName: string | null = null;
+  let docxFullText: string = ''; // Store DOCX text if we extract it
 
   const prompt = `Extract the following from this resume and return JSON only in this exact form:
 {
@@ -57,6 +102,14 @@ async function extractResumeDataWithGemini(
   // Using newer Gemini 2.x models as 1.5 models are deprecated
   const modelNames = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
   let lastError: any = null;
+  
+  // Extract DOCX text once before the loop (only needed for DOCX files)
+  if (!isPdfFile(file)) {
+    const docxText = await extractDocxText(buffer);
+    if (docxText && docxText.trim().length > 0) {
+      docxFullText = docxText;
+    }
+  }
 
   for (const modelName of modelNames) {
     try {
@@ -73,6 +126,7 @@ async function extractResumeDataWithGemini(
         });
 
         const uploadedFile = uploadResult.file;
+        uploadedFileName = uploadedFile.name; // Store for cleanup
         console.log(`[${modelName}] PDF uploaded, state: ${uploadedFile.state}, name: ${uploadedFile.name}`);
 
         // Wait for the file to be processed with optimized polling
@@ -96,6 +150,10 @@ async function extractResumeDataWithGemini(
 
         console.log(`[${modelName}] PDF ready, generating content with fileUri: ${fileMetadata.uri}`);
 
+        // Store file URI for full text extraction
+        uploadedFileUri = fileMetadata.uri;
+        uploadedFileMimeType = fileMetadata.mimeType;
+
         // Now use the uploaded file in the request
         result = await model.generateContent([
           { text: prompt },
@@ -106,24 +164,13 @@ async function extractResumeDataWithGemini(
             },
           },
         ]);
-
-        // Clean up: delete the uploaded file after processing
-        try {
-          await fileManager.deleteFile(uploadedFile.name);
-          console.log(`[${modelName}] Deleted uploaded file`);
-        } catch (error) {
-          console.warn('Failed to delete uploaded file:', error);
-          // Continue even if deletion fails
-        }
       } else {
-        // For DOCX: Extract text first, then send to Gemini
-        const resumeText = await extractDocxText(buffer);
-        
-        if (!resumeText || resumeText.trim().length === 0) {
+        // For DOCX: Use the text we already extracted
+        if (!docxFullText || docxFullText.trim().length === 0) {
           throw new Error('Could not extract text from DOCX file. The file may be corrupted or empty.');
         }
         
-        result = await model.generateContent(`${prompt}\n\nHere is the resume text:\n\n${resumeText}`);
+        result = await model.generateContent(`${prompt}\n\nHere is the resume text:\n\n${docxFullText}`);
       }
 
       // If we get here, the model worked - process the response
@@ -171,7 +218,31 @@ async function extractResumeDataWithGemini(
         parsed.skills = parsed.skills.slice(0, 12);
       }
 
-      return parsed;
+      // Extract full text - for PDFs use Gemini, for DOCX we already have it
+      let fullText = '';
+      if (isPdfFile(file) && uploadedFileUri && uploadedFileMimeType) {
+        // Extract full text from PDF using Gemini
+        console.log('Extracting full text from PDF...');
+        fullText = await extractFullTextFromPdf(fileManager, genAI, uploadedFileUri, uploadedFileMimeType);
+        console.log(`Extracted ${fullText.length} characters of full text from PDF`);
+        
+        // Clean up: delete the uploaded file after full text extraction
+        if (uploadedFileName) {
+          try {
+            await fileManager.deleteFile(uploadedFileName);
+            console.log(`[${modelName}] Deleted uploaded file`);
+          } catch (error) {
+            console.warn('Failed to delete uploaded file:', error);
+            // Continue even if deletion fails
+          }
+        }
+      } else if (!isPdfFile(file) && docxFullText) {
+        // For DOCX, use the text we already extracted
+        fullText = docxFullText;
+        console.log(`Using extracted ${fullText.length} characters of full text from DOCX`);
+      }
+
+      return { extraction: parsed, fullText };
     } catch (error: any) {
       // If it's a model not found error (404), try the next model
       if (error?.message?.includes('not found') || error?.message?.includes('404')) {
@@ -349,21 +420,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract name, email, skills, and summary using Gemini
+    // Also extract full text for storage in database
     // For PDFs: Gemini processes the file directly (no parsing needed!)
     // For DOCX: Text is extracted first, then sent to Gemini
     let extractionResult: ResumeExtractionResult;
+    let resumeFullText: string = '';
     let rawText: string = '';
     
     try {
-      extractionResult = await extractResumeDataWithGemini(file!, buffer, arrayBuffer);
+      const { extraction, fullText } = await extractResumeDataWithGemini(file!, buffer, arrayBuffer);
+      extractionResult = extraction;
+      resumeFullText = fullText;
       
-      // Extract raw text for response (only needed for DOCX, PDF is processed directly)
-      if (!isPdfFile(file!)) {
-        rawText = await extractDocxText(buffer);
-      } else {
-        // For PDFs, Gemini processed it directly - no text extraction needed
-        rawText = 'PDF processed directly by Gemini (no text extraction required)';
-      }
+      // Extract raw text for response
+      // For PDFs, use the extracted full text; for DOCX, it's already in resumeFullText
+      rawText = resumeFullText || 'Resume text extraction completed';
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -550,6 +621,7 @@ export async function POST(request: NextRequest) {
           past_internships: extractionResult.past_internships.join(', '),
           technical_projects: extractionResult.technical_projects.join(', '),
           resume_path: resumePath, // Attach the resume file path from Storage
+          resume_full_text: resumeFullText, // Store full extracted text for email generation
         });
         candidateId = savedCandidate.id; // Get the UUID
         subscriptionTier = savedCandidate.subscription_tier || 'free';

@@ -64,6 +64,7 @@ export interface CandidateRow {
   past_internships?: string; // Comma-separated string
   technical_projects?: string; // Comma-separated string
   resume_path?: string; // Path to resume file in Supabase Storage
+  resume_full_text?: string; // Full extracted text content from resume
   subscription_tier?: 'free' | 'premium'; // Subscription tier
   stripe_customer_id?: string; // Stripe customer ID
   stripe_subscription_id?: string; // Stripe subscription ID
@@ -109,6 +110,7 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
         past_internships: candidate.past_internships,
         technical_projects: candidate.technical_projects,
         resume_path: candidate.resume_path,
+        resume_full_text: candidate.resume_full_text,
         created_at: candidate.created_at || new Date().toISOString(),
       },
       {
