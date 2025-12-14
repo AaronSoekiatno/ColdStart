@@ -99,8 +99,11 @@ export default function GenerateEmailPage() {
       if (!response.ok) {
         const errorData = await response.json();
         if (errorData.upgradeRequired) {
+          // Show upgrade modal when limit is exceeded
           setShowUpgradeModal(true);
-          throw new Error(errorData.error || 'Premium feature required');
+          setIsPreviewLoading(false);
+          // Don't throw error, just show the modal
+          return;
         }
         throw new Error(errorData.error || 'Failed to generate email preview');
       }

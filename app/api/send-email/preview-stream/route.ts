@@ -81,53 +81,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check email generation limits for free users
-    // Free: 3 email generations per day, only 1 per company
-    // Premium: Unlimited
-    if (!isPremium && candidate.id) {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
-
-      const { data: todayGenerations, error: genCheckError } = await supabase
-        .from('sent_emails')
-        .select('id, startup_id, sent_at')
-        .eq('candidate_id', candidate.id)
-        .gte('sent_at', todayStart.toISOString())
-        .lte('sent_at', todayEnd.toISOString());
-
-      if (genCheckError) {
-        console.error('Error checking email generation limits:', genCheckError);
-      } else {
-        // Check daily limit (3 per day for free)
-        if (todayGenerations && todayGenerations.length >= 3) {
-          return new Response(
-            JSON.stringify({
-              error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
-              upgradeRequired: true,
-            }),
-            { status: 403, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Check per-company limit (1 per company for free)
-        const alreadyGeneratedForCompany = todayGenerations?.some(
-          (email) => email.startup_id === startup.id
-        );
-
-        if (alreadyGeneratedForCompany) {
-          return new Response(
-            JSON.stringify({
-              error: 'Free plan allows only one email generation per company per day. Upgrade to Premium for unlimited generations.',
-              upgradeRequired: true,
-            }),
-            { status: 403, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
-      }
-    }
-
     // Check if we already have a generated email for this candidate-startup pair (one-to-one mapping)
     const { data: existingGeneratedEmail, error: fetchError } = await supabase
       .from('generated_emails')
@@ -218,6 +171,39 @@ export async function POST(request: NextRequest) {
           'Connection': 'keep-alive',
         },
       });
+    }
+
+    // Check email generation limits for free users BEFORE generating
+    // Free: 3 email generations per day (counts NEW generations, not cached retrievals)
+    // Premium: Unlimited
+    if (!isPremium && candidate.id) {
+      // Get today's date range in UTC
+      const now = new Date();
+      const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+
+      // Count how many NEW emails were generated today (not cached retrievals)
+      const { data: todayGenerations, error: genCheckError } = await supabase
+        .from('generated_emails')
+        .select('id, created_at')
+        .eq('candidate_id', candidate.id)
+        .gte('created_at', todayStart.toISOString())
+        .lte('created_at', todayEnd.toISOString());
+
+      if (genCheckError) {
+        console.error('Error checking email generation limits:', genCheckError);
+      } else {
+        // Check daily limit (3 per day for free)
+        if (todayGenerations && todayGenerations.length >= 3) {
+          return new Response(
+            JSON.stringify({
+              error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
+              upgradeRequired: true,
+            }),
+            { status: 403, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+      }
     }
 
     // Generate a new email if:

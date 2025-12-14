@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Upload, FileText, X } from 'lucide-react';
+import { Upload, FileText, X, AlertCircle } from 'lucide-react';
 
 interface FilePreview {
   file: File;
@@ -10,9 +10,10 @@ interface FilePreview {
 
 interface ResumeUploadProps {
   onSuccess?: () => void;
+  onUpgradeRequired?: () => void;
 }
 
-export default function ResumeUpload({ onSuccess }: ResumeUploadProps = { onSuccess: undefined }) {
+export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUploadProps = { onSuccess: undefined, onUpgradeRequired: undefined }) {
   const [file, setFile] = useState<FilePreview | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -128,6 +129,14 @@ export default function ResumeUpload({ onSuccess }: ResumeUploadProps = { onSucc
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        
+        // If upgrade is required, trigger the upgrade modal instead of showing error
+        if (errorData.upgradeRequired && onUpgradeRequired) {
+          onUpgradeRequired();
+          setIsUploading(false);
+          return;
+        }
+        
         throw new Error(errorData.error || 'Upload failed');
       }
 
@@ -236,6 +245,16 @@ export default function ResumeUpload({ onSuccess }: ResumeUploadProps = { onSucc
               >
                 <X className="w-5 h-5 text-foreground/60" />
               </button>
+            </div>
+          </div>
+
+          {/* Warning about upload time */}
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                <span className="font-semibold">Note:</span> Resume upload and processing may take up to 30 seconds. Please do not close this window during upload.
+              </p>
             </div>
           </div>
 
