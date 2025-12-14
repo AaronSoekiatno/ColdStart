@@ -532,10 +532,44 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           // Use broader extraction when we're in Active Founders section - don't require "founder" keyword
           let description = '';
           
-          // Try to find description in prose div
-          const proseDiv = founderCard?.querySelector('.prose.max-w-full.whitespace-pre-line, div[class*="prose"][class*="max-w-full"]') as HTMLElement;
+          // PRIORITY: Try to find description in prose div (this is the main location for founder descriptions)
+          // Target: div.prose.max-w-full.whitespace-pre-line
+          // This matches the exact element structure: <div class="prose max-w-full whitespace-pre-line">
+          const proseDiv = founderCard?.querySelector('.prose.max-w-full.whitespace-pre-line, div[class*="prose"][class*="max-w-full"][class*="whitespace-pre-line"]') as HTMLElement;
           if (proseDiv) {
-            description = proseDiv.textContent?.trim() || '';
+            // Get full text content - try multiple methods to ensure we get complete text
+            // Use innerText first (preserves line breaks and ignores hidden elements)
+            description = proseDiv.innerText?.trim() || '';
+            
+            // If innerText is short or empty, try textContent (includes hidden text)
+            if (!description || description.length < 30) {
+              description = proseDiv.textContent?.trim() || '';
+            }
+            
+            // Also check for any child elements that might contain the full text
+            if (description.length < 50 && proseDiv.children.length > 0) {
+              const childText = Array.from(proseDiv.children)
+                .map((el: Element) => {
+                  const htmlEl = el as HTMLElement;
+                  return htmlEl.innerText || htmlEl.textContent || '';
+                })
+                .filter(text => text.length > 0)
+                .join(' ')
+                .trim();
+              if (childText.length > description.length) {
+                description = childText;
+              }
+            }
+            
+            // Check for data attributes that might contain full text
+            if (description.length < 50) {
+              const dataText = proseDiv.getAttribute('data-text') || 
+                              proseDiv.getAttribute('data-content') ||
+                              proseDiv.getAttribute('content');
+              if (dataText && dataText.length > description.length) {
+                description = dataText.trim();
+              }
+            }
           }
           
           // Fallback: Try to find ForwardRef component with content attribute
@@ -578,6 +612,29 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                           (pText.includes('Co-founder') || pText.includes('Founder') || looksLikeBio)) {
                 description = pText;
                 break;
+                }
+              }
+            }
+          }
+          
+          // Additional fallback: Look for prose div in sibling or nearby elements
+          if (!description && founderCard) {
+            // Check next sibling
+            let sibling = founderCard.nextElementSibling;
+            if (sibling) {
+              const siblingProse = sibling.querySelector('.prose.max-w-full.whitespace-pre-line') as HTMLElement;
+              if (siblingProse) {
+                description = siblingProse.innerText?.trim() || siblingProse.textContent?.trim() || '';
+              }
+            }
+            
+            // Check previous sibling
+            if (!description) {
+              sibling = founderCard.previousElementSibling;
+              if (sibling) {
+                const siblingProse = sibling.querySelector('.prose.max-w-full.whitespace-pre-line') as HTMLElement;
+                if (siblingProse) {
+                  description = siblingProse.innerText?.trim() || siblingProse.textContent?.trim() || '';
                 }
               }
             }
@@ -2159,48 +2216,6 @@ async function getCompaniesWithTwitterData(): Promise<Set<string>> {
 }
 
 /**
- * Get companies that already have keywords populated
- */
-async function getCompaniesWithKeywords(): Promise<Set<string>> {
-  try {
-    // Fetch all YC companies with keywords
-    const { data, error } = await supabase
-      .from('startups')
-      .select('yc_link, keywords')
-      .eq('data_source', 'yc')
-      .not('yc_link', 'is', null);
-
-    if (error) {
-      console.warn('  ⚠️  Could not fetch companies with keywords:', error);
-      return new Set();
-    }
-
-    const links = new Set<string>();
-    data?.forEach((row: any) => {
-      // Check if company has keywords populated (either actual keywords or placeholder)
-      // If keywords field has a value (including 'NO_KEYWORDS' placeholder), it means it was already processed
-      // Similar to Twitter pattern: we skip companies that have been checked, even if no keywords were found
-      // This prevents rechecking companies that don't have valid keywords (NO_KEYWORDS placeholder)
-      const keywordsValue = row.keywords ? row.keywords.trim() : '';
-      const hasKeywords = keywordsValue.length > 0;
-      
-      // If company has keywords (including NO_KEYWORDS placeholder), it means it was already processed
-      if (row.yc_link && hasKeywords) {
-        // Normalize URL for comparison (lowercase, remove trailing slash)
-        const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
-        links.add(normalized);
-      }
-    });
-
-    return links;
-  } catch (error) {
-    console.warn('  ⚠️  Error fetching companies with keywords:', error);
-    return new Set();
-  }
-}
-
-
-/**
  * Store YC company data in Supabase
  */
 async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData): Promise<boolean> {
@@ -2219,25 +2234,39 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       return value && value.trim() ? value.trim() : placeholder;
     };
 
-    // Format tags as comma-separated string
-    const tagsString = pageData.tags && pageData.tags.length > 0 
-      ? pageData.tags.join(', ') 
-      : 'NO_KEYWORDS';
+    // Format founder descriptions for founder_backgrounds field
+    // Combine all founder descriptions into a single string
+    let founderBackgrounds = '';
+    if (pageData.founders && pageData.founders.length > 0) {
+      const descriptions = pageData.founders
+        .filter(f => f.description && f.description.trim().length > 0)
+        .map(f => {
+          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();
+          if (fullName) {
+            return `${fullName}: ${f.description.trim()}`;
+          }
+          return f.description.trim();
+        })
+        .filter(desc => desc.length > 0);
+      
+      if (descriptions.length > 0) {
+        founderBackgrounds = descriptions.join('\n\n');
+      }
+    }
 
-    // Update keywords only
+    // Update only founder_backgrounds (skip keywords for speed)
     const updateData: {
-      keywords?: string;
+      founder_backgrounds?: string;
     } = {
-      // Keywords (technology/skills tags) - stored as comma-separated string
-      // Use placeholder if no tags found so we know it was scraped
-      keywords: tagsString,
+      // Founder backgrounds - full descriptions from YC page
+      founder_backgrounds: founderBackgrounds || undefined,
     };
     
-    console.log(`   💾 Updating keywords: ${updateData.keywords}`);
-    if (pageData.tags && pageData.tags.length > 0) {
-      console.log(`   🏷️  Found ${pageData.tags.length} technology/skill tags: ${pageData.tags.join(', ')}`);
+    if (founderBackgrounds) {
+      console.log(`   👤 Found ${pageData.founders.filter(f => f.description).length} founder description(s)`);
+      console.log(`   💾 Updating founder_backgrounds with descriptions from YC page (${founderBackgrounds.length} characters)`);
     } else {
-      console.log(`   🏷️  No keywords found (storing NO_KEYWORDS placeholder)`);
+      console.log(`   👤 No founder descriptions found on YC page`);
     }
     
     const { data, error } = await supabase
@@ -2258,10 +2287,10 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     }
 
     if (data) {
-      if (pageData.tags && pageData.tags.length > 0) {
-        console.log(`   ✅ Keywords stored successfully: ${pageData.tags.join(', ')}`);
+      if (founderBackgrounds) {
+        console.log(`   ✅ Founder backgrounds stored successfully (${founderBackgrounds.length} characters)`);
       } else {
-        console.log(`   ✅ Keywords placeholder stored: NO_KEYWORDS (scraped, no data found)`);
+        console.log(`   ⚠️  No founder backgrounds to store`);
       }
     }
 
@@ -2300,10 +2329,6 @@ async function scrapeYCCompanies() {
   const processedLinks = await getAlreadyProcessedLinks();
   console.log(`   Found ${processedLinks.size} already-processed companies`);
 
-  // Get companies that already have keywords
-  console.log('🔍 Checking for companies with keywords...');
-  const companiesWithKeywords = await getCompaniesWithKeywords();
-  console.log(`   Found ${companiesWithKeywords.size} companies with keywords already populated\n`);
 
   // Load all companies from CSV files
   console.log('📂 Loading YC companies from CSV files...');
@@ -2351,15 +2376,36 @@ async function scrapeYCCompanies() {
 
   console.log(`\n📊 Total companies to process: ${allCompanies.length}`);
 
-  // Filter to get companies that ARE in database but DON'T have keywords
+  // Get companies that HAVE founder_backgrounds (so we can skip them)
+  console.log('🔍 Checking for companies with founder_backgrounds...');
+  const { data: companiesWithBackgroundsData, error: backgroundsError } = await supabase
+    .from('startups')
+    .select('yc_link')
+    .eq('data_source', 'yc')
+    .not('yc_link', 'is', null)
+    .not('founder_backgrounds', 'is', null)
+    .neq('founder_backgrounds', '');
+
+  const companiesWithBackgrounds = new Set<string>();
+  if (!backgroundsError && companiesWithBackgroundsData) {
+    companiesWithBackgroundsData.forEach((row: any) => {
+      if (row.yc_link) {
+        const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
+        companiesWithBackgrounds.add(normalized);
+      }
+    });
+  }
+  console.log(`   Found ${companiesWithBackgrounds.size} companies with founder_backgrounds already populated\n`);
+
+  // Filter to get companies that ARE in database AND don't have founder_backgrounds
   const companiesToUpdate = allCompanies.filter(company => {
     const normalized = normalizeCompanyData(company);
     if (!normalized.ycLink) return false;
     // Normalize URL for comparison (lowercase, remove trailing slash)
     const normalizedLink = normalized.ycLink.toLowerCase().replace(/\/$/, '');
-    // Only process if: already in database AND doesn't have keywords
+    // Only process if: already in database AND doesn't have founder_backgrounds
     const inDatabase = processedLinks.has(normalizedLink);
-    const hasKeywords = companiesWithKeywords.has(normalizedLink);
+    const hasBackgrounds = companiesWithBackgrounds.has(normalizedLink);
     
     // Debug logging for filtered companies when using --company filter
     if (companyFilter && normalized.companyName.toLowerCase().includes(companyFilter.toLowerCase())) {
@@ -2367,8 +2413,8 @@ async function scrapeYCCompanies() {
       console.log(`      YC Link: ${normalized.ycLink}`);
       console.log(`      Normalized link: ${normalizedLink}`);
       console.log(`      In database: ${inDatabase ? '✅' : '❌'}`);
-      console.log(`      Has keywords: ${hasKeywords ? '✅' : '❌'}`);
-      console.log(`      Will process: ${inDatabase && !hasKeywords ? '✅' : '❌'}`);
+      console.log(`      Has founder_backgrounds: ${hasBackgrounds ? '✅' : '❌'}`);
+      console.log(`      Will process: ${inDatabase && !hasBackgrounds ? '✅' : '❌'}`);
       
       // Additional debug: Check if the link exists in processedLinks with different normalization
       if (!inDatabase) {
@@ -2393,11 +2439,11 @@ async function scrapeYCCompanies() {
       }
     }
     
-    return inDatabase && !hasKeywords;
+    return inDatabase && !hasBackgrounds;
   });
 
   const initiallySkippedCount = allCompanies.length - companiesToUpdate.length;
-  console.log(`📋 Companies to update keywords: ${companiesToUpdate.length} (${initiallySkippedCount} skipped - not in DB or already have keywords)\n`);
+  console.log(`📋 Companies to update founder_backgrounds: ${companiesToUpdate.length} (${initiallySkippedCount} skipped - not in DB or already have founder_backgrounds)\n`);
   
   if (companyFilter && companiesToUpdate.length === 0 && allCompanies.length > 0) {
     console.log(`   ⚠️  Company "${companyFilter}" found in CSV but:`);
@@ -2406,15 +2452,15 @@ async function scrapeYCCompanies() {
     if (!processedLinks.has(normalizedLink)) {
       console.log(`      - Not in database (yc_link: ${normalized.ycLink})`);
       console.log(`      💡 The company needs to be imported to the database first`);
-    } else if (companiesWithKeywords.has(normalizedLink)) {
-      console.log(`      - Already has keywords in database`);
+    } else if (companiesWithBackgrounds.has(normalizedLink)) {
+      console.log(`      - Already has founder_backgrounds in database`);
       console.log(`      💡 Use --force flag to re-scrape (if implemented)`);
     }
     console.log();
   }
 
   if (companiesToUpdate.length === 0 && !companyFilter) {
-    console.log('✅ All companies already have keywords!');
+    console.log('✅ All companies already have founder_backgrounds!');
     return;
   }
   
@@ -2539,7 +2585,7 @@ async function scrapeYCCompanies() {
 
         if (success) {
           successCount++;
-          console.log('   ✅ Successfully updated keywords in Supabase');
+          console.log('   ✅ Successfully updated founder_backgrounds in Supabase');
         } else {
           skippedCount++;
         }
