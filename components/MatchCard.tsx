@@ -63,6 +63,32 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
     ? startup.founder_emails.split(',').map(email => email.trim())
     : [];
 
+  // Parse founder backgrounds - split by "Name:" pattern
+  const founderBackgroundsArray = founderNames.map((name, idx) => {
+    if (!startup.founder_backgrounds) return '';
+
+    // Create regex to find "FounderName: background text"
+    // Match from "Name:" until the next founder's "Name:" or end of string
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nextFounderName = idx < founderNames.length - 1 ? founderNames[idx + 1] : null;
+
+    let pattern;
+    if (nextFounderName) {
+      const escapedNextName = nextFounderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*?)(?=\\n*${escapedNextName}:|$)`, 'i');
+    } else {
+      // Last founder - match until end of string
+      pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*)$`, 'i');
+    }
+
+    const match = startup.founder_backgrounds.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+
+    return '';
+  });
+
   // Get selected founder email
   const selectedFounderEmail = selectedFounderIndex !== null && founderEmails[selectedFounderIndex]
     ? founderEmails[selectedFounderIndex]
@@ -302,9 +328,9 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                         )}
                       </div>
                       <p className="text-xs sm:text-sm text-gray-500 mb-2 md:mb-3">Founder</p>
-                      {startup.founder_backgrounds && index === 0 && (
+                      {founderBackgroundsArray[index] && (
                         <div className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line">
-                          {startup.founder_backgrounds}
+                          {founderBackgroundsArray[index]}
                         </div>
         )}
       </div>
