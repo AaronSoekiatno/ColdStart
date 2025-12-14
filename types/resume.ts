@@ -18,7 +18,7 @@ export interface ExperienceItem {
   company: string;
   location?: string;
   startDate: string;
-  endDate: string; // "Present" or date
+  endDate?: string; // "Present" or date (optional if not provided)
   description: string[]; // Bullet points
 }
 
@@ -30,6 +30,10 @@ export interface EducationItem {
   graduationDate?: string;
   gpa?: string;
   honors?: string;
+  // New optional fields for better resume detail
+  major?: string;
+  minor?: string;
+  relevantCourses?: string[];
 }
 
 export interface ProjectItem {

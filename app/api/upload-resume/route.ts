@@ -761,7 +761,7 @@ export async function POST(request: NextRequest) {
                   funding_amount: match.metadata.funding_amount || '',
                   location: match.metadata.location || '',
                   website: match.metadata.website || '',
-                  tags: match.metadata.tags || '',
+                  keywords: match.metadata.keywords || match.metadata.tags || '',
                 });
                 return { match, startupId: match.id };
               } catch (error) {

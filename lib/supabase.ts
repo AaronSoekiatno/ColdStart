@@ -164,7 +164,7 @@ export interface StartupRow {
   funding_amount: string;
   location: string;
   website: string;
-  tags: string;
+  keywords: string; // Tags/keywords for the startup (matches actual DB column)
   founder_emails?: string;
   founder_names?: string;
   founder_linkedin?: string;
@@ -172,6 +172,13 @@ export interface StartupRow {
   job_openings?: string;
   date_raised?: string;
   created_at?: string;
+  // Additional YC-specific fields
+  yc_link?: string;
+  company_logo?: string;
+  business_type?: string;
+  team_size?: string;
+  hiring_roles?: string; // Active job postings with descriptions
+  round_type?: string;
 }
 
 /**
@@ -205,7 +212,7 @@ export async function saveStartup(startup: StartupRow) {
     funding_amount: startup.funding_amount !== undefined ? startup.funding_amount : (existing?.funding_amount || ''),
     location: startup.location !== undefined ? startup.location : (existing?.location || ''),
     website: startup.website !== undefined ? startup.website : (existing?.website || ''),
-    tags: startup.tags !== undefined ? startup.tags : (existing?.tags || ''),
+    keywords: startup.keywords !== undefined ? startup.keywords : (existing?.keywords || ''),
     created_at: startup.created_at || existing?.created_at || new Date().toISOString(),
   };
 

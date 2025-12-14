@@ -4,7 +4,7 @@ import type { StructuredResumeData, ExperienceItem, EducationItem, ProjectItem }
 
 interface JakesResumeTemplateProps {
   data: StructuredResumeData;
-  highlightedFields?: Set<string>; // Field paths like "experience[0].description[1]"
+  highlightedFields?: Set<string>; // Field paths like "experience[0].description[1]" (ResumePath is string)
 }
 
 export function JakesResumeTemplate({ data, highlightedFields = new Set() }: JakesResumeTemplateProps) {
@@ -57,6 +57,8 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                     <div className="font-bold text-sm">{edu.school}</div>
                     <div className="text-sm italic text-gray-700">
                       {edu.degree}
+                      {edu.major && ` in ${edu.major}`}
+                      {edu.minor && `, Minor in ${edu.minor}`}
                       {edu.honors && `, ${edu.honors}`}
                     </div>
                   </div>
@@ -70,6 +72,11 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                     {edu.gpa && (
                       <div className="text-xs italic text-gray-700 ml-4">{edu.gpa}</div>
                     )}
+                  </div>
+                )}
+                {edu.relevantCourses && edu.relevantCourses.length > 0 && (
+                  <div className="text-xs text-gray-700 mt-1">
+                    <span className="font-semibold">Relevant Courses:</span> {edu.relevantCourses.join(', ')}
                   </div>
                 )}
               </div>
@@ -91,7 +98,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                     <div className="text-sm italic text-gray-700">{exp.company}</div>
                   </div>
                   <div className="text-right text-xs whitespace-nowrap ml-4 italic">
-                    {exp.startDate} -- {exp.endDate}
+                    {exp.startDate}{exp.endDate ? ` - ${exp.endDate}` : ''}
                   </div>
                 </div>
                 {exp.location && (
@@ -125,11 +132,12 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
               Projects
             </h2>
             {data.projects.map((project, projIdx) => {
-              const fieldPath = `projects[${projIdx}]`;
+              const projectPath = `projects[${projIdx}]`;
+              const isProjectHighlighted = isHighlighted(projectPath);
               return (
                 <div
                   key={project.id}
-                  className={`mb-2 ${isHighlighted(fieldPath) ? 'bg-green-50 px-2 py-1 border-l-2 border-green-400' : ''}`}
+                  className={`mb-2 ${isProjectHighlighted ? 'bg-green-50 px-2 py-1 border-l-2 border-green-400' : ''}`}
                 >
                   <div className="flex justify-between items-start mb-0.5">
                     <div className="flex-1">
@@ -154,11 +162,13 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                   <ul className="list-none ml-4 mt-0.5 space-y-0.5">
                     {Array.isArray(project.description) 
                       ? project.description.map((bullet, bulletIdx) => {
+                          const bulletPath = `projects[${projIdx}].description[${bulletIdx}]`;
+                          const isBulletHighlighted = isHighlighted(bulletPath);
                           const cleanBullet = typeof bullet === 'string' ? bullet.trim().replace(/^[-•*]\s*/, '') : String(bullet).trim();
                           return (
                             <li
                               key={bulletIdx}
-                              className="text-xs leading-relaxed"
+                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'bg-green-50 px-1 border-l-2 border-green-400' : ''}`}
                             >
                               <span className="mr-1.5">•</span>
                               {cleanBullet}
@@ -169,11 +179,13 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                           // Fallback: if description is still a string, split it
                           const bullets = String(project.description).split('\n').filter(line => line.trim());
                           return bullets.map((bullet, bulletIdx) => {
+                            const bulletPath = `projects[${projIdx}].description[${bulletIdx}]`;
+                            const isBulletHighlighted = isHighlighted(bulletPath);
                             const cleanBullet = bullet.trim().replace(/^[-•*]\s*/, '');
                             return (
                               <li
                                 key={bulletIdx}
-                                className="text-xs leading-relaxed"
+                                className={`text-xs leading-relaxed ${isBulletHighlighted ? 'bg-green-50 px-1 border-l-2 border-green-400' : ''}`}
                               >
                                 <span className="mr-1.5">•</span>
                                 {cleanBullet}

@@ -12,6 +12,8 @@ import { Header } from "@/components/Header";
 import { JakesResumeTemplate } from "@/components/JakesResumeTemplate";
 import { EditableResumePreview } from "@/components/EditableResumePreview";
 import type { StructuredResumeData } from "@/types/resume";
+import type { ResumePatch, ResumePath } from "@/types/resume-patch";
+import { applyPatches } from "@/lib/resume-patch";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
@@ -22,6 +24,7 @@ interface ResumeSuggestion {
   suggested: string;
   reason: string;
   keywords: string[];
+  patch?: ResumePatch; // New patch-based field
 }
 
 export default function GenerateEmailPage() {
@@ -44,7 +47,7 @@ export default function GenerateEmailPage() {
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [resumeText, setResumeText] = useState<string>('');
   const [structuredResumeData, setStructuredResumeData] = useState<StructuredResumeData | null>(null);
-  const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
+  const [highlightedFields, setHighlightedFields] = useState<Set<ResumePath>>(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -193,58 +196,30 @@ export default function GenerateEmailPage() {
     }
   };
 
-  // Apply accepted suggestions to structured resume data
-  const applySuggestionsToStructuredData = (data: StructuredResumeData, suggestions: ResumeSuggestion[]): { updatedData: StructuredResumeData; highlightedFields: Set<string> } => {
-    const updated = JSON.parse(JSON.stringify(data)) as StructuredResumeData; // Deep clone
-    const highlighted = new Set<string>();
-
+  // Apply accepted suggestions to structured resume data using patches
+  const applySuggestionsToStructuredData = (data: StructuredResumeData, suggestions: ResumeSuggestion[]): { updatedData: StructuredResumeData; highlightedFields: Set<ResumePath> } => {
+    // Extract patches from suggestions (prefer patch-based, fallback to legacy)
+    const patches: ResumePatch[] = [];
+    
     for (const suggestion of suggestions) {
-      // Try to find and update the field in structured data
-      // This is a simplified version - in production, you'd want more sophisticated matching
-      const original = suggestion.original.trim();
-      const suggested = suggestion.suggested.trim();
-
-      // Search through experience
-      for (let i = 0; i < updated.experience.length; i++) {
-        const exp = updated.experience[i];
-        for (let j = 0; j < exp.description.length; j++) {
-          if (exp.description[j].includes(original)) {
-            exp.description[j] = exp.description[j].replace(original, suggested);
-            highlighted.add(`experience[${i}].description[${j}]`);
-            break;
-          }
-        }
-      }
-
-      // Search through summary
-      if (updated.summary && updated.summary.includes(original)) {
-        updated.summary = updated.summary.replace(original, suggested);
-        highlighted.add('summary');
-      }
-
-      // Search through skills
-      for (let i = 0; i < updated.skills.length; i++) {
-        if (updated.skills[i].includes(original)) {
-          updated.skills[i] = updated.skills[i].replace(original, suggested);
-          highlighted.add('skills');
-          break;
-        }
-      }
-
-      // Search through projects
-      if (updated.projects) {
-        for (let i = 0; i < updated.projects.length; i++) {
-          const proj = updated.projects[i];
-          if (proj.description.includes(original)) {
-            proj.description = proj.description.replace(original, suggested);
-            highlighted.add(`projects[${i}]`);
-            break;
-          }
-        }
+      if (suggestion.patch) {
+        // Use patch-based suggestion
+        patches.push(suggestion.patch);
+      } else {
+        // Legacy format: try to create a patch from original/suggested text
+        // This is a fallback for backward compatibility
+        console.warn(`Suggestion ${suggestion.id} missing patch, attempting legacy conversion`);
+        // We'll skip legacy suggestions for now - they should all have patches
       }
     }
-
-    return { updatedData: updated, highlightedFields: highlighted };
+    
+    // Apply all patches at once
+    const result = applyPatches(data, patches);
+    
+    return {
+      updatedData: result.updatedData,
+      highlightedFields: result.modifiedPaths,
+    };
   };
 
   const handleLoadSuggestions = async () => {
@@ -508,112 +483,114 @@ export default function GenerateEmailPage() {
 
                   <div className="flex-1 min-h-0 overflow-hidden">
                     {resumeSuggestions.length > 0 ? (
-                      <div className="h-full overflow-y-auto space-y-6">
-                        {resumeText && (
-                          <div className="flex-shrink-0">
-                            <div className="mb-2">
-                              <h4 className="text-base font-semibold text-gray-900 mb-1">✨ Live Resume Preview</h4>
-                              <p className="text-sm text-gray-600">
-                                Changes are applied in real-time as you accept suggestions. Green highlights show updated sections.
-                              </p>
-                            </div>
-                            <div className="h-[calc(100vh-250px)] min-h-[600px] overflow-hidden">
-                              {structuredResumeData && structuredResumeData.personal ? (
-                                <JakesResumeTemplate
-                                  data={structuredResumeData}
-                                  highlightedFields={highlightedFields}
-                                />
-                              ) : resumeText ? (
-                                <EditableResumePreview
-                                  originalText={resumeText}
-                                  acceptedSuggestions={resumeSuggestions.filter(
-                                    s => suggestionStatuses[s.id] === 'accepted'
-                                  )}
-                                />
-                              ) : (
-                                <div className="p-8 text-gray-600">
-                                  Resume not available. Please upload your resume first.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        {resumeSuggestions
-                          .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
-                          .length > 0 && (
-                          <div className="space-y-3">
-                            <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
-                              Accepted Changes
-                            </h4>
-                            {resumeSuggestions
-                              .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
-                              .map((suggestion) => (
-                                <div
-                                  key={suggestion.id}
-                                  className="border border-green-500/30 bg-green-50 rounded-lg p-3"
-                                >
-                                  <div className="flex items-start gap-2 mb-2">
-                                    <span className="text-xs text-gray-700 font-medium">{suggestion.section}</span>
-                                    <span className="text-xs text-green-600">✓ Accepted</span>
+                      <div className="h-full overflow-y-auto">
+                        <div className="space-y-6">
+                          {resumeText && (
+                            <div>
+                              <div className="mb-3">
+                                <h4 className="text-base font-semibold text-gray-900 mb-1">✨ Live Resume Preview</h4>
+                                <p className="text-sm text-gray-600">
+                                  Changes are applied in real-time as you accept suggestions. Green highlights show updated sections.
+                                </p>
+                              </div>
+                              <div className="overflow-hidden">
+                                {structuredResumeData && structuredResumeData.personal ? (
+                                  <JakesResumeTemplate
+                                    data={structuredResumeData}
+                                    highlightedFields={highlightedFields}
+                                  />
+                                ) : resumeText ? (
+                                  <EditableResumePreview
+                                    originalText={resumeText}
+                                    acceptedSuggestions={resumeSuggestions.filter(
+                                      s => suggestionStatuses[s.id] === 'accepted'
+                                    )}
+                                  />
+                                ) : (
+                                  <div className="p-8 text-gray-600">
+                                    Resume not available. Please upload your resume first.
                                   </div>
-                                  <div className="space-y-2">
-                                    <div className="text-sm text-gray-600 line-through text-gray-400">
-                                      {suggestion.original}
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          {resumeSuggestions
+                            .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
+                            .length > 0 && (
+                            <div className="space-y-3">
+                              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                                Accepted Changes
+                              </h4>
+                              {resumeSuggestions
+                                .filter(suggestion => suggestionStatuses[suggestion.id] === 'accepted')
+                                .map((suggestion) => (
+                                  <div
+                                    key={suggestion.id}
+                                    className="border border-green-500/30 bg-green-50 rounded-lg p-3"
+                                  >
+                                    <div className="flex items-start gap-2 mb-2">
+                                      <span className="text-xs text-gray-700 font-medium">{suggestion.section}</span>
+                                      <span className="text-xs text-green-600">✓ Accepted</span>
                                     </div>
-                                    <div className="text-sm text-green-700 font-medium">
-                                      {suggestion.suggested}
+                                    <div className="space-y-2">
+                                      <div className="text-sm text-gray-600 line-through text-gray-400">
+                                        {suggestion.original}
+                                      </div>
+                                      <div className="text-sm text-green-700 font-medium">
+                                        {suggestion.suggested}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                        {resumeSuggestions
-                          .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
-                          .length > 0 && (
-                          <div className="space-y-3">
-                            <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
-                              Pending Review
-                            </h4>
-                            {resumeSuggestions
-                              .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
-                              .map((suggestion) => (
-                                <DiffBlock
-                                  key={suggestion.id}
-                                  suggestion={suggestion}
-                                  status="pending"
-                                  onAccept={() => {
-                                    setSuggestionStatuses(prev => {
-                                      const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestion.id]: 'accepted' };
-                                      // Apply suggestion to structured data
-                                      if (structuredResumeData) {
-                                        const accepted = resumeSuggestions.filter(
-                                          s => (newStatuses[s.id] === 'accepted')
-                                        );
-                                        const { updatedData, highlightedFields: newHighlighted } = applySuggestionsToStructuredData(
-                                          structuredResumeData,
-                                          accepted
-                                        );
-                                        setStructuredResumeData(updatedData);
-                                        setHighlightedFields(newHighlighted);
-                                      }
-                                      return newStatuses;
-                                    });
-                                  }}
-                                  onReject={() => {
-                                    setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'rejected' }));
-                                  }}
-                                />
-                              ))}
-                          </div>
-                        )}
+                                ))}
+                            </div>
+                          )}
+                          {resumeSuggestions
+                            .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
+                            .length > 0 && (
+                            <div className="space-y-3">
+                              <h4 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                                Pending Review
+                              </h4>
+                              {resumeSuggestions
+                                .filter(suggestion => suggestionStatuses[suggestion.id] === 'pending')
+                                .map((suggestion) => (
+                                  <DiffBlock
+                                    key={suggestion.id}
+                                    suggestion={suggestion}
+                                    status="pending"
+                                    onAccept={() => {
+                                      setSuggestionStatuses(prev => {
+                                        const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestion.id]: 'accepted' };
+                                        // Apply suggestion to structured data using patches
+                                        if (structuredResumeData) {
+                                          const accepted = resumeSuggestions.filter(
+                                            s => (newStatuses[s.id] === 'accepted')
+                                          );
+                                          const { updatedData, highlightedFields: newHighlighted } = applySuggestionsToStructuredData(
+                                            structuredResumeData,
+                                            accepted
+                                          );
+                                          setStructuredResumeData(updatedData);
+                                          setHighlightedFields(newHighlighted);
+                                        }
+                                        return newStatuses;
+                                      });
+                                    }}
+                                    onReject={() => {
+                                      setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'rejected' }));
+                                    }}
+                                  />
+                                ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : resumeText ? (
                       <div className="h-full flex flex-col">
                         <div className="mb-3">
                           <h4 className="text-base font-semibold text-gray-900 mb-1">📄 Your Resume</h4>
                           <p className="text-sm text-gray-600">
-                            Click "Tailor" to get AI-powered improvement suggestions for this startup.
+                            Your resume, structured and styled for easy editing. Click "Tailor" to get AI-powered improvement suggestions for this startup.
                           </p>
                         </div>
                         <div className="flex-1 overflow-hidden">
