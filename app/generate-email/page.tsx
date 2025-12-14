@@ -787,6 +787,10 @@ export default function GenerateEmailPage() {
           email={user.email || ''}
           customTitle="Upgrade to Premium"
           isPremium={isPremium}
+          onDismiss={() => {
+            // Redirect to matches page when modal is dismissed
+            router.push('/matches');
+          }}
         />
       )}
     </div>
