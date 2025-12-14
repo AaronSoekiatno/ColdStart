@@ -130,7 +130,7 @@ const MatchCardComponent = ({ match }: MatchCardProps) => {
                 </span>
               )}
             </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
+            <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
               <p className="text-lg md:text-xl lg:text-2xl font-bold text-blue-300 whitespace-nowrap">
                 {Math.min((match.score * 100) + 40, 97).toFixed(0)}% <span className="text-sm md:text-base font-normal text-gray-600 align-top inline-block mt-0.5 md:mt-1">match</span>
               </p>

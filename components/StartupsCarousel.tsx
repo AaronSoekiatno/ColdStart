@@ -17,7 +17,7 @@ export const UniversityCarousel = () => {
     { name: "UC Santa Barbara", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/d/d4/UC_Santa_Barbara_logo.svg" },
     { name: "UC Irvine", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/8/8f/University_of_California%2C_Irvine_logo.svg" },
     { name: "UC Riverside", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/2/21/UC_Riverside_Highlanders_logo.svg" },
-    { name: "San Diego State University", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/5/59/San_Diego_State_University_primary_logo.svg" },
+    { name: "University of Illinois Urbana-Champaign", logoUrl: "https://assets.foleon.com/eu-central-1/de-uploads-7e3kk3/49120/university-wordmark-full-color-rgb.11f4586744e5.png?ext=webp" },
     { name: "Harvard", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Harvard_University_logo.svg/1200px-Harvard_University_logo.svg.png?20240103220517" },
     { name: "MIT", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/MIT_logo.svg/500px-MIT_logo.svg.png?20250128192424" },
     { name: "Purdue", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Purdue_Boilermakers_logo.svg/500px-Purdue_Boilermakers_logo.svg.png?20200422051240" },
