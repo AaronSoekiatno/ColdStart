@@ -19,17 +19,19 @@ interface UpgradeModalProps {
 }
 
 const freeFeatures = [
-  "1 startup match",
-  "View match details",
-  "Basic profile access",
+  "Unlimited Matches",
+  "Email Tracking (history)",
+  "One uploaded resume",
+  "Basic resume keyword matching",
+  "One email send per founder",
+  "3 email generations per day (only one email generation per company)",
 ];
 
 const premiumFeatures = [
-  "Unlimited startup matches",
-  "AI-powered resume tailoring",
-  "Personalized cold DM generation",
-  "Automated email outreach",
-  "Priority support",
+  "All free features",
+  "Unlimited sends for all founders at the same time",
+  "Changes in generated email tone",
+  "Unlimited uploaded resumes",
 ];
 
 export function UpgradeModal({ open, onOpenChange, hiddenMatchCount, email, onDismiss, customTitle, isPremium: initialIsPremium = false }: UpgradeModalProps) {
