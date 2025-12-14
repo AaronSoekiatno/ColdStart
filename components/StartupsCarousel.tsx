@@ -14,9 +14,9 @@ export const UniversityCarousel = () => {
     { name: "UC Berkeley", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/b/b4/Berkeley_College_of_Letters_%26_Science_logo.svg" },
     { name: "UCLA", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/6/6c/University_of_California%2C_Los_Angeles_logo.svg" },
     { name: "UC San Diego", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/c/cc/University_of_California%2C_San_Diego_logo.svg" },
-    { name: "UC Santa Barbara", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/d/d4/UC_Santa_Barbara_logo.svg" },
+    { name: "University of Waterloo", logoUrl: "https://upload.wikimedia.org/wikipedia/en/thumb/6/6e/University_of_Waterloo_seal.svg/1200px-University_of_Waterloo_seal.svg.png" },
     { name: "UC Irvine", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/8/8f/University_of_California%2C_Irvine_logo.svg" },
-    { name: "UC Riverside", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/2/21/UC_Riverside_Highlanders_logo.svg" },
+    { name: "Carnegie Mellon University", logoUrl: "https://logos-world.net/wp-content/uploads/2023/08/Carnegie-Mellon-University-Logo.png" },
     { name: "University of Illinois Urbana-Champaign", logoUrl: "https://assets.foleon.com/eu-central-1/de-uploads-7e3kk3/49120/university-wordmark-full-color-rgb.11f4586744e5.png?ext=webp" },
     { name: "Harvard", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Harvard_University_logo.svg/1200px-Harvard_University_logo.svg.png?20240103220517" },
     { name: "MIT", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/MIT_logo.svg/500px-MIT_logo.svg.png?20250128192424" },
@@ -92,7 +92,9 @@ export const UniversityCarousel = () => {
                   alt={university.name}
                   width={160}
                   height={160}
-                  className="h-12 sm:h-14 md:h-16 w-auto object-contain"
+                  className={university.name === "Carnegie Mellon University" 
+                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain" 
+                    : "h-12 sm:h-14 md:h-16 w-auto object-contain"}
                   unoptimized
                 />
               </div>
@@ -108,7 +110,9 @@ export const UniversityCarousel = () => {
                   alt={university.name}
                   width={160}
                   height={160}
-                  className="h-12 sm:h-14 md:h-16 w-auto object-contain"
+                  className={university.name === "Carnegie Mellon University" 
+                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain" 
+                    : "h-12 sm:h-14 md:h-16 w-auto object-contain"}
                   unoptimized
                 />
               </div>
