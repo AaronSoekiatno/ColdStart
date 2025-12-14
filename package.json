@@ -20,6 +20,7 @@
     "test-techcrunch": "tsx yc_companies/test_techcrunch_quick.ts",
     "enrich-startups": "tsx yc_companies/enrich_startup_data.ts",
     "enrich-startup": "tsx yc_companies/enrich_startup_data.ts",
+    "enrich:backgrounds": "tsx yc_companies/enrich_founder_backgrounds_only.ts",
     "analyze:defaults": "tsx yc_companies/analyze_default_values.ts",
     "normalize:placeholders": "tsx yc_companies/normalize_placeholder_values.ts",
     "normalize:placeholders:auto": "tsx yc_companies/normalize_placeholder_values.ts --auto",
