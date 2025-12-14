@@ -47,6 +47,14 @@ export const supabaseAdmin = supabaseServiceRoleKey
         autoRefreshToken: false,
         persistSession: false,
       },
+      db: {
+        schema: 'public',
+      },
+      global: {
+        headers: {
+          'x-client-info': 'coldstart-admin',
+        },
+      },
     })
   : null;
 
@@ -63,14 +71,26 @@ export interface CandidateRow {
   university?: string;
   past_internships?: string; // Comma-separated string
   technical_projects?: string; // Comma-separated string
-  resume_path?: string; // Path to resume file in Supabase Storage
-  resume_full_text?: string; // Full extracted text content from resume
+  resume_path?: string; // Path to resume file in Supabase Storage (DEPRECATED - use resumes table)
+  resume_full_text?: string; // Full extracted text content from resume (DEPRECATED - use resumes table)
   subscription_tier?: 'free' | 'premium'; // Subscription tier
   stripe_customer_id?: string; // Stripe customer ID
   stripe_subscription_id?: string; // Stripe subscription ID
   subscription_status?: 'active' | 'inactive' | 'canceled' | 'past_due' | 'trialing'; // Subscription status
   subscription_current_period_end?: string; // ISO timestamp of when subscription period ends
   created_at?: string;
+}
+
+export interface ResumeRow {
+  id?: string; // UUID primary key (auto-generated)
+  candidate_id: string; // Reference to candidates.id
+  name: string; // User-defined name for the resume
+  file_name: string; // Original uploaded file name
+  resume_path?: string; // Path to resume file in Supabase Storage
+  resume_full_text?: string; // Full extracted text content from resume
+  is_active?: boolean; // Whether this resume is active/available for use
+  created_at?: string;
+  updated_at?: string;
 }
 
 /**
@@ -503,3 +523,174 @@ export async function getCandidateMatches(candidateId: string) {
   return data;
 }
 
+// ==================== RESUME FUNCTIONS ====================
+
+/**
+ * Get all resumes for a candidate
+ */
+export async function getResumesForCandidate(candidateId: string) {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('resumes')
+    .select('*')
+    .eq('candidate_id', candidateId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get resumes: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get count of active resumes for a candidate (for premium checks)
+ */
+export async function getResumeCountForCandidate(candidateId: string): Promise<number> {
+  const client = supabaseAdmin || supabase;
+
+  const { count, error } = await client
+    .from('resumes')
+    .select('*', { count: 'exact', head: true })
+    .eq('candidate_id', candidateId)
+    .eq('is_active', true);
+
+  if (error) {
+    throw new Error(`Failed to count resumes: ${error.message}`);
+  }
+
+  return count || 0;
+}
+
+/**
+ * Create a new resume record
+ * Note: This function requires the service role client to bypass RLS policies
+ */
+export async function createResume(resume: {
+  candidate_id: string;
+  name: string;
+  file_name: string;
+  resume_path?: string;
+  resume_full_text?: string;
+  is_active?: boolean;
+}) {
+  // Always use admin client for server-side operations to bypass RLS
+  if (!supabaseAdmin) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. Cannot create resume without admin access.');
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('resumes')
+    .insert({
+      ...resume,
+      is_active: resume.is_active !== undefined ? resume.is_active : true, // Default to active
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create resume: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Update a resume record
+ */
+export async function updateResume(resumeId: string, updates: Partial<{
+  name: string;
+  file_name: string;
+  resume_path: string;
+  resume_full_text: string;
+  is_active: boolean;
+}>) {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('resumes')
+    .update(updates)
+    .eq('id', resumeId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update resume: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Delete/deactivate a resume
+ */
+export async function deleteResume(resumeId: string) {
+  const client = supabaseAdmin || supabase;
+
+  // Soft delete by setting is_active to false
+  const { data, error } = await client
+    .from('resumes')
+    .update({ is_active: false })
+    .eq('id', resumeId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to delete resume: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get a specific resume by ID
+ */
+export async function getResume(resumeId: string) {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('resumes')
+    .select('*')
+    .eq('id', resumeId)
+    .eq('is_active', true)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get resume: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get the most recent active resume for a candidate
+ * This is useful for backward compatibility when migrating from candidates.resume_path
+ * @param candidateId - Candidate's UUID
+ * @returns The most recent active resume, or null if none found
+ */
+export async function getMostRecentResumeForCandidate(candidateId: string) {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('resumes')
+    .select('*')
+    .eq('candidate_id', candidateId)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get most recent resume: ${error.message}`);
+  }
+
+  return data;
+}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { generateColdEmail, type EmailTone } from '@/lib/email-generation';
-import { getCandidate, getStartup, isSubscribed } from '@/lib/supabase';
+import { getCandidate, getStartup, isSubscribed, getMostRecentResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
 export async function POST(request: NextRequest) {
@@ -141,6 +141,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get most recent active resume for resume_full_text
+    const resume = await getMostRecentResumeForCandidate(candidate.id);
+
     // Generate email (but do NOT send it)
     const generatedEmail = await generateColdEmail(
       {
@@ -151,6 +154,7 @@ export async function POST(request: NextRequest) {
           .split(', ')
           .map((s: string) => s.trim())
           .filter((s: string) => s.length > 0),
+        resumeFullText: resume?.resume_full_text || undefined,
       },
       {
         name: startup.name,
@@ -169,9 +173,9 @@ export async function POST(request: NextRequest) {
       { tone: emailTone }
     );
 
-    // Generate signed URL for resume preview
+    // Generate signed URL for resume preview (get most recent active resume)
     let resumeUrl = null;
-    if (candidate.resume_path) {
+    if (resume?.resume_path) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (serviceRoleKey) {
         const supabaseAdmin = createClient(
@@ -179,9 +183,12 @@ export async function POST(request: NextRequest) {
           serviceRoleKey
         );
 
+        const originalFileName = resume.file_name || 'resume.pdf';
         const { data } = await supabaseAdmin.storage
           .from('resumes')
-          .createSignedUrl(candidate.resume_path, 3600); // 1 hour expiry
+          .createSignedUrl(resume.resume_path, 3600, {
+            download: originalFileName, // Preserve original filename
+          });
 
         if (data?.signedUrl) {
           resumeUrl = data.signedUrl;

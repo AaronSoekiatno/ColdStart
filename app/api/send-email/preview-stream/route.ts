@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { generateColdEmailStream, type EmailTone } from '@/lib/email-generation';
-import { getCandidate, getStartup, isSubscribed } from '@/lib/supabase';
+import { getCandidate, getStartup, isSubscribed, getMostRecentResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
 /**
@@ -153,9 +153,10 @@ export async function POST(request: NextRequest) {
     if (shouldUseCached) {
       console.log('[Generated Email] Found existing email in database with matching tone, returning stored version (Gemini will NOT be called)');
       
-      // Generate signed URL for resume preview
+      // Generate signed URL for resume preview (get most recent active resume)
       let resumeUrl = null;
-      if (candidate.resume_path) {
+      const resume = await getMostRecentResumeForCandidate(candidate.id);
+      if (resume?.resume_path) {
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (serviceRoleKey) {
           const supabaseAdmin = createClient(
@@ -163,9 +164,12 @@ export async function POST(request: NextRequest) {
             serviceRoleKey
           );
 
+          const originalFileName = resume.file_name || 'resume.pdf';
           const { data } = await supabaseAdmin.storage
             .from('resumes')
-            .createSignedUrl(candidate.resume_path, 3600); // 1 hour expiry
+            .createSignedUrl(resume.resume_path, 3600, {
+              download: originalFileName, // Preserve original filename
+            });
 
           if (data?.signedUrl) {
             resumeUrl = data.signedUrl;
@@ -269,9 +273,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate signed URL for resume preview
+    // Generate signed URL for resume preview (get most recent active resume)
     let resumeUrl = null;
-    if (candidate.resume_path) {
+    const resume = await getMostRecentResumeForCandidate(candidate.id);
+    if (resume?.resume_path) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (serviceRoleKey) {
         const supabaseAdmin = createClient(
@@ -279,9 +284,12 @@ export async function POST(request: NextRequest) {
           serviceRoleKey
         );
 
+        const originalFileName = resume.file_name || 'resume.pdf';
         const { data } = await supabaseAdmin.storage
           .from('resumes')
-          .createSignedUrl(candidate.resume_path, 3600); // 1 hour expiry
+          .createSignedUrl(resume.resume_path, 3600, {
+            download: originalFileName, // Preserve original filename
+          });
 
         if (data?.signedUrl) {
           resumeUrl = data.signedUrl;
@@ -316,9 +324,9 @@ export async function POST(request: NextRequest) {
                 .split(', ')
                 .map((s: string) => s.trim())
                 .filter((s: string) => s.length > 0),
-              resumeFullText: candidate.resume_full_text || undefined,
+              resumeFullText: resume?.resume_full_text || undefined,
               // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
-              links: candidate.resume_full_text ? extractLinksFromResume(candidate.resume_full_text) : undefined,
+              links: resume?.resume_full_text ? extractLinksFromResume(resume.resume_full_text) : undefined,
             },
             {
               name: startup.name,

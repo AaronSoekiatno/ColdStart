@@ -1,5 +1,5 @@
 import mammoth from 'mammoth';
-import { PDFParse } from 'pdf-parse';
+import pdfParse from 'pdf-parse';
 
 // Maximum file size: 10MB
 export const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -61,8 +61,7 @@ export function isPdfFile(file: File): boolean {
  */
 export async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
-    const parser = new PDFParse({ data: buffer });
-    const result = await parser.getText();
+    const result = await pdfParse(buffer);
     return result.text || '';
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

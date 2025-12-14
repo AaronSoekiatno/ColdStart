@@ -8,22 +8,30 @@ import { cn } from '@/lib/utils';
 interface ResumeCardProps {
   fileName: string;
   resumeUrl: string | null;
+  resumeName?: string;
 }
 
-export function ResumeCard({ fileName, resumeUrl }: ResumeCardProps) {
+export function ResumeCard({ fileName, resumeUrl, resumeName }: ResumeCardProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   if (!resumeUrl) {
     return null;
   }
-  ResumeCard
+
+  const displayName = resumeName || fileName;
+
   return (
     <>
       <div className="bg-white rounded-2xl border border-gray-200 p-6 transition-all flex flex-col shadow-sm">
         <div className="flex-1 mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate" title={fileName}>
-            {fileName}
+          <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate" title={displayName}>
+            {displayName}
           </h3>
+          {resumeName && (
+            <p className="text-sm text-gray-500 truncate" title={fileName}>
+              {fileName}
+            </p>
+          )}
         </div>
         <button
           onClick={() => setIsPreviewOpen(true)}
