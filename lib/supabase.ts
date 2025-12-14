@@ -65,6 +65,8 @@ export interface CandidateRow {
   technical_projects?: string; // Comma-separated string
   resume_path?: string; // Path to resume file in Supabase Storage
   resume_full_text?: string; // Full extracted text content from resume
+  resume_latex?: string; // LaTeX source code generated from resume
+  structured_resume_data?: any; // JSON structured resume data (StructuredResumeData)
   subscription_tier?: 'free' | 'premium'; // Subscription tier
   stripe_customer_id?: string; // Stripe customer ID
   stripe_subscription_id?: string; // Stripe subscription ID
@@ -111,6 +113,8 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
         technical_projects: candidate.technical_projects,
         resume_path: candidate.resume_path,
         resume_full_text: candidate.resume_full_text,
+        resume_latex: candidate.resume_latex,
+        structured_resume_data: candidate.structured_resume_data,
         created_at: candidate.created_at || new Date().toISOString(),
       },
       {

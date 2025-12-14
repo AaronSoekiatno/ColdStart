@@ -13,6 +13,8 @@ import { upsertCandidate, findMatchingStartups } from '@/lib/pinecone';
 import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByName, findStartupIdsByNames } from '@/lib/supabase';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
+import { parseResumeToStructured } from '@/lib/parse-resume';
 
 export const runtime = 'nodejs';
 
@@ -77,7 +79,7 @@ async function extractResumeDataWithGemini(
   file: File,
   buffer: Buffer,
   arrayBuffer: ArrayBuffer
-): Promise<{ extraction: ResumeExtractionResult; fullText: string }> {
+): Promise<{ extraction: ResumeExtractionResult; fullText: string; latexCode: string }> {
   const { genAI, fileManager } = getGeminiClients();
   let uploadedFileUri: string | null = null;
   let uploadedFileMimeType: string | null = null;
@@ -218,15 +220,17 @@ async function extractResumeDataWithGemini(
         parsed.skills = parsed.skills.slice(0, 12);
       }
 
-      // Extract full text - for PDFs use Gemini, for DOCX we already have it
+      // Extract full text and generate LaTeX - for PDFs use Gemini, for DOCX we already have it
       let fullText = '';
+      let latexCode = '';
+
       if (isPdfFile(file) && uploadedFileUri && uploadedFileMimeType) {
         // Extract full text from PDF using Gemini
         console.log('Extracting full text from PDF...');
         fullText = await extractFullTextFromPdf(fileManager, genAI, uploadedFileUri, uploadedFileMimeType);
         console.log(`Extracted ${fullText.length} characters of full text from PDF`);
-        
-        // Clean up: delete the uploaded file after full text extraction
+
+        // Clean up: delete the uploaded file after extraction
         if (uploadedFileName) {
           try {
             await fileManager.deleteFile(uploadedFileName);
@@ -236,13 +240,21 @@ async function extractResumeDataWithGemini(
             // Continue even if deletion fails
           }
         }
+
+        // Generate LaTeX from extracted text (local conversion, no API cost)
+        console.log('Generating LaTeX from extracted text...');
+        latexCode = generateLatexFromResumeText(fullText);
       } else if (!isPdfFile(file) && docxFullText) {
         // For DOCX, use the text we already extracted
         fullText = docxFullText;
         console.log(`Using extracted ${fullText.length} characters of full text from DOCX`);
+
+        // Generate LaTeX from DOCX text (local conversion, no API cost)
+        console.log('Generating LaTeX from DOCX text...');
+        latexCode = generateLatexFromResumeText(fullText);
       }
 
-      return { extraction: parsed, fullText };
+      return { extraction: parsed, fullText, latexCode };
     } catch (error: any) {
       // If it's a model not found error (404), try the next model
       if (error?.message?.includes('not found') || error?.message?.includes('404')) {
@@ -272,6 +284,26 @@ async function extractResumeDataWithGemini(
     `All Gemini models failed. Last error: ${lastError?.message || 'Unknown error'}. ` +
     `Please check your API key and ensure you have access to Gemini models.`
   );
+}
+
+/**
+ * Generates LaTeX source code from resume text using local template-based conversion
+ * This is a free alternative to using Gemini API
+ */
+function generateLatexFromResumeText(fullText: string): string {
+  try {
+    if (!fullText || fullText.trim().length === 0) {
+      console.warn('No text provided for LaTeX generation');
+      return '';
+    }
+
+    const latexCode = convertResumeToLaTeX(fullText);
+    console.log(`Successfully generated ${latexCode.length} characters of LaTeX code`);
+    return latexCode;
+  } catch (error) {
+    console.error('Failed to generate LaTeX from resume text:', error);
+    return ''; // Return empty string if generation fails
+  }
 }
 
 /**
@@ -420,17 +452,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract name, email, skills, and summary using Gemini
-    // Also extract full text for storage in database
+    // Also extract full text and generate LaTeX for storage in database
     // For PDFs: Gemini processes the file directly (no parsing needed!)
     // For DOCX: Text is extracted first, then sent to Gemini
     let extractionResult: ResumeExtractionResult;
     let resumeFullText: string = '';
+    let resumeLatex: string = '';
     let rawText: string = '';
-    
+    let structuredResumeData: any = null;
+
     try {
-      const { extraction, fullText } = await extractResumeDataWithGemini(file!, buffer, arrayBuffer);
+      const { extraction, fullText, latexCode } = await extractResumeDataWithGemini(file!, buffer, arrayBuffer);
       extractionResult = extraction;
       resumeFullText = fullText;
+      resumeLatex = latexCode;
+      
+      // Parse resume into structured data for template-based editing
+      if (resumeFullText && resumeFullText.trim().length > 0) {
+        try {
+          console.log('Starting structured resume parsing...');
+          structuredResumeData = await parseResumeToStructured(resumeFullText);
+          console.log('Successfully parsed resume into structured format:', {
+            hasPersonal: !!structuredResumeData?.personal,
+            experienceCount: structuredResumeData?.experience?.length || 0,
+            educationCount: structuredResumeData?.education?.length || 0,
+          });
+        } catch (parseError) {
+          console.error('Failed to parse resume into structured format:', parseError);
+          console.error('Parse error details:', parseError instanceof Error ? parseError.message : parseError);
+          // Continue without structured data - not critical for basic functionality
+        }
+      } else {
+        console.log('Skipping structured parsing - no resume text available');
+      }
       
       // Extract raw text for response
       // For PDFs, use the extracted full text; for DOCX, it's already in resumeFullText
@@ -622,6 +676,8 @@ export async function POST(request: NextRequest) {
           technical_projects: extractionResult.technical_projects.join(', '),
           resume_path: resumePath, // Attach the resume file path from Storage
           resume_full_text: resumeFullText, // Store full extracted text for email generation
+          resume_latex: resumeLatex, // Store LaTeX source for editing
+          structured_resume_data: structuredResumeData, // Store structured data for template editing
         });
         candidateId = savedCandidate.id; // Get the UUID
         subscriptionTier = savedCandidate.subscription_tier || 'free';

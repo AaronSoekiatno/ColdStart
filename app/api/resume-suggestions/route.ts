@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { getStartup } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -275,16 +276,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch startup info
-    const { data: startup, error: startupError } = await supabaseAdmin
-      .from('startups')
-      .select('name, industry, tags')
-      .eq('id', startupId)
-      .single();
+    // Fetch startup info using the same method as the preview endpoint
+    const startup = await getStartup(startupId);
 
-    if (startupError || !startup) {
+    if (!startup) {
+      console.error('Startup lookup error:', {
+        startupId,
+        message: 'Startup not found in database'
+      });
       return NextResponse.json(
-        { error: 'Startup not found' },
+        { error: `Startup not found. Searched for ID: ${startupId}` },
         { status: 404 }
       );
     }

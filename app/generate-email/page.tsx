@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Sparkles, Copy } from "lucide-react";
+import { Loader2, Sparkles, Copy, Download } from "lucide-react";
 import { DiffBlock } from "@/components/DiffBlock";
 import { Header } from "@/components/Header";
+import { JakesResumeTemplate } from "@/components/JakesResumeTemplate";
+import { EditableResumePreview } from "@/components/EditableResumePreview";
+import type { StructuredResumeData } from "@/types/resume";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
@@ -39,6 +42,9 @@ export default function GenerateEmailPage() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [resumeText, setResumeText] = useState<string>('');
+  const [structuredResumeData, setStructuredResumeData] = useState<StructuredResumeData | null>(null);
+  const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -84,6 +90,17 @@ export default function GenerateEmailPage() {
           setResumeUrl(emailData.resumeUrl);
         }
 
+        if (emailData.resumeText) {
+          setResumeText(emailData.resumeText);
+        }
+
+        if (emailData.structuredResumeData) {
+          console.log('Setting structured resume data:', emailData.structuredResumeData);
+          setStructuredResumeData(emailData.structuredResumeData);
+        } else {
+          console.log('No structured resume data in response. Available keys:', Object.keys(emailData));
+        }
+
         toast({
           title: "Email drafted",
           description: "Review your personalized email before sending.",
@@ -104,6 +121,131 @@ export default function GenerateEmailPage() {
 
     loadEmailPreview();
   }, [startupId, matchScore, user, toast, router]);
+
+  const handleDownloadPDF = async () => {
+    const acceptedSuggestions = resumeSuggestions.filter(
+      s => suggestionStatuses[s.id] === 'accepted'
+    );
+
+    if (!resumeText) {
+      toast({
+        title: "Resume not available",
+        description: "Resume text is not loaded.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Generating PDF...",
+        description: "Please wait while we create your PDF.",
+      });
+
+      const response = await fetch('/api/apply-resume-suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          acceptedSuggestions: acceptedSuggestions.map(s => ({
+            id: s.id,
+            section: s.section,
+            original: s.original,
+            suggested: s.suggested,
+            reason: s.reason,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to generate PDF');
+      }
+
+      // Download the PDF
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = acceptedSuggestions.length > 0
+        ? 'Edited_Resume.pdf'
+        : 'Resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "PDF Downloaded",
+        description: acceptedSuggestions.length > 0
+          ? "Your edited resume with all accepted changes has been downloaded as a PDF."
+          : "Your resume has been downloaded as a PDF.",
+      });
+    } catch (error) {
+      console.error('Download PDF error:', error);
+      toast({
+        title: "Failed to download PDF",
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Apply accepted suggestions to structured resume data
+  const applySuggestionsToStructuredData = (data: StructuredResumeData, suggestions: ResumeSuggestion[]): { updatedData: StructuredResumeData; highlightedFields: Set<string> } => {
+    const updated = JSON.parse(JSON.stringify(data)) as StructuredResumeData; // Deep clone
+    const highlighted = new Set<string>();
+
+    for (const suggestion of suggestions) {
+      // Try to find and update the field in structured data
+      // This is a simplified version - in production, you'd want more sophisticated matching
+      const original = suggestion.original.trim();
+      const suggested = suggestion.suggested.trim();
+
+      // Search through experience
+      for (let i = 0; i < updated.experience.length; i++) {
+        const exp = updated.experience[i];
+        for (let j = 0; j < exp.description.length; j++) {
+          if (exp.description[j].includes(original)) {
+            exp.description[j] = exp.description[j].replace(original, suggested);
+            highlighted.add(`experience[${i}].description[${j}]`);
+            break;
+          }
+        }
+      }
+
+      // Search through summary
+      if (updated.summary && updated.summary.includes(original)) {
+        updated.summary = updated.summary.replace(original, suggested);
+        highlighted.add('summary');
+      }
+
+      // Search through skills
+      for (let i = 0; i < updated.skills.length; i++) {
+        if (updated.skills[i].includes(original)) {
+          updated.skills[i] = updated.skills[i].replace(original, suggested);
+          highlighted.add('skills');
+          break;
+        }
+      }
+
+      // Search through projects
+      if (updated.projects) {
+        for (let i = 0; i < updated.projects.length; i++) {
+          const proj = updated.projects[i];
+          if (proj.description.includes(original)) {
+            proj.description = proj.description.replace(original, suggested);
+            highlighted.add(`projects[${i}]`);
+            break;
+          }
+        }
+      }
+    }
+
+    return { updatedData: updated, highlightedFields: highlighted };
+  };
 
   const handleLoadSuggestions = async () => {
     if (!startupId) return;
@@ -202,23 +344,23 @@ export default function GenerateEmailPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
+    <div className="h-screen overflow-hidden flex flex-col bg-white">
       <Header initialUser={user} />
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
-        <div className="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col">
+        <div className="h-full w-full flex flex-col">
           {isPreviewLoading && previewSubject === null && previewBody === null ? (
             <div className="flex flex-col items-center justify-center flex-1 space-y-4">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
               <p className="text-gray-600 text-sm">Loading your email and resume...</p>
             </div>
           ) : previewSubject && previewBody ? (
-            <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6">
+            <div className="flex-1 flex flex-col min-h-0">
               {/* Two-column layout */}
-              <div className="flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 min-h-0 overflow-hidden">
+              <div className="flex-1 flex flex-col lg:flex-row gap-0 min-h-0 overflow-hidden">
                 {/* LEFT: Email Preview */}
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <h3 className="text-sm font-semibold mb-2 text-gray-900">Review Email</h3>
-                  <div className="flex-1 flex flex-col space-y-3 min-h-0">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden border-r border-gray-200 px-6 py-4">
+                  <h3 className="text-lg font-semibold mb-4 text-gray-900">Review Email</h3>
+                  <div className="flex-1 flex flex-col space-y-4 min-h-0">
                     {founderEmail && (
                       <div className="space-y-1.5 flex-shrink-0">
                         <label className="text-xs text-gray-700 block">To:</label>
@@ -321,18 +463,28 @@ export default function GenerateEmailPage() {
                   </div>
                 </div>
 
-                {/* DIVIDER */}
-                <div className="hidden lg:block w-px bg-gray-200" />
-
                 {/* RIGHT: Resume Preview & Suggestions */}
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <div className="flex items-center justify-between mb-2 flex-shrink-0">
-                    <h3 className="text-sm font-semibold text-gray-900">Edit Resume</h3>
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-6 py-4">
+                  <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                    <h3 className="text-lg font-semibold text-gray-900">Edit Resume</h3>
                     <div className="flex items-center gap-2">
                       {resumeSuggestions.length > 0 && (
-                        <span className="text-xs text-gray-600">
-                          {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
-                        </span>
+                        <>
+                          <span className="text-xs text-gray-900 font-medium">
+                            {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
+                          </span>
+                          {Object.values(suggestionStatuses).filter(s => s === 'accepted').length > 0 && (
+                            <Button
+                              onClick={handleDownloadPDF}
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs"
+                            >
+                              <Download className="h-3 w-3 mr-1" />
+                              Download as PDF
+                            </Button>
+                          )}
+                        </>
                       )}
                       {!suggestionsRequested && resumeUrl && (
                         <Button
@@ -356,14 +508,34 @@ export default function GenerateEmailPage() {
 
                   <div className="flex-1 min-h-0 overflow-hidden">
                     {resumeSuggestions.length > 0 ? (
-                      <div className="h-full overflow-y-auto space-y-4 pr-2">
-                        {resumeUrl && (
-                          <div className="h-[300px] rounded-lg overflow-hidden border border-gray-200 flex-shrink-0">
-                            <iframe
-                              src={resumeUrl}
-                              className="w-full h-full bg-white"
-                              title="Resume Preview"
-                            />
+                      <div className="h-full overflow-y-auto space-y-6">
+                        {resumeText && (
+                          <div className="flex-shrink-0">
+                            <div className="mb-2">
+                              <h4 className="text-base font-semibold text-gray-900 mb-1">✨ Live Resume Preview</h4>
+                              <p className="text-sm text-gray-600">
+                                Changes are applied in real-time as you accept suggestions. Green highlights show updated sections.
+                              </p>
+                            </div>
+                            <div className="h-[calc(100vh-250px)] min-h-[600px] overflow-hidden">
+                              {structuredResumeData && structuredResumeData.personal ? (
+                                <JakesResumeTemplate
+                                  data={structuredResumeData}
+                                  highlightedFields={highlightedFields}
+                                />
+                              ) : resumeText ? (
+                                <EditableResumePreview
+                                  originalText={resumeText}
+                                  acceptedSuggestions={resumeSuggestions.filter(
+                                    s => suggestionStatuses[s.id] === 'accepted'
+                                  )}
+                                />
+                              ) : (
+                                <div className="p-8 text-gray-600">
+                                  Resume not available. Please upload your resume first.
+                                </div>
+                              )}
+                            </div>
                           </div>
                         )}
                         {resumeSuggestions
@@ -410,7 +582,24 @@ export default function GenerateEmailPage() {
                                   key={suggestion.id}
                                   suggestion={suggestion}
                                   status="pending"
-                                  onAccept={() => setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'accepted' }))}
+                                  onAccept={() => {
+                                    setSuggestionStatuses(prev => {
+                                      const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestion.id]: 'accepted' };
+                                      // Apply suggestion to structured data
+                                      if (structuredResumeData) {
+                                        const accepted = resumeSuggestions.filter(
+                                          s => (newStatuses[s.id] === 'accepted')
+                                        );
+                                        const { updatedData, highlightedFields: newHighlighted } = applySuggestionsToStructuredData(
+                                          structuredResumeData,
+                                          accepted
+                                        );
+                                        setStructuredResumeData(updatedData);
+                                        setHighlightedFields(newHighlighted);
+                                      }
+                                      return newStatuses;
+                                    });
+                                  }}
                                   onReject={() => {
                                     setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'rejected' }));
                                   }}
@@ -419,13 +608,31 @@ export default function GenerateEmailPage() {
                           </div>
                         )}
                       </div>
-                    ) : resumeUrl ? (
-                      <div className="h-full rounded-lg overflow-hidden border border-gray-200">
-                        <iframe
-                          src={resumeUrl}
-                          className="w-full h-full bg-white"
-                          title="Resume Preview"
-                        />
+                    ) : resumeText ? (
+                      <div className="h-full flex flex-col">
+                        <div className="mb-3">
+                          <h4 className="text-base font-semibold text-gray-900 mb-1">📄 Your Resume</h4>
+                          <p className="text-sm text-gray-600">
+                            Click "Tailor" to get AI-powered improvement suggestions for this startup.
+                          </p>
+                        </div>
+                        <div className="flex-1 overflow-hidden">
+                          {structuredResumeData && structuredResumeData.personal ? (
+                            <JakesResumeTemplate
+                              data={structuredResumeData}
+                              highlightedFields={new Set()}
+                            />
+                          ) : resumeText ? (
+                            <EditableResumePreview
+                              originalText={resumeText}
+                              acceptedSuggestions={[]}
+                            />
+                          ) : (
+                            <div className="p-8 text-gray-600">
+                              Resume not available. Please upload your resume first.
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center h-full text-center">
