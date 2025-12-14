@@ -12,7 +12,7 @@ import { AIAgentSection } from "@/components/AIAgentSection";
 import { NewFeatures } from "@/components/NewFeatures";
 import { FounderDataSection } from "@/components/FounderDataSection";
 import { NewHowItWorks } from "@/components/NewHowItWorks";
-import { FinalCTA } from "@/components/FinalCTA";
+import { PricingSection } from "@/components/PricingSection";
 import { Footer } from "@/components/Footer";
 import { SignInModal } from "@/components/SignInModal";
 import { SignUpModal } from "@/components/SignUpModal";
@@ -410,7 +410,7 @@ export function NewLandingPage() {
           <NewFeatures />
           <FounderDataSection />
           <NewHowItWorks />
-          <FinalCTA onGetStarted={handleGetStarted} />
+          <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />
         </div>
       </main>
 
