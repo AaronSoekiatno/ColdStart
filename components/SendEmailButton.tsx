@@ -10,7 +10,6 @@ interface SendEmailButtonProps {
   startupId: string;
   matchScore: number;
   founderEmail?: string;
-  emailTone?: 'professional_casual' | 'enthusiastic' | 'conversational';
   onSent?: () => void;
   variant?: "default" | "outline" | "ghost";
   className?: string;
@@ -23,7 +22,6 @@ export const SendEmailButton = ({
   startupId,
   matchScore,
   founderEmail,
-  emailTone,
   variant = "default",
   className,
   disabled = false,
@@ -46,16 +44,13 @@ export const SendEmailButton = ({
     }
 
     setIsNavigating(true);
-    // Navigate to the generate email page with founder email and tone if available
+    // Navigate to the generate email page with founder email if available
     const params = new URLSearchParams({
       startupId,
       matchScore: matchScore.toString(),
     });
     if (founderEmail) {
       params.append('founderEmail', founderEmail);
-    }
-    if (emailTone) {
-      params.append('tone', emailTone);
     }
     router.push(`/generate-email?${params.toString()}`);
   };

@@ -128,6 +128,87 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if we already have a generated email for this candidate-startup pair (one-to-one mapping)
+    const { data: existingGeneratedEmail, error: fetchError } = await supabase
+      .from('generated_emails')
+      .select('subject, body, recipient_email, email_tone')
+      .eq('candidate_id', candidate.id)
+      .eq('startup_id', startupId)
+      .maybeSingle();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('Error fetching existing generated email:', fetchError);
+    }
+
+    // If we have an existing generated email, ALWAYS return it immediately (no streaming needed)
+    // Gemini should only be called ONCE per user per startup - this ensures that
+    if (existingGeneratedEmail) {
+      console.log('[Generated Email] Found existing email in database, returning stored version (Gemini will NOT be called)');
+      
+      // Generate signed URL for resume preview
+      let resumeUrl = null;
+      if (candidate.resume_path) {
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+        if (serviceRoleKey) {
+          const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            serviceRoleKey
+          );
+
+          const { data } = await supabaseAdmin.storage
+            .from('resumes')
+            .createSignedUrl(candidate.resume_path, 3600); // 1 hour expiry
+
+          if (data?.signedUrl) {
+            resumeUrl = data.signedUrl;
+          }
+        }
+      }
+
+      // Return existing email as a stream (but all at once since we already have it)
+      const stream = new ReadableStream({
+        start(controller) {
+          const encoder = new TextEncoder();
+          
+          // Send metadata
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ 
+              type: 'metadata', 
+              targetEmail: existingGeneratedEmail.recipient_email || '', 
+              resumeUrl 
+            })}\n\n`)
+          );
+
+          // Send the existing email body as a single chunk
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: existingGeneratedEmail.body })}\n\n`)
+          );
+
+          // Send done event with final subject and body
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ 
+              type: 'done', 
+              subject: existingGeneratedEmail.subject, 
+              body: existingGeneratedEmail.body 
+            })}\n\n`)
+          );
+
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+
+    // No existing email found - generate a new one (this is the ONLY time Gemini will be called for this user-startup pair)
+    console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+
     // Decide which email address to use (real or guessed)
     const { email: targetEmail } = guessFounderEmailFromStartup(startup);
 
@@ -237,6 +318,31 @@ export async function POST(request: NextRequest) {
             // Fallback: treat the whole response as the body
             body = fullText.trim();
             subject = `Intro: ${candidate.name} → ${startup.name} (internship interest)`;
+          }
+
+          // Save generated email to database (upsert - replace if exists for same candidate-startup pair)
+          // Note: Due to the unique constraint, this will only insert ONCE per user-startup pair.
+          // Subsequent requests will find the existing email above and return it without calling Gemini.
+          const { error: saveError } = await supabase
+            .from('generated_emails')
+            .upsert({
+              candidate_id: candidate.id,
+              startup_id: startupId,
+              email_tone: emailTone || null,
+              subject,
+              body,
+              match_score: matchScore,
+              recipient_email: targetEmail,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'candidate_id,startup_id',
+            });
+
+          if (saveError) {
+            console.error('Error saving generated email to database:', saveError);
+            // Don't fail the request, just log the error
+          } else {
+            console.log('[Generated Email] Successfully saved email to database (this will be the only Gemini call for this user-startup pair)');
           }
 
           // Send final result

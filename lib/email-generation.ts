@@ -257,6 +257,17 @@ export async function* generateColdEmailStream(
   match: MatchContext,
   options: EmailGenerationOptions = {}
 ): AsyncGenerator<string, void, unknown> {
+  // TEMPORARY: Disable Gemini API calls to prevent costs during debugging
+  // Return empty response immediately
+  const emptyResponse = JSON.stringify({
+    subject: "Debug Mode - API Disabled",
+    body: "This is a temporary placeholder. The Gemini API has been disabled to prevent costs during cache debugging."
+  });
+  yield emptyResponse;
+  return;
+
+  // CODE BELOW IS DISABLED - uncomment when ready to re-enable Gemini
+  /*
   const genAI = getGeminiClient();
   const model = genAI.getGenerativeModel({ model: DEFAULT_EMAIL_MODEL });
 
@@ -351,6 +362,7 @@ Use this context, but do NOT mention the numeric similarity score or the fact th
     console.error('Error in streaming email generation:', error);
     throw error;
   }
+  */
 }
 
 

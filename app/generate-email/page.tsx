@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,6 @@ export default function GenerateEmailPage() {
   const matchScoreParam = searchParams.get("matchScore");
   const matchScore = matchScoreParam ? parseFloat(matchScoreParam) : 0;
   const founderEmail = searchParams.get("founderEmail");
-  const toneFromUrl = searchParams.get("tone") as 'professional_casual' | 'enthusiastic' | 'conversational' | null;
   
   const [user, setUser] = useState<User | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -42,11 +41,10 @@ export default function GenerateEmailPage() {
   const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  const [emailTone, setEmailTone] = useState<'professional_casual' | 'enthusiastic' | 'conversational'>(
-    toneFromUrl || 'professional_casual'
-  );
+  const [emailTone, setEmailTone] = useState<'professional_casual' | 'enthusiastic' | 'conversational'>('professional_casual');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
+
 
   useEffect(() => {
     // Check auth and premium status
@@ -70,6 +68,9 @@ export default function GenerateEmailPage() {
       } catch (error) {
         console.error('Error fetching premium status:', error);
       }
+
+      // Don't try to load here - let the main useEffect handle it
+      // This useEffect is just for auth and premium status
     });
   }, [router, startupId]);
 
@@ -112,6 +113,7 @@ export default function GenerateEmailPage() {
       const decoder = new TextDecoder();
       let buffer = '';
       let accumulatedText = '';
+      let receivedResumeUrl: string | null = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -129,6 +131,7 @@ export default function GenerateEmailPage() {
               
               if (data.type === 'metadata') {
                 if (data.resumeUrl) {
+                  receivedResumeUrl = data.resumeUrl;
                   setResumeUrl(data.resumeUrl);
                 }
               } else if (data.type === 'chunk') {
@@ -170,9 +173,12 @@ export default function GenerateEmailPage() {
                 }
               } else if (data.type === 'done') {
                 // Final result
-                setPreviewSubject(data.subject || '');
-                setPreviewBody(data.body || '');
+                const finalSubject = data.subject || '';
+                const finalBody = data.body || '';
+                setPreviewSubject(finalSubject);
+                setPreviewBody(finalBody);
                 setIsPreviewLoading(false);
+                // Email is automatically saved to Supabase by the API route
                 toast({
                   title: "Email drafted",
                   description: "Review your personalized email before sending.",
@@ -212,8 +218,12 @@ export default function GenerateEmailPage() {
   };
 
   useEffect(() => {
-    loadEmailPreview();
-  }, [startupId, matchScore, user, toast, router, isPremium, emailTone]);
+    // Load email when component mounts or when startupId/user changes
+    // The API route will check Supabase for existing email, or generate new one if not found
+    if (user && startupId) {
+      loadEmailPreview();
+    }
+  }, [startupId, matchScore, user, isPremium, emailTone]);
 
   const handleLoadSuggestions = async () => {
     if (!startupId) return;
@@ -366,8 +376,12 @@ export default function GenerateEmailPage() {
                         <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => {
-                              setEmailTone('professional_casual');
-                              // Email will regenerate automatically via useEffect dependency on emailTone
+                              const newTone = 'professional_casual';
+                              if (newTone !== emailTone) {
+                                setEmailTone(newTone);
+                                // Email will regenerate automatically via useEffect dependency on emailTone
+                                // This will update the stored email in Supabase (one per startup, regardless of tone)
+                              }
                             }}
                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                               emailTone === 'professional_casual'
@@ -379,7 +393,12 @@ export default function GenerateEmailPage() {
                           </button>
                           <button
                             onClick={() => {
-                              setEmailTone('enthusiastic');
+                              const newTone = 'enthusiastic';
+                              if (newTone !== emailTone) {
+                                setEmailTone(newTone);
+                                // Email will regenerate automatically via useEffect dependency on emailTone
+                                // This will update the stored email in Supabase (one per startup, regardless of tone)
+                              }
                             }}
                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                               emailTone === 'enthusiastic'
@@ -391,7 +410,12 @@ export default function GenerateEmailPage() {
                           </button>
                           <button
                             onClick={() => {
-                              setEmailTone('conversational');
+                              const newTone = 'conversational';
+                              if (newTone !== emailTone) {
+                                setEmailTone(newTone);
+                                // Email will regenerate automatically via useEffect dependency on emailTone
+                                // This will update the stored email in Supabase (one per startup, regardless of tone)
+                              }
                             }}
                             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                               emailTone === 'conversational'
@@ -409,7 +433,10 @@ export default function GenerateEmailPage() {
                       <div className="relative">
                         <Input
                           value={previewSubject || ''}
-                          onChange={(e) => setPreviewSubject(e.target.value)}
+                          onChange={(e) => {
+                            setPreviewSubject(e.target.value);
+                            // Subject editing is local only - Supabase stores the generated version
+                          }}
                           className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 pr-10"
                           placeholder={isPreviewLoading ? "Generating..." : "Email subject"}
                         />
@@ -448,7 +475,10 @@ export default function GenerateEmailPage() {
                       <div className="relative flex-1 flex flex-col min-h-0">
                         <Textarea
                           value={previewBody || ''}
-                          onChange={(e) => setPreviewBody(e.target.value)}
+                          onChange={(e) => {
+                            setPreviewBody(e.target.value);
+                            // Body editing is local only - Supabase stores the generated version
+                          }}
                           className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 resize-none pr-10"
                           placeholder={isPreviewLoading ? "Your email will appear here as it's generated..." : "Email body"}
                         />
@@ -569,9 +599,17 @@ export default function GenerateEmailPage() {
                                   key={suggestion.id}
                                   suggestion={suggestion}
                                   status="pending"
-                                  onAccept={() => setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'accepted' }))}
+                                  onAccept={() => {
+                                    setSuggestionStatuses(prev => {
+                                      const updated = { ...prev, [suggestion.id]: 'accepted' };
+                                      return updated;
+                                    });
+                                  }}
                                   onReject={() => {
-                                    setSuggestionStatuses(prev => ({ ...prev, [suggestion.id]: 'rejected' }));
+                                    setSuggestionStatuses(prev => {
+                                      const updated = { ...prev, [suggestion.id]: 'rejected' };
+                                      return updated;
+                                    });
                                   }}
                                 />
                               ))}
@@ -584,6 +622,11 @@ export default function GenerateEmailPage() {
                           src={resumeUrl}
                           className="w-full h-full bg-white"
                           title="Resume Preview"
+                          onError={() => {
+                            // If the signed URL expired, clear it and show message
+                            console.warn('Resume URL may have expired');
+                            setResumeUrl(null);
+                          }}
                         />
                       </div>
                     ) : (

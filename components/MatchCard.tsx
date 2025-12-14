@@ -39,7 +39,6 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   const companySectionRef = useRef<HTMLDivElement>(null);
   const foundersSectionRef = useRef<HTMLDivElement>(null);
   const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
-  const [selectedTone, setSelectedTone] = useState<'professional_casual' | 'enthusiastic' | 'conversational'>('professional_casual');
 
   if (!match.startup) {
     return null;
@@ -131,51 +130,11 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                 variant="default"
                 requiresFounderSelection={founderNames.length > 0}
                 isFounderSelected={selectedFounderIndex !== null}
-                emailTone={isPremium ? selectedTone : undefined}
                 className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
               />
             </div>
           )}
         </div>
-
-        {/* Email Tone Selection (Premium Only) */}
-        {isPremium && match.startup.id && (
-          <div className="mb-3 flex flex-col gap-2">
-            <label className="text-xs sm:text-sm font-medium text-gray-700">Email Tone:</label>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setSelectedTone('professional_casual')}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
-                  selectedTone === 'professional_casual'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Professional
-              </button>
-              <button
-                onClick={() => setSelectedTone('enthusiastic')}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
-                  selectedTone === 'enthusiastic'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Ambitious
-              </button>
-              <button
-                onClick={() => setSelectedTone('conversational')}
-                className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
-                  selectedTone === 'conversational'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Conversational
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Separator below top header */}
         <div className="mb-4 md:mb-6 border-t border-gray-200"></div>
