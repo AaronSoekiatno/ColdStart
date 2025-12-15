@@ -42,7 +42,25 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   // For free users: array with max 1 item (single selection)
   const [selectedFounderIndices, setSelectedFounderIndices] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
-  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>('direct-ask');
+  
+  // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('emailPersona');
+      if (stored === 'genuine-fan' || stored === 'direct-ask') {
+        return stored;
+      }
+    }
+    return 'direct-ask';
+  });
+
+  // Sync emailPersona to sessionStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('emailPersona', emailPersona);
+      console.log(`[MatchCard] emailPersona changed to: ${emailPersona}, isPremium: ${isPremium}, saved to sessionStorage`);
+    }
+  }, [emailPersona, isPremium]);
 
   if (!match.startup) {
     return null;
@@ -188,7 +206,12 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
               {isPremium && (
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setEmailPersona('direct-ask')}
+                    onClick={() => {
+                      setEmailPersona('direct-ask');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'direct-ask');
+                      }
+                    }}
                     className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                       emailPersona === 'direct-ask'
                         ? 'bg-blue-500 text-white'
@@ -198,7 +221,13 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                     Direct Ask
                   </button>
                   <button
-                    onClick={() => setEmailPersona('genuine-fan')}
+                    onClick={() => {
+                      console.log(`[MatchCard] Genuine Fan clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
+                      setEmailPersona('genuine-fan');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'genuine-fan');
+                      }
+                    }}
                     className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
                       emailPersona === 'genuine-fan'
                         ? 'bg-blue-500 text-white'
@@ -210,16 +239,35 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                 </div>
               )}
               {/* Generate Email Button */}
-              <SendEmailButton
-                startupId={match.startup.id}
-                matchScore={match.score}
-                founderEmail={selectedFounderEmail}
-                persona={isPremium ? emailPersona : 'direct-ask'}
-                variant="default"
-                requiresFounderSelection={founderNames.length > 0}
-                isFounderSelected={selectedFounderIndices.length > 0}
-                className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
-              />
+              {(() => {
+                // Double-check sessionStorage in case state was reset by Fast Refresh
+                let finalPersona = emailPersona;
+                if (typeof window !== 'undefined' && isPremium === true) {
+                  const storedPersona = sessionStorage.getItem('emailPersona');
+                  if (storedPersona === 'genuine-fan' || storedPersona === 'direct-ask') {
+                    finalPersona = storedPersona;
+                    // Sync state if it was reset
+                    if (finalPersona !== emailPersona) {
+                      console.log(`[MatchCard] State mismatch detected - state: ${emailPersona}, sessionStorage: ${storedPersona}, syncing...`);
+                      setEmailPersona(finalPersona);
+                    }
+                  }
+                }
+                const computedPersona = (isPremium === true) ? finalPersona : 'direct-ask';
+                console.log(`[MatchCard] Rendering SendEmailButton - isPremium: ${isPremium}, emailPersona: ${emailPersona}, finalPersona: ${finalPersona}, computed persona: ${computedPersona}`);
+                return (
+                  <SendEmailButton
+                    startupId={match.startup.id}
+                    matchScore={match.score}
+                    founderEmail={selectedFounderEmail}
+                    persona={computedPersona}
+                    variant="default"
+                    requiresFounderSelection={founderNames.length > 0}
+                    isFounderSelected={selectedFounderIndices.length > 0}
+                    className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                  />
+                );
+              })()}
             </div>
           )}
         </div>

@@ -35,6 +35,7 @@ export const SendEmailButton = ({
   const { toast } = useToast();
 
   const handleOpenPreview = () => {
+    console.log(`[SendEmailButton] handleOpenPreview called with persona: ${persona}`);
     // Check if founder selection is required but no founder is selected
     if (requiresFounderSelection && !isFounderSelected) {
       toast({
@@ -52,6 +53,7 @@ export const SendEmailButton = ({
       matchScore: matchScore.toString(),
       persona: persona,
     });
+    console.log(`[SendEmailButton] Navigating with persona param: ${persona}, full URL: /generate-email?${params.toString()}`);
     if (founderEmail) {
       params.append('founderEmail', founderEmail);
     }

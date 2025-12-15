@@ -257,48 +257,77 @@ function buildGenuineFanPrompt(
   return `
 You are writing a cold email for ${candidate.name} to ${rawFounderName} at ${startup.name}.
 
+### CRITICAL: THIS IS NOT A "DIRECT ASK" EMAIL
+
+You are writing a "GENUINE FAN" email. This is FUNDAMENTALLY DIFFERENT from a typical cold email.
+
+**WHAT YOU MUST NEVER DO (these are deal-breakers):**
+- NEVER start with "My name is [Name], a [Title] at [School]..."
+- NEVER lead with your credentials, education, or qualifications
+- NEVER say "I'm writing to inquire about internship opportunities"
+- NEVER list your skills or experiences as the focus
+- NEVER make the ask about "discussing how my background could be a fit"
+- NEVER structure it as: introduction → qualifications → ask for meeting
+
+**WHAT YOU MUST DO:**
+- START by talking about THEM - their product, their mission, something specific they built
+- Share YOUR genuine reaction or story about their work
+- Let your relevant experience emerge naturally, almost as an afterthought
+- End with curiosity about THEM, not a job request
+
 ### YOUR PHILOSOPHY
-Behind every startup is a founder who cares deeply about a problem. The best cold emails don't just ask for a job - they show that you genuinely give a damn about the same thing they do.
+Behind every startup is a founder who cares deeply about a problem. The best cold emails show you genuinely give a damn about the same thing they do.
 
-This isn't about sucking up. It's about authentic connection. If you've actually used their product, actually care about the problem they're solving, or have a genuine story about why THIS company matters to you - that beats a perfect resume every time.
+This is about authentic connection. If you've actually used their product, care about the problem they're solving, or have a genuine story about why THIS company matters to you - that beats a perfect resume.
 
-Tristan Walker emailed FourSquare eight times. He got the job because his enthusiasm was obvious and real: "I can assure you I'm humble and I'm hungry!"
+### GOOD vs BAD EXAMPLES
 
-### THE RULES
+**BAD (this is a Direct Ask disguised as Genuine Fan - DO NOT DO THIS):**
+"Hi Julian, My name is Robert, an EE student at UCLA, and I'm writing to inquire about internship opportunities at Stagewise. As the CTO of a startup, I led development of a full-stack app using React Native and Node.js. I'd love to discuss how my background could be a fit."
 
-**Subject Line:**
-- Personal and specific to them, not generic
-- Can reference something they did, said, or built
-- Examples: "Your YC demo blew my mind" / "Question about [specific feature]" / "Fellow [shared interest] here"
+**GOOD (this is a true Genuine Fan email - DO THIS):**
+"Hi Julian, I've been obsessed with the idea of AI-powered coding agents, so when I found Stagewise I immediately tried it on one of my React projects. The way it understands component context is unlike anything else I've used. I actually built something similar (much simpler) at my startup - would love to hear how you approached the frontend parsing problem."
 
-**The Email Structure:**
-1. Open with YOUR story - why you specifically care about what they're building
-2. Connect your experience to their mission (not just "I have skills")
-3. Show you've actually engaged with their work (used the product, read their posts, etc.)
-4. Make the ask feel natural, not transactional
+Notice the difference:
+- BAD: Leads with self, credentials, then asks for job
+- GOOD: Leads with genuine interest in their work, mentions experience naturally, asks about THEIR work
 
-**Length Requirement:**
-- Keep the email body to approximately 60 words total
-- Be concise but authentic - every word should serve the connection
-- Quality over quantity - a short, genuine email beats a long one
+### SUBJECT LINE
+- Personal and specific to THEM, not about you
+- Reference something they built, said, or did
+- Examples: "Your approach to [specific feature]" / "Fellow [shared interest] here" / "Tried [product] and had to reach out"
 
-**The "Genuine Test":**
-Before generating, ask: Could this email ONLY be sent to this specific company? If you could swap out the company name and send it elsewhere, it's not genuine enough.
+### EMAIL STRUCTURE
+1. **Open with THEM** - What specifically caught your attention about their work? (1-2 sentences)
+2. **Your connection** - Why does this resonate with you personally? Share a brief story or reaction. (1-2 sentences)
+3. **Natural bridge** - Your relevant experience should feel incidental, not the focus. (1 sentence max)
+4. **Authentic close** - End by showing genuine alignment with their mission/work and natural interest in being part of it:
+   - Express that their work aligns with what you care about/want to build
+   - Show that you're drawn to contribute because of mission alignment, not just opportunity
+   - Feel authentic and personal, not fake or formulaic
+   - Avoid generic questions that feel like you're trying to sound curious
+   - Instead, be direct about why THIS company matters to you
+   - Examples of GOOD endings:
+     * "This is exactly the kind of problem I want to spend my time on—would love to hear more about how you're thinking about [specific aspect]."
+     * "I've been looking for ways to work on [mission-related thing], and what you're building feels like the right place. Would be great to connect."
+     * "This aligns so well with what I care about. I'd love to learn more about your approach to [specific challenge]."
+   - Examples of BAD endings (too fake/question-y):
+     * "I'm curious—what was the most surprising challenge you faced?"
+     * "What was the most surprising hurdle you encountered?"
+     * Generic questions that could be asked to any company
+   Keep it to 1-2 sentences max.
 
-**What makes this persona different:**
-- Lead with emotion and story, not credentials
-- It's okay to be a little vulnerable ("I'm not from a CS background, but...")
-- Your enthusiasm should be specific, not generic ("I love your company" = bad, "I've been using [feature] since [time] and it changed how I [specific thing]" = good)
-- Let personality come through
+### LENGTH & TONE
+- Keep it under 100 words - genuine enthusiasm doesn't need length
+- Warm, conversational, like messaging someone whose work you admire
+- It's okay to be informal, excited, even a little nerdy about the topic
+- Your personality should come through
 
-**Tone:**
-- Warm and human
-- Enthusiastic but not desperate
-- Conversational, like you're writing to a person you respect
-- It's okay to be informal if it's authentic to you
+### THE GENUINE TEST
+Before generating: Could this email ONLY be sent to this specific company? If you could swap the company name and send it elsewhere, it fails.
 
 ### NAMING RULES
-- First name only (this persona is personal): "Hi Alex,"
+- First name only: "Hi Alex,"
 - Exception: Keep "Dr." or "Prof." if present
 
 ### DATA INPUTS
@@ -322,7 +351,21 @@ Before generating, ask: Could this email ONLY be sent to this specific company? 
 - Recent News/Intel: ${scrapedIntel}
 - What they do: ${startup.description || 'N/A'}
 
-**IMPORTANT:** Use the scraped intel to find something SPECIFIC to reference. If there's nothing specific, invent a plausible detail about why the candidate would care about this company based on their background. The connection must feel real.
+**CRITICAL REMINDER:** 
+- This email is about expressing genuine interest in THEIR work and showing mission alignment
+- Use the startup description and scraped intel to find something SPECIFIC about their product/mission to open with
+- The candidate's experience should be mentioned briefly and naturally, NOT as the focus
+- The ending MUST:
+  * Show genuine alignment with their mission/work and why it matters to you
+  * Express authentic interest in contributing/being part of what they're building
+  * Feel personal and real, not fake or like you're trying to sound curious with generic questions
+  * Demonstrate that you want to work there because you genuinely care about the mission, not just for opportunity
+  * Avoid generic "curious questions" that feel formulaic or could be asked to any company
+  * Be direct and authentic—if you're excited about their work, say so naturally
+  * NOT ask about "opportunities" explicitly, but show interest in connecting/learning more
+  * Feel like someone who genuinely wants to be part of what they're building
+- The ending should make it clear: "I want to work here because I believe in what you're doing"
+- If the email reads like a traditional cold email asking for a job, or if the ending feels fake/question-y, you have failed this task
 
 ### OUTPUT FORMAT
 Return ONLY valid JSON:
@@ -427,9 +470,11 @@ export async function* generateColdEmailStream(
 
   // Select prompt based on persona (default to 'direct-ask')
   const persona = options.persona || 'direct-ask';
+  console.log(`[Email Generation] generateColdEmailStream called with persona: '${persona}'`);
   const prompt = persona === 'genuine-fan' 
     ? buildGenuineFanPrompt(candidate, startup, match)
     : buildEmailPrompt(candidate, startup, match);
+  console.log(`[Email Generation] Using ${persona === 'genuine-fan' ? 'Genuine Fan' : 'Direct Ask'} prompt for streaming`);
 
   try {
     const result = await model.generateContentStream(prompt);

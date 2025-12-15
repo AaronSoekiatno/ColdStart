@@ -42,10 +42,20 @@ export default function GenerateEmailPage() {
   const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>('direct-ask');
+  // Initialize emailPersona from URL param if valid, otherwise default to 'direct-ask'
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>(() => {
+    const initialPersona = personaParam === 'genuine-fan' || personaParam === 'direct-ask' 
+      ? personaParam 
+      : 'direct-ask';
+    console.log(`[Generate Email Page] Initializing - personaParam from URL: '${personaParam}', initializing emailPersona to: '${initialPersona}'`);
+    return initialPersona;
+  });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
 
+  // Ref to prevent concurrent API calls
+  const isLoadingRef = useRef(false);
+  const currentRequestRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Check auth and premium status
@@ -78,12 +88,40 @@ export default function GenerateEmailPage() {
   const loadEmailPreview = async () => {
     if (!startupId || !user) return;
 
+    // Use personaParam directly from URL as source of truth, fallback to emailPersona state
+    // This prevents race conditions where state hasn't synced yet
+    const currentPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask') 
+      ? personaParam 
+      : emailPersona;
+    
+    // Create a unique request key to deduplicate concurrent requests
+    const requestKey = `${startupId}-${currentPersona}-${matchScore}`;
+    
+    // If we're already loading this exact request, skip it
+    if (isLoadingRef.current && currentRequestRef.current === requestKey) {
+      console.log('[Email Preview] Skipping duplicate request:', requestKey);
+      return;
+    }
+
+    // If we're loading a different request, wait for it to finish
+    if (isLoadingRef.current) {
+      console.log('[Email Preview] Another request in progress, waiting...');
+      // Wait a bit and retry
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return loadEmailPreview();
+    }
+
+    // Mark as loading and set current request
+    isLoadingRef.current = true;
+    currentRequestRef.current = requestKey;
+
     try {
       setIsPreviewLoading(true);
       setPreviewSubject('');
       setPreviewBody('');
 
       // Use streaming endpoint
+      console.log(`[Email Preview] Requesting email generation with persona: '${currentPersona}' (from URL param: '${personaParam}', state: '${emailPersona}') for startupId: ${startupId}`);
       const response = await fetch("/api/send-email/preview-stream", {
         method: 'POST',
         headers: {
@@ -93,7 +131,7 @@ export default function GenerateEmailPage() {
         body: JSON.stringify({
           startupId,
           matchScore,
-          persona: emailPersona,
+          persona: currentPersona,
         }),
       });
 
@@ -102,6 +140,8 @@ export default function GenerateEmailPage() {
       // This ensures instant feedback when limit is exceeded
       if (response.status === 403) {
         setIsPreviewLoading(false);
+        isLoadingRef.current = false;
+        currentRequestRef.current = null;
         setShowUpgradeModal(true);
         // Cancel any pending stream reading to free resources
         // We don't need to read the error message - we already know it's a limit error
@@ -141,6 +181,8 @@ export default function GenerateEmailPage() {
                     if (data.type === 'error' && data.upgradeRequired) {
                       setShowUpgradeModal(true);
                       setIsPreviewLoading(false);
+                      isLoadingRef.current = false;
+                      currentRequestRef.current = null;
                       return;
                     }
                   } catch (e) {
@@ -157,6 +199,8 @@ export default function GenerateEmailPage() {
             if (errorData.upgradeRequired) {
               setShowUpgradeModal(true);
               setIsPreviewLoading(false);
+              isLoadingRef.current = false;
+              currentRequestRef.current = null;
               return;
             }
             throw new Error(errorData.error || 'Failed to generate email preview');
@@ -239,6 +283,8 @@ export default function GenerateEmailPage() {
                 setPreviewSubject(finalSubject);
                 setPreviewBody(finalBody);
                 setIsPreviewLoading(false);
+                isLoadingRef.current = false;
+                currentRequestRef.current = null;
                 // Email is automatically saved to Supabase by the API route
                 toast({
                   title: "Email drafted",
@@ -248,6 +294,8 @@ export default function GenerateEmailPage() {
               } else if (data.type === 'error') {
                 // Handle error events from SSE stream
                 setIsPreviewLoading(false);
+                isLoadingRef.current = false;
+                currentRequestRef.current = null;
                 if (data.upgradeRequired) {
                   setShowUpgradeModal(true);
                   return; // Don't throw, just show modal
@@ -262,9 +310,13 @@ export default function GenerateEmailPage() {
       }
 
       setIsPreviewLoading(false);
+      isLoadingRef.current = false;
+      currentRequestRef.current = null;
     } catch (error) {
       console.error('Preview email error:', error);
       setIsPreviewLoading(false);
+      isLoadingRef.current = false;
+      currentRequestRef.current = null;
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate email preview';
       
       // Check if this is a limit exceeded error - if so, show upgrade modal instead of redirecting
@@ -292,28 +344,42 @@ export default function GenerateEmailPage() {
   };
 
   useEffect(() => {
-    // Load email when component mounts or when startupId/user changes
+    // Load email when component mounts or when startupId/user/persona changes
     // The API route will check Supabase for existing email, or generate new one if not found
-    if (user && startupId) {
+    // Skip if already loading to prevent duplicate calls
+    // Note: We use personaParam in the dependency array to ensure we reload when URL changes
+    if (user && startupId && !isLoadingRef.current) {
       loadEmailPreview();
     }
-  }, [startupId, matchScore, user, isPremium, emailPersona]);
+  }, [startupId, matchScore, user, personaParam]); // Use personaParam instead of emailPersona to avoid race conditions
 
   // Sync persona with query param when it changes, but enforce premium restrictions
+  // This MUST run BEFORE the email loading useEffect to ensure state is synced
   useEffect(() => {
+    console.log(`[Generate Email Page] Persona sync effect - personaParam: '${personaParam}', emailPersona: '${emailPersona}', isPremium: ${isPremium}`);
     if (personaParam === 'genuine-fan' || personaParam === 'direct-ask') {
       // Only allow 'genuine-fan' for premium users
       if (personaParam === 'genuine-fan' && !isPremium) {
         // Free users can't use 'genuine-fan' - force to 'direct-ask'
-        setEmailPersona('direct-ask');
+        if (emailPersona !== 'direct-ask') {
+          console.log(`[Generate Email Page] Free user tried to use 'genuine-fan', forcing to 'direct-ask'`);
+          setEmailPersona('direct-ask');
+        }
       } else {
-        setEmailPersona(personaParam);
+        // Only update if different to prevent unnecessary re-renders
+        if (emailPersona !== personaParam) {
+          console.log(`[Generate Email Page] Syncing emailPersona from '${emailPersona}' to '${personaParam}'`);
+          setEmailPersona(personaParam);
+        }
       }
     } else {
       // Default to 'direct-ask' if invalid or missing
-      setEmailPersona('direct-ask');
+      if (emailPersona !== 'direct-ask') {
+        console.log(`[Generate Email Page] Invalid personaParam '${personaParam}', defaulting to 'direct-ask'`);
+        setEmailPersona('direct-ask');
+      }
     }
-  }, [personaParam, isPremium]);
+  }, [personaParam, isPremium]); // Removed emailPersona from deps to prevent loops
 
   const handleLoadSuggestions = async () => {
     if (!startupId) return;
