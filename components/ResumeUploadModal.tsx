@@ -30,8 +30,8 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Preload onboarding page for faster navigation
-    router.prefetch('/onboarding');
+    // Preload resumes page for faster navigation after upload
+    router.prefetch('/resumes');
 
     // Get current user for upgrade modal
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -53,28 +53,13 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
     
     // Check if user is authenticated
     if (user?.email) {
-      // User is authenticated - check if they need onboarding
-      try {
-        const response = await fetch('/api/candidate/check-onboarding', {
-          credentials: 'include',
-        });
-        const data = await response.json();
-        
-        if (data.needsOnboarding) {
-          // Redirect to full-screen onboarding page
-          router.push('/onboarding');
-        } else {
-          // Call the upload success callback if provided
-          if (onUploadSuccess) {
-            onUploadSuccess();
-          }
-        }
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
-        // If check fails, just call success callback
-        if (onUploadSuccess) {
-          onUploadSuccess();
-        }
+      // User is authenticated - navigate to resumes page immediately
+      // If a custom callback is provided, use that instead (for other pages like /resumes)
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      } else {
+        // Default behavior: navigate to resumes page
+        router.push('/resumes');
       }
     } else {
       // User is NOT authenticated - prompt them to sign up
