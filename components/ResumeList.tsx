@@ -110,52 +110,59 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
 
   return (
     <>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Resumes</h1>
-          <p className="text-gray-600">
-            Manage all of your resumes here!
-          </p>
-          {onUploadClick && (
-            <button
-              onClick={onUploadClick}
-              className="mt-4 flex items-center justify-center gap-2 px-6 py-2.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-sm font-medium shadow-sm"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Upload Resume</span>
-            </button>
-          )}
+      {/* Header Section */}
+      <div className="mb-6 sm:mb-8">
+        {/* Title and Active Button Row */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">My Resumes</h1>
+            <p className="text-sm sm:text-base text-gray-600">
+              Manage all of your resumes here!
+            </p>
+          </div>
+          {/* Active Button - positioned to the right on desktop, below title on mobile */}
+          <button
+            onClick={handleSetPrimary}
+            disabled={isButtonDisabled}
+            className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 text-white rounded-lg transition-all text-xs sm:text-sm font-medium shadow-sm self-start sm:self-auto flex-shrink-0 ${
+              isAlreadyActive && isButtonDisabled
+                ? 'bg-blue-300 hover:bg-blue-300 disabled:bg-blue-300 disabled:cursor-not-allowed'
+                : 'bg-black hover:bg-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed'
+            }`}
+          >
+            {isSettingPrimary ? (
+              <>
+                <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Setting...</span>
+              </>
+            ) : isAlreadyActive ? (
+              <>
+                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Active</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Set as Active</span>
+              </>
+            )}
+          </button>
         </div>
-        <button
-          onClick={handleSetPrimary}
-          disabled={isButtonDisabled}
-          className={`flex items-center justify-center gap-2 px-6 py-2.5 text-white rounded-lg transition-all text-sm font-medium shadow-sm ${
-            isAlreadyActive && isButtonDisabled
-              ? 'bg-blue-300 hover:bg-blue-300 disabled:bg-blue-300 disabled:cursor-not-allowed'
-              : 'bg-black hover:bg-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed'
-          }`}
-        >
-          {isSettingPrimary ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Setting...</span>
-            </>
-          ) : isAlreadyActive ? (
-            <>
-              <Check className="w-4 h-4" />
-              <span>Active</span>
-            </>
-          ) : (
-            <>
-              <Check className="w-4 h-4" />
-              <span>Set as Active</span>
-            </>
-          )}
-        </button>
+        
+        {/* Upload Button */}
+        {onUploadClick && (
+          <button
+            onClick={onUploadClick}
+            className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-xs sm:text-sm font-medium shadow-sm"
+          >
+            <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span>Upload Resume</span>
+          </button>
+        )}
       </div>
 
       {sortedResumes.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {sortedResumes.map((resume) => (
             <ResumeCard 
               key={resume.id}
@@ -172,8 +179,8 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
-          <p className="text-gray-600 text-lg">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-6 sm:p-12 text-center shadow-sm">
+          <p className="text-gray-600 text-sm sm:text-lg">
             No resumes found. Upload your resume to get started!
           </p>
         </div>

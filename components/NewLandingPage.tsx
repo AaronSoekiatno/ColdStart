@@ -42,6 +42,7 @@ export function NewLandingPage() {
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
 
@@ -185,17 +186,17 @@ export function NewLandingPage() {
     <div className="min-h-screen">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center relative">
-          {/* Logo - Hidden when scrolled */}
-          <Link href="/" className={`flex items-center gap-3 transition-opacity duration-300 ${
+        <div className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          {/* Logo - Left side */}
+          <Link href="/" className={`flex items-center gap-2 sm:gap-3 transition-opacity duration-300 ${
             isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
-            <Image src="/images/hermes.png" alt="Hermes" width={32} height={32} />
-            <span className="text-xl font-semibold text-white drop-shadow-md">Hermes</span>
+            <Image src="/images/hermes.png" alt="Hermes" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
+            <span className="text-lg sm:text-xl font-semibold text-white drop-shadow-md">Hermes</span>
           </Link>
 
-          {/* Navigation - Centered, Hidden when scrolled */}
-          <nav className={`absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4 transition-opacity duration-300 ${
+          {/* Navigation - Desktop only, Centered, Hidden when scrolled */}
+          <nav className={`hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-4 transition-opacity duration-300 ${
             isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}>
             {user ? (
@@ -222,26 +223,40 @@ export function NewLandingPage() {
             ) : null}
           </nav>
 
-          {/* Right side buttons - Positioned to the far right */}
-          <div className="flex items-center gap-3 ml-auto -mr-6">
+          {/* Right side - Always on the right */}
+          <div className="flex items-center gap-2 sm:gap-3">
             {!user ? (
-              <Button
-                onClick={() => setShowSignIn(true)}
-                className="rounded-full px-6 py-2 text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300"
-              >
-                Sign In
-              </Button>
+              <>
+                {/* Sign In Button - Hidden when scrolled on mobile */}
+                <Button
+                  onClick={() => setShowSignIn(true)}
+                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300 ${
+                    isScrolled ? 'hidden sm:flex' : 'flex'
+                  }`}
+                >
+                  Sign In
+                </Button>
+                {/* Upload Resume Button - Always visible when not scrolled */}
+                <Button
+                  onClick={handleGetStarted}
+                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 ${
+                    isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100 bg-white/10 hover:bg-white/20 border border-white/30'
+                  }`}
+                >
+                  Upload Resume
+                </Button>
+              </>
             ) : (
               <>
-                {/* Email Dropdown - Hidden when scrolled, just like navigation */}
-                <div className={`transition-opacity duration-300 ${
+                {/* Desktop: Email Dropdown - Hidden when scrolled */}
+                <div className={`hidden md:block transition-opacity duration-300 ${
                   isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
                 }`}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="rounded-full h-9 px-4 text-white drop-shadow-md"
+                        className="rounded-full h-9 px-4 text-white drop-shadow-md text-sm max-w-[200px] truncate"
                       >
                         {user.email}
                       </Button>
@@ -296,19 +311,124 @@ export function NewLandingPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
+
+                {/* Upload Resume Button - Only visible when scrolled */}
+                <Button
+                  onClick={handleGetStarted}
+                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 transform ${
+                    isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none hidden'
+                  }`}
+                >
+                  Upload Resume
+                </Button>
               </>
             )}
-            {/* Upload Resume Button - Only visible when scrolled */}
-            <Button
-              onClick={handleGetStarted}
-              className={`rounded-full px-6 py-2 text-white font-medium drop-shadow-md transition-all duration-300 transform ${
-                isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none'
-              }`}
-            >
-              Upload Resume
-            </Button>
+
+            {/* Mobile: Hamburger Menu Button - Always on the right for logged in users */}
+            {user && (
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className={`md:hidden p-2 text-white transition-opacity duration-300 ${
+                  isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+                aria-label="Toggle menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {user && mobileMenuOpen && !isScrolled && (
+          <div className="md:hidden bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-lg">
+            <div className="px-4 py-3 space-y-1">
+              <Link
+                href="/matches"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Your Matches
+              </Link>
+              <Link
+                href="/tracker"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Email Tracker
+              </Link>
+              <Link
+                href="/resumes"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Resumes
+              </Link>
+              <div className="border-t border-gray-200 my-2"></div>
+              <div className="px-3 py-2 text-xs text-gray-500 truncate">{user.email}</div>
+              <button
+                onClick={() => {
+                  handlePremiumClick();
+                  setMobileMenuOpen(false);
+                }}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Premium Plan
+              </button>
+              {isPremium && (
+                <button
+                  onClick={async () => {
+                    setMobileMenuOpen(false);
+                    try {
+                      const response = await fetch('/api/stripe/create-portal-session', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email: user.email ?? '' }),
+                      });
+
+                      const data = await response.json();
+
+                      if (!response.ok) {
+                        throw new Error(data.error || 'Failed to create portal session');
+                      }
+
+                      if (data.url) {
+                        window.location.href = data.url;
+                      }
+                    } catch (error: any) {
+                      console.error('Error opening portal:', error);
+                      toast({
+                        title: "Error",
+                        description: error.message || 'Failed to open subscription management',
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Manage Subscription
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  handleSignOut();
+                  setMobileMenuOpen(false);
+                }}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Content */}
