@@ -163,7 +163,7 @@ export function ResumeCard({
                     e.stopPropagation();
                     setIsEditOpen(true);
                   }}
-                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900 flex-shrink-0"
+                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900 flex-shrink-0 cursor-pointer"
                   aria-label="Edit resume name"
                   title="Edit resume name"
                 >
@@ -178,7 +178,7 @@ export function ResumeCard({
                     e.stopPropagation();
                     setIsDeleteOpen(true);
                   }}
-                  className="p-1.5 rounded-md hover:bg-red-100 transition-colors text-red-600 hover:text-red-700"
+                  className="p-1.5 rounded-md hover:bg-red-100 transition-colors text-red-600 hover:text-red-700 cursor-pointer"
                   aria-label="Delete resume"
                   title="Delete resume"
                 >
@@ -199,7 +199,7 @@ export function ResumeCard({
               e.stopPropagation();
               setIsPreviewOpen(true);
             }}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all cursor-pointer"
           >
             <Eye className="w-4 h-4" />
             <span className="text-sm font-medium">Preview</span>
@@ -210,7 +210,7 @@ export function ResumeCard({
               if (!resumeId) return;
               router.push(`/resumes/tailor?resumeId=${resumeId}`);
             }}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-blue-300 text-white rounded-lg transition-all text-sm font-medium"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-blue-300 text-white rounded-lg transition-all text-sm font-medium cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
             <span>Enhance</span>
@@ -285,14 +285,14 @@ export function ResumeCard({
                   setEditedName(resumeName || fileName); // Reset on cancel
                 }}
                 disabled={isUpdatingName}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleEditName}
                 disabled={isUpdatingName || !editedName.trim() || editedName.trim() === (resumeName || fileName)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-300 hover:bg-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-300 hover:bg-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
               >
                 {isUpdatingName ? (
                   <>
@@ -328,14 +328,14 @@ export function ResumeCard({
             <button
               onClick={() => setIsDeleteOpen(false)}
               disabled={isDeleting}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
             >
               {isDeleting ? (
                 <>

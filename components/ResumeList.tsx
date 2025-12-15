@@ -117,7 +117,7 @@ export function ResumeList({ resumes, isPremium }: ResumeListProps) {
         <button
           onClick={handleSetPrimary}
           disabled={isButtonDisabled}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-black hover:bg-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium shadow-sm"
+          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-black hover:bg-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium shadow-sm cursor-pointer"
         >
           {isSettingPrimary ? (
             <>

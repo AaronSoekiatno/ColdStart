@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Download, ArrowLeft } from "lucide-react";
+import { Loader2, Download, ArrowLeft, Pencil, Undo } from "lucide-react";
 import { Header } from "@/components/Header";
 import { JakesResumeTemplate } from "@/components/JakesResumeTemplate";
 import { EditableResumePreview } from "@/components/EditableResumePreview";
@@ -39,6 +39,7 @@ function EnhanceResumePageContent() {
   const [originalStructuredResumeData, setOriginalStructuredResumeData] = useState<StructuredResumeData | null>(null);
   const [highlightedFields, setHighlightedFields] = useState<Set<ResumePath>>(new Set());
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
+  const [acceptHistory, setAcceptHistory] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Helper function to apply suggestions to structured resume data
@@ -46,18 +47,37 @@ function EnhanceResumePageContent() {
     data: StructuredResumeData,
     suggestions: ResumeSuggestion[]
   ): { updatedData: StructuredResumeData; highlightedFields: Set<ResumePath> } => {
-    // Filter suggestions that have patches
     const patches = suggestions
       .filter(s => s.patch)
       .map(s => s.patch!);
 
-    // Apply all patches
     const result = applyPatches(data, patches);
 
     return {
       updatedData: result.updatedData,
       highlightedFields: result.modifiedPaths,
     };
+  };
+
+  const rebuildFromStatuses = (
+    statuses: Record<string, 'pending' | 'accepted' | 'rejected'>,
+    suggestionsList: ResumeSuggestion[]
+  ) => {
+    if (!originalStructuredResumeData) return;
+    const active = suggestionsList.filter(
+      s => statuses[s.id] === 'accepted' || statuses[s.id] === 'pending'
+    );
+    const { updatedData } = applySuggestionsToStructuredData(
+      originalStructuredResumeData,
+      active
+    );
+    // Only highlight suggestions that are still pending; accepted and denied lose highlights
+    const highlightPaths = suggestionsList
+      .filter(s => statuses[s.id] === 'pending' && s.patch)
+      .map(s => s.patch!.path);
+
+    setStructuredResumeData(updatedData);
+    setHighlightedFields(new Set(highlightPaths));
   };
 
   const handleLoadSuggestions = async (currentStructuredData?: StructuredResumeData) => {
@@ -247,49 +267,70 @@ function EnhanceResumePageContent() {
     setSelectedSuggestionId(suggestionId);
   };
 
+  const handleSuggestionEdit = (suggestionId: string, newText: string) => {
+    setResumeSuggestions(prev => {
+      const updated = prev.map(s =>
+        s.id === suggestionId
+          ? {
+              ...s,
+              suggested: newText,
+              patch: s.patch ? { ...s.patch, newValue: newText } : s.patch,
+            }
+          : s
+      );
+      rebuildFromStatuses(suggestionStatuses, updated);
+      return updated;
+    });
+  };
+
   const handleSuggestionAccept = (suggestionId: string) => {
     setSuggestionStatuses(prev => {
       const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestionId]: 'accepted' };
+      rebuildFromStatuses(newStatuses, resumeSuggestions);
       return newStatuses;
     });
-
-    // Remove highlight for the accepted suggestion
-    const suggestion = resumeSuggestions.find(s => s.id === suggestionId);
-    if (suggestion?.patch) {
-      setHighlightedFields(prev => {
-        const newHighlighted = new Set(prev);
-        newHighlighted.delete(suggestion.patch!.path);
-        return newHighlighted;
-      });
-    }
-
-    // Keep the suggestion selected so user can see the result
-    // setSelectedSuggestionId(null);
+    setAcceptHistory(prev => [...prev, suggestionId]);
   };
 
   const handleSuggestionDeny = (suggestionId: string) => {
     setSuggestionStatuses(prev => {
       const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestionId]: 'rejected' };
-
-      // Revert this specific suggestion by rebuilding from original
-      if (originalStructuredResumeData) {
-        const acceptedSuggestions = resumeSuggestions.filter(
-          s => newStatuses[s.id] === 'accepted' || (newStatuses[s.id] === 'pending' && s.id !== suggestionId)
-        );
-
-        const { updatedData, highlightedFields: newHighlighted } = applySuggestionsToStructuredData(
-          originalStructuredResumeData,
-          acceptedSuggestions
-        );
-        setStructuredResumeData(updatedData);
-        setHighlightedFields(newHighlighted);
-      }
-
+      rebuildFromStatuses(newStatuses, resumeSuggestions);
       return newStatuses;
     });
 
     // Keep the suggestion selected so user can see it was rejected
     // setSelectedSuggestionId(null);
+  };
+
+  const handleSuggestionUndo = (suggestionId: string) => {
+    setSuggestionStatuses(prev => {
+      const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestionId]: 'pending' };
+      rebuildFromStatuses(newStatuses, resumeSuggestions);
+      return newStatuses;
+    });
+    setAcceptHistory(prev => {
+      const idx = prev.lastIndexOf(suggestionId);
+      if (idx === -1) return prev;
+      const copy = [...prev];
+      copy.splice(idx, 1);
+      return copy;
+    });
+  };
+
+  const handleUndoLastChange = () => {
+    setAcceptHistory(prev => {
+      if (prev.length === 0) return prev;
+      const target = prev[prev.length - 1];
+      setSuggestionStatuses(prevStatuses => {
+        const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prevStatuses, [target]: 'pending' };
+        rebuildFromStatuses(newStatuses, resumeSuggestions);
+        return newStatuses;
+      });
+      const copy = [...prev];
+      copy.pop();
+      return copy;
+    });
   };
 
   if (!user || !resumeId) {
@@ -306,7 +347,7 @@ function EnhanceResumePageContent() {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push('/resumes')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-5 h-5 text-gray-700" />
               </button>
@@ -318,13 +359,22 @@ function EnhanceResumePageContent() {
             <div className="flex items-center gap-3">
               {resumeSuggestions.length > 0 && (
                 <>
+                  {acceptHistory.length > 0 && (
+                    <button
+                      onClick={handleUndoLastChange}
+                      className="inline-flex items-center gap-1 px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <Undo className="w-3 h-3" />
+                      <span>Undo</span>
+                    </button>
+                  )}
                   <span className="text-sm text-gray-700 font-medium">
                     {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
                   </span>
                   {Object.values(suggestionStatuses).filter(s => s === 'accepted').length > 0 && (
                     <Button
                       onClick={handleDownloadPDF}
-                      className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6"
+                      className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6 cursor-pointer"
                     >
                       <Download className="h-4 w-4 mr-2" />
                       Download PDF
@@ -360,6 +410,7 @@ function EnhanceResumePageContent() {
                           .filter(s => s.patch)
                           .map(s => [s.patch!.path, { original: s.original, suggested: s.suggested }])
                       )}
+                      selectedSuggestionId={selectedSuggestionId}
                       onClick={handleSuggestionClick}
                     />
                   ) : resumeText ? (
@@ -403,22 +454,24 @@ function EnhanceResumePageContent() {
                         return (
                           <div className="space-y-4">
                             <div>
-                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Section</h3>
-                              <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">{suggestion.section}</p>
-                            </div>
-
-                            <div>
                               <h3 className="text-sm font-semibold text-gray-900 mb-2">Original</h3>
                               <p className="text-sm text-gray-700 bg-red-50 p-3 rounded border border-red-200">{suggestion.original}</p>
                             </div>
 
                             <div>
-                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Suggested</h3>
-                              <p className="text-sm text-gray-700 bg-green-50 p-3 rounded border border-green-200">{suggestion.suggested}</p>
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="text-sm font-semibold text-gray-900">Enhanced</h3>
+                                <Pencil className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                              </div>
+                              <textarea
+                                value={suggestion.suggested}
+                                onChange={(e) => handleSuggestionEdit(selectedSuggestionId, e.target.value)}
+                                className="w-full text-sm text-gray-900 bg-green-50 p-3 rounded border border-green-200 focus:outline-none focus:ring-2 focus:ring-blue-300 min-h-[140px] resize-vertical"
+                              />
                             </div>
 
                             <div>
-                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Reason</h3>
+                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Reasoning</h3>
                               <p className="text-sm text-gray-600">{suggestion.reason}</p>
                             </div>
 
@@ -426,11 +479,24 @@ function EnhanceResumePageContent() {
                               <div>
                                 <h3 className="text-sm font-semibold text-gray-900 mb-2">Keywords</h3>
                                 <div className="flex flex-wrap gap-2">
-                                  {suggestion.keywords.map((keyword, idx) => (
-                                    <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                      {keyword}
-                                    </span>
-                                  ))}
+                                  {suggestion.keywords.map((keyword, idx) => {
+                                    const sourceText = structuredResumeData
+                                      ? JSON.stringify(structuredResumeData).toLowerCase()
+                                      : resumeText.toLowerCase();
+                                    const hasKeyword = sourceText.includes(keyword.toLowerCase());
+                                    return (
+                                      <span
+                                        key={idx}
+                                        className={`text-xs px-2 py-1 rounded border flex items-center gap-1 ${
+                                          hasKeyword
+                                            ? 'bg-green-50 text-green-700 border-green-200'
+                                            : 'bg-red-50 text-red-700 border-red-200'
+                                        }`}
+                                      >
+                                        {hasKeyword ? '✓' : '✗'} {keyword}
+                                      </span>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -449,7 +515,7 @@ function EnhanceResumePageContent() {
                                     variant="outline"
                                     className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
                                   >
-                                    Reject
+                                    Deny
                                   </Button>
                                 </>
                               )}
@@ -460,7 +526,7 @@ function EnhanceResumePageContent() {
                               )}
                               {status === 'rejected' && (
                                 <div className="w-full p-3 bg-red-50 border border-red-200 rounded text-center text-sm text-red-700 font-medium">
-                                  ✗ Rejected
+                                  ✗ Denied
                                 </div>
                               )}
                             </div>

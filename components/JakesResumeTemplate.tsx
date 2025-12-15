@@ -8,15 +8,20 @@ interface JakesResumeTemplateProps {
   highlightedFields?: Set<string>; // Field paths like "experience[0].description[1]" (ResumePath is string)
   pathToSuggestionId?: Map<string, string>; // Map field paths to suggestion IDs
   pathToSuggestion?: Map<string, { original: string; suggested: string }>; // Map field paths to suggestion text
+  selectedSuggestionId?: string | null;
   onHover?: (suggestionId: string, event: React.MouseEvent) => void;
   onClick?: (suggestionId: string) => void;
   onLeave?: () => void;
 }
 
-export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), onHover, onClick, onLeave }: JakesResumeTemplateProps) {
+export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), selectedSuggestionId, onHover, onClick, onLeave }: JakesResumeTemplateProps) {
   const isHighlighted = (fieldPath: string) => highlightedFields.has(fieldPath);
   const getSuggestionId = (fieldPath: string) => pathToSuggestionId.get(fieldPath);
   const getSuggestion = (fieldPath: string) => pathToSuggestion.get(fieldPath);
+  const isActiveSelection = (fieldPath: string) => {
+    const suggestionId = getSuggestionId(fieldPath);
+    return selectedSuggestionId && suggestionId === selectedSuggestionId;
+  };
   
   const renderDiffText = (text: string, fieldPath: string) => {
     const suggestion = getSuggestion(fieldPath);
@@ -80,9 +85,10 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
           const fieldPath = 'summary';
           const suggestionId = getSuggestionId(fieldPath);
           const highlighted = isHighlighted(fieldPath);
+          const active = isActiveSelection(fieldPath);
           return (
             <div
-              className={`mb-3 ${highlighted ? 'px-2 py-1 cursor-pointer' : ''}`}
+              className={`mb-3 ${highlighted ? 'px-2 py-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
               onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
               onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
               onMouseLeave={highlighted && onLeave ? onLeave : undefined}
@@ -159,10 +165,11 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                     const fieldPath = `experience[${expIdx}].description[${bulletIdx}]`;
                     const suggestionId = getSuggestionId(fieldPath);
                     const highlighted = isHighlighted(fieldPath);
+                    const active = isActiveSelection(fieldPath);
                     return (
                       <li
                         key={bulletIdx}
-                        className={`text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''}`}
+                        className={`text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
                         onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
                         onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                         onMouseLeave={highlighted && onLeave ? onLeave : undefined}
@@ -187,10 +194,11 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
             {data.projects.map((project, projIdx) => {
               const projectPath = `projects[${projIdx}]`;
               const isProjectHighlighted = isHighlighted(projectPath);
+              const isProjectActive = isActiveSelection(projectPath);
               return (
                 <div
                   key={project.id}
-                  className={`mb-2 ${isProjectHighlighted ? 'px-2 py-1' : ''}`}
+                  className={`mb-2 ${isProjectHighlighted ? 'px-2 py-1' : ''} ${isProjectActive ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
                 >
                   <div className="flex justify-between items-start mb-0.5">
                     <div className="flex-1">
@@ -218,11 +226,12 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                           const bulletPath = `projects[${projIdx}].description[${bulletIdx}]`;
                           const suggestionId = getSuggestionId(bulletPath);
                           const isBulletHighlighted = isHighlighted(bulletPath);
+                          const isBulletActive = isActiveSelection(bulletPath);
                           const cleanBullet = typeof bullet === 'string' ? bullet.trim().replace(/^[-•*]\s*/, '') : String(bullet).trim();
                           return (
                             <li
                               key={bulletIdx}
-                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''}`}
+                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''} ${isBulletActive ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
                               onMouseEnter={isBulletHighlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
                               onClick={isBulletHighlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                               onMouseLeave={isBulletHighlighted && onLeave ? onLeave : undefined}

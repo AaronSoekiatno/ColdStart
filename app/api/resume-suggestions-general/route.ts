@@ -51,49 +51,34 @@ For example:
 - To edit summary: "summary"`
     : '\n\nNote: Structured resume data is not available. You will need to infer paths from the resume content.';
 
-  const prompt = `You are an expert ATS (Applicant Tracking System) resume optimizer and career coach.
+  const prompt = `You are an expert ATS (Applicant Tracking System) resume optimizer and career coach focused on helping candidates stand out at tech startups.
 
 ${structuredDataContext}
 
 CRITICAL RULES:
 1. ONLY suggest improvements using technologies, skills, and experiences that ALREADY EXIST in the candidate's resume
 2. DO NOT add skills, technologies, or experiences the candidate doesn't have
-3. DO NOT fabricate achievements or metrics
-4. Focus on REFRAMING and REPHRASING existing content to make it more impactful and ATS-friendly
-5. Provide general improvements that would make this resume stronger for any technical/professional role
+3. DO NOT fabricate achievements or metrics; never invent numbers. If metrics are missing, say: "Include real metrics to showcase real-world impact at this company/role."
+4. Never propose specific numeric values unless they already appear in the resume; instead, prompt the candidate to add their real numbers.
+5. Focus on REFRAMING and REPHRASING existing content to make it more impactful, ATS-friendly, and aligned with startup expectations (initiative, ownership, real-world impact, skill depth, quantified results)
+6. Provide general improvements that would make this resume stronger for technical roles at startups
 
 TASK:
 Analyze this resume and suggest 5-7 general improvements that:
 
-1. **Add Quantifiable Impact**: Convert vague statements into specific, measurable results
-   - Add percentages, numbers, scale metrics from their actual work
-   - Example: "Improved performance" → "Reduced API response time by 40%, handling 10k requests/sec"
-   - Only use metrics that could reasonably be inferred or should be added from their actual work
+1. **Add Quantifiable Impact (with real metrics)**: Convert vague statements into specific, measurable results from their actual work.
+   - If metrics are missing, suggest: "Include real metrics to showcase real-world impact at this company/role."
+   - Never invent or guess numbers; do not propose placeholder numbers.
 
-2. **Strengthen Action Verbs**: Replace weak verbs with stronger, more impactful ones
-   - "Worked on" → "Architected", "Engineered", "Designed", "Led"
-   - "Helped with" → "Collaborated on", "Contributed to", "Facilitated"
-   - Keep the same meaning, just make it more powerful
+2. **Emphasize Initiative and Ownership**: Highlight where the candidate led, drove, or self-started work; surface scrappy, end-to-end execution common at startups.
 
-3. **Add Technical Specificity**: Make technology mentions more specific and detailed
-   - If they mention "JavaScript" and built web apps → specify frameworks they likely used
-   - If they mention "databases" → specify the actual database technology
-   - ONLY if the technology is already mentioned or clearly implied in their resume
+3. **Show Real-World Impact and Scope**: Tie work to user, revenue, performance, or reliability outcomes; include scale where real (users, throughput, latency, uptime).
 
-4. **Highlight Leadership and Impact**: Emphasize ownership, initiative, and results
-   - Add context about team size if they worked with others
-   - Emphasize outcomes and business impact
-   - Show scope and scale of their work
+4. **Strengthen Action Verbs and Skill Depth**: Use strong verbs and clarify depth of skills already present (frameworks, databases, cloud, tooling) without adding new tech.
 
-5. **Improve Clarity and Readability**: Make descriptions clearer and more concise
-   - Remove jargon that doesn't add value
-   - Make bullet points more scannable
-   - Front-load the most important information
+5. **ATS Keyword Optimization for Tech Roles**: Ensure important, resume-supported keywords appear (spell out acronyms; keep alignment with actual experience).
 
-6. **Optimize for ATS Keywords**: Ensure important technical skills and concepts are mentioned
-   - Make sure key technologies are spelled out (not just acronyms)
-   - Add industry-standard terminology where appropriate
-   - Only use keywords that align with their actual experience
+6. **Improve Clarity and Readability**: Make bullets concise, scannable, and front-load the most important info.
 
 GOOD SUGGESTIONS:
 - Candidate has: "Built web application with JavaScript"

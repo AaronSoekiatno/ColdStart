@@ -79,40 +79,28 @@ INSTRUCTIONS:
 - Use focus areas only to understand priorities, NOT to add skills the candidate doesn't have
 `.trim();
 
-  const prompt = `You are an expert ATS (Applicant Tracking System) resume optimizer.
+  const prompt = `You are an expert ATS (Applicant Tracking System) resume optimizer focused on helping candidates stand out as strong startup hires.
 
 ${startupContext}${structuredDataContext}
 
 CRITICAL RULES:
 1. ONLY suggest improvements using technologies, skills, and experiences that ALREADY EXIST in the candidate's resume
 2. DO NOT add skills, technologies, or experiences the candidate doesn't have
-3. DO NOT fabricate achievements or metrics
-4. Focus on REFRAMING and REPHRASING existing content to better align with the startup
-5. If the candidate lacks relevant experience for this startup, suggest fewer or no changes rather than inventing experience
+3. DO NOT fabricate achievements or metrics; never invent numbers. If metrics are missing, say: "Include real metrics to showcase real-world impact at this company/role."
+4. Never propose specific numeric values unless they already appear in the resume; instead, prompt the candidate to add their real numbers.
+5. Focus on REFRAMING and REPHRASING existing content to better align with the startup, highlighting initiative, ownership, real-world impact, and skill depth
+6. If the candidate lacks relevant experience for this startup, suggest fewer or no changes rather than inventing experience
 
 TASK:
 Based on the startup's description and industry, analyze this resume and suggest 3-5 improvements that:
 
-1. **Reframe Existing Experience**: Highlight aspects of the candidate's actual experience that align with what this startup builds
-   - If startup builds AI tools → emphasize any ML/data work from resume
-   - If startup is B2B SaaS → emphasize scalability, enterprise features
-   - If startup is early-stage → emphasize scrappy, full-stack, ownership examples
-   - Use terminology from the startup's description
+1. **Reframe Existing Experience to the Startup**: Highlight aspects of the candidate's actual experience that align with what this startup builds (use the startup's terminology), and surface initiative/ownership examples common in early-stage environments.
 
-2. **Add Measurable Impact**: Convert vague statements into specific, quantifiable results
-   - Add percentages, numbers, scale metrics from their actual work
-   - Example: "Improved performance" → "Reduced API response time by 40%, handling 10k requests/sec"
-   - Only use metrics that could reasonably be inferred or should be added from their actual work
+2. **Add Measurable, Real Impact**: Convert vague statements into specific, quantifiable results from their actual work. If metrics are missing, suggest: "Include real metrics to showcase real-world impact at this company/role." Never invent or propose numbers that are not already in the resume.
 
-3. **Specify Technologies**: Make technology mentions more specific where the candidate already uses them
-   - If they mention "JavaScript" and built web apps → specify "React.js" if that's what they likely used
-   - If they mention "databases" → specify "PostgreSQL" or whatever they actually used
-   - ONLY if the technology is already mentioned or clearly implied in their resume
+3. **Specify Technologies with Skill Depth**: Make technology mentions more specific where the candidate already uses them (frameworks, DBs, infra, tooling) without adding new tech.
 
-4. **Industry-Specific Terminology**: Use domain language matching the startup's industry
-   - Healthcare startup → emphasize "compliance", "patient data", "HIPAA" if relevant to their work
-   - FinTech → emphasize "security", "transactions", "regulatory" if relevant
-   - Only apply if the candidate has relevant experience
+4. **Industry-Specific Terminology**: Use domain language matching the startup's industry only when the candidate has relevant experience.
 
 GOOD SUGGESTIONS:
 - Candidate has: "Built web application with JavaScript"

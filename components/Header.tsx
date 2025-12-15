@@ -15,8 +15,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Menu, X, User as UserIcon } from "lucide-react";
+import { Menu, X, User as UserIcon, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BugReportModal } from "@/components/BugReportModal";
 
 interface HeaderProps {
   initialUser?: User | null;
@@ -29,6 +30,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const { toast } = useToast();
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
@@ -158,6 +160,13 @@ export const Header = ({ initialUser }: HeaderProps) => {
               >
                 Resumes
               </Link>
+              <button
+                onClick={() => setIsFeedbackOpen(true)}
+                className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <PenTool className="w-3.5 h-3.5" strokeWidth={2.3} />
+                <span>Feedback</span>
+              </button>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -359,6 +368,9 @@ export const Header = ({ initialUser }: HeaderProps) => {
         customTitle="Our Premium Plan"
         isPremium={isPremium}
       />
+      {user && (
+        <BugReportModal open={isFeedbackOpen} onOpenChange={setIsFeedbackOpen} />
+      )}
     </header>
   );
 };
