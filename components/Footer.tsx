@@ -26,12 +26,15 @@ export const Footer = () => {
             >
               Terms of Service
             </Link>
-            <Link 
-              href="/contact" 
-              className="text-gray-600 hover:text-black transition-colors"
+            <a 
+              href="mailto:aidan.nt76@gmail.com?subject=Contact%20from%20ColdStart" 
+              className="text-gray-600 hover:text-black transition-colors cursor-pointer"
+              onClick={(e) => {
+                window.location.href = 'mailto:aidan.nt76@gmail.com?subject=Contact%20from%20ColdStart';
+              }}
             >
               Contact
-            </Link>
+            </a>
           </div>
         </div>
       </div>

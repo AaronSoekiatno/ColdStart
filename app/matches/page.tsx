@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase, isSubscribed } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -50,6 +51,39 @@ export default function MatchesPage() {
   const [hasError, setHasError] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  // Free users can only see 10 matches
+  const FREE_MATCH_LIMIT = 10;
+
+  // Memoized values - must be declared before useEffect hooks
+  const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
+  
+  // Limit matches for free users
+  const visibleMatches = useMemo(() => {
+    if (isPremium) {
+      return matches;
+    }
+    return matches.slice(0, FREE_MATCH_LIMIT);
+  }, [matches, isPremium, FREE_MATCH_LIMIT]);
+  
+  const hiddenMatchCount = useMemo(() => {
+    if (isPremium) return 0;
+    return Math.max(0, matches.length - FREE_MATCH_LIMIT);
+  }, [matches.length, isPremium, FREE_MATCH_LIMIT]);
+  
+  // Handle navigation with premium check
+  const handleNextMatch = () => {
+    if (!isPremium && currentMatchIndex >= FREE_MATCH_LIMIT - 1) {
+      setShowUpgradeModal(true);
+      return;
+    }
+    setCurrentMatchIndex((prev) => Math.min(visibleMatches.length - 1, prev + 1));
+  };
+  
+  const handlePreviousMatch = () => {
+    setCurrentMatchIndex((prev) => Math.max(0, prev - 1));
+  };
 
   // Load initial data
   useEffect(() => {
@@ -146,15 +180,15 @@ export default function MatchesPage() {
 
   // Reset current match index when matches change
   useEffect(() => {
-    if (matches.length > 0 && currentMatchIndex >= matches.length) {
+    if (visibleMatches.length > 0 && currentMatchIndex >= visibleMatches.length) {
       setCurrentMatchIndex(0);
     }
-  }, [matches.length, currentMatchIndex]);
+  }, [visibleMatches.length, currentMatchIndex]);
 
   // Preload images for adjacent cards to improve UX
   useEffect(() => {
     const preloadImages = (matchIndex: number) => {
-      const match = matches[matchIndex];
+      const match = visibleMatches[matchIndex];
       if (!match?.startup?.founders_pfp) return;
 
       const foundersPfp = match.startup.founders_pfp;
@@ -181,25 +215,22 @@ export default function MatchesPage() {
       });
     };
 
-    // Preload current, next, and previous cards
-    if (matches.length > 0) {
-      // Preload current card
-      preloadImages(currentMatchIndex);
-      
-      // Preload previous card
-      if (currentMatchIndex > 0) {
-        preloadImages(currentMatchIndex - 1);
+      // Preload current, next, and previous cards
+      if (visibleMatches.length > 0) {
+        // Preload current card
+        preloadImages(currentMatchIndex);
+        
+        // Preload previous card
+        if (currentMatchIndex > 0) {
+          preloadImages(currentMatchIndex - 1);
+        }
+        
+        // Preload next card
+        if (currentMatchIndex < visibleMatches.length - 1) {
+          preloadImages(currentMatchIndex + 1);
+        }
       }
-      
-      // Preload next card
-      if (currentMatchIndex < matches.length - 1) {
-        preloadImages(currentMatchIndex + 1);
-      }
-    }
-  }, [currentMatchIndex, matches]);
-
-  // Memoized values
-  const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
+    }, [currentMatchIndex, visibleMatches]);
 
   if (isLoading) {
     return (
@@ -236,7 +267,7 @@ export default function MatchesPage() {
           <>
             {/* Left arrow button */}
             <button
-              onClick={() => setCurrentMatchIndex((prev) => Math.max(0, prev - 1))}
+              onClick={handlePreviousMatch}
               disabled={currentMatchIndex === 0}
               className="fixed left-1 sm:left-2 md:left-4 lg:left-[calc(50%-512px-60px)] top-[180px] sm:top-[220px] md:top-[280px] lg:top-[350px] z-50 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
               aria-label="Previous match"
@@ -246,8 +277,8 @@ export default function MatchesPage() {
 
             {/* Right arrow button */}
             <button
-              onClick={() => setCurrentMatchIndex((prev) => Math.min(matches.length - 1, prev + 1))}
-              disabled={currentMatchIndex >= matches.length - 1}
+              onClick={handleNextMatch}
+              disabled={isPremium && currentMatchIndex >= visibleMatches.length - 1}
               className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[180px] sm:top-[220px] md:top-[280px] lg:top-[350px] z-50 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
               aria-label="Next match"
             >
@@ -260,9 +291,17 @@ export default function MatchesPage() {
           {hasMatches ? (
             <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto relative pl-10 sm:pl-0 pr-10 sm:pr-0 md:pl-0 md:pr-0">
               {/* Single match card display */}
-              {matches[currentMatchIndex] && (
-                <div key={matches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard match={matches[currentMatchIndex]} isPremium={isPremium} userEmail={user?.email} />
+              {visibleMatches[currentMatchIndex] && (
+                <div key={visibleMatches[currentMatchIndex].id} className="animate-fade-in">
+                  <MatchCard match={visibleMatches[currentMatchIndex]} isPremium={isPremium} userEmail={user?.email || ''} />
+                </div>
+              )}
+              {/* Show upgrade prompt if user has reached free limit */}
+              {!isPremium && hiddenMatchCount > 0 && currentMatchIndex === FREE_MATCH_LIMIT - 1 && (
+                <div className="mt-4 text-center">
+                  <p className="text-sm text-gray-600 mb-2">
+                    You've viewed {FREE_MATCH_LIMIT} matches. Upgrade to see {hiddenMatchCount} more!
+                  </p>
                 </div>
               )}
             </div>
@@ -273,6 +312,18 @@ export default function MatchesPage() {
           )}
         </div>
       </section>
+      
+      {/* Upgrade Modal */}
+      {user?.email && (
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          hiddenMatchCount={hiddenMatchCount}
+          email={user.email}
+          isPremium={isPremium}
+          customTitle={hiddenMatchCount > 0 ? `🔒 ${hiddenMatchCount} More Match${hiddenMatchCount === 1 ? '' : 'es'} Available` : 'Upgrade to Premium'}
+        />
+      )}
     </div>
   );
 }

@@ -19,7 +19,7 @@ interface UpgradeModalProps {
 }
 
 const freeFeatures = [
-  "Unlimited Matches",
+  "10 Matches per week",
   "Email History",
   "One uploaded resume",
   "One email send per company",
