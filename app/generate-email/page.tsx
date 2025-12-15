@@ -181,15 +181,15 @@ function GenerateEmailPageContent() {
         } else {
           // Handle JSON error response
           try {
-            const errorData = await response.json();
-            if (errorData.upgradeRequired) {
-              setShowUpgradeModal(true);
-              setIsPreviewLoading(false);
+        const errorData = await response.json();
+        if (errorData.upgradeRequired) {
+          setShowUpgradeModal(true);
+          setIsPreviewLoading(false);
               isLoadingRef.current = false;
               currentRequestRef.current = null;
-              return;
-            }
-            throw new Error(errorData.error || 'Failed to generate email preview');
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to generate email preview');
           } catch (jsonError) {
             throw new Error('Failed to generate email preview');
           }
@@ -207,7 +207,7 @@ function GenerateEmailPageContent() {
 
       while (true) {
         const { done, value } = await reader.read();
-
+        
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
@@ -218,7 +218,7 @@ function GenerateEmailPageContent() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
-
+              
               if (data.type === 'metadata') {
                 // Metadata received - can be used for future extensions
               } else if (data.type === 'chunk') {
@@ -427,7 +427,7 @@ function GenerateEmailPageContent() {
           ) : (previewSubject || previewBody || isPreviewLoading) ? (
             <div className="flex-1 flex flex-col min-h-0 w-full h-full">
               {/* Email Preview */}
-              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-6 sm:px-8 md:px-12 lg:px-16 py-6 sm:py-8">
                   <div className="flex items-center justify-between mb-6 flex-shrink-0">
                     <h3 className="text-3xl sm:text-4xl font-semibold text-gray-900">Review Email</h3>

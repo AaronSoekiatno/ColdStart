@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
           console.log(`[Email Generation] Using persona: '${emailPersona}' (premium: ${isPremium})`);
         } else {
           console.log(`[Email Generation] Invalid persona '${persona}', defaulting to 'direct-ask'`);
-        }
+      }
       }
     } else {
       console.log(`[Email Generation] No persona provided, defaulting to 'direct-ask'`);
@@ -289,8 +289,8 @@ export async function POST(request: NextRequest) {
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({
                   type: 'error',
-                  error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
-                  upgradeRequired: true,
+              error: 'Free plan allows 3 email generations per day. Upgrade to Premium for unlimited generations.',
+              upgradeRequired: true,
                 })}\n\n`)
               );
               controller.close();
@@ -344,8 +344,8 @@ export async function POST(request: NextRequest) {
       if (!shouldUseCached) {
         if (finalExistingEmail && cachedPersona !== emailPersona) {
           console.log(`[Generated Email] Persona mismatch: cached='${cachedPersona}', requested='${emailPersona}', regenerating email with Gemini`);
-        } else {
-          console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+    } else {
+      console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
         }
       }
     }
@@ -543,8 +543,8 @@ export async function POST(request: NextRequest) {
                 console.log('[Save Email] Updating existing email (created_at preserved)');
               }
               
-              const { error: saveError } = await supabase
-                .from('generated_emails')
+          const { error: saveError } = await supabase
+            .from('generated_emails')
                 .upsert(upsertData, {
                   onConflict: 'candidate_id,startup_id',
                 });
@@ -577,11 +577,11 @@ export async function POST(request: NextRequest) {
             const { error: saveError } = await supabase
               .from('generated_emails')
               .upsert(upsertData, {
-                onConflict: 'candidate_id,startup_id',
-              });
+              onConflict: 'candidate_id,startup_id',
+            });
 
-            if (saveError) {
-              console.error('Error saving generated email to database:', saveError);
+          if (saveError) {
+            console.error('Error saving generated email to database:', saveError);
             } else {
               console.log('[Generated Email] Successfully saved email to database');
             }

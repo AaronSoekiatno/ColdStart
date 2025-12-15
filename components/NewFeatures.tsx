@@ -1,6 +1,7 @@
 "use client";
 
 import { Sparkles, Bot, Zap } from "lucide-react";
+import { ScrollAnimate } from "@/components/ScrollAnimate";
 
 export function NewFeatures() {
   const features = [
@@ -34,16 +35,24 @@ export function NewFeatures() {
           {features.map((feature, index) => {
             const Icon = feature.icon;
             return (
-              <div key={index} className="space-y-4 bg-white rounded-2xl p-8 shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-center gap-2 text-gray-500 text-sm">
-                  <Icon className="w-4 h-4" />
-                  <span>{feature.label}</span>
+              <ScrollAnimate
+                key={index}
+                direction="up"
+                delay={index * 100}
+                threshold={0.2}
+                rootMargin="0px"
+              >
+                <div className="space-y-4 bg-white rounded-2xl p-8 shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                  <div className="flex items-center gap-2 text-gray-500 text-sm">
+                    <Icon className="w-4 h-4" />
+                    <span>{feature.label}</span>
+                  </div>
+                  <h3 className="text-2xl font-medium text-gray-900">{feature.title}</h3>
+                  <p className="text-lg text-gray-600 leading-relaxed">
+                    {feature.description}
+                  </p>
                 </div>
-                <h3 className="text-2xl font-medium text-gray-900">{feature.title}</h3>
-                <p className="text-lg text-gray-600 leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
+              </ScrollAnimate>
             );
           })}
         </div>

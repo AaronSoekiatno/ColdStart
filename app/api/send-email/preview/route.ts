@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
         founderEmails: startup.founder_emails || undefined,
         founderLinkedIn: startup.founder_linkedin || undefined,
       },
-            { score: matchScore },
+      { score: matchScore },
             { persona: emailPersona }
     );
 

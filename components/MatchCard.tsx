@@ -300,16 +300,16 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                   const computedPersona = (isPremium === true) ? finalPersona : 'direct-ask';
                   console.log(`[MatchCard] Rendering SendEmailButton - isPremium: ${isPremium}, emailPersona: ${emailPersona}, finalPersona: ${finalPersona}, computed persona: ${computedPersona}`);
                   return (
-                    <SendEmailButton
-                      startupId={match.startup.id}
-                      matchScore={match.score}
-                      founderEmail={selectedFounderEmail}
+              <SendEmailButton
+                startupId={match.startup.id}
+                matchScore={match.score}
+                founderEmail={selectedFounderEmail}
                       persona={computedPersona}
-                      variant="default"
-                      requiresFounderSelection={founderNames.length > 0}
+                variant="default"
+                requiresFounderSelection={founderNames.length > 0}
                       isFounderSelected={selectedFounderIndex !== null}
-                      className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
-                    />
+                className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+              />
                   );
                 })()}
               </div>

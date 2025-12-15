@@ -10,6 +10,7 @@ import { TrustBadge } from "@/components/TrustBadge";
 import { UniversityCarousel } from "@/components/StartupsCarousel";
 import { AIAgentSection } from "@/components/AIAgentSection";
 import { NewFeatures } from "@/components/NewFeatures";
+import { StartupLogoDeck } from "@/components/StartupLogoDeck";
 import { FounderDataSection } from "@/components/FounderDataSection";
 import { NewHowItWorks } from "@/components/NewHowItWorks";
 import { PricingSection } from "@/components/PricingSection";
@@ -408,6 +409,7 @@ export function NewLandingPage() {
         <div className="bg-white">
           <AIAgentSection />
           <NewFeatures />
+          <StartupLogoDeck />
           <FounderDataSection />
           <NewHowItWorks />
           <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />

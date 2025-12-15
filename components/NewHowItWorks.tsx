@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollAnimate } from "@/components/ScrollAnimate";
+
 export function NewHowItWorks() {
   const steps = [
     {
@@ -33,15 +35,23 @@ export function NewHowItWorks() {
       <div className="max-w-6xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
           {steps.map((step, index) => (
-            <div key={index} className="space-y-4 bg-white rounded-2xl p-8 shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-              <div className="text-5xl font-light text-gray-400">
-                {step.number}
+            <ScrollAnimate
+              key={index}
+              direction="up"
+              delay={index * 100}
+              threshold={0.2}
+              rootMargin="0px"
+            >
+              <div className="space-y-4 bg-white rounded-2xl p-8 shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-300">
+                <div className="text-5xl font-light text-gray-400">
+                  {step.number}
+                </div>
+                <h3 className="text-2xl font-medium text-gray-900">{step.title}</h3>
+                <p className="text-base text-gray-600 leading-relaxed">
+                  {step.description}
+                </p>
               </div>
-              <h3 className="text-2xl font-medium text-gray-900">{step.title}</h3>
-              <p className="text-base text-gray-600 leading-relaxed">
-                {step.description}
-              </p>
-            </div>
+            </ScrollAnimate>
           ))}
         </div>
       </div>
