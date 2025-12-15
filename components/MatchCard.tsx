@@ -151,25 +151,37 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
     }
 
     // Map profile pictures to founders by index
-    // If founders table exists, only fill in missing ones; otherwise use founders_pfp for all
+    // If founders table doesn't exist, use founders_pfp for all founders
+    // If founders table exists, only fill in missing ones
     for (let i = 0; i < founderNames.length; i++) {
-      // Only set if not already set from founders table, or if founders table doesn't exist
-      if (!founderProfilePictures[i] && founderProfilePicturesRaw[i]) {
-        founderProfilePictures[i] = founderProfilePicturesRaw[i];
+      // If founders table doesn't exist OR this index doesn't have a picture yet, use founders_pfp
+      if (!foundersFromTable || !founderProfilePictures[i]) {
+        if (founderProfilePicturesRaw[i]) {
+          founderProfilePictures[i] = founderProfilePicturesRaw[i];
+        }
       }
     }
   }
 
   // Debug: Log founder profile pictures
+  const parsedPfp = startup.founders_pfp 
+    ? (Array.isArray(startup.founders_pfp)
+        ? startup.founders_pfp
+        : startup.founders_pfp.split(',').map(url => url.trim()))
+    : [];
+  
   console.log('[MatchCard] Profile picture debug:', {
     startupName: startup.name,
     foundersFromTable: foundersFromTable?.length || 0,
     foundersPfpFromStartup: startup.founders_pfp,
     foundersPfpType: typeof startup.founders_pfp,
     foundersPfpIsArray: Array.isArray(startup.founders_pfp),
-    founderProfilePictures,
+    parsedPfpArray: parsedPfp,
     founderNames,
-    founderProfilePicturesLength: founderProfilePictures.length
+    founderNamesCount: founderNames.length,
+    founderProfilePictures,
+    founderProfilePicturesLength: founderProfilePictures.length,
+    founderProfilePicturesByIndex: founderProfilePictures.map((url, idx) => ({ index: idx, name: founderNames[idx], url }))
   });
 
   // Parse founder backgrounds - use from founders table if available, otherwise parse CSV

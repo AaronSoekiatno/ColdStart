@@ -12,10 +12,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Validate that the URL is from bookface-images.s3.amazonaws.com
-    if (!imageUrl.includes('bookface-images.s3.amazonaws.com')) {
+    // Validate that the URL is from an allowed source
+    // Allow: bookface-images.s3.amazonaws.com (legacy) or Supabase Storage
+    const isAllowedSource = 
+      imageUrl.includes('bookface-images.s3.amazonaws.com') ||
+      imageUrl.includes('supabase.co/storage') ||
+      imageUrl.includes('supabase.com/storage');
+    
+    if (!isAllowedSource) {
       return NextResponse.json(
-        { error: 'Invalid image source' },
+        { error: 'Invalid image source. Only bookface-images.s3.amazonaws.com and Supabase Storage URLs are allowed.' },
         { status: 400 }
       );
     }
