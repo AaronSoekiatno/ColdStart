@@ -10,6 +10,7 @@ interface Resume {
   resumeUrl: string | null;
   name?: string;
   isPrimary: boolean;
+  hasEnhancedVersion?: boolean;
 }
 
 interface ResumePageContentProps {

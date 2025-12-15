@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
       // Note: No download parameter - we want inline display for iframe, not download
       let resumeUrl = null;
       const resume = await getPrimaryResumeForCandidate(candidate.id);
-      if (resume?.resume_path) {
+      if (resume) {
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         if (serviceRoleKey) {
           const supabaseAdmin = createClient(
@@ -175,12 +175,25 @@ export async function POST(request: NextRequest) {
             serviceRoleKey
           );
 
-          const { data } = await supabaseAdmin.storage
-            .from('resumes')
-            .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
+          // Mark this resume as enhanced whenever email tailoring is used
+          if (resume.id) {
+            const { error: markError } = await supabaseAdmin
+              .from('resumes')
+              .update({ has_been_enhanced: true })
+              .eq('id', resume.id);
+            if (markError) {
+              console.error('[Email Generation] Failed to mark resume as enhanced (cached path):', markError);
+            }
+          }
 
-          if (data?.signedUrl) {
-            resumeUrl = data.signedUrl;
+          if (resume.resume_path) {
+            const { data } = await supabaseAdmin.storage
+              .from('resumes')
+              .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
+
+            if (data?.signedUrl) {
+              resumeUrl = data.signedUrl;
+            }
           }
         }
       }
@@ -367,7 +380,7 @@ export async function POST(request: NextRequest) {
     // Note: No download parameter - we want inline display for iframe, not download
     let resumeUrl = null;
     const resume = await getPrimaryResumeForCandidate(candidate.id);
-    if (resume?.resume_path) {
+    if (resume) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (serviceRoleKey) {
         const supabaseAdmin = createClient(
@@ -375,12 +388,25 @@ export async function POST(request: NextRequest) {
           serviceRoleKey
         );
 
-        const { data } = await supabaseAdmin.storage
-          .from('resumes')
-          .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
+        // Mark this resume as enhanced whenever email tailoring is used
+        if (resume.id) {
+          const { error: markError } = await supabaseAdmin
+            .from('resumes')
+            .update({ has_been_enhanced: true })
+            .eq('id', resume.id);
+          if (markError) {
+            console.error('[Email Generation] Failed to mark resume as enhanced:', markError);
+          }
+        }
 
-        if (data?.signedUrl) {
-          resumeUrl = data.signedUrl;
+        if (resume.resume_path) {
+          const { data } = await supabaseAdmin.storage
+            .from('resumes')
+            .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
+
+          if (data?.signedUrl) {
+            resumeUrl = data.signedUrl;
+          }
         }
       }
     }

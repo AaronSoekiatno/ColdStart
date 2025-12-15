@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, Pencil, Trash2, Sparkles } from 'lucide-react';
+import { Eye, Pencil, Trash2, Sparkles, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
@@ -23,6 +23,7 @@ interface ResumeCardProps {
   isPremium?: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
+  hasEnhancedVersion?: boolean;
 }
 
 export function ResumeCard({
@@ -34,6 +35,7 @@ export function ResumeCard({
   isPremium = false,
   isSelected = false,
   onSelect,
+  hasEnhancedVersion = false,
 }: ResumeCardProps) {
   const router = useRouter();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -42,6 +44,7 @@ export function ResumeCard({
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [editedName, setEditedName] = useState(resumeName || fileName);
+  const [isDownloadingNewResume, setIsDownloadingNewResume] = useState(false);
   const { toast } = useToast();
 
   if (!resumeUrl) {
@@ -125,6 +128,69 @@ export function ResumeCard({
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleDownloadNewResume = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!resumeId) return;
+
+    setIsDownloadingNewResume(true);
+    try {
+      // Fetch structured resume data for this resume
+      const resumeResponse = await fetch(`/api/resumes/get-resume?resumeId=${resumeId}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+
+      if (!resumeResponse.ok) {
+        const errorData = await resumeResponse.json().catch(() => ({ error: 'Failed to load resume data' }));
+        throw new Error(errorData.error || 'Failed to load resume data');
+      }
+
+      const resumeJson = await resumeResponse.json();
+      const structuredResumeData = resumeJson.structuredResumeData;
+
+      if (!structuredResumeData) {
+        throw new Error('No structured resume data found for this resume');
+      }
+
+      // Call the same PDF export endpoint used in the tailor page
+      const response = await fetch('/api/resumes/export-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          structuredResumeData,
+          candidateName: structuredResumeData.personal?.name ?? undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to generate PDF' }));
+        throw new Error(errorData.error || 'Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'updated_resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download new resume error:', error);
+      toast({
+        title: 'Failed to download new resume',
+        description: error instanceof Error ? error.message : 'Failed to download PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloadingNewResume(false);
     }
   };
 
@@ -220,6 +286,16 @@ export function ResumeCard({
             <Sparkles className="w-4 h-4" />
             <span>Enhance</span>
           </button>
+          {hasEnhancedVersion && (
+            <button
+              onClick={handleDownloadNewResume}
+              disabled={isDownloadingNewResume}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 hover:bg-blue-400 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>{isDownloadingNewResume ? 'Downloading...' : 'Download New Resume'}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -259,7 +335,7 @@ export function ResumeCard({
               Edit Resume Name
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              Update the name for this resume. This name will be displayed in your resume list.
+              Update the resume name displayed.
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-4">
@@ -297,7 +373,7 @@ export function ResumeCard({
               <button
                 onClick={handleEditName}
                 disabled={isUpdatingName || !editedName.trim() || editedName.trim() === (resumeName || fileName)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-300 hover:bg-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-300 hover:bg-blue-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer hover:shadow-md"
               >
                 {isUpdatingName ? (
                   <>

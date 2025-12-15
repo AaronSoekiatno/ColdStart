@@ -11,6 +11,7 @@ interface Resume {
   resumeUrl: string | null;
   name?: string;
   isPrimary: boolean;
+   hasEnhancedVersion?: boolean;
 }
 
 interface ResumeListProps {
@@ -164,6 +165,7 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
               isPrimary={resume.isPrimary}
               resumeId={resume.id}
               isPremium={isPremium}
+              hasEnhancedVersion={resume.hasEnhancedVersion}
               isSelected={effectiveSelectedResumeId === resume.id}
               onSelect={() => handleCardSelect(resume.id)}
             />

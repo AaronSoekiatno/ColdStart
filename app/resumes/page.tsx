@@ -105,6 +105,8 @@ export default async function ResumePage() {
             resumeUrl: resume.resumeUrl || null,
             name: resume.name,
             isPrimary: resume.id === primaryResumeId,
+            // Consider a resume "enhanced" if it has been explicitly marked in the resumes table
+            hasEnhancedVersion: !!(resume as any).has_been_enhanced,
           }))}
           isPremium={isPremium}
         />

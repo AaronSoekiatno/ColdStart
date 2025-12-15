@@ -40,6 +40,7 @@ function EnhanceResumePageContent() {
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [acceptHistory, setAcceptHistory] = useState<string[]>([]);
   const [isDoneEnhancing, setIsDoneEnhancing] = useState(false);
+  const [showFinishButton, setShowFinishButton] = useState(false);
   const { toast } = useToast();
 
   // Helper function to apply suggestions to structured resume data
@@ -316,11 +317,33 @@ function EnhanceResumePageContent() {
     });
   };
 
-  const handleDoneEnhancing = () => {
-    // Clear all highlights and close any selected suggestion
-    setHighlightedFields(new Set());
-    setSelectedSuggestionId(null);
-    setIsDoneEnhancing(true);
+  const handleDoneEnhancing = async () => {
+    if (showFinishButton) {
+      // Second click - redirect to resumes page
+      router.push('/resumes');
+    } else {
+      // First click - clear highlights and show "Finish" button
+      setHighlightedFields(new Set());
+      setSelectedSuggestionId(null);
+      setIsDoneEnhancing(true);
+      setShowFinishButton(true);
+
+      // Mark this resume as enhanced so the download button appears in the list
+      if (resumeId) {
+        try {
+          await fetch('/api/resumes/mark-enhanced', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ resumeId }),
+          });
+        } catch (error) {
+          console.error('Failed to mark resume as enhanced from Finish button:', error);
+        }
+      }
+    }
   };
 
   if (!user || !resumeId) {
@@ -435,7 +458,7 @@ function EnhanceResumePageContent() {
                       onClick={handleDoneEnhancing}
                       className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
                     >
-                      <span>Done</span>
+                      <span>{showFinishButton ? 'Finish' : 'Done'}</span>
                     </button>
                   )}
                 </div>
