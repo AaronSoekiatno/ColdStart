@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         emailPersona = 'direct-ask';
       } else {
         // Validate persona value
-        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan'];
+        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan', 'value-first'];
         if (validPersonas.includes(persona as EmailPersona)) {
           emailPersona = persona as EmailPersona;
         }

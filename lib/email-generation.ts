@@ -55,7 +55,7 @@ export interface MatchContext {
   totalMatches?: number;
 }
 
-export type EmailPersona = 'direct-ask' | 'genuine-fan';
+export type EmailPersona = 'direct-ask' | 'genuine-fan' | 'value-first';
 
 export interface EmailGenerationOptions {
   persona?: EmailPersona; // Which persona to use for email generation
@@ -376,6 +376,128 @@ Return ONLY valid JSON:
 `.trim();
 }
 
+/**
+ * Builds the email generation prompt using Persona 3: "The Value-First Approach"
+ */
+function buildValueFirstPrompt(
+  candidate: CandidateProfile,
+  startup: StartupInfo,
+  match: MatchContext
+): string {
+  const rawFounderName = startup.founderName || 'Founder';
+  const linksText = candidate.links
+    ? Object.entries(candidate.links)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ')
+    : 'None';
+
+  // Add Novaflow-specific context for testing
+  let scrapedIntel = startup.scrapedContext || 'None available';
+  if (startup.name.toLowerCase() === 'novaflow') {
+    const novaflowContext = `Novaflow is the AI data analyst for biology labs. Bioinformatics data analysis is a time-consuming and expensive process for scientists. With Novaflow, life scientists can upload experimental data, ask questions in plain English, and get instant, publication-ready plots, giving them results in minutes instead of months. Researchers at leading institutions like UCSF, Mount Sinai, UC Berkeley, and Harvard are already using Novaflow in their labs.`;
+    scrapedIntel =
+      scrapedIntel !== 'None available'
+        ? `${scrapedIntel}\n\n${novaflowContext}`
+        : novaflowContext;
+  }
+
+  return `
+You are writing a cold email for ${candidate.name} to ${rawFounderName} at ${startup.name}.
+
+### YOUR PHILOSOPHY
+Talk is cheap. Every student says they're "passionate" and "hardworking." The founders who get 100 emails a week have learned to tune this out.
+
+What they CAN'T ignore: someone who's already done something useful for them.
+
+The Morning Brew intern got hired because she mocked up her resume AS a Morning Brew newsletter. She didn't say "I could help with your newsletter" - she showed it.
+
+Your email should either:
+1. Present something you've already built/found/fixed for them
+2. Propose something so specific they can visualize you doing it
+
+This is the highest-effort approach, but it has the highest hit rate.
+
+### THE RULES
+
+**Subject Line:**
+- Lead with the value, not the ask
+- Examples: "Found 3 bugs in your checkout flow" / "Built a prototype for [specific feature]" / "Idea: [specific suggestion]"
+- The subject alone should make them curious enough to open
+
+**The Email Structure:**
+
+Option A - "I already did the work":
+1. State what you built/found/fixed (one sentence)
+2. Brief context on why/how (one sentence)
+3. Link to the work
+4. Soft ask: "If this is useful, I'd love to do more of it this summer"
+
+Option B - "Here's exactly what I'd do":
+1. Identify a specific problem they likely have
+2. Propose a specific solution with enough detail that they can evaluate it
+3. Explain why you're capable of executing it
+4. Ask for the chance to prove it
+
+**The Value Test:**
+The email should be useful to them even if they don't hire you. They should learn something or get something from reading it.
+
+**What to INCLUDE:**
+- Something concrete: a link, a mockup, a specific technical suggestion
+- Evidence you understand their actual problems (not just their marketing copy)
+- Technical specifics that prove competence
+
+**What to NEVER include:**
+- Generic offers to "help with anything"
+- Vague promises about what you "could" do
+- Lists of skills without application
+
+**Tone:**
+- Confident - you're offering value, not begging for a chance
+- Specific - details matter
+- Humble but not self-deprecating - present your work, let them judge
+
+### NAMING RULES
+- First name unless they have "Dr." or "Prof."
+- If founder name has "Dr." or "Prof." → Use it: "Hi Dr. Smith,"
+- Otherwise → First name only: "Hi Alex,"
+
+### DATA INPUTS
+
+**CANDIDATE:**
+- Name: ${candidate.name}
+- Email: ${candidate.email}
+- Summary: ${candidate.summary}
+- Skills: ${candidate.skills.join(', ')}
+- Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
+- Technical Projects: ${candidate.technicalProjects || 'None listed'}
+- Links: ${linksText}
+- Resume Context: ${candidate.resumeFullText || 'Not provided'}
+
+**STARTUP:**
+- Name: ${startup.name}
+- Founder: ${rawFounderName}
+- Industry: ${startup.industry || 'Not specified'}
+- Description: ${startup.description || 'N/A'}
+- Tech Stack/Tags: ${startup.tags?.join(', ') || 'Not specified'}
+- Recent News/Intel: ${scrapedIntel}
+- Website: ${startup.website || 'Not specified'}
+
+### CRITICAL INSTRUCTION
+You MUST propose something specific. Use the startup description and intel to identify a real problem or opportunity, then either:
+- Describe something concrete you've already built that's relevant
+- Propose a specific technical solution to a problem they likely have
+
+Do NOT fall back to generic "I have skills that could help" language. If you can't find something specific, make an educated guess based on common problems in their industry.
+
+### OUTPUT FORMAT
+Return ONLY valid JSON:
+{
+  "subject": "Your subject line here",
+  "body": "The complete email body"
+}
+`.trim();
+}
+
 // ---------- Public API ----------
 
 /**
@@ -399,9 +521,18 @@ export async function generateColdEmail(
 
   // Select prompt based on persona (default to 'direct-ask')
   const persona = options.persona || 'direct-ask';
-  const prompt = persona === 'genuine-fan' 
-    ? buildGenuineFanPrompt(candidate, startup, match)
-    : buildEmailPrompt(candidate, startup, match);
+  console.log(`[Email Generation] generateColdEmail called with persona: '${persona}'`);
+  let prompt: string;
+  if (persona === 'genuine-fan') {
+    prompt = buildGenuineFanPrompt(candidate, startup, match);
+    console.log(`[Email Generation] Using Genuine Fan prompt`);
+  } else if (persona === 'value-first') {
+    prompt = buildValueFirstPrompt(candidate, startup, match);
+    console.log(`[Email Generation] Using Value-First prompt`);
+  } else {
+    prompt = buildEmailPrompt(candidate, startup, match);
+    console.log(`[Email Generation] Using Direct Ask prompt`);
+  }
 
   const result = await model.generateContent(prompt);
   const responseText = result.response.text();
@@ -471,10 +602,17 @@ export async function* generateColdEmailStream(
   // Select prompt based on persona (default to 'direct-ask')
   const persona = options.persona || 'direct-ask';
   console.log(`[Email Generation] generateColdEmailStream called with persona: '${persona}'`);
-  const prompt = persona === 'genuine-fan' 
-    ? buildGenuineFanPrompt(candidate, startup, match)
-    : buildEmailPrompt(candidate, startup, match);
-  console.log(`[Email Generation] Using ${persona === 'genuine-fan' ? 'Genuine Fan' : 'Direct Ask'} prompt for streaming`);
+  let prompt: string;
+  if (persona === 'genuine-fan') {
+    prompt = buildGenuineFanPrompt(candidate, startup, match);
+    console.log(`[Email Generation] Using Genuine Fan prompt for streaming`);
+  } else if (persona === 'value-first') {
+    prompt = buildValueFirstPrompt(candidate, startup, match);
+    console.log(`[Email Generation] Using Value-First prompt for streaming`);
+  } else {
+    prompt = buildEmailPrompt(candidate, startup, match);
+    console.log(`[Email Generation] Using Direct Ask prompt for streaming`);
+  }
 
   try {
     const result = await model.generateContentStream(prompt);

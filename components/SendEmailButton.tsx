@@ -10,7 +10,7 @@ interface SendEmailButtonProps {
   startupId: string;
   matchScore: number;
   founderEmail?: string;
-  persona?: 'direct-ask' | 'genuine-fan';
+  persona?: 'direct-ask' | 'genuine-fan' | 'value-first';
   onSent?: () => void;
   variant?: "default" | "outline" | "ghost";
   className?: string;

@@ -44,11 +44,11 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
   
   // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
-  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>(() => {
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
     if (typeof window !== 'undefined') {
       const stored = sessionStorage.getItem('emailPersona');
-      if (stored === 'genuine-fan' || stored === 'direct-ask') {
-        return stored;
+      if (stored === 'genuine-fan' || stored === 'direct-ask' || stored === 'value-first') {
+        return stored as 'direct-ask' | 'genuine-fan' | 'value-first';
       }
     }
     return 'direct-ask';
@@ -236,6 +236,22 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                   >
                     Genuine Fan
                   </button>
+                  <button
+                    onClick={() => {
+                      console.log(`[MatchCard] Value-First clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
+                      setEmailPersona('value-first');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'value-first');
+                      }
+                    }}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                      emailPersona === 'value-first'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Value-First
+                  </button>
                 </div>
               )}
               {/* Generate Email Button */}
@@ -244,8 +260,8 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                 let finalPersona = emailPersona;
                 if (typeof window !== 'undefined' && isPremium === true) {
                   const storedPersona = sessionStorage.getItem('emailPersona');
-                  if (storedPersona === 'genuine-fan' || storedPersona === 'direct-ask') {
-                    finalPersona = storedPersona;
+                  if (storedPersona === 'genuine-fan' || storedPersona === 'direct-ask' || storedPersona === 'value-first') {
+                    finalPersona = storedPersona as 'direct-ask' | 'genuine-fan' | 'value-first';
                     // Sync state if it was reset
                     if (finalPersona !== emailPersona) {
                       console.log(`[MatchCard] State mismatch detected - state: ${emailPersona}, sessionStorage: ${storedPersona}, syncing...`);

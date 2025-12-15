@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Email Generation] Free user requested '${persona}', forcing to 'direct-ask'`);
       } else {
         // Validate persona value
-        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan'];
+        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan', 'value-first'];
         if (validPersonas.includes(persona as EmailPersona)) {
           emailPersona = persona as EmailPersona;
           console.log(`[Email Generation] Using persona: '${emailPersona}' (premium: ${isPremium})`);

@@ -43,9 +43,9 @@ export default function GenerateEmailPage() {
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   // Initialize emailPersona from URL param if valid, otherwise default to 'direct-ask'
-  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>(() => {
-    const initialPersona = personaParam === 'genuine-fan' || personaParam === 'direct-ask' 
-      ? personaParam 
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
+    const initialPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first')
+      ? personaParam as 'direct-ask' | 'genuine-fan' | 'value-first'
       : 'direct-ask';
     console.log(`[Generate Email Page] Initializing - personaParam from URL: '${personaParam}', initializing emailPersona to: '${initialPersona}'`);
     return initialPersona;
@@ -90,8 +90,8 @@ export default function GenerateEmailPage() {
 
     // Use personaParam directly from URL as source of truth, fallback to emailPersona state
     // This prevents race conditions where state hasn't synced yet
-    const currentPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask') 
-      ? personaParam 
+    const currentPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first')
+      ? personaParam as 'direct-ask' | 'genuine-fan' | 'value-first'
       : emailPersona;
     
     // Create a unique request key to deduplicate concurrent requests
@@ -357,19 +357,19 @@ export default function GenerateEmailPage() {
   // This MUST run BEFORE the email loading useEffect to ensure state is synced
   useEffect(() => {
     console.log(`[Generate Email Page] Persona sync effect - personaParam: '${personaParam}', emailPersona: '${emailPersona}', isPremium: ${isPremium}`);
-    if (personaParam === 'genuine-fan' || personaParam === 'direct-ask') {
-      // Only allow 'genuine-fan' for premium users
-      if (personaParam === 'genuine-fan' && !isPremium) {
-        // Free users can't use 'genuine-fan' - force to 'direct-ask'
+    if (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first') {
+      // Only allow 'genuine-fan' and 'value-first' for premium users
+      if ((personaParam === 'genuine-fan' || personaParam === 'value-first') && !isPremium) {
+        // Free users can't use premium personas - force to 'direct-ask'
         if (emailPersona !== 'direct-ask') {
-          console.log(`[Generate Email Page] Free user tried to use 'genuine-fan', forcing to 'direct-ask'`);
+          console.log(`[Generate Email Page] Free user tried to use '${personaParam}', forcing to 'direct-ask'`);
           setEmailPersona('direct-ask');
         }
       } else {
         // Only update if different to prevent unnecessary re-renders
         if (emailPersona !== personaParam) {
           console.log(`[Generate Email Page] Syncing emailPersona from '${emailPersona}' to '${personaParam}'`);
-          setEmailPersona(personaParam);
+          setEmailPersona(personaParam as 'direct-ask' | 'genuine-fan' | 'value-first');
         }
       }
     } else {
