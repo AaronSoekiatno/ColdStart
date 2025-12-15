@@ -10,7 +10,6 @@ import {
   type ResumeExtractionResult,
   type ResumeProcessingResult,
 } from './utils';
-import type { StructuredResumeData } from '@/types/resume';
 import { upsertCandidate, findMatchingStartups } from '@/lib/pinecone';
 import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByName, findStartupIdsByNames, getCandidate, getResumeCountForCandidate, createResume } from '@/lib/supabase';
 import { createServerClient } from '@supabase/ssr';
@@ -428,14 +427,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract name, email, skills, and summary using Gemini
-    // Also extract full text and generate LaTeX / structured data for storage in database
+    // Also extract full text and generate LaTeX for storage in database
     // For PDFs: Gemini processes the file directly (no parsing needed!)
     // For DOCX: Text is extracted first, then sent to Gemini
     let extractionResult: ResumeExtractionResult;
     let resumeFullText: string = '';
     let resumeLatex: string = '';
     let rawText: string = '';
-    let structuredResumeData: StructuredResumeData | null = null;
+    let structuredResumeData: any = null;
 
     try {
       const { extraction, fullText, latexCode } = await extractResumeDataWithGemini(file!, buffer, arrayBuffer);
@@ -443,26 +442,10 @@ export async function POST(request: NextRequest) {
       resumeFullText = fullText;
       resumeLatex = latexCode;
       
-      // Build a minimal StructuredResumeData object from the Gemini extraction
-      structuredResumeData = {
-        personal: {
-          // Ensure required strings are never null/undefined
-          name: extractionResult.name || accountName || 'Unknown',
-          email: accountEmail,
-          // Only include location if we have a non-empty string
-          ...(extractionResult.location && { location: extractionResult.location }),
-        },
-        // Optional summary; omit if empty/null
-        ...(extractionResult.summary && { summary: extractionResult.summary }),
-        experience: [],
-        education: [],
-        projects: [],
-        // Filter out any falsy / nullish entries just in case
-        skills: Array.isArray(extractionResult.skills)
-          ? extractionResult.skills.filter((s): s is string => !!s && s.trim().length > 0)
-          : [],
-        certifications: [],
-      };
+      // NOTE: Removed duplicate parseResumeToStructured() call to reduce API costs
+      // The extractResumeDataWithGemini() function already extracts all necessary data
+      // Structured parsing was redundant and added unnecessary API calls
+      console.log('Skipping duplicate structured parsing - using extraction result instead');
       
       // Extract raw text for response
       // For PDFs, use the extracted full text; for DOCX, it's already in resumeFullText
@@ -633,9 +616,9 @@ export async function POST(request: NextRequest) {
           university: extractionResult.university,
           past_internships: extractionResult.past_internships.join(', '),
           technical_projects: extractionResult.technical_projects.join(', '),
-          // Note: resume_path and resume_full_text are deprecated on candidates - using resumes table instead
+          // Note: resume_path and resume_full_text are deprecated - using resumes table instead
           resume_latex: resumeLatex, // Store LaTeX source for editing
-          // structured_resume_data intentionally omitted for new uploads; structured data now lives on the resumes table
+          structured_resume_data: structuredResumeData, // Store structured data for template editing
         });
         candidateId = savedCandidate.id; // Get the UUID
         subscriptionTier = savedCandidate.subscription_tier || 'free';
@@ -661,8 +644,6 @@ export async function POST(request: NextRequest) {
           file_name: resumeFileName,
           resume_path: resumePath,
           resume_full_text: resumeFullText,
-          // Store structured data on the resume as well for per-resume tailoring
-          structured_data: structuredResumeData || undefined,
           is_active: true, // New resumes are active by default
           is_primary: shouldSetAsPrimary, // First resume is automatically primary
         });

@@ -76,7 +76,7 @@ export interface CandidateRow {
   resume_path?: string; // Path to resume file in Supabase Storage (DEPRECATED - use resumes table)
   resume_full_text?: string; // Full extracted text content from resume (DEPRECATED - use resumes table)
   resume_latex?: string; // LaTeX source code generated from resume
-  // structured_resume_data?: any; // JSON structured resume data (StructuredResumeData) - deprecated; use resumes.structured_data instead
+  structured_resume_data?: any; // JSON structured resume data (StructuredResumeData)
   subscription_tier?: 'free' | 'premium'; // Subscription tier
   stripe_customer_id?: string; // Stripe customer ID
   stripe_subscription_id?: string; // Stripe subscription ID
@@ -139,6 +139,7 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
         resume_path: candidate.resume_path,
         resume_full_text: candidate.resume_full_text,
         resume_latex: candidate.resume_latex,
+        structured_resume_data: candidate.structured_resume_data,
         created_at: candidate.created_at || new Date().toISOString(),
       },
       {
@@ -496,25 +497,12 @@ export async function saveMatches(
     throw new Error(`Failed to clear old matches: ${deleteError.message}`);
   }
 
-  // Deduplicate by startup_id in case upstream matching returns duplicates.
-  // Keep the highest score per startup_id to avoid unique constraint violations
-  // on (candidate_id, startup_id).
-  const bestByStartupId = new Map<string, number>();
-  for (const match of matches) {
-    if (!match.startup_id) continue;
-    const prev = bestByStartupId.get(match.startup_id);
-    if (prev === undefined || match.score > prev) {
-      bestByStartupId.set(match.startup_id, match.score);
-    }
-  }
-
   // Now insert the new matches
-  const nowISO = new Date().toISOString();
-  const matchRows = Array.from(bestByStartupId.entries()).map(([startup_id, score]) => ({
+  const matchRows = matches.map((match) => ({
     candidate_id: candidateId,
-    startup_id,
-    score,
-    matched_at: nowISO,
+    startup_id: match.startup_id,
+    score: match.score,
+    matched_at: new Date().toISOString(),
   }));
 
   const { data, error } = await client
@@ -602,7 +590,6 @@ export async function createResume(resume: {
   file_name: string;
   resume_path?: string;
   resume_full_text?: string;
-  structured_data?: any;
   is_active?: boolean;
   is_primary?: boolean;
 }) {
@@ -626,7 +613,6 @@ export async function createResume(resume: {
       ...resume,
       is_active: resume.is_active !== undefined ? resume.is_active : true, // Default to active
       is_primary: resume.is_primary !== undefined ? resume.is_primary : false, // Default to false
-      has_been_enhanced: false, // New resumes have not been enhanced yet
     })
     .select()
     .single();
