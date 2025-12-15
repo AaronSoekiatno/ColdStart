@@ -38,9 +38,8 @@ interface MatchCardProps {
 const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   const companySectionRef = useRef<HTMLDivElement>(null);
   const foundersSectionRef = useRef<HTMLDivElement>(null);
-  // For premium users: array of selected indices (multiple selection)
-  // For free users: array with max 1 item (single selection)
-  const [selectedFounderIndices, setSelectedFounderIndices] = useState<number[]>([]);
+  // Single founder selection (always single selection for all users)
+  const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
   const [showPersonaOptions, setShowPersonaOptions] = useState(false);
   const hidePersonaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -123,14 +122,9 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
     return '';
   });
 
-  // Get selected founder emails (single for free, multiple for premium)
-  const selectedFounderEmails = selectedFounderIndices
-    .map(index => founderEmails[index])
-    .filter((email): email is string => !!email);
-  
-  // For backward compatibility with SendEmailButton, pass comma-separated string for multiple
-  const selectedFounderEmail = selectedFounderEmails.length > 0 
-    ? selectedFounderEmails.join(',') 
+  // Get selected founder email (single selection only)
+  const selectedFounderEmail = selectedFounderIndex !== null && founderEmails[selectedFounderIndex]
+    ? founderEmails[selectedFounderIndex]
     : undefined;
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>, tab: 'company' | 'founders') => {
@@ -313,7 +307,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                       persona={computedPersona}
                       variant="default"
                       requiresFounderSelection={founderNames.length > 0}
-                      isFounderSelected={selectedFounderIndices.length > 0}
+                      isFounderSelected={selectedFounderIndex !== null}
                       className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
                     />
                   );
@@ -442,7 +436,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
           <div className="flex items-center justify-between mb-3 md:mb-4">
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
             <p className="text-sm sm:text-base text-gray-600">
-              {isPremium ? 'Select founders' : 'Select a founder'}
+              Select a founder
             </p>
           </div>
           <div className="flex flex-col gap-3 md:gap-4">
@@ -453,25 +447,14 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
               const lastName = nameParts.slice(1).join(' ') || '';
               const initial = firstName[0] || lastName[0] || '?';
 
-              const isSelected = selectedFounderIndices.includes(index);
+              const isSelected = selectedFounderIndex === index;
               
               const handleFounderToggle = (e?: React.ChangeEvent<HTMLInputElement> | React.MouseEvent) => {
                 if (e) {
                   e.stopPropagation();
                 }
-                if (isPremium) {
-                  // Premium: toggle selection (multiple allowed)
-                  setSelectedFounderIndices(prev => 
-                    prev.includes(index)
-                      ? prev.filter(i => i !== index)
-                      : [...prev, index]
-                  );
-                } else {
-                  // Free: single selection only
-                  setSelectedFounderIndices(prev => 
-                    prev.includes(index) ? [] : [index]
-                  );
-                }
+                // Single selection only - toggle if clicking same, select if different
+                setSelectedFounderIndex(prev => prev === index ? null : index);
               };
               
               const handleCardClick = (e: React.MouseEvent) => {
@@ -550,16 +533,14 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                         </div>
         )}
       </div>
-                    {/* Selection Control - Checkbox for premium, Radio for free */}
+                    {/* Selection Control - Radio button for single selection */}
                     <div className="flex-shrink-0 flex items-center">
                       <input
-                        type={isPremium ? "checkbox" : "radio"}
-                        name={isPremium ? `founder-checkbox-${index}` : "founder-selection"}
+                        type="radio"
+                        name="founder-selection"
                         checked={isSelected}
                         onChange={handleFounderToggle}
-                        className={`w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer ${
-                          isPremium ? 'rounded' : ''
-                        }`}
+                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                         onClick={(e) => e.stopPropagation()}
                       />
                     </div>

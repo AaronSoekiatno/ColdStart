@@ -19,7 +19,6 @@ const freeFeatures = [
 
 const premiumFeatures = [
   "All free features",
-  "Send to multiple founders simultaneously",
   "Email persona selection",
   "Resume editor",
   "Unlimited uploaded resumes",
@@ -84,7 +83,7 @@ export function PricingSection({ userEmail, onGetStarted }: PricingSectionProps)
               <h3 className="text-3xl font-bold text-gray-900 mb-2">Premium</h3>
               <p className="text-gray-600 text-sm mb-4">Unlock all features and unlimited matches</p>
               <div className="mb-2">
-                <span className="text-4xl font-bold text-gray-900">$15</span>
+                <span className="text-4xl font-bold text-gray-900">$20</span>
                 <span className="text-gray-600 text-lg ml-2">/month</span>
               </div>
               <div className="text-blue-600 text-sm font-semibold">$0 payment today</div>
