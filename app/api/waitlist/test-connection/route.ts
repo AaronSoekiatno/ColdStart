@@ -9,11 +9,31 @@ export async function GET() {
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
+    // Check if it's an empty string vs undefined
+    const envKeys = Object.keys(process.env).filter(key => key.includes('RESEND'));
     return NextResponse.json(
       {
         success: false,
         error: 'RESEND_API_KEY environment variable is not set',
         hasApiKey: false,
+        debug: {
+          foundResendVars: envKeys,
+          hint: 'Make sure RESEND_API_KEY is in .env.local and restart your dev server',
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  // Check if API key looks valid (starts with 're_' for Resend)
+  if (!apiKey.startsWith('re_')) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'API key format appears invalid. Resend API keys should start with "re_"',
+        hasApiKey: true,
+        apiKeyPrefix: apiKey.substring(0, 10) + '...',
+        hint: 'Double-check your API key from the Resend dashboard',
       },
       { status: 400 }
     );
