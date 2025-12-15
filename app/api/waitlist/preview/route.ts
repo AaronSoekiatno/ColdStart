@@ -127,7 +127,7 @@ export async function GET() {
 
         <!-- CTA Button -->
         <div style="margin-top: 40px; text-align: center;">
-          <a href="${APP_URL}" 
+          <a href="https://joinhermes.co" 
              style="display: inline-block; background: linear-gradient(135deg, #d4a853 0%, #c9a356 100%); color: #0f0f1a; padding: 16px 40px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 10px 25px rgba(212, 168, 83, 0.25);">
             Get Started Now
           </a>
