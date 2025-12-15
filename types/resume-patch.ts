@@ -43,10 +43,7 @@ export interface ResumePatch {
   
   /** Human-readable reason for this change */
   reason: string;
-  
-  /** ATS keywords added by this change */
-  keywords?: string[];
-  
+
   /** Section name for UI display */
   section?: string;
 }

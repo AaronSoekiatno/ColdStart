@@ -156,6 +156,55 @@
   animation: fade-in 1s ease-out 0.3s both;
 }
 
+/* Print-only styling for resume template export */
+@media print {
+  /* Hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Only show the resume preview and its children */
+  .resume-print-root,
+  .resume-print-root * {
+    visibility: visible;
+  }
+
+  /* Position the resume at the top-left for printing */
+  .resume-print-root {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    /* Slight global scale-down to better fit on a single page */
+    transform: scale(0.9);
+    transform-origin: top left;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Tighten typography inside the Jake template for print */
+  .resume-print-root .max-w-\[8\.5in\] {
+    padding: 1.5rem !important; /* reduce from p-8 */
+  }
+
+  .resume-print-root h1 {
+    font-size: 20pt !important;
+  }
+
+  .resume-print-root p,
+  .resume-print-root li {
+    font-size: 10pt !important;
+    line-height: 1.35 !important;
+  }
+
+  @page {
+    size: Letter;
+    margin: 0.75in;
+  }
+}
+
 /* 3D Flip Card Styles */
 .perspective-1000 {
   perspective: 1000px;
