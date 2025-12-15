@@ -327,9 +327,42 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
  */
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
-  const subscriptionId = typeof (invoice as any).subscription === 'string' ? (invoice as any).subscription : (invoice as any).subscription?.id;
+  
+  // Try multiple ways to get subscription ID from invoice
+  // Stripe can structure this differently depending on how the invoice is expanded
+  let subscriptionId: string | null = null;
+  
+  // Method 1: Direct subscription field (string or expanded object)
+  const invoiceSubscription = (invoice as any).subscription;
+  if (invoiceSubscription) {
+    subscriptionId = typeof invoiceSubscription === 'string' 
+      ? invoiceSubscription 
+      : invoiceSubscription.id;
+  }
+  
+  // Method 2: Nested in parent.subscription_details (common in webhook payloads)
+  if (!subscriptionId && (invoice as any).parent?.subscription_details?.subscription) {
+    subscriptionId = (invoice as any).parent.subscription_details.subscription;
+  }
+  
+  // Method 3: From invoice lines (fallback - subscription might be in line items)
+  if (!subscriptionId && invoice.lines?.data && invoice.lines.data.length > 0) {
+    for (const line of invoice.lines.data) {
+      const lineParent = (line as any).parent;
+      if (lineParent?.subscription_item_details?.subscription) {
+        subscriptionId = lineParent.subscription_item_details.subscription;
+        break;
+      }
+    }
+  }
 
   if (!subscriptionId) {
+    console.log('No subscription ID found in invoice, skipping payment succeeded handler', {
+      hasDirectSubscription: !!(invoice as any).subscription,
+      hasParent: !!(invoice as any).parent,
+      hasLines: !!invoice.lines?.data,
+      billingReason: (invoice as any).billing_reason,
+    });
     return; // Not a subscription payment
   }
 
@@ -337,23 +370,35 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
 
   // Ensure subscription tier and status are updated - retrieve subscription and update if needed
   if (!supabaseAdmin) {
+    console.error('Supabase admin client not initialized');
     return;
   }
 
   try {
-    const { data: candidate } = await supabaseAdmin
+    const { data: candidate, error: candidateError } = await supabaseAdmin
       .from('candidates')
       .select('email, subscription_tier, subscription_status')
       .eq('stripe_customer_id', customerId)
       .single();
 
-    if (!candidate) {
+    if (candidateError || !candidate) {
+      console.error('Could not find candidate for customer:', customerId, candidateError);
       return;
     }
 
     // Retrieve subscription from Stripe to get current status
     const stripe = getStripe();
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    let subscription: Stripe.Subscription;
+    try {
+      subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    } catch (stripeError: any) {
+      console.error('Error retrieving subscription from Stripe:', {
+        subscriptionId,
+        error: stripeError.message,
+        code: stripeError.code,
+      });
+      throw new Error(`Failed to retrieve subscription ${subscriptionId}: ${stripeError.message}`);
+    }
     const stripeStatus = subscription.status;
     // Safely handle current_period_end - it might be null/undefined
     const periodEnd = (subscription as any).current_period_end;
@@ -401,15 +446,27 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
       updateData.subscription_tier = 'free';
     }
 
-    await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from('candidates')
       .update(updateData)
       .eq('email', candidate.email);
 
+    if (updateError) {
+      console.error('Error updating candidate subscription after payment succeeded:', updateError);
+      throw updateError;
+    }
+
     console.log(`✅ Updated ${candidate.email} subscription: tier=${updateData.subscription_tier}, status=${subscriptionStatus} after payment succeeded`);
   } catch (error: any) {
     console.error('Error updating subscription after payment succeeded:', error);
-    // Don't throw - subscription.updated event will handle it
+    // Don't throw - this is a safety check, subscription.updated event will handle it
+    // Log the error but don't fail the webhook since other events handle the main updates
+    // Only throw for critical errors that need retry
+    if (error?.message?.includes('Supabase admin client not initialized')) {
+      throw error; // Critical - need admin client
+    }
+    // For other errors, log but don't fail the webhook
+    // The subscription.updated event will ensure the data is correct
   }
 }
 

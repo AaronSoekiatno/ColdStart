@@ -73,6 +73,8 @@ export interface CandidateRow {
   technical_projects?: string; // Comma-separated string
   resume_path?: string; // Path to resume file in Supabase Storage (DEPRECATED - use resumes table)
   resume_full_text?: string; // Full extracted text content from resume (DEPRECATED - use resumes table)
+  resume_latex?: string; // LaTeX source code generated from resume
+  structured_resume_data?: any; // JSON structured resume data (StructuredResumeData)
   subscription_tier?: 'free' | 'premium'; // Subscription tier
   stripe_customer_id?: string; // Stripe customer ID
   stripe_subscription_id?: string; // Stripe subscription ID
@@ -132,6 +134,8 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
         technical_projects: candidate.technical_projects,
         resume_path: candidate.resume_path,
         resume_full_text: candidate.resume_full_text,
+        resume_latex: candidate.resume_latex,
+        structured_resume_data: candidate.structured_resume_data,
         created_at: candidate.created_at || new Date().toISOString(),
       },
       {
@@ -181,7 +185,7 @@ export interface StartupRow {
   funding_amount: string;
   location: string;
   website: string;
-  tags: string;
+  keywords: string; // Tags/keywords for the startup (matches actual DB column)
   founder_emails?: string;
   founder_names?: string;
   founder_linkedin?: string;
@@ -189,6 +193,13 @@ export interface StartupRow {
   job_openings?: string;
   date_raised?: string;
   created_at?: string;
+  // Additional YC-specific fields
+  yc_link?: string;
+  company_logo?: string;
+  business_type?: string;
+  team_size?: string;
+  hiring_roles?: string; // Active job postings with descriptions
+  round_type?: string;
 }
 
 /**
@@ -222,7 +233,7 @@ export async function saveStartup(startup: StartupRow) {
     funding_amount: startup.funding_amount !== undefined ? startup.funding_amount : (existing?.funding_amount || ''),
     location: startup.location !== undefined ? startup.location : (existing?.location || ''),
     website: startup.website !== undefined ? startup.website : (existing?.website || ''),
-    tags: startup.tags !== undefined ? startup.tags : (existing?.tags || ''),
+    keywords: startup.keywords !== undefined ? startup.keywords : (existing?.keywords || ''),
     created_at: startup.created_at || existing?.created_at || new Date().toISOString(),
   };
 

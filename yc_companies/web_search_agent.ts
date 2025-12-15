@@ -1829,7 +1829,7 @@ EXAMPLES OF BAD DESCRIPTIONS (too short):
   try {
     await rateLimitGemini();
     const modelName = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-    const model = genAI.getGenerativeModel({ modelName });
+    const model = genAI.getGenerativeModel({ model: modelName });
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();

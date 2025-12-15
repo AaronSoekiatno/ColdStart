@@ -44,7 +44,7 @@ export const PRODUCT_CONFIG = {
   PREMIUM: {
     name: 'ColdStart Premium',
     description: 'Unlimited matches, resume tailoring, cold DM generation, and automated outreach',
-    price: 10.00, // $10/month
+    price: 20.00, // $20/month
     currency: 'usd',
     interval: 'month' as const,
     trialPeriodDays: 7, // 7-day free trial

@@ -2,6 +2,7 @@
 
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { calculateInlineDiff, type DiffPart } from "@/lib/inline-diff";
 
 interface DiffBlockProps {
   suggestion: {
@@ -18,6 +19,43 @@ interface DiffBlockProps {
 }
 
 export function DiffBlock({ suggestion, status, onAccept, onReject }: DiffBlockProps) {
+  // Calculate inline diff for word-level changes
+  const diffParts = calculateInlineDiff(suggestion.original, suggestion.suggested);
+
+  // Render inline diff with Grammarly-style highlighting
+  const renderInlineDiff = () => {
+    return (
+      <div className="leading-relaxed text-sm text-gray-900">
+        {diffParts.map((part, index) => {
+          if (part.type === 'removed') {
+            // Red strikethrough for removed text
+            return (
+              <span
+                key={index}
+                className="bg-red-100 text-red-700 line-through decoration-red-500 decoration-2"
+              >
+                {part.text}
+              </span>
+            );
+          } else if (part.type === 'added') {
+            // Green highlight for added text
+            return (
+              <span
+                key={index}
+                className="bg-green-100 text-green-700 font-medium"
+              >
+                {part.text}
+              </span>
+            );
+          } else {
+            // Unchanged text
+            return <span key={index}>{part.text}</span>;
+          }
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className={`border rounded-lg mb-3 overflow-hidden transition-all ${
       status === 'accepted' ? 'border-green-500/50 bg-green-50' :
@@ -62,19 +100,9 @@ export function DiffBlock({ suggestion, status, onAccept, onReject }: DiffBlockP
         )}
       </div>
 
-      {/* Diff Content */}
-      <div className="p-3 font-mono text-xs space-y-2">
-        {/* Original (removed) */}
-        <div className="bg-red-50 text-red-700 px-3 py-2 rounded border-l-2 border-red-400">
-          <span className="text-red-600 mr-2">-</span>
-          {suggestion.original}
-        </div>
-
-        {/* Suggested (added) */}
-        <div className="bg-green-50 text-green-700 px-3 py-2 rounded border-l-2 border-green-400">
-          <span className="text-green-600 mr-2">+</span>
-          {suggestion.suggested}
-        </div>
+      {/* Inline Diff Content */}
+      <div className="px-4 py-3">
+        {renderInlineDiff()}
       </div>
 
       {/* Reason */}
