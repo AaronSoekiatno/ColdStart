@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin, getCandidate, saveCandidate, upsertCandidate, saveMatches, findStartupIdsByNames, saveStartup, createResume, getResumeCountForCandidate } from '@/lib/supabase';
+import { supabaseAdmin, getCandidate, saveCandidate, saveMatches, findStartupIdsByNames, saveStartup, createResume, getResumeCountForCandidate } from '@/lib/supabase';
+import { upsertCandidate } from '@/lib/pinecone';
 import { parseResumeToStructured } from '@/lib/parse-resume';
 import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
 

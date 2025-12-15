@@ -10,7 +10,8 @@
       "Bash(npm install:*)",
       "Bash(npm run type-check:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx next lint:*)"
+      "Bash(npx next lint:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

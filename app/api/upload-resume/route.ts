@@ -448,7 +448,7 @@ export async function POST(request: NextRequest) {
         personal: {
           // Ensure required strings are never null/undefined
           name: extractionResult.name || accountName || 'Unknown',
-          email: accountEmail,
+          email: accountEmail || '',
           // Only include location if we have a non-empty string
           ...(extractionResult.location && { location: extractionResult.location }),
         },

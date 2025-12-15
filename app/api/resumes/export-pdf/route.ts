@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     const browser = await puppeteer.launch({
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-      headless: "new",
+      headless: true,
     });
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       (candidateName || structuredResumeData.personal.name || "resume")
         .replace(/\s+/g, "_") + "_Hermes.pdf";
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",

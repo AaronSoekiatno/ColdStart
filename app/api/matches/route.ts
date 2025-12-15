@@ -185,8 +185,8 @@ export async function GET(request: NextRequest) {
           // Parse founders_pfp array (could be array or comma-separated string)
           const foundersPfpArray: string[] = s.founders_pfp
             ? Array.isArray(s.founders_pfp)
-              ? s.founders_pfp.map(url => String(url).trim()).filter(url => url && url !== '')
-              : String(s.founders_pfp).split(',').map(url => url.trim()).filter(url => url && url !== '')
+              ? s.founders_pfp.map((url: any) => String(url).trim()).filter((url: string) => url && url !== '')
+              : String(s.founders_pfp).split(',').map((url: string) => url.trim()).filter((url: string) => url && url !== '')
             : [];
 
           // Map profile pictures to founders by index

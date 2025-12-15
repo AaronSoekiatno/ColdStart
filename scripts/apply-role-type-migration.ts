@@ -22,7 +22,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 async function applyMigration() {
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const supabase = createClient(supabaseUrl!, supabaseServiceKey!);
   
   // Read the migration file
   const migrationPath = path.join(process.cwd(), 'supabase', 'migrations', '022_add_role_type_to_candidates.sql');
