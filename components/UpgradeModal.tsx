@@ -166,7 +166,7 @@ export function UpgradeModal({ open, onOpenChange, hiddenMatchCount, email, onDi
                   <h3 className="text-xl font-bold text-white mb-1">Premium</h3>
                   <p className="text-white/60 text-xs mb-3">Unlock all features and unlimited matches</p>
                   <div className="mb-1">
-                    <span className={`text-2xl font-bold text-white ${!isPremium ? 'line-through decoration-2' : ''}`}>$15</span>
+                    <span className={`text-2xl font-bold text-white ${!isPremium ? 'line-through decoration-2' : ''}`}>$20</span>
                     <span className="text-white/60 text-sm ml-1">USD</span>
                   </div>
                   <div className="text-white/60 text-xs mb-1">/ month</div>
