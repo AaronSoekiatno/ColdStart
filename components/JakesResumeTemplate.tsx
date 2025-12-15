@@ -1,14 +1,51 @@
 "use client";
 
 import type { StructuredResumeData, ExperienceItem, EducationItem, ProjectItem } from '@/types/resume';
+import { calculateInlineDiff } from '@/lib/inline-diff';
 
 interface JakesResumeTemplateProps {
   data: StructuredResumeData;
   highlightedFields?: Set<string>; // Field paths like "experience[0].description[1]" (ResumePath is string)
+  pathToSuggestionId?: Map<string, string>; // Map field paths to suggestion IDs
+  pathToSuggestion?: Map<string, { original: string; suggested: string }>; // Map field paths to suggestion text
+  onHover?: (suggestionId: string, event: React.MouseEvent) => void;
+  onLeave?: () => void;
 }
 
-export function JakesResumeTemplate({ data, highlightedFields = new Set() }: JakesResumeTemplateProps) {
+export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), onHover, onLeave }: JakesResumeTemplateProps) {
   const isHighlighted = (fieldPath: string) => highlightedFields.has(fieldPath);
+  const getSuggestionId = (fieldPath: string) => pathToSuggestionId.get(fieldPath);
+  const getSuggestion = (fieldPath: string) => pathToSuggestion.get(fieldPath);
+  
+  const renderDiffText = (text: string, fieldPath: string) => {
+    const suggestion = getSuggestion(fieldPath);
+    if (!suggestion) return text;
+    
+    const diffParts = calculateInlineDiff(suggestion.original, suggestion.suggested);
+    return diffParts.map((part, index) => {
+      if (part.type === 'removed') {
+        return (
+          <span
+            key={index}
+            className="bg-red-100 text-gray-900 line-through decoration-red-500 decoration-2"
+          >
+            {part.text}
+          </span>
+        );
+      } else if (part.type === 'added') {
+        return (
+          <span
+            key={index}
+            className="bg-green-100 text-gray-900"
+          >
+            {part.text}
+          </span>
+        );
+      } else {
+        return <span key={index} className="text-gray-900">{part.text}</span>;
+      }
+    });
+  };
 
   return (
     <div className="w-full h-full overflow-auto bg-white">
@@ -38,11 +75,20 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
         </div>
 
         {/* Summary */}
-        {data.summary && (
-          <div className={`mb-3 ${isHighlighted('summary') ? 'bg-green-50 px-2 py-1 border-l-2 border-green-400' : ''}`}>
-            <p className="text-justify text-sm leading-relaxed">{data.summary}</p>
-          </div>
-        )}
+        {data.summary && (() => {
+          const fieldPath = 'summary';
+          const suggestionId = getSuggestionId(fieldPath);
+          const highlighted = isHighlighted(fieldPath);
+          return (
+            <div 
+              className={`mb-3 ${highlighted ? 'px-2 py-1 cursor-pointer' : ''}`}
+              onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
+              onMouseLeave={highlighted && onLeave ? onLeave : undefined}
+            >
+              <p className="text-justify text-sm leading-relaxed">{data.summary}</p>
+            </div>
+          );
+        })()}
 
         {/* Education */}
         {data.education.length > 0 && (
@@ -109,13 +155,17 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                 <ul className="list-none ml-4 mt-0.5 space-y-0.5">
                   {exp.description.map((bullet, bulletIdx) => {
                     const fieldPath = `experience[${expIdx}].description[${bulletIdx}]`;
+                    const suggestionId = getSuggestionId(fieldPath);
+                    const highlighted = isHighlighted(fieldPath);
                     return (
                       <li
                         key={bulletIdx}
-                        className={`text-xs leading-relaxed ${isHighlighted(fieldPath) ? 'bg-green-50 px-1 border-l-2 border-green-400' : ''}`}
+                        className={`text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''}`}
+                        onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
+                        onMouseLeave={highlighted && onLeave ? onLeave : undefined}
                       >
                         <span className="mr-1.5">•</span>
-                        {bullet}
+                        {highlighted ? renderDiffText(bullet, fieldPath) : bullet}
                       </li>
                     );
                   })}
@@ -137,7 +187,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
               return (
                 <div
                   key={project.id}
-                  className={`mb-2 ${isProjectHighlighted ? 'bg-green-50 px-2 py-1 border-l-2 border-green-400' : ''}`}
+                  className={`mb-2 ${isProjectHighlighted ? 'px-2 py-1' : ''}`}
                 >
                   <div className="flex justify-between items-start mb-0.5">
                     <div className="flex-1">
@@ -163,15 +213,18 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                     {Array.isArray(project.description) 
                       ? project.description.map((bullet, bulletIdx) => {
                           const bulletPath = `projects[${projIdx}].description[${bulletIdx}]`;
+                          const suggestionId = getSuggestionId(bulletPath);
                           const isBulletHighlighted = isHighlighted(bulletPath);
                           const cleanBullet = typeof bullet === 'string' ? bullet.trim().replace(/^[-•*]\s*/, '') : String(bullet).trim();
                           return (
                             <li
                               key={bulletIdx}
-                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'bg-green-50 px-1 border-l-2 border-green-400' : ''}`}
+                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''}`}
+                              onMouseEnter={isBulletHighlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
+                              onMouseLeave={isBulletHighlighted && onLeave ? onLeave : undefined}
                             >
                               <span className="mr-1.5">•</span>
-                              {cleanBullet}
+                              {isBulletHighlighted ? renderDiffText(cleanBullet, bulletPath) : cleanBullet}
                             </li>
                           );
                         })
@@ -185,7 +238,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
                             return (
                               <li
                                 key={bulletIdx}
-                                className={`text-xs leading-relaxed ${isBulletHighlighted ? 'bg-green-50 px-1 border-l-2 border-green-400' : ''}`}
+                                className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1' : ''}`}
                               >
                                 <span className="mr-1.5">•</span>
                                 {cleanBullet}
@@ -206,7 +259,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set() }: Jak
             <h2 className="text-base font-bold uppercase mb-2 pb-1 border-b border-gray-800 tracking-wide" style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Technical Skills
             </h2>
-            <div className={isHighlighted('skills') ? 'bg-green-50 px-2 py-1 border-l-2 border-green-400' : ''}>
+            <div className={isHighlighted('skills') ? 'px-2 py-1' : ''}>
               <p className="text-xs leading-relaxed">{data.skills.join(', ')}</p>
             </div>
           </div>
