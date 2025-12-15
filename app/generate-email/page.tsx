@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import { calculateInlineDiff } from "@/lib/inline-diff";
 import type { StructuredResumeData } from "@/types/resume";
 import type { ResumePatch, ResumePath } from "@/types/resume-patch";
 import { applyPatches } from "@/lib/resume-patch";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
@@ -31,7 +30,7 @@ interface ResumeSuggestion {
   patch?: ResumePatch; // New patch-based field
 }
 
-export default function GenerateEmailPage() {
+function GenerateEmailPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const startupId = searchParams.get("startupId");
@@ -63,6 +62,92 @@ export default function GenerateEmailPage() {
   const resumePreviewRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Helper function to apply suggestions to structured resume data
+  const applySuggestionsToStructuredData = (
+    data: StructuredResumeData,
+    suggestions: ResumeSuggestion[]
+  ): { updatedData: StructuredResumeData; highlightedFields: Set<ResumePath> } => {
+    // Filter suggestions that have patches
+    const patches = suggestions
+      .filter(s => s.patch)
+      .map(s => s.patch!);
+    
+    // Apply all patches
+    const result = applyPatches(data, patches);
+    
+    return {
+      updatedData: result.updatedData,
+      highlightedFields: result.modifiedPaths,
+    };
+  };
+
+  // Handler for downloading PDF with applied suggestions
+  const handleDownloadPDF = async () => {
+    if (!structuredResumeData || !user) return;
+
+    try {
+      // Get accepted suggestions
+      const acceptedSuggestions = resumeSuggestions.filter(
+        s => suggestionStatuses[s.id] === 'accepted'
+      );
+
+      if (acceptedSuggestions.length === 0) {
+        toast({
+          title: "No changes to download",
+          description: "Please accept some suggestions before downloading.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Call API to generate and download PDF
+      const response = await fetch("/api/apply-resume-suggestions", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          acceptedSuggestions: acceptedSuggestions.map(s => ({
+            id: s.id,
+            section: s.section,
+            original: s.original,
+            suggested: s.suggested,
+            reason: s.reason,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate PDF');
+      }
+
+      // Download the PDF
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'updated_resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "PDF downloaded",
+        description: "Your updated resume has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Download PDF error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to download PDF';
+      toast({
+        title: "Failed to download PDF",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     // Check auth and premium status
@@ -305,6 +390,7 @@ export default function GenerateEmailPage() {
           description: errorMessage,
           variant: "destructive",
         });
+      }
     }
   };
 
@@ -947,3 +1033,14 @@ export default function GenerateEmailPage() {
   );
 }
 
+export default function GenerateEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      </div>
+    }>
+      <GenerateEmailPageContent />
+    </Suspense>
+  );
+}

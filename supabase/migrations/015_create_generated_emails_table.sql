@@ -5,7 +5,7 @@ create table if not exists public.generated_emails (
   id uuid default gen_random_uuid() primary key,
   candidate_id uuid not null references public.candidates(id) on delete cascade,
   startup_id text not null references public.startups(id) on delete cascade,
-  email_tone text, -- 'professional_casual', 'enthusiastic', 'conversational', or null for default (stored but not part of uniqueness)
+  email_tone text, -- 'professional', 'classy', 'informative', 'ambitious', 'conversational', or null for default (stored but not part of uniqueness)
   subject text not null,
   body text not null,
   match_score numeric,

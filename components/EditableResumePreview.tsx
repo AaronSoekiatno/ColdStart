@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 
 interface Suggestion {
   id: string;
@@ -42,7 +42,7 @@ export function EditableResumePreview({ originalText, acceptedSuggestions }: Edi
   // Format text into styled sections
   const renderFormattedContent = useMemo(() => {
     const lines = updatedText.split('\n');
-    const sections: JSX.Element[] = [];
+    const sections: React.ReactElement[] = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];

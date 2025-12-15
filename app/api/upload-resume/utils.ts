@@ -64,7 +64,9 @@ export async function extractPdfText(buffer: Buffer): Promise<string> {
     // Dynamic import for CommonJS module compatibility
     // pdf-parse is a CommonJS module, so we need to handle it differently
     const pdfParseModule = await import('pdf-parse');
-    const pdfParse = pdfParseModule.default || pdfParseModule;
+    // pdf-parse exports the function directly (not as default in ESM)
+    // Use type assertion to handle CommonJS/ESM interop
+    const pdfParse = (pdfParseModule as any);
     const result = await pdfParse(buffer);
     return result.text || '';
   } catch (error) {

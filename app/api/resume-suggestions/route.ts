@@ -3,10 +3,9 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { getStartup, getCandidate } from '@/lib/supabase';
+import { getStartup, getCandidate, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import type { ResumePatch } from '@/types/resume-patch';
 import type { StructuredResumeData } from '@/types/resume';
-import { getCandidate, getPrimaryResumeForCandidate } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 

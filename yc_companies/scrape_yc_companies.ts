@@ -2241,7 +2241,8 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       const descriptions = pageData.founders
         .filter(f => f.description && f.description.trim().length > 0)
         .map(f => {
-          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();
+          if (!f.description) return '';
+          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();      
           if (fullName) {
             return `${fullName}: ${f.description.trim()}`;
           }

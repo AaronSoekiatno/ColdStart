@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         );
       }
       // Validate tone value
-      const validTones: EmailTone[] = ['professional_casual', 'enthusiastic', 'conversational'];
+      const validTones: EmailTone[] = ['professional', 'classy', 'informative', 'ambitious', 'conversational'];
       if (validTones.includes(tone as EmailTone)) {
         emailTone = tone as EmailTone;
       }

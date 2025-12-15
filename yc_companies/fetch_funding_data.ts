@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { searchWebForStartup, EnrichedData } from './web_search_agent';
+import { extractWithMultipleQueries, EnrichmentData } from './web_search_agent';
 
 // Types
 interface FundingData {
@@ -194,7 +194,7 @@ function calculateJobPostingsScore(jobOpenings: string | null, hiringRoles: stri
 /**
  * Calculate hotness score for a startup
  */
-export function calculateHotnessScore(
+function calculateHotnessScore(
   fundingAmount: string | null,
   fundingDate: string | null,
   fundingStage: string | null,
@@ -226,21 +226,13 @@ async function fetchFundingDataWebSearch(companyName: string): Promise<FundingDa
     console.log(`   🔍 Searching web for funding data...`);
 
     // Use existing web search agent
-    const enrichedData = await searchWebForStartup({
-      Company_Name: companyName,
-      YC_Link: '',
-      company_description: '',
-      Batch: '',
-      business_type: '',
-      industry: '',
-      location: '',
-    });
+    const enrichmentData: EnrichmentData = await extractWithMultipleQueries(companyName);
 
     // Extract funding data from enrichment
     return {
-      funding_amount: enrichedData.funding_amount || null,
-      funding_stage: enrichedData.funding_stage || null,
-      funding_date: enrichedData.funding_date || null,
+      funding_amount: null, // EnrichmentData doesn't include funding_amount, would need separate extraction
+      funding_stage: enrichmentData.funding_stage || null,
+      funding_date: enrichmentData.funding_date || null,
       confidence: 0.7, // Web search has moderate confidence
       source: 'web_search',
     };

@@ -35,6 +35,9 @@ export default async function ResumePage() {
     throw new Error('Supabase service role key is not configured.');
   }
 
+  // Store in const so TypeScript knows it's not null
+  const adminClient = supabaseAdmin;
+
   // Get candidate info to find resumes
   const candidate = await getCandidate(user.email ?? '');
   
@@ -59,7 +62,7 @@ export default async function ResumePage() {
     resumes.map(async (resume) => {
       let resumeUrl: string | null = null;
       if (resume.resume_path) {
-        const { data } = await supabaseAdmin.storage
+        const { data } = await adminClient.storage
           .from('resumes')
           .createSignedUrl(resume.resume_path, 3600); // Inline preview, no download parameter
 

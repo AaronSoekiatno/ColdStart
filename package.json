@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -72,10 +72,7 @@
     "lucide-react": "^0.555.0",
     "mammoth": "^1.11.0",
     "next": "16.0.7",
-<<<<<<< HEAD
-=======
     "pdf-lib": "^1.17.1",
->>>>>>> grammarlyCop
     "pdf-parse": "^2.4.5",
     "puppeteer": "^24.31.0",
     "react": "19.2.0",
@@ -90,6 +87,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.8.32",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
     "form-data": "^4.0.5",
