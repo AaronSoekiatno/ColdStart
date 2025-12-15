@@ -33,12 +33,12 @@ export function renderResumeTemplateHtml(data: StructuredResumeData): string {
   .resume-container {
     max-width: 8.5in;
     margin: 0 auto;
-    padding: 24px;
+    padding: 0 12px 12px 12px; /* no top padding */
     color: #111827;
   }
   h1 {
-    font-size: 22pt;
-    margin: 0 0 4px 0;
+    font-size: 20pt;
+    margin: 0 0 2px 0;
     text-align: center;
   }
   .contact {
@@ -48,21 +48,21 @@ export function renderResumeTemplateHtml(data: StructuredResumeData): string {
     margin-bottom: 18px;
   }
   h2 {
-    font-size: 12pt;
-    margin: 18px 0 4px;
+    font-size: 11pt;
+    margin: 12px 0 4px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     border-bottom: 1px solid #111827;
     padding-bottom: 2px;
   }
   h3 {
-    font-size: 11pt;
-    margin: 6px 0 0;
+    font-size: 10pt;
+    margin: 2px 0 0;
   }
   p, li {
-    font-size: 9pt;
-    line-height: 1.3;
-    margin: 2px 0;
+    font-size: 8.5pt;
+    line-height: 1.28;
+    margin: 1px 0;
   }
   ul {
     margin: 4px 0 6px 18px;
@@ -104,18 +104,27 @@ export function renderResumeTemplateHtml(data: StructuredResumeData): string {
     push("<h2>Education</h2>");
     for (const edu of data.education) {
       const title = [edu.school, edu.degree].filter(Boolean).join(" — ");
-      if (title) push(`<h3>${esc(title)}</h3>`);
-
-      const meta: string[] = [];
-      if (edu.location) meta.push(esc(edu.location));
-      if (edu.graduationDate) meta.push(esc(edu.graduationDate));
-      if (meta.length > 0) push(`<p class="meta">${meta.join(" | ")}</p>`);
+      if (title || edu.location || edu.graduationDate) {
+        push(
+          `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">` +
+            `<h3 style="margin:2px 0 0;font-size:10.5pt;">${esc(title)}</h3>` +
+            (edu.location || edu.graduationDate
+              ? `<div class="meta" style="display:flex;align-items:flex-start;gap:6px;white-space:nowrap;margin-left:8px;font-style:italic;">` +
+                  (edu.location ? `<span>${esc(edu.location)}</span>` : "") +
+                  (edu.location && edu.graduationDate ? `<span>|</span>` : "") +
+                  (edu.graduationDate ? `<span>${esc(edu.graduationDate)}</span>` : "") +
+                `</div>`
+              : "") +
+          `</div>`
+        );
+      }
 
       const details: string[] = [];
       if (edu.major) details.push(`Major: ${esc(edu.major)}`);
       if (edu.minor) details.push(`Minor: ${esc(edu.minor)}`);
       if (edu.honors) details.push(esc(edu.honors));
-      if (details.length > 0) push(`<p>${details.join(" | ")}</p>`);
+      if (edu.gpa) details.push(`GPA: ${esc(edu.gpa)}`);
+      if (details.length > 0) push(`<p style="margin-top:4px;margin-bottom:4px;">${details.join(" | ")}</p>`);
 
       if (edu.relevantCourses && edu.relevantCourses.length > 0) {
         push(`<p>Relevant Courses: ${edu.relevantCourses.map(esc).join(", ")}</p>`);
@@ -128,18 +137,25 @@ export function renderResumeTemplateHtml(data: StructuredResumeData): string {
   if (data.experience && data.experience.length > 0) {
     push("<h2>Experience</h2>");
     for (const exp of data.experience) {
-      const title = [exp.title, exp.company].filter(Boolean).join(" — ");
-      if (title) push(`<h3>${esc(title)}</h3>`);
-
-      const meta: string[] = [];
-      if (exp.location) meta.push(esc(exp.location));
+      push('<div class="section-spacer">');
+      // Title + dates on the same row
+      push('<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">');
+      push(`<div style="font-weight:700;font-size:10pt;">${esc(exp.title)}</div>`);
       const dates =
         exp.startDate && exp.endDate
           ? `${esc(exp.startDate)} — ${esc(exp.endDate)}`
           : esc(exp.startDate || exp.endDate || "");
-      if (dates) meta.push(dates);
-      if (meta.length > 0) push(`<p class="meta">${meta.join(" | ")}</p>`);
+      push(`<div class="meta" style="white-space:nowrap;font-style:italic;">${dates}</div>`);
+      push("</div>");
 
+      // Company line
+      push(`<div style="font-size:9.5pt;font-style:italic;margin-top:2px;">${esc(exp.company)}</div>`);
+      // Location line
+      if (exp.location) {
+        push(`<div class="meta">${esc(exp.location)}</div>`);
+      }
+
+      // Bullets
       if (Array.isArray(exp.description) && exp.description.length > 0) {
         push("<ul>");
         for (const bullet of exp.description) {
@@ -149,7 +165,7 @@ export function renderResumeTemplateHtml(data: StructuredResumeData): string {
         }
         push("</ul>");
       }
-      push('<div class="section-spacer"></div>');
+      push("</div>");
     }
   }
 
@@ -157,9 +173,9 @@ export function renderResumeTemplateHtml(data: StructuredResumeData): string {
   if (data.projects && data.projects.length > 0) {
     push("<h2>Projects</h2>");
     for (const proj of data.projects) {
-      let title = esc(proj.name);
+      let title = `<span>${esc(proj.name)}</span>`;
       if (proj.technologies && proj.technologies.length > 0) {
-        title += ` — ${esc(proj.technologies.join(", "))}`;
+        title += ` <span style="font-size:9pt;font-style:italic;">— ${esc(proj.technologies.join(", "))}</span>`;
       }
       push(`<h3>${title}</h3>`);
 

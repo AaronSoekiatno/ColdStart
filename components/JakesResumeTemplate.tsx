@@ -56,7 +56,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
   return (
     <div className="w-full h-full overflow-auto bg-white">
       <div
-        className="max-w-[8.5in] mx-auto px-4 py-6 text-[13px] leading-[1.35] text-gray-900"
+        className="max-w-[8.5in] mx-auto px-3 pt-0 pb-4 text-[12px] leading-[1.33] text-gray-900"
         style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
       >
         {/* Header */}
@@ -107,35 +107,28 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
             <h2 className="text-base font-bold uppercase mb-2 pb-1 border-b border-gray-800 tracking-wide" style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Education
             </h2>
-            {data.education.map((edu, eduIdx) => (
+            {data.education.map((edu) => (
               <div key={edu.id} className="mb-2">
-                <div className="flex justify-between items-start mb-0.5">
-                  <div className="flex-1">
-                    <div className="font-bold text-sm">{edu.school}</div>
-                    <div className="text-sm italic text-gray-700">
-                      {edu.degree}
-                      {edu.major && ` in ${edu.major}`}
-                      {edu.minor && `, Minor in ${edu.minor}`}
-                      {edu.honors && `, ${edu.honors}`}
+                <div className="flex justify-between items-start gap-2">
+                  <div className="font-bold text-sm">
+                    {edu.school}
+                    {edu.degree && ` — ${edu.degree}`}
+                  </div>
+                  {(edu.location || edu.graduationDate) && (
+                    <div className="flex items-start text-xs italic text-gray-700 whitespace-nowrap gap-1 ml-2">
+                      {edu.location && <span>{edu.location}</span>}
+                      {edu.location && edu.graduationDate && <span className="mx-0.5">|</span>}
+                      {edu.graduationDate && <span>{edu.graduationDate}</span>}
                     </div>
-                  </div>
-                  <div className="text-right text-xs whitespace-nowrap ml-4 italic">
-                    {edu.graduationDate || ''}
-                  </div>
+                  )}
                 </div>
-                {edu.location && (
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="text-xs italic text-gray-700">{edu.location}</div>
-                    {edu.gpa && (
-                      <div className="text-xs italic text-gray-700 ml-4">{edu.gpa}</div>
-                    )}
+                {edu.major || edu.minor || edu.honors || edu.gpa ? (
+                  <div className="text-xs text-gray-700 mt-1 mb-1">
+                    {[edu.major && `Major: ${edu.major}`, edu.minor && `Minor: ${edu.minor}`, edu.honors, edu.gpa && `GPA: ${edu.gpa}`]
+                      .filter(Boolean)
+                      .join(' | ')}
                   </div>
-                )}
-                {edu.relevantCourses && edu.relevantCourses.length > 0 && (
-                  <div className="text-xs text-gray-700 mt-1">
-                    <span className="font-semibold">Relevant Courses:</span> {edu.relevantCourses.join(', ')}
-                  </div>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
@@ -149,19 +142,15 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
             </h2>
             {data.experience.map((exp, expIdx) => (
               <div key={exp.id} className="mb-2">
-                <div className="flex justify-between items-start mb-0.5">
-                  <div className="flex-1">
-                    <div className="font-bold text-sm">{exp.title}</div>
-                    <div className="text-sm italic text-gray-700">{exp.company}</div>
-                  </div>
-                  <div className="text-right text-xs whitespace-nowrap ml-4 italic">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="font-bold text-sm">{exp.title}</div>
+                  <div className="text-xs italic text-gray-700 whitespace-nowrap">
                     {exp.startDate}{exp.endDate ? ` - ${exp.endDate}` : ''}
                   </div>
                 </div>
+                <div className="text-sm italic text-gray-700 mt-0.5">{exp.company}</div>
                 {exp.location && (
-                  <div className="flex justify-between items-start mb-1">
-                    <div className="text-xs italic text-gray-700">{exp.location}</div>
-                  </div>
+                  <div className="text-xs italic text-gray-700">{exp.location}</div>
                 )}
                 <ul className="list-none ml-4 mt-0.5 space-y-0.5">
                   {exp.description.map((bullet, bulletIdx) => {
@@ -208,8 +197,8 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                       <span className="font-bold text-sm">{project.name}</span>
                       {project.technologies && project.technologies.length > 0 && (
                         <>
-                          <span className="text-sm mx-1"> | </span>
-                          <span className="text-sm italic text-gray-700">
+                          <span className="text-[12px] mx-1"> | </span>
+                          <span className="text-[12px] italic text-gray-700">
                             {project.technologies.join(', ')}
                           </span>
                         </>
@@ -276,7 +265,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
               Technical Skills
             </h2>
             <div className={isHighlighted('skills') ? 'px-2 py-1' : ''}>
-              <p className="text-xs leading-relaxed">{data.skills.join(', ')}</p>
+              <p className="text-[10px] leading-tight">{data.skills.join(', ')}</p>
             </div>
           </div>
         )}

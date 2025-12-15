@@ -116,11 +116,22 @@ export async function GET(request: NextRequest) {
         founder_linkedin?: string;
         founder_twitter_urls?: string;
         founder_backgrounds?: string;
+        founders_pfp?: string;
         batch?: string;
         description?: string;
         company_logo?: string;
         yc_link?: string;
         company_twitter_url?: string;
+        founders?: Array<{
+          id: string;
+          name: string;
+          email?: string;
+          role?: string;
+          linkedin_url?: string;
+          twitter_url?: string;
+          background?: string;
+          profile_picture?: string;
+        }>;
       }
     > = {};
 
@@ -131,7 +142,58 @@ export async function GET(request: NextRequest) {
         .in('id', startupIds);
 
       if (!startupsError && startupRows) {
+        // Fetch founders from founders table for all startups
+        const { data: foundersRows, error: foundersError } = await supabaseAdmin
+          .from('founders')
+          .select('id, startup_id, name, email, role, linkedin_url, twitter_url, background')
+          .in('startup_id', startupIds)
+          .order('created_at', { ascending: true });
+
+        // Group founders by startup_id and map profile pictures
+        const foundersByStartupId: Record<string, Array<{
+          id: string;
+          name: string;
+          email?: string;
+          role?: string;
+          linkedin_url?: string;
+          twitter_url?: string;
+          background?: string;
+          profile_picture?: string;
+        }>> = {};
+
+        if (!foundersError && foundersRows) {
+          for (const founder of foundersRows) {
+            if (!foundersByStartupId[founder.startup_id]) {
+              foundersByStartupId[founder.startup_id] = [];
+            }
+            foundersByStartupId[founder.startup_id].push({
+              id: founder.id,
+              name: founder.name,
+              email: founder.email ?? undefined,
+              role: founder.role ?? undefined,
+              linkedin_url: founder.linkedin_url ?? undefined,
+              twitter_url: founder.twitter_url ?? undefined,
+              background: founder.background ?? undefined,
+              // profile_picture will be mapped below from founders_pfp array
+            });
+          }
+        }
+
         for (const s of startupRows) {
+          // Parse founders_pfp array (could be array or comma-separated string)
+          const foundersPfpArray: string[] = s.founders_pfp
+            ? Array.isArray(s.founders_pfp)
+              ? s.founders_pfp.map(url => String(url).trim()).filter(url => url && url !== '')
+              : String(s.founders_pfp).split(',').map(url => url.trim()).filter(url => url && url !== '')
+            : [];
+
+          // Map profile pictures to founders by index
+          const founders = foundersByStartupId[s.id] || [];
+          const foundersWithPfp = founders.map((founder, index) => ({
+            ...founder,
+            profile_picture: foundersPfpArray[index] || undefined,
+          }));
+
           startupsById[s.id] = {
             id: s.id,
             name: s.name,
@@ -146,11 +208,13 @@ export async function GET(request: NextRequest) {
             founder_linkedin: s.founder_linkedin ?? undefined,
             founder_twitter_urls: s.founder_twitter_urls ?? undefined,
             founder_backgrounds: s.founder_backgrounds ?? undefined,
+            founders_pfp: s.founders_pfp ?? undefined,
             batch: s.batch ?? undefined,
             description: s.description ?? undefined,
             company_logo: s.company_logo ?? undefined,
             yc_link: s.yc_link ?? undefined,
             company_twitter_url: s.company_twitter_url ?? undefined,
+            founders: foundersWithPfp,
           };
         }
       }
