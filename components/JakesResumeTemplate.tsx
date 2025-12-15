@@ -55,21 +55,21 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
           <h1 className="text-3xl font-bold mb-1" style={{ fontSize: '24pt', letterSpacing: '0.5px' }}>
             {data.personal.name}
           </h1>
-          <div className="flex flex-wrap justify-center gap-1 text-xs text-gray-700">
+          <div className="flex flex-nowrap justify-center items-center gap-0.2 text-[11px] text-gray-700 overflow-hidden">
             {data.personal.phone && (
-              <span>{data.personal.phone}</span>
+              <span className="whitespace-nowrap">{data.personal.phone}</span>
             )}
-            {data.personal.phone && data.personal.email && <span> | </span>}
+            {data.personal.phone && data.personal.email && <span className="px-1">|</span>}
             {data.personal.email && (
-              <span><a href={`mailto:${data.personal.email}`} className="text-gray-900 hover:underline">{data.personal.email}</a></span>
+              <span className="whitespace-nowrap"><a href={`mailto:${data.personal.email}`} className="text-gray-900 hover:underline">{data.personal.email}</a></span>
             )}
-            {data.personal.email && data.personal.linkedin && <span> | </span>}
+            {data.personal.email && data.personal.linkedin && <span className="px-1">|</span>}
             {data.personal.linkedin && (
-              <span><a href={data.personal.linkedin} className="text-gray-900 hover:underline">{data.personal.linkedin.replace(/^https?:\/\//, '')}</a></span>
+              <span className="whitespace-nowrap"><a href={data.personal.linkedin} className="text-gray-900 hover:underline">{data.personal.linkedin.replace(/^https?:\/\//, '')}</a></span>
             )}
-            {data.personal.linkedin && data.personal.github && <span> | </span>}
+            {data.personal.linkedin && data.personal.github && <span className="px-1">|</span>}
             {data.personal.github && (
-              <span><a href={data.personal.github} className="text-gray-900 hover:underline">{data.personal.github.replace(/^https?:\/\//, '')}</a></span>
+              <span className="whitespace-nowrap"><a href={data.personal.github} className="text-gray-900 hover:underline">{data.personal.github.replace(/^https?:\/\//, '')}</a></span>
             )}
           </div>
         </div>

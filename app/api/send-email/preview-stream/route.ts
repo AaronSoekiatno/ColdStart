@@ -182,12 +182,14 @@ export async function POST(request: NextRequest) {
         start(controller) {
           const encoder = new TextEncoder();
           
-          // Send metadata
+          // Send metadata (including resume data for preview)
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ 
-              type: 'metadata', 
-              targetEmail: existingGeneratedEmail.recipient_email || '', 
-              resumeUrl 
+            encoder.encode(`data: ${JSON.stringify({
+              type: 'metadata',
+              targetEmail: existingGeneratedEmail.recipient_email || '',
+              resumeUrl,
+              resumeText: resume?.resume_full_text || '',
+              structuredResumeData: candidate.structured_resume_data || null
             })}\n\n`)
           );
 
@@ -354,9 +356,15 @@ export async function POST(request: NextRequest) {
         const encoder = new TextEncoder();
         
         try {
-          // Send initial metadata
+          // Send initial metadata (including resume data for preview)
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'metadata', targetEmail, resumeUrl })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({
+              type: 'metadata',
+              targetEmail,
+              resumeUrl,
+              resumeText: resume?.resume_full_text || '',
+              structuredResumeData: candidate.structured_resume_data || null
+            })}\n\n`)
           );
 
           // Extract founder name (use first founder if multiple)

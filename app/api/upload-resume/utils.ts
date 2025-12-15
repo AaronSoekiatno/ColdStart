@@ -61,16 +61,46 @@ export function isPdfFile(file: File): boolean {
  */
 export async function extractPdfText(buffer: Buffer): Promise<string> {
   try {
-    // Dynamic import for CommonJS module compatibility
-    // pdf-parse is a CommonJS module, so we need to handle it differently
-    const pdfParseModule = await import('pdf-parse');
-    // pdf-parse exports the function directly (not as default in ESM)
-    // Use type assertion to handle CommonJS/ESM interop
-    const pdfParse = (pdfParseModule as any);
-    const result = await pdfParse(buffer);
-    return result.text || '';
+    // Validate buffer
+    if (!buffer || !Buffer.isBuffer(buffer)) {
+      throw new Error('Invalid buffer provided to extractPdfText');
+    }
+
+    if (buffer.length === 0) {
+      throw new Error('Empty buffer provided to extractPdfText');
+    }
+
+    console.log(`Attempting to parse PDF buffer of ${buffer.length} bytes`);
+
+    // Import the actual pdf-parse library directly from lib/pdf-parse.js
+    // This bypasses the index.js file which has problematic test code that
+    // runs when module.parent is undefined (common in Next.js webpack builds)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+
+    if (typeof pdfParse !== 'function') {
+      throw new Error(`pdf-parse module did not export a function. Got type: ${typeof pdfParse}`);
+    }
+
+    // Call the function directly with the buffer
+    // Pass options to disable external file handlers
+    const result = await pdfParse(buffer, {
+      // Disable max pages to parse all pages
+      max: 0,
+    });
+
+    if (!result || typeof result !== 'object') {
+      throw new Error(`pdf-parse returned invalid result: ${typeof result}`);
+    }
+
+    const extractedText = result.text || '';
+    console.log(`Successfully extracted ${extractedText.length} characters from PDF`);
+
+    return extractedText;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error('PDF extraction error details:', { message, stack, bufferLength: buffer?.length });
     throw new Error(`Failed to parse PDF: ${message}`);
   }
 }

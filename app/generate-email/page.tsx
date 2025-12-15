@@ -298,6 +298,14 @@ function GenerateEmailPageContent() {
                   receivedResumeUrl = data.resumeUrl;
                   setResumeUrl(data.resumeUrl);
                 }
+                // Set resume text and structured data from metadata
+                if (data.resumeText) {
+                  setResumeText(data.resumeText);
+                }
+                if (data.structuredResumeData) {
+                  setStructuredResumeData(data.structuredResumeData);
+                  setOriginalStructuredResumeData(data.structuredResumeData);
+                }
               } else if (data.type === 'chunk') {
                 // Accumulate text as it streams in
                 accumulatedText += data.text;
