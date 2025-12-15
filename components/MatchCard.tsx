@@ -20,6 +20,8 @@ interface MatchCardProps {
       funding_amount: string;
       tags: string;
       website: string;
+      yc_description?: string;
+      team_size?: string;
       founder_emails?: string;
       founder_names?: string;
       founder_linkedin?: string;
@@ -53,6 +55,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
   const [showPersonaOptions, setShowPersonaOptions] = useState(false);
+  const [showFullYcDescription, setShowFullYcDescription] = useState(false);
   const hidePersonaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
@@ -90,6 +93,41 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   }
 
   const startup = match.startup;
+
+  // Helper to truncate YC description to first two sentences
+  const getTruncatedYcDescription = (text?: string | null): string | null => {
+    if (!text) return null;
+    const normalized = text.replace(/\s+/g, " ").trim();
+    if (!normalized) return null;
+
+    // Split on sentence-ending punctuation followed by space + capital or quote
+    const sentenceEndRegex = /([.!?])\s+(?=[A-Z"'\u2018\u2019\u201C\u201D])/g;
+    const parts: string[] = [];
+    let lastIndex = 0;
+    let matchRegex: RegExpExecArray | null;
+
+    while ((matchRegex = sentenceEndRegex.exec(normalized)) !== null && parts.length < 2) {
+      const endIndex = matchRegex.index + matchRegex[1].length;
+      parts.push(normalized.slice(lastIndex, endIndex).trim());
+      lastIndex = endIndex + 1; // skip space
+    }
+
+    if (parts.length === 0) {
+      return normalized;
+    }
+
+    if (parts.length < 2 && lastIndex < normalized.length) {
+      parts.push(normalized.slice(lastIndex).trim());
+    }
+
+    return parts.slice(0, 2).join(" ");
+  };
+
+  const fullYcDescription = startup.yc_description ?? "";
+  const truncatedYcDescription = getTruncatedYcDescription(fullYcDescription);
+  const shouldShowYcToggle =
+    !!truncatedYcDescription &&
+    fullYcDescription.trim().length > truncatedYcDescription.length;
 
   // Use founders from founders table if available, otherwise fall back to CSV columns
   const foundersFromTable = startup.founders && startup.founders.length > 0
@@ -402,26 +440,6 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
       {/* Company Section */}
       <div ref={companySectionRef} className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
         <div className="flex-1 w-full">
-          {/* Industry and Batch badges with Match score aligned */}
-          <div className="mb-3 md:mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="flex flex-wrap gap-2">
-              {match.startup.industry && (
-                <span className="inline-block bg-blue-50 border border-blue-500 rounded-xl md:rounded-2xl px-2 py-1 md:px-3 md:py-1 text-xs md:text-sm text-gray-900 font-medium">
-                  {match.startup.industry}
-                </span>
-              )}
-              {match.startup.batch && (
-                <span className="inline-block bg-gray-50 border border-gray-300 rounded-xl md:rounded-2xl px-2 py-1 md:px-3 md:py-1 text-xs md:text-sm text-gray-900 font-medium">
-                  {match.startup.batch}
-        </span>
-      )}
-          </div>
-            <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm self-start sm:self-auto transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-blue-300/50 w-[120px] sm:w-[130px] md:w-[140px] min-h-[32px] sm:min-h-[34px] md:min-h-[36px] flex items-center justify-center">
-              <p className="text-lg md:text-xl lg:text-2xl font-bold text-blue-300 whitespace-nowrap">
-                {Math.min((match.score * 100) + 40, 97).toFixed(0)}% <span className="text-sm md:text-base font-normal text-gray-600 align-top inline-block mt-0.5 md:mt-1">match</span>
-          </p>
-        </div>
-      </div>
           <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-start">
@@ -441,11 +459,21 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                 </div>
               )}
             </div>
-            {/* Name, Description, and Links - aligned with logo */}
+            {/* Name, match score, description, and links - aligned with logo */}
             <div className="flex-1 w-full min-w-0 flex flex-col -mt-3">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 mb-1 sm:mb-1.5 break-words leading-tight">
-                {match.startup.name}
-              </h2>
+              <div className="flex items-start justify-between gap-3 mb-1 sm:mb-1.5">
+                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 break-words leading-tight">
+                  {match.startup.name}
+                </h2>
+                <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm min-w-[110px] sm:min-w-[120px] flex items-center justify-center">
+                  <p className="text-sm sm:text-base md:text-lg font-bold text-blue-300 whitespace-nowrap">
+                    {Math.min((match.score * 100) + 40, 97).toFixed(0)}%{" "}
+                    <span className="text-xs sm:text-sm font-normal text-gray-600 align-top inline-block ml-0.5 mt-1">
+                      match
+                    </span>
+                  </p>
+                </div>
+              </div>
               {match.startup.description && (
                 <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed">
                   {match.startup.description}
@@ -503,6 +531,78 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
               </div>
             </div>
           </div>
+          {/* YC Description and Stats row underneath logo + main header, centered */}
+          {(
+            truncatedYcDescription ||
+            match.startup.industry ||
+            match.startup.batch ||
+            match.startup.team_size ||
+            match.startup.location
+          ) && (
+            <div className="mt-5 md:mt-8 w-full flex flex-col items-start">
+              {truncatedYcDescription && (
+                <p className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed text-center max-w-3xl md:text-left">
+                  {showFullYcDescription ? fullYcDescription : truncatedYcDescription}
+                  {shouldShowYcToggle && (
+                    <button
+                      type="button"
+                      onClick={() => setShowFullYcDescription((prev) => !prev)}
+                      className="ml-2 text-[11px] sm:text-xs text-blue-300 hover:underline align-baseline"
+                    >
+                      {showFullYcDescription ? "Show less" : "Show more"}
+                    </button>
+                  )}
+                </p>
+              )}
+              {/* Stats row: Company Size, Batch, Industry, Headquarters */}
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full max-w-4xl self-center">
+                {/* Company Size */}
+                {match.startup.team_size && (
+                  <div className="text-center md:text-left">
+                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Company Size
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {match.startup.team_size}
+                    </p>
+                  </div>
+                )}
+                {/* Batch */}
+                {match.startup.batch && (
+                  <div className="text-center md:text-left">
+                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Batch
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {match.startup.batch}
+                    </p>
+                  </div>
+                )}
+                {/* Industry */}
+                {match.startup.industry && (
+                  <div className="text-center md:text-left">
+                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Industry
+                    </p>
+                    <p className="text-xs text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {match.startup.industry}
+                    </p>
+                  </div>
+                )}
+                {/* Headquarters */}
+                {match.startup.location && (
+                  <div className="text-center md:text-left">
+                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Headquarters
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {match.startup.location}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
