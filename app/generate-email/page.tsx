@@ -42,7 +42,6 @@ export default function GenerateEmailPage() {
   const [suggestionsRequested, setSuggestionsRequested] = useState(false);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  const [emailTone, setEmailTone] = useState<'professional' | 'classy' | 'informative' | 'ambitious' | 'conversational'>('professional');
   const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>('direct-ask');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
@@ -94,7 +93,7 @@ export default function GenerateEmailPage() {
         body: JSON.stringify({
           startupId,
           matchScore,
-          tone: isPremium ? emailTone : undefined,
+          persona: emailPersona,
         }),
       });
 
@@ -298,7 +297,7 @@ export default function GenerateEmailPage() {
     if (user && startupId) {
       loadEmailPreview();
     }
-  }, [startupId, matchScore, user, isPremium, emailTone, emailPersona]);
+  }, [startupId, matchScore, user, isPremium, emailPersona]);
 
   // Sync persona with query param when it changes, but enforce premium restrictions
   useEffect(() => {
@@ -460,96 +459,6 @@ export default function GenerateEmailPage() {
                             <Copy className="w-4 h-4 text-gray-600" />
                           </button>
                         </div>
-                      </div>
-                    )}
-                    {isPremium && (previewSubject || previewBody) && (
-                      <div className="space-y-1.5 flex-shrink-0">
-                        <label className="text-xs text-gray-700 block">Email Tone:</label>
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => {
-                              const newTone = 'professional';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'professional'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Professional
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'classy';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'classy'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Classy
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'informative';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'informative'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Informative
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'ambitious';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'ambitious'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Ambitious
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'conversational';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'conversational'
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Conversational
-                          </button>
-                        </div>
-                        {isPreviewLoading && (
-                          <p className="text-xs text-gray-500">Regenerating email with new tone...</p>
-                        )}
                       </div>
                     )}
                     <div className="space-y-1.5 flex-shrink-0">

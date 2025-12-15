@@ -29,7 +29,7 @@ const freeFeatures = [
 const premiumFeatures = [
   "All free features",
   "Send to multiple founders simultaneously",
-  "Email tone customization",
+  "Email persona selection",
   "Resume editor",
   "Unlimited uploaded resumes",
 ];

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { generateColdEmail, type EmailTone, type EmailPersona } from '@/lib/email-generation';
+import { generateColdEmail, type EmailPersona } from '@/lib/email-generation';
 import { getCandidate, getStartup, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startupId, matchScore, persona, tone } = await request.json();
+    const { startupId, matchScore, persona } = await request.json();
 
     if (!startupId || matchScore === undefined) {
       return NextResponse.json(
@@ -74,25 +74,6 @@ export async function POST(request: NextRequest) {
         if (validPersonas.includes(persona as EmailPersona)) {
           emailPersona = persona as EmailPersona;
         }
-      }
-    }
-
-    // Email tone changes are premium-only feature
-    let emailTone: EmailTone | undefined = undefined;
-    if (tone) {
-      if (!isPremium) {
-        return NextResponse.json(
-          {
-            error: 'Email tone customization is a Premium feature. Upgrade to Premium to change email tone.',
-            upgradeRequired: true,
-          },
-          { status: 403 }
-        );
-      }
-      // Validate tone value
-      const validTones: readonly EmailTone[] = ['professional', 'classy', 'informative', 'ambitious', 'conversational'] as const;
-      if (validTones.includes(tone as EmailTone)) {
-        emailTone = tone as EmailTone;
       }
     }
 
@@ -232,7 +213,7 @@ export async function POST(request: NextRequest) {
         founderLinkedIn: startup.founder_linkedin || undefined,
       },
             { score: matchScore },
-            { persona: emailPersona, tone: emailTone }
+            { persona: emailPersona }
     );
 
     // Generate signed URL for resume preview (get primary/current resume)

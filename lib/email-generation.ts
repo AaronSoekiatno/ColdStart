@@ -55,18 +55,10 @@ export interface MatchContext {
   totalMatches?: number;
 }
 
-export type EmailTone =
-  | 'professional'
-  | 'classy'
-  | 'informative'
-  | 'ambitious'
-  | 'conversational';
-
 export type EmailPersona = 'direct-ask' | 'genuine-fan';
 
 export interface EmailGenerationOptions {
   persona?: EmailPersona; // Which persona to use for email generation
-  tone?: EmailTone;
   maxWords?: number; // soft limit; prompt hint only
   includeSubjectPrefix?: string; // e.g. "[ResumeSender]"
 }
