@@ -20,7 +20,6 @@ interface ResumeSuggestion {
   original: string;
   suggested: string;
   reason: string;
-  keywords: string[];
   patch?: ResumePatch;
 }
 
@@ -40,6 +39,7 @@ function EnhanceResumePageContent() {
   const [highlightedFields, setHighlightedFields] = useState<Set<ResumePath>>(new Set());
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [acceptHistory, setAcceptHistory] = useState<string[]>([]);
+  const [isDoneEnhancing, setIsDoneEnhancing] = useState(false);
   const { toast } = useToast();
 
   // Helper function to apply suggestions to structured resume data
@@ -109,6 +109,7 @@ function EnhanceResumePageContent() {
 
       const suggestions = data.suggestions || [];
       setResumeSuggestions(suggestions);
+      setIsDoneEnhancing(false);
 
       // Apply all suggestions immediately to preview
       if (dataToUse && suggestions.length > 0) {
@@ -147,69 +148,51 @@ function EnhanceResumePageContent() {
     }
   };
 
-  // Handler for downloading PDF with applied suggestions
+  // Handler for generating PDF via server-side export (Puppeteer)
   const handleDownloadPDF = async () => {
-    if (!structuredResumeData || !user) return;
+    if (!user) return;
+
+    // Build the latest structured data snapshot based on current suggestion statuses
+    const baseData = originalStructuredResumeData || structuredResumeData;
+    if (!baseData) return;
+
+    const activeSuggestions = resumeSuggestions.filter(
+      (s) => suggestionStatuses[s.id] === "accepted" || suggestionStatuses[s.id] === "pending"
+    );
+    const { updatedData } = applySuggestionsToStructuredData(baseData, activeSuggestions);
 
     try {
-      // Get accepted suggestions
-      const acceptedSuggestions = resumeSuggestions.filter(
-        s => suggestionStatuses[s.id] === 'accepted'
-      );
-
-      if (acceptedSuggestions.length === 0) {
-        toast({
-          title: "No changes to download",
-          description: "Please accept some suggestions before downloading.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Call API to generate and download PDF
-      const response = await fetch("/api/apply-resume-suggestions", {
-        method: 'POST',
+      const response = await fetch("/api/resumes/export-pdf", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({
-          acceptedSuggestions: acceptedSuggestions.map(s => ({
-            id: s.id,
-            section: s.section,
-            original: s.original,
-            suggested: s.suggested,
-            reason: s.reason,
-          })),
+          structuredResumeData: updatedData,
+          candidateName: updatedData.personal?.name ?? user.email,
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate PDF');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.error || "Failed to generate PDF");
       }
 
-      // Download the PDF
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'updated_resume.pdf';
+      a.download = "updated_resume.pdf";
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-
-      toast({
-        title: "PDF downloaded",
-        description: "Your updated resume has been downloaded.",
-      });
     } catch (error) {
-      console.error('Download PDF error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to download PDF';
+      console.error("Download PDF error:", error);
       toast({
         title: "Failed to download PDF",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Failed to download PDF",
         variant: "destructive",
       });
     }
@@ -333,6 +316,13 @@ function EnhanceResumePageContent() {
     });
   };
 
+  const handleDoneEnhancing = () => {
+    // Clear all highlights and close any selected suggestion
+    setHighlightedFields(new Set());
+    setSelectedSuggestionId(null);
+    setIsDoneEnhancing(true);
+  };
+
   if (!user || !resumeId) {
     return null;
   }
@@ -357,12 +347,12 @@ function EnhanceResumePageContent() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {resumeSuggestions.length > 0 && (
+              {resumeSuggestions.length > 0 && isDoneEnhancing && (
                 <>
                   {acceptHistory.length > 0 && (
                     <button
                       onClick={handleUndoLastChange}
-                      className="inline-flex items-center gap-1 px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
                     >
                       <Undo className="w-3 h-3" />
                       <span>Undo</span>
@@ -371,15 +361,13 @@ function EnhanceResumePageContent() {
                   <span className="text-sm text-gray-700 font-medium">
                     {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
                   </span>
-                  {Object.values(suggestionStatuses).filter(s => s === 'accepted').length > 0 && (
-                    <Button
-                      onClick={handleDownloadPDF}
-                      className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6 cursor-pointer"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download PDF
-                    </Button>
-                  )}
+                  <Button
+                    onClick={handleDownloadPDF}
+                    className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6 cursor-pointer"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
                 </>
               )}
             </div>
@@ -397,22 +385,24 @@ function EnhanceResumePageContent() {
               ) : (
                 <div className="h-full overflow-y-auto">
                   {structuredResumeData && structuredResumeData.personal ? (
-                    <JakesResumeTemplate
-                      data={structuredResumeData}
-                      highlightedFields={highlightedFields}
-                      pathToSuggestionId={new Map(
-                        resumeSuggestions
-                          .filter(s => s.patch)
-                          .map(s => [s.patch!.path, s.id])
-                      )}
-                      pathToSuggestion={new Map(
-                        resumeSuggestions
-                          .filter(s => s.patch)
-                          .map(s => [s.patch!.path, { original: s.original, suggested: s.suggested }])
-                      )}
-                      selectedSuggestionId={selectedSuggestionId}
-                      onClick={handleSuggestionClick}
-                    />
+                    <div className="resume-print-root">
+                      <JakesResumeTemplate
+                        data={structuredResumeData}
+                        highlightedFields={highlightedFields}
+                        pathToSuggestionId={new Map(
+                          resumeSuggestions
+                            .filter(s => s.patch)
+                            .map(s => [s.patch!.path, s.id])
+                        )}
+                        pathToSuggestion={new Map(
+                          resumeSuggestions
+                            .filter(s => s.patch)
+                            .map(s => [s.patch!.path, { original: s.original, suggested: s.suggested }])
+                        )}
+                        selectedSuggestionId={selectedSuggestionId}
+                        onClick={handleSuggestionClick}
+                      />
+                    </div>
                   ) : resumeText ? (
                     <EditableResumePreview
                       originalText={resumeText}
@@ -432,11 +422,22 @@ function EnhanceResumePageContent() {
             {/* Suggestions Sidebar - Right Column (1/3 width) */}
             {(resumeSuggestions.length > 0 || isLoadingSuggestions) && (
               <div className="w-96 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Suggestions</h2>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {isLoadingSuggestions ? 'Generating suggestions...' : 'Click on a highlight to view details'}
-                  </p>
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Suggestions</h2>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {isLoadingSuggestions ? 'Generating suggestions...' : 'Click on a highlight to view details'}
+                    </p>
+                  </div>
+                  {!isLoadingSuggestions && (
+                    <button
+                      type="button"
+                      onClick={handleDoneEnhancing}
+                      className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <span>Done</span>
+                    </button>
+                  )}
                 </div>
                 <div className="flex-1 overflow-y-auto p-4">
                   {isLoadingSuggestions ? (
@@ -475,32 +476,6 @@ function EnhanceResumePageContent() {
                               <p className="text-sm text-gray-600">{suggestion.reason}</p>
                             </div>
 
-                            {suggestion.keywords && suggestion.keywords.length > 0 && (
-                              <div>
-                                <h3 className="text-sm font-semibold text-gray-900 mb-2">Keywords</h3>
-                                <div className="flex flex-wrap gap-2">
-                                  {suggestion.keywords.map((keyword, idx) => {
-                                    const sourceText = structuredResumeData
-                                      ? JSON.stringify(structuredResumeData).toLowerCase()
-                                      : resumeText.toLowerCase();
-                                    const hasKeyword = sourceText.includes(keyword.toLowerCase());
-                                    return (
-                                      <span
-                                        key={idx}
-                                        className={`text-xs px-2 py-1 rounded border flex items-center gap-1 ${
-                                          hasKeyword
-                                            ? 'bg-green-50 text-green-700 border-green-200'
-                                            : 'bg-red-50 text-red-700 border-red-200'
-                                        }`}
-                                      >
-                                        {hasKeyword ? '✓' : '✗'} {keyword}
-                                      </span>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            )}
-
                             <div className="flex gap-2 pt-2">
                               {status === 'pending' && (
                                 <>
@@ -536,7 +511,11 @@ function EnhanceResumePageContent() {
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                      <p className="text-sm text-gray-600">Select a highlighted section in your resume to view the suggestion</p>
+                      <p className="text-sm text-gray-600">
+                        {isDoneEnhancing
+                          ? "Ready to Download"
+                          : "Select a highlighted section in your resume to view the suggestion"}
+                      </p>
                     </div>
                   )}
                 </div>

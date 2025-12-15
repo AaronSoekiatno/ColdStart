@@ -55,10 +55,13 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
 
   return (
     <div className="w-full h-full overflow-auto bg-white">
-      <div className="max-w-[8.5in] mx-auto p-8 text-sm leading-[1.4] text-gray-900" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
+      <div
+        className="max-w-[8.5in] mx-auto px-4 py-6 text-[13px] leading-[1.35] text-gray-900"
+        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
+      >
         {/* Header */}
         <div className="text-center mb-4">
-          <h1 className="text-3xl font-bold mb-1" style={{ fontSize: '24pt', letterSpacing: '0.5px' }}>
+          <h1 className="text-3xl font-bold mb-1" style={{ fontSize: '22pt', letterSpacing: '0.5px' }}>
             {data.personal.name}
           </h1>
           <div className="flex flex-nowrap justify-center items-center gap-0.2 text-[11px] text-gray-700 overflow-hidden">

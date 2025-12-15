@@ -15,7 +15,6 @@ interface ResumeSuggestion {
   original: string;
   suggested: string;
   reason: string;
-  keywords: string[];
   patch?: ResumePatch;
 }
 
@@ -60,15 +59,16 @@ CRITICAL RULES:
 2. DO NOT add skills, technologies, or experiences the candidate doesn't have
 3. DO NOT fabricate achievements or metrics; never invent numbers. If metrics are missing, say: "Include real metrics to showcase real-world impact at this company/role."
 4. Never propose specific numeric values unless they already appear in the resume; instead, prompt the candidate to add their real numbers.
-5. Focus on REFRAMING and REPHRASING existing content to make it more impactful, ATS-friendly, and aligned with startup expectations (initiative, ownership, real-world impact, skill depth, quantified results)
-6. Provide general improvements that would make this resume stronger for technical roles at startups
+5. When you want the candidate to add a metric or keyword that you cannot know, ALWAYS use a clear placeholder wrapped in square brackets, e.g. "Include real metrics such as [reduced API latency by X%] to showcase real-world impact" or "Add relevant keyword [insert framework/technology here] if it matches your actual experience."
+6. Focus on REFRAMING and REPHRASING existing content to make it more impactful, ATS-friendly, and aligned with startup expectations (initiative, ownership, real-world impact, skill depth, quantified results)
+7. Provide general improvements that would make this resume stronger for technical roles at startups
 
 TASK:
 Analyze this resume and suggest 5-7 general improvements that:
 
 1. **Add Quantifiable Impact (with real metrics)**: Convert vague statements into specific, measurable results from their actual work.
-   - If metrics are missing, suggest: "Include real metrics to showcase real-world impact at this company/role."
-   - Never invent or guess numbers; do not propose placeholder numbers.
+   - If metrics are missing, suggest something like: "Include real metrics such as [reduced API response time by X%] to showcase real-world impact at this company/role."
+   - Never invent or guess numbers; keep any variable parts the candidate must fill in inside square brackets [like this].
 
 2. **Emphasize Initiative and Ownership**: Highlight where the candidate led, drove, or self-started work; surface scrappy, end-to-end execution common at startups.
 
@@ -76,9 +76,7 @@ Analyze this resume and suggest 5-7 general improvements that:
 
 4. **Strengthen Action Verbs and Skill Depth**: Use strong verbs and clarify depth of skills already present (frameworks, databases, cloud, tooling) without adding new tech.
 
-5. **ATS Keyword Optimization for Tech Roles**: Ensure important, resume-supported keywords appear (spell out acronyms; keep alignment with actual experience).
-
-6. **Improve Clarity and Readability**: Make bullets concise, scannable, and front-load the most important info.
+5. **Improve Clarity and Readability**: Make bullets concise, scannable, and front-load the most important info.
 
 GOOD SUGGESTIONS:
 - Candidate has: "Built web application with JavaScript"
@@ -128,9 +126,8 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
       "type": "edit",
       "path": "experience[0].description[1]",
       "oldValue": "exact original text/value from the structured data",
-      "newValue": "improved version with stronger verbs, metrics, and ATS keywords",
+      "newValue": "improved version with stronger verbs and metrics",
       "reason": "brief explanation of why this helps (e.g., 'adds quantifiable metrics and stronger action verb')",
-      "keywords": ["keyword1", "keyword2"],
       "section": "Experience"
     }
   ]
@@ -238,7 +235,6 @@ Focus on the most impactful changes that would make the biggest difference to th
         oldValue: suggestion.oldValue,
         newValue: suggestion.newValue,
         reason: suggestion.reason || '',
-        keywords: Array.isArray(suggestion.keywords) ? suggestion.keywords : [],
         section: suggestion.section || 'General',
       };
 
@@ -249,7 +245,6 @@ Focus on the most impactful changes that would make the biggest difference to th
         original: typeof patch.oldValue === 'string' ? patch.oldValue : JSON.stringify(patch.oldValue),
         suggested: typeof patch.newValue === 'string' ? patch.newValue : JSON.stringify(patch.newValue),
         reason: patch.reason,
-        keywords: patch.keywords || [],
         patch,
       };
     });
