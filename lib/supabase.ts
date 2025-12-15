@@ -638,6 +638,7 @@ export async function createResume(resume: {
   file_name: string;
   resume_path?: string;
   resume_full_text?: string;
+  structured_data?: any; // Structured resume data (JSONB) for template-based editing
   is_active?: boolean;
   is_primary?: boolean;
 }) {
@@ -696,6 +697,7 @@ export async function updateResume(resumeId: string, updates: Partial<{
   file_name: string;
   resume_path: string;
   resume_full_text: string;
+  structured_data: any; // Structured resume data (JSONB) for template-based editing
   is_active: boolean;
   is_primary: boolean;
 }>) {
