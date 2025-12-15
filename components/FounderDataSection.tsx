@@ -6,7 +6,7 @@ export function FounderDataSection() {
   return (
     <section className="py-24 px-6">
       <div className="max-w-4xl mx-auto">
-        <div className="space-y-6">
+        <div className="space-y-6 text-center">
           <ScrollAnimate direction="up" delay={0} threshold={0.2}>
           <h2 className="text-4xl md:text-5xl font-normal tracking-tight leading-tight text-gray-900">
             Real Founder Data & Smart Follow-Ups
@@ -23,7 +23,7 @@ export function FounderDataSection() {
 
         {/* Optional: Testimonial-style quote */}
         <ScrollAnimate direction="up" delay={300} threshold={0.2} className="mt-12">
-          <div className="p-8 border border-gray-300 rounded-2xl bg-white shadow-md">
+          <div className="p-8 border border-gray-300 rounded-2xl bg-white shadow-md text-center">
           <p className="text-lg text-gray-600 leading-relaxed italic">
             "I love turning complex problems into simple, beautiful, and
             user-friendly experiences. With a strong focus on UX/UI, I design
