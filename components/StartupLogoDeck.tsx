@@ -57,7 +57,7 @@ export function StartupLogoDeck() {
         <ScrollAnimate direction="up" delay={0} threshold={0.2}>
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-normal tracking-tight leading-tight text-gray-900 mb-4">
-              The Only Dataset You'll Ever Need
+              The Definitive YC Startup Database
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto flex items-center justify-center gap-2 flex-wrap">
               Connect with 1000's of{' '}
