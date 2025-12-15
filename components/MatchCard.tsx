@@ -2,9 +2,19 @@
 
 import { memo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
-import { DollarSign, ExternalLink } from "lucide-react";
-import { SendEmailButton } from "./SendEmailButton";
+import { DollarSign, ExternalLink, ChevronDown, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
+import { UpgradeModal } from "./UpgradeModal";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface MatchCardProps {
   match: {
@@ -46,17 +56,20 @@ interface MatchCardProps {
     } | null;
   };
   isPremium?: boolean;
+  userEmail?: string;
 }
 
-const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchCardProps) => {
+  const router = useRouter();
+  const { toast } = useToast();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const foundersSectionRef = useRef<HTMLDivElement>(null);
   // Single founder selection (always single selection for all users)
   const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
-  const [showPersonaOptions, setShowPersonaOptions] = useState(false);
   const [showFullYcDescription, setShowFullYcDescription] = useState(false);
-  const hidePersonaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [emailDropdownOpen, setEmailDropdownOpen] = useState(false);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   
@@ -78,15 +91,6 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
       console.log(`[MatchCard] emailPersona changed to: ${emailPersona}, isPremium: ${isPremium}, saved to sessionStorage`);
     }
   }, [emailPersona, isPremium]);
-
-  // Clear pending hide timers on unmount to avoid state updates after unmount
-  useEffect(() => {
-    return () => {
-      if (hidePersonaTimeoutRef.current) {
-        clearTimeout(hidePersonaTimeoutRef.current);
-      }
-    };
-  }, []);
 
   if (!match.startup) {
     return null;
@@ -308,8 +312,8 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
       {/* Sticky Header Container - Desktop Only */}
       <div className="lg:sticky lg:top-[64px] lg:z-40 bg-white -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8 px-3 pt-2.5 sm:px-4 md:px-6 lg:px-8 lg:rounded-t-2xl lg:rounded-t-3xl">
         {/* Top Header with Tabs and Generate Email Button */}
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
-          {/* Tabs */}
+        <div className="mb-4 flex items-center justify-between gap-4">
+          {/* Tabs on left */}
           <div className="flex gap-1 sm:gap-3">
             <button
               onClick={() => scrollToSection(companySectionRef, 'company')}
@@ -332,115 +336,146 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
               Founders
             </button>
           </div>
-          {/* Email Persona Selection (Premium Only) and Generate Email Button */}
+          {/* Generate Email Dropdown - Right aligned */}
           {match.startup.id && (
-            <div className="flex items-center gap-2 sm:gap-7 flex-shrink-0">
-              <div
-                className="relative flex items-center group"
-                onMouseEnter={() => {
-                  if (hidePersonaTimeoutRef.current) clearTimeout(hidePersonaTimeoutRef.current);
-                  setShowPersonaOptions(true);
-                }}
-                onMouseLeave={() => {
-                  hidePersonaTimeoutRef.current = setTimeout(() => setShowPersonaOptions(false), 180);
-                }}
-                onFocusCapture={() => {
-                  if (hidePersonaTimeoutRef.current) clearTimeout(hidePersonaTimeoutRef.current);
-                  setShowPersonaOptions(true);
-                }}
-                onBlurCapture={() => {
-                  hidePersonaTimeoutRef.current = setTimeout(() => setShowPersonaOptions(false), 180);
-                }}
-              >
-                {/* Email Persona Selection - Premium Only, Hidden on mobile (revealed on hover/focus of Generate Email) */}
-                {isPremium && (
-                  <div
-                    className={`hidden md:flex absolute right-full mr-3 gap-2 transition-all duration-300 ease-out ${
-                      showPersonaOptions
-                        ? 'opacity-100 translate-x-0 pointer-events-auto'
-                        : 'opacity-0 translate-x-3 pointer-events-none'
-                    } group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:translate-x-0 group-focus-within:pointer-events-auto`}
-                  >
-                    <button
-                      onClick={() => {
-                        setEmailPersona('direct-ask');
-                        if (typeof window !== 'undefined') {
-                          sessionStorage.setItem('emailPersona', 'direct-ask');
-                        }
-                      }}
-                      className={`px-3 py-2 text-xs min-w-[100px] font-medium rounded-lg transition-colors ${
-                        emailPersona === 'direct-ask'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      Direct Ask
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log(`[MatchCard] Genuine Fan clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
-                        setEmailPersona('genuine-fan');
-                        if (typeof window !== 'undefined') {
-                          sessionStorage.setItem('emailPersona', 'genuine-fan');
-                        }
-                      }}
-                      className={`px-3 py-2 text-xs min-w-[100px] font-medium rounded-lg transition-colors ${
-                        emailPersona === 'genuine-fan'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      Genuine Fan
-                    </button>
-                    <button
-                      onClick={() => {
-                        console.log(`[MatchCard] Value-First clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
-                        setEmailPersona('value-first');
-                        if (typeof window !== 'undefined') {
-                          sessionStorage.setItem('emailPersona', 'value-first');
-                        }
-                      }}
-                      className={`px-3 py-2 text-xs min-w-[100px] font-medium rounded-lg transition-colors ${
-                        emailPersona === 'value-first'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      Value-First
-                    </button>
-                  </div>
-                )}
-                {/* Generate Email Button */}
-                {(() => {
-                  // Double-check sessionStorage in case state was reset by Fast Refresh
-                  let finalPersona = emailPersona;
-                  if (typeof window !== 'undefined' && isPremium === true) {
-                    const storedPersona = sessionStorage.getItem('emailPersona');
-                    if (storedPersona === 'genuine-fan' || storedPersona === 'direct-ask' || storedPersona === 'value-first') {
-                      finalPersona = storedPersona as 'direct-ask' | 'genuine-fan' | 'value-first';
-                      // Sync state if it was reset
-                      if (finalPersona !== emailPersona) {
-                        console.log(`[MatchCard] State mismatch detected - state: ${emailPersona}, sessionStorage: ${storedPersona}, syncing...`);
-                        setEmailPersona(finalPersona);
+            <div className="flex-shrink-0">
+              <DropdownMenu open={emailDropdownOpen} onOpenChange={setEmailDropdownOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Generate Email</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent 
+                  align="end" 
+                  className="w-72 !bg-white !border-gray-200 !shadow-lg !text-gray-900 !backdrop-blur-none"
+                  style={{ backgroundColor: 'white', borderColor: '#e5e7eb' }}
+                >
+                  <DropdownMenuLabel className="!text-gray-900 px-3 py-2 font-semibold">Choose Email Style</DropdownMenuLabel>
+                  <DropdownMenuSeparator className="!bg-gray-200" />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Check if founder selection is required but no founder is selected
+                      if (founderNames.length > 0 && selectedFounderIndex === null) {
+                        setEmailDropdownOpen(false);
+                        toast({
+                          title: "Select a founder",
+                          description: "Please select a founder first before generating an email.",
+                          variant: "destructive",
+                        });
+                        return;
                       }
-                    }
-                  }
-                  const computedPersona = (isPremium === true) ? finalPersona : 'direct-ask';
-                  console.log(`[MatchCard] Rendering SendEmailButton - isPremium: ${isPremium}, emailPersona: ${emailPersona}, finalPersona: ${finalPersona}, computed persona: ${computedPersona}`);
-                  return (
-              <SendEmailButton
-                startupId={match.startup.id}
-                matchScore={match.score}
-                founderEmail={selectedFounderEmail}
-                      persona={computedPersona}
-                variant="default"
-                requiresFounderSelection={founderNames.length > 0}
-                      isFounderSelected={selectedFounderIndex !== null}
-                className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer whitespace-nowrap"
-              />
-                  );
-                })()}
-              </div>
+                      setEmailPersona('direct-ask');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'direct-ask');
+                      }
+                      setEmailDropdownOpen(false);
+                      // Navigate to email generation page
+                      if (match.startup?.id) {
+                        const params = new URLSearchParams();
+                        params.append('startupId', match.startup.id);
+                        params.append('matchScore', match.score.toString());
+                        params.append('persona', 'direct-ask');
+                        if (selectedFounderEmail) {
+                          params.append('founderEmail', selectedFounderEmail);
+                        }
+                        router.push(`/generate-email?${params.toString()}`);
+                      }
+                    }}
+                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
+                  >
+                    <div className="w-full">
+                      <div className="font-semibold mb-1">Direct Ask</div>
+                      <div className="text-xs text-gray-600">Get straight to the point. Respectful and efficient.</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Premium check - show upgrade modal if not premium
+                      if (!isPremium) {
+                        setShowUpgradeModal(true);
+                        setEmailDropdownOpen(false);
+                        return;
+                      }
+                      // Check if founder selection is required but no founder is selected
+                      if (founderNames.length > 0 && selectedFounderIndex === null) {
+                        setEmailDropdownOpen(false);
+                        toast({
+                          title: "Select a founder",
+                          description: "Please select a founder first before generating an email.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setEmailPersona('genuine-fan');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'genuine-fan');
+                      }
+                      setEmailDropdownOpen(false);
+                      // Navigate to email generation page
+                      if (match.startup?.id) {
+                        const params = new URLSearchParams();
+                        params.append('startupId', match.startup.id);
+                        params.append('matchScore', match.score.toString());
+                        params.append('persona', 'genuine-fan');
+                        if (selectedFounderEmail) {
+                          params.append('founderEmail', selectedFounderEmail);
+                        }
+                        router.push(`/generate-email?${params.toString()}`);
+                      }
+                    }}
+                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
+                  >
+                    <div className="w-full">
+                      <div className="font-semibold mb-1">Genuine Fan</div>
+                      <div className="text-xs text-gray-600">Show authentic interest and personal connection.</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      // Premium check - show upgrade modal if not premium
+                      if (!isPremium) {
+                        setShowUpgradeModal(true);
+                        setEmailDropdownOpen(false);
+                        return;
+                      }
+                      // Check if founder selection is required but no founder is selected
+                      if (founderNames.length > 0 && selectedFounderIndex === null) {
+                        setEmailDropdownOpen(false);
+                        toast({
+                          title: "Select a founder",
+                          description: "Please select a founder first before generating an email.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setEmailPersona('value-first');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'value-first');
+                      }
+                      setEmailDropdownOpen(false);
+                      // Navigate to email generation page
+                      if (match.startup?.id) {
+                        const params = new URLSearchParams();
+                        params.append('startupId', match.startup.id);
+                        params.append('matchScore', match.score.toString());
+                        params.append('persona', 'value-first');
+                        if (selectedFounderEmail) {
+                          params.append('founderEmail', selectedFounderEmail);
+                        }
+                        router.push(`/generate-email?${params.toString()}`);
+                      }
+                    }}
+                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
+                  >
+                    <div className="w-full">
+                      <div className="font-semibold mb-1">Value-First</div>
+                      <div className="text-xs text-gray-600">Lead with what you can bring to the table.</div>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </div>
@@ -759,6 +794,17 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
             })}
           </div>
         </div>
+      )}
+      {/* Upgrade Modal */}
+      {userEmail && (
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          hiddenMatchCount={0}
+          email={userEmail}
+          customTitle="Upgrade to Premium to Unlock Email Personas"
+          isPremium={isPremium}
+        />
       )}
     </article>
   );

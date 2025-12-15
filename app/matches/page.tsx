@@ -262,7 +262,7 @@ export default function MatchesPage() {
               {/* Single match card display */}
               {matches[currentMatchIndex] && (
                 <div key={matches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard match={matches[currentMatchIndex]} isPremium={isPremium} />
+                  <MatchCard match={matches[currentMatchIndex]} isPremium={isPremium} userEmail={user?.email} />
                 </div>
               )}
             </div>

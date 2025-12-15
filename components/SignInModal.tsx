@@ -29,8 +29,8 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      // Use environment variable for app URL, fallback to window.location.origin
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      // Always use window.location.origin for redirects to ensure localhost works correctly
+      const appUrl = window.location.origin;
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
