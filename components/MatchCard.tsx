@@ -42,6 +42,8 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   // For free users: array with max 1 item (single selection)
   const [selectedFounderIndices, setSelectedFounderIndices] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
+  const [showPersonaOptions, setShowPersonaOptions] = useState(false);
+  const hidePersonaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
   const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
@@ -61,6 +63,15 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
       console.log(`[MatchCard] emailPersona changed to: ${emailPersona}, isPremium: ${isPremium}, saved to sessionStorage`);
     }
   }, [emailPersona, isPremium]);
+
+  // Clear pending hide timers on unmount to avoid state updates after unmount
+  useEffect(() => {
+    return () => {
+      if (hidePersonaTimeoutRef.current) {
+        clearTimeout(hidePersonaTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!match.startup) {
     return null;
@@ -202,88 +213,112 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
           {/* Email Persona Selection (Premium Only) and Generate Email Button */}
           {match.startup.id && (
             <div className="flex items-center gap-7">
-              {/* Email Persona Selection - Premium Only */}
-              {isPremium && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setEmailPersona('direct-ask');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'direct-ask');
-                      }
-                    }}
-                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                      emailPersona === 'direct-ask'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+              <div
+                className="relative flex items-center group"
+                onMouseEnter={() => {
+                  if (hidePersonaTimeoutRef.current) clearTimeout(hidePersonaTimeoutRef.current);
+                  setShowPersonaOptions(true);
+                }}
+                onMouseLeave={() => {
+                  hidePersonaTimeoutRef.current = setTimeout(() => setShowPersonaOptions(false), 180);
+                }}
+                onFocusCapture={() => {
+                  if (hidePersonaTimeoutRef.current) clearTimeout(hidePersonaTimeoutRef.current);
+                  setShowPersonaOptions(true);
+                }}
+                onBlurCapture={() => {
+                  hidePersonaTimeoutRef.current = setTimeout(() => setShowPersonaOptions(false), 180);
+                }}
+              >
+                {/* Email Persona Selection - Premium Only (revealed on hover/focus of Generate Email) */}
+                {isPremium && (
+                  <div
+                    className={`absolute right-full mr-3 flex gap-2 transition-all duration-300 ease-out ${
+                      showPersonaOptions
+                        ? 'opacity-100 translate-x-0 pointer-events-auto'
+                        : 'opacity-0 translate-x-3 pointer-events-none'
+                    } group-hover:opacity-100 group-hover:translate-x-0 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:translate-x-0 group-focus-within:pointer-events-auto`}
                   >
-                    Direct Ask
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log(`[MatchCard] Genuine Fan clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
-                      setEmailPersona('genuine-fan');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'genuine-fan');
+                    <button
+                      onClick={() => {
+                        setEmailPersona('direct-ask');
+                        if (typeof window !== 'undefined') {
+                          sessionStorage.setItem('emailPersona', 'direct-ask');
+                        }
+                      }}
+                      className={`px-3 py-2 text-xs min-w-[100px] font-medium rounded-lg transition-colors ${
+                        emailPersona === 'direct-ask'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Direct Ask
+                    </button>
+                    <button
+                      onClick={() => {
+                        console.log(`[MatchCard] Genuine Fan clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
+                        setEmailPersona('genuine-fan');
+                        if (typeof window !== 'undefined') {
+                          sessionStorage.setItem('emailPersona', 'genuine-fan');
+                        }
+                      }}
+                      className={`px-3 py-2 text-xs min-w-[100px] font-medium rounded-lg transition-colors ${
+                        emailPersona === 'genuine-fan'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Genuine Fan
+                    </button>
+                    <button
+                      onClick={() => {
+                        console.log(`[MatchCard] Value-First clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
+                        setEmailPersona('value-first');
+                        if (typeof window !== 'undefined') {
+                          sessionStorage.setItem('emailPersona', 'value-first');
+                        }
+                      }}
+                      className={`px-3 py-2 text-xs min-w-[100px] font-medium rounded-lg transition-colors ${
+                        emailPersona === 'value-first'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      Value-First
+                    </button>
+                  </div>
+                )}
+                {/* Generate Email Button */}
+                {(() => {
+                  // Double-check sessionStorage in case state was reset by Fast Refresh
+                  let finalPersona = emailPersona;
+                  if (typeof window !== 'undefined' && isPremium === true) {
+                    const storedPersona = sessionStorage.getItem('emailPersona');
+                    if (storedPersona === 'genuine-fan' || storedPersona === 'direct-ask' || storedPersona === 'value-first') {
+                      finalPersona = storedPersona as 'direct-ask' | 'genuine-fan' | 'value-first';
+                      // Sync state if it was reset
+                      if (finalPersona !== emailPersona) {
+                        console.log(`[MatchCard] State mismatch detected - state: ${emailPersona}, sessionStorage: ${storedPersona}, syncing...`);
+                        setEmailPersona(finalPersona);
                       }
-                    }}
-                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                      emailPersona === 'genuine-fan'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    Genuine Fan
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log(`[MatchCard] Value-First clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
-                      setEmailPersona('value-first');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'value-first');
-                      }
-                    }}
-                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                      emailPersona === 'value-first'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    Value-First
-                  </button>
-                </div>
-              )}
-              {/* Generate Email Button */}
-              {(() => {
-                // Double-check sessionStorage in case state was reset by Fast Refresh
-                let finalPersona = emailPersona;
-                if (typeof window !== 'undefined' && isPremium === true) {
-                  const storedPersona = sessionStorage.getItem('emailPersona');
-                  if (storedPersona === 'genuine-fan' || storedPersona === 'direct-ask' || storedPersona === 'value-first') {
-                    finalPersona = storedPersona as 'direct-ask' | 'genuine-fan' | 'value-first';
-                    // Sync state if it was reset
-                    if (finalPersona !== emailPersona) {
-                      console.log(`[MatchCard] State mismatch detected - state: ${emailPersona}, sessionStorage: ${storedPersona}, syncing...`);
-                      setEmailPersona(finalPersona);
                     }
                   }
-                }
-                const computedPersona = (isPremium === true) ? finalPersona : 'direct-ask';
-                console.log(`[MatchCard] Rendering SendEmailButton - isPremium: ${isPremium}, emailPersona: ${emailPersona}, finalPersona: ${finalPersona}, computed persona: ${computedPersona}`);
-                return (
-                  <SendEmailButton
-                    startupId={match.startup.id}
-                    matchScore={match.score}
-                    founderEmail={selectedFounderEmail}
-                    persona={computedPersona}
-                    variant="default"
-                    requiresFounderSelection={founderNames.length > 0}
-                    isFounderSelected={selectedFounderIndices.length > 0}
-                    className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
-                  />
-                );
-              })()}
+                  const computedPersona = (isPremium === true) ? finalPersona : 'direct-ask';
+                  console.log(`[MatchCard] Rendering SendEmailButton - isPremium: ${isPremium}, emailPersona: ${emailPersona}, finalPersona: ${finalPersona}, computed persona: ${computedPersona}`);
+                  return (
+                    <SendEmailButton
+                      startupId={match.startup.id}
+                      matchScore={match.score}
+                      founderEmail={selectedFounderEmail}
+                      persona={computedPersona}
+                      variant="default"
+                      requiresFounderSelection={founderNames.length > 0}
+                      isFounderSelected={selectedFounderIndices.length > 0}
+                      className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                    />
+                  );
+                })()}
+              </div>
             </div>
           )}
         </div>

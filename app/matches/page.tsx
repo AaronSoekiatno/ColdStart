@@ -73,8 +73,8 @@ export default function MatchesPage() {
           setIsPremium(isSubscribed(candidateInfo));
         }
 
-        // Get matches
-        const response = await fetch('/api/matches?page=1&limit=6', {
+        // Get matches - load first 20 for immediate display
+        const response = await fetch('/api/matches?page=1&limit=20', {
           credentials: 'include',
         });
 
@@ -100,6 +100,50 @@ export default function MatchesPage() {
     initialize();
   }, [router]);
 
+  // Background fetch remaining matches after initial load
+  useEffect(() => {
+    const fetchRemainingMatches = async () => {
+      // Only fetch if we have initial matches and pagination info
+      if (!pagination || !pagination.hasMore || matches.length === 0) {
+        return;
+      }
+
+      console.log('[Matches] Background fetching remaining matches...');
+
+      try {
+        // Fetch all remaining pages
+        const remainingPages = pagination.totalPages - 1; // Already have page 1
+        const fetchPromises = [];
+
+        for (let page = 2; page <= pagination.totalPages; page++) {
+          fetchPromises.push(
+            fetch(`/api/matches?page=${page}&limit=20`, {
+              credentials: 'include',
+            }).then(res => res.json())
+          );
+        }
+
+        const results = await Promise.all(fetchPromises);
+
+        // Combine all matches
+        const allNewMatches = results.flatMap(result => result.matches || []);
+
+        console.log('[Matches] Background fetch complete. Loaded', allNewMatches.length, 'additional matches');
+
+        // Append to existing matches
+        setMatches(prev => [...prev, ...allNewMatches]);
+      } catch (error) {
+        console.error('[Matches] Error fetching remaining matches:', error);
+        // Silently fail - user already has first 20 matches
+      }
+    };
+
+    // Start background fetch after initial matches are loaded
+    if (matches.length > 0 && pagination?.hasMore) {
+      fetchRemainingMatches();
+    }
+  }, [matches.length > 0, pagination?.hasMore]); // Only run once when we have initial matches
+
   // Reset current match index when matches change
   useEffect(() => {
     if (matches.length > 0 && currentMatchIndex >= matches.length) {
@@ -109,11 +153,6 @@ export default function MatchesPage() {
 
   // Memoized values - must be called before any conditional returns
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
-  
-  const matchCountText = useMemo(() => {
-    if (!hasMatches) return 'Upload a resume to see personalized startup matches.';    
-    return 'Review these companies and send personalized emails.';
-  }, [hasMatches]);
 
   if (isLoading) {
     return (
