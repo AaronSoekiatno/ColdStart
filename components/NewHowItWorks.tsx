@@ -92,10 +92,35 @@ interface Step {
   icon: React.ReactNode;
 }
 
+interface StartupLogo {
+  id: string;
+  name: string;
+  company_logo: string;
+}
+
 export function NewHowItWorks() {
   const [activeStep, setActiveStep] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [matchingLogos, setMatchingLogos] = useState<StartupLogo[]>([]);
+
+  // Fetch startup logos for AI Matching preview
+  useEffect(() => {
+    async function fetchLogos() {
+      try {
+        const response = await fetch("/api/startups/logos");
+        if (response.ok) {
+          const data = await response.json();
+          // Take just 6 random logos for the preview
+          const shuffled = (data.startups || []).sort(() => 0.5 - Math.random());
+          setMatchingLogos(shuffled.slice(0, 6));
+        }
+      } catch (err) {
+        console.error("Error fetching logos for matching preview:", err);
+      }
+    }
+    fetchLogos();
+  }, []);
 
   const steps: Step[] = [
     {
@@ -313,19 +338,42 @@ export function NewHowItWorks() {
                             Scanning 2000+ YC startups to find your perfect matches
                           </p>
                         </div>
-                        {/* Mock match cards */}
+                        {/* Startup logo cards */}
                         <div className="grid grid-cols-3 gap-3 max-w-md">
-                          {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <div
-                              key={i}
-                              className="w-16 h-16 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center"
-                              style={{
-                                animation: `pulse 2s ease-in-out ${i * 0.2}s infinite`,
-                              }}
-                            >
-                              <div className="w-8 h-8 rounded-md bg-gray-700"></div>
-                            </div>
-                          ))}
+                          {matchingLogos.length > 0 ? (
+                            matchingLogos.map((startup, i) => (
+                              <div
+                                key={startup.id}
+                                className="w-16 h-16 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50 cursor-pointer"
+                              >
+                                <Image
+                                  src={startup.company_logo}
+                                  alt={startup.name}
+                                  width={64}
+                                  height={64}
+                                  className="w-full h-full object-cover"
+                                  unoptimized
+                                  title={startup.name}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              </div>
+                            ))
+                          ) : (
+                            // Fallback placeholders while loading
+                            [1, 2, 3, 4, 5, 6].map((i) => (
+                              <div
+                                key={i}
+                                className="w-16 h-16 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-purple-500/50"
+                                style={{
+                                  animation: `pulse 2s ease-in-out ${i * 0.2}s infinite`,
+                                }}
+                              >
+                                <div className="w-8 h-8 rounded-md bg-gray-700"></div>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
