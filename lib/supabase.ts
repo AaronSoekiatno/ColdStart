@@ -121,37 +121,50 @@ export function isSubscribed(candidate: {
 export async function saveCandidate(candidate: CandidateRow): Promise<{ id: string; email: string; [key: string]: any }> {
   const client = supabaseAdmin || supabase;
 
+  const upsertData = {
+    email: candidate.email,
+    name: candidate.name,
+    summary: candidate.summary,
+    skills: candidate.skills,
+    location: candidate.location,
+    education_level: candidate.education_level,
+    university: candidate.university,
+    past_internships: candidate.past_internships,
+    technical_projects: candidate.technical_projects,
+    job_type: candidate.job_type,
+    role_type: candidate.role_type,
+    // resume_path and resume_full_text are deprecated; full text now lives in the resumes table.
+    // Keep these fields untouched to prepare for dropping them from the schema.
+    resume_latex: candidate.resume_latex,
+    structured_resume_data: candidate.structured_resume_data,
+    created_at: candidate.created_at || new Date().toISOString(),
+  };
+
+  console.log('[saveCandidate] Upserting candidate with structured_resume_data:', {
+    email: upsertData.email,
+    name: upsertData.name,
+    has_structured_resume_data: !!upsertData.structured_resume_data,
+    structured_resume_data_keys: upsertData.structured_resume_data ? Object.keys(upsertData.structured_resume_data) : [],
+  });
+
   const { data, error } = await client
     .from('candidates')
-    .upsert(
-      {
-        email: candidate.email,
-        name: candidate.name,
-        summary: candidate.summary,
-        skills: candidate.skills,
-        location: candidate.location,
-        education_level: candidate.education_level,
-        university: candidate.university,
-        past_internships: candidate.past_internships,
-        technical_projects: candidate.technical_projects,
-        job_type: candidate.job_type,
-        role_type: candidate.role_type,
-        resume_path: candidate.resume_path,
-        resume_full_text: candidate.resume_full_text,
-        resume_latex: candidate.resume_latex,
-        structured_resume_data: candidate.structured_resume_data,
-        created_at: candidate.created_at || new Date().toISOString(),
-      },
-      {
-        onConflict: 'email',
-      }
-    )
+    .upsert(upsertData, {
+      onConflict: 'email',
+    })
     .select()
     .single();
 
   if (error) {
+    console.error('[saveCandidate] Error upserting candidate:', error);
     throw new Error(`Failed to save candidate: ${error.message}`);
   }
+
+  console.log('[saveCandidate] Successfully upserted candidate:', {
+    id: data.id,
+    email: data.email,
+    has_structured_resume_data: !!data.structured_resume_data,
+  });
 
   return data;
 }
@@ -497,8 +510,17 @@ export async function saveMatches(
     throw new Error(`Failed to clear old matches: ${deleteError.message}`);
   }
 
+  // Filter out duplicate startup_ids to prevent constraint violations
+  const uniqueMatches = matches.reduce((acc, match) => {
+    const exists = acc.find(m => m.startup_id === match.startup_id);
+    if (!exists) {
+      acc.push(match);
+    }
+    return acc;
+  }, [] as Array<{ startup_id: string; score: number }>);
+
   // Now insert the new matches
-  const matchRows = matches.map((match) => ({
+  const matchRows = uniqueMatches.map((match) => ({
     candidate_id: candidateId,
     startup_id: match.startup_id,
     score: match.score,
@@ -607,19 +629,35 @@ export async function createResume(resume: {
       .eq('is_primary', true);
   }
 
+  const insertData = {
+    ...resume,
+    is_active: resume.is_active !== undefined ? resume.is_active : true, // Default to active
+    is_primary: resume.is_primary !== undefined ? resume.is_primary : false, // Default to false
+  };
+
+  console.log('[createResume] Inserting resume data:', {
+    candidate_id: insertData.candidate_id,
+    name: insertData.name,
+    file_name: insertData.file_name,
+    resume_path: insertData.resume_path,
+    resume_path_defined: insertData.resume_path !== undefined,
+    resume_path_null: insertData.resume_path === null,
+    is_active: insertData.is_active,
+    is_primary: insertData.is_primary,
+  });
+
   const { data, error } = await supabaseAdmin
     .from('resumes')
-    .insert({
-      ...resume,
-      is_active: resume.is_active !== undefined ? resume.is_active : true, // Default to active
-      is_primary: resume.is_primary !== undefined ? resume.is_primary : false, // Default to false
-    })
+    .insert(insertData)
     .select()
     .single();
 
   if (error) {
+    console.error('[createResume] Error inserting resume:', error);
     throw new Error(`Failed to create resume: ${error.message}`);
   }
+
+  console.log('[createResume] Successfully inserted resume:', data);
 
   return data;
 }

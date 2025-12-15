@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { getCandidate } from '@/lib/supabase';
+import { getCandidate, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { applyResumeSuggestions, generateUpdatedResumePDF } from '@/lib/apply-suggestions-to-pdf';
 import { structuredResumeToPlainText } from '@/lib/structured-resume-to-text';
 import type { StructuredResumeData } from '@/types/resume';
@@ -59,6 +59,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get the primary (current) resume for this candidate to source resume_full_text
+    const primaryResume = candidate.id
+      ? await getPrimaryResumeForCandidate(candidate.id)
+      : null;
+
     let pdfBytes: Uint8Array;
 
     if (updatedStructuredResumeData) {
@@ -66,16 +71,19 @@ export async function POST(request: NextRequest) {
       const updatedText = structuredResumeToPlainText(updatedStructuredResumeData as StructuredResumeData);
       pdfBytes = await generateUpdatedResumePDF(updatedText, candidate.name);
     } else {
-      if (!candidate.resume_full_text) {
+      // Legacy path: apply suggestions against stored full-text resume
+      // Now sourced from the resumes table instead of candidates.resume_full_text
+      const resumeText = primaryResume?.resume_full_text;
+
+      if (!resumeText) {
         return NextResponse.json(
           { error: 'Resume text not available. Please re-upload your resume.' },
           { status: 400 }
         );
       }
 
-      // Legacy path: apply suggestions against stored full-text resume
       pdfBytes = await applyResumeSuggestions(
-        candidate.resume_full_text,
+        resumeText,
         acceptedSuggestions,
         candidate.name
       );

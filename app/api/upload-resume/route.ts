@@ -564,6 +564,12 @@ export async function POST(request: NextRequest) {
           const uniqueFileName = `${timestamp}-${sanitizedName}`;
           const objectPath = `${folderPath}/${uniqueFileName}`;
 
+          console.log('Attempting to upload resume to Storage:', {
+            objectPath,
+            fileType: file!.type,
+            bufferSize: buffer.length,
+          });
+
           const { error: uploadError } = await supabaseAdmin.storage
             .from('resumes')
             .upload(objectPath, buffer, {
@@ -572,9 +578,13 @@ export async function POST(request: NextRequest) {
             });
 
           if (uploadError) {
-            console.error('Failed to upload resume file to Storage:', uploadError);
+            console.error('Failed to upload resume file to Storage:', {
+              error: uploadError,
+              message: uploadError.message,
+              objectPath,
+            });
           } else {
-            console.log('Uploaded resume file to Storage at path:', objectPath);
+            console.log('✓ Successfully uploaded resume file to Storage at path:', objectPath);
             resumePath = objectPath; // Store the path to attach when saving resume
           }
         } else {
@@ -653,7 +663,16 @@ export async function POST(request: NextRequest) {
         // Check if this is the first resume (should be set as primary)
         const resumeCount = await getResumeCountForCandidate(candidateId);
         const shouldSetAsPrimary = resumeCount === 0; // First resume is automatically primary
-        
+
+        console.log('Creating resume with:', {
+          candidateId,
+          finalResumeName,
+          resumeFileName,
+          resumePath,
+          resumePathDefined: resumePath !== undefined,
+          resumeFullTextLength: resumeFullText?.length || 0,
+        });
+
         await createResume({
           candidate_id: candidateId,
           name: finalResumeName,
