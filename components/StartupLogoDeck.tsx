@@ -122,16 +122,16 @@ export function StartupLogoDeck() {
           <div className="w-full px-2">
             <div className="grid grid-cols-12 sm:grid-cols-[repeat(15,minmax(0,1fr))] md:grid-cols-[repeat(18,minmax(0,1fr))] lg:grid-cols-[repeat(24,minmax(0,1fr))] gap-0.5">
               {startups.slice(0, 144).map((startup, index) => (
-                <div
-                  key={startup.id}
+                    <div
+                      key={startup.id}
                   className="bg-white rounded-sm p-0 border border-gray-200 hover:border-blue-400 transition-all duration-300 aspect-square flex items-center justify-center group overflow-hidden logo-item"
-                  style={{
+                      style={{
                     animationDelay: `${index * 0.03}s`,
-                  }}
-                >
-                  <Image
-                    src={startup.company_logo}
-                    alt={startup.name}
+                      }}
+                    >
+                      <Image
+                        src={startup.company_logo}
+                        alt={startup.name}
                     width={100}
                     height={100}
                     className="w-full h-full"
@@ -140,17 +140,17 @@ export function StartupLogoDeck() {
                       height: '100%',
                       objectFit: 'cover'
                     }}
-                    unoptimized
-                    title={startup.name}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
+                        unoptimized
+                        title={startup.name}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
           </div>
-        </div>
 
         {/* Add CSS animation for fadeInUp */}
         <style jsx>{`

@@ -304,16 +304,16 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   }, []);
 
   return (
-    <article className="relative rounded-2xl md:rounded-3xl bg-white px-3 pt-2 pb-4 sm:px-4 -pt-4 sm:pb-6 md:px-6 md:pb-8 lg:px-8 lg:pb-12 shadow-md w-full max-w-full">
+    <article className="relative rounded-xl sm:rounded-2xl md:rounded-3xl bg-white px-2.5 pt-2 pb-3 sm:px-4 sm:pb-6 md:px-6 md:pb-8 lg:px-8 lg:pb-12 shadow-md w-full max-w-full">
       {/* Sticky Header Container - Desktop Only */}
       <div className="lg:sticky lg:top-[64px] lg:z-40 bg-white -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8 px-3 pt-2.5 sm:px-4 md:px-6 lg:px-8 lg:rounded-t-2xl lg:rounded-t-3xl">
         {/* Top Header with Tabs and Generate Email Button */}
-        <div className="mb-2 flex items-center justify-between gap-4">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:gap-4">
           {/* Tabs */}
-          <div className="flex gap-2 sm:gap-3">
+          <div className="flex gap-1 sm:gap-3">
             <button
               onClick={() => scrollToSection(companySectionRef, 'company')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
+              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
                 activeTab === 'company'
                   ? 'text-gray-900 border-blue-500'
                   : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
@@ -323,7 +323,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
             </button>
             <button
               onClick={() => scrollToSection(foundersSectionRef, 'founders')}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
+              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
                 activeTab === 'founders'
                   ? 'text-gray-900 border-blue-500'
                   : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
@@ -334,7 +334,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
           </div>
           {/* Email Persona Selection (Premium Only) and Generate Email Button */}
           {match.startup.id && (
-            <div className="flex items-center gap-7">
+            <div className="flex items-center gap-2 sm:gap-7 flex-shrink-0">
               <div
                 className="relative flex items-center group"
                 onMouseEnter={() => {
@@ -352,10 +352,10 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                   hidePersonaTimeoutRef.current = setTimeout(() => setShowPersonaOptions(false), 180);
                 }}
               >
-                {/* Email Persona Selection - Premium Only (revealed on hover/focus of Generate Email) */}
+                {/* Email Persona Selection - Premium Only, Hidden on mobile (revealed on hover/focus of Generate Email) */}
                 {isPremium && (
                   <div
-                    className={`absolute right-full mr-3 flex gap-2 transition-all duration-300 ease-out ${
+                    className={`hidden md:flex absolute right-full mr-3 gap-2 transition-all duration-300 ease-out ${
                       showPersonaOptions
                         ? 'opacity-100 translate-x-0 pointer-events-auto'
                         : 'opacity-0 translate-x-3 pointer-events-none'
@@ -436,7 +436,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                 variant="default"
                 requiresFounderSelection={founderNames.length > 0}
                       isFounderSelected={selectedFounderIndex !== null}
-                className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer whitespace-nowrap"
               />
                   );
                 })()}
@@ -446,13 +446,13 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
         </div>
 
         {/* Separator below top header */}
-        <div className="mb-4 md:mb-6 border-t border-gray-200"></div>
+        <div className="mb-3 sm:mb-4 md:mb-6 border-t border-gray-200"></div>
       </div>
 
       {/* Company Section */}
       <div ref={companySectionRef} className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
         <div className="flex-1 w-full">
-          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+          <div className="flex flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
             {/* Logo */}
             <div className="flex-shrink-0 flex items-start">
               {match.startup.company_logo ? (
@@ -461,38 +461,38 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                   alt={`${match.startup.name} logo`}
                   width={112}
                   height={112}
-                  className="object-contain w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
+                  className="object-contain w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
                   unoptimized
                   loading="eager"
                 />
               ) : (
-                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-lg bg-gray-100 border border-gray-300"></div>
+                <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-lg bg-gray-100 border border-gray-300"></div>
                 </div>
               )}
             </div>
             {/* Name, match score, description, and links - aligned with logo */}
-            <div className="flex-1 w-full min-w-0 flex flex-col -mt-3">
-              <div className="flex items-start justify-between gap-3 mb-1 sm:mb-1.5">
-                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 break-words leading-tight">
+            <div className="flex-1 min-w-0 flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3 mb-1 sm:mb-1.5">
+                <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 break-words leading-tight">
                   {match.startup.name}
                 </h2>
-                <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2 py-1.5 md:px-3 md:py-2 shadow-sm min-w-[110px] sm:min-w-[120px] flex items-center justify-center">
-                  <p className="text-sm sm:text-base md:text-lg font-bold text-blue-300 whitespace-nowrap">
+                <div className="bg-gray-50 border border-gray-200 rounded-2xl sm:rounded-3xl px-2 py-1 sm:px-3 sm:py-2 shadow-sm w-fit sm:min-w-[120px] flex items-center justify-center flex-shrink-0">
+                  <p className="text-xs sm:text-base md:text-lg font-bold text-blue-300 whitespace-nowrap">
                     {Math.min((match.score * 100) + 40, 97).toFixed(0)}%{" "}
-                    <span className="text-xs sm:text-sm font-normal text-gray-600 align-top inline-block ml-0.5 mt-1">
+                    <span className="text-[10px] sm:text-sm font-normal text-gray-600 align-top inline-block ml-0.5">
                       match
                     </span>
                   </p>
                 </div>
               </div>
               {match.startup.description && (
-                <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed">
+                <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed line-clamp-2 sm:line-clamp-none">
                   {match.startup.description}
           </p>
         )}
               {/* Website, YC, and Twitter buttons underneath description */}
-              <div className="flex gap-2 flex-wrap -mt-0.5">
+              <div className="flex gap-1.5 sm:gap-2 flex-wrap mt-1 sm:-mt-0.5">
         {match.startup.website && (
           <a
             href={match.startup.website.startsWith('http')
@@ -500,9 +500,9 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
               : `https://${match.startup.website}`}
             target="_blank"
             rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-lg bg-gray-50 border border-gray-300 px-2 py-1 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-xs sm:text-sm text-gray-900 font-medium w-fit hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-md sm:rounded-lg bg-gray-50 border border-gray-300 px-1.5 py-0.5 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-[10px] sm:text-sm text-gray-900 font-medium w-fit hover:bg-gray-100 transition-colors cursor-pointer"
                   >
-                    <ExternalLink className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                    <ExternalLink className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                     <span>Website</span>
                   </a>
                 )}
@@ -511,14 +511,14 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                     href={match.startup.yc_link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center rounded-full bg-gray-50 border border-gray-300 w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center rounded-full bg-gray-50 border border-gray-300 w-5 h-5 sm:w-8 sm:h-8 md:w-10 md:h-10 hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <Image
                       src="/images/ycLogo.svg"
                       alt="Y Combinator"
                       width={14}
                       height={14}
-                      className="object-contain w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
+                      className="object-contain w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4"
                     />
                   </a>
                 )}
@@ -529,14 +529,14 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                       : `https://${match.startup.company_twitter_url}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center rounded-full bg-gray-50 border border-gray-300 w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 hover:bg-gray-100 transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center rounded-full bg-gray-50 border border-gray-300 w-5 h-5 sm:w-8 sm:h-8 md:w-10 md:h-10 hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <Image
                       src="/images/twitterLogo.svg"
                       alt="Twitter"
                       width={16}
                       height={16}
-                      className="w-4 h-4 sm:w-4 sm:h-4"
+                      className="w-2.5 h-2.5 sm:w-4 sm:h-4"
                     />
                   </a>
                 )}
@@ -551,15 +551,15 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
             match.startup.team_size ||
             match.startup.location
           ) && (
-            <div className="mt-5 md:mt-8 w-full flex flex-col items-start">
+            <div className="mt-4 sm:mt-5 md:mt-8 w-full flex flex-col items-start">
               {truncatedYcDescription && (
-                <p className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed text-center max-w-3xl md:text-left">
+                <p className="text-[11px] sm:text-sm md:text-base text-gray-700 leading-relaxed text-left max-w-3xl">
                   {showFullYcDescription ? fullYcDescription : truncatedYcDescription}
                   {shouldShowYcToggle && (
                     <button
                       type="button"
                       onClick={() => setShowFullYcDescription((prev) => !prev)}
-                      className="ml-2 text-[11px] sm:text-xs text-blue-300 hover:underline align-baseline"
+                      className="ml-2 text-[10px] sm:text-xs text-blue-300 hover:underline align-baseline"
                     >
                       {showFullYcDescription ? "Show less" : "Show more"}
                     </button>
@@ -567,47 +567,47 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                 </p>
               )}
               {/* Stats row: Company Size, Batch, Industry, Headquarters */}
-              <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full max-w-4xl self-center">
+              <div className="mt-4 sm:mt-6 md:mt-8 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 w-full max-w-4xl self-center">
                 {/* Company Size */}
                 {match.startup.team_size && (
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <div className="text-left">
+                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                       Company Size
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                       {match.startup.team_size}
                     </p>
                   </div>
                 )}
                 {/* Batch */}
                 {match.startup.batch && (
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <div className="text-left">
+                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                       Batch
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                       {match.startup.batch}
                     </p>
                   </div>
                 )}
                 {/* Industry */}
                 {match.startup.industry && (
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <div className="text-left">
+                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                       Industry
                     </p>
-                    <p className="text-xs text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <p className="text-[11px] sm:text-xs text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
                       {match.startup.industry}
                     </p>
                   </div>
                 )}
                 {/* Headquarters */}
                 {match.startup.location && (
-                  <div className="text-center md:text-left">
-                    <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <div className="text-left">
+                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                       Headquarters
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                    <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
                       {match.startup.location}
                     </p>
                   </div>
@@ -619,18 +619,18 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
       </div>
 
       {/* Line separator */}
-      <div className="mt-6 md:mt-8 border-t border-gray-200"></div>
+      <div className="mt-4 sm:mt-6 md:mt-8 border-t border-gray-200"></div>
 
       {/* Founders Section */}
       {founderNames.length > 0 && (
-        <div ref={foundersSectionRef} className="mt-6 md:mt-8">
-          <div className="flex items-center justify-between mb-3 md:mb-4">
-            <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
-            <p className="text-sm sm:text-base text-gray-600">
+        <div ref={foundersSectionRef} className="mt-4 sm:mt-6 md:mt-8">
+          <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+            <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
+            <p className="text-xs sm:text-base text-gray-600">
               Select a founder
             </p>
           </div>
-          <div className="flex flex-col gap-3 md:gap-4">
+          <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
             {/* Founder Cards - one for each founder */}
             {founderNames.map((founderName, index) => {
               const nameParts = founderName.trim().split(' ');
@@ -656,16 +656,16 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
               return (
                 <div 
                   key={index} 
-                  className={`bg-white rounded-xl md:rounded-2xl shadow-sm border p-3 sm:p-4 md:p-5 cursor-pointer transition-all ${
+                  className={`bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border p-2.5 sm:p-4 md:p-5 cursor-pointer transition-all ${
                     isSelected
                       ? 'border-blue-300 border-2 bg-blue-50' 
                       : 'border-gray-100 hover:border-gray-200'
                   }`}
                   onClick={handleCardClick}
                 >
-                  <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
+                  <div className="flex flex-row items-start gap-2.5 sm:gap-3 md:gap-4">
                     {/* Founder Photo */}
-                    <div className="flex-shrink-0 w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+                    <div className="flex-shrink-0 w-12 h-12 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-lg sm:rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
                       {founderProfilePictures[index] && founderProfilePictures[index].trim() !== '' && !failedImages.has(index) ? (
                         <Image
                           src={`/api/image-proxy?url=${encodeURIComponent(founderProfilePictures[index])}`}
@@ -682,7 +682,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                          <span className="text-gray-400 text-xl sm:text-2xl md:text-3xl font-semibold">
+                          <span className="text-gray-400 text-lg sm:text-2xl md:text-3xl font-semibold">
                             {initial.toUpperCase()}
                           </span>
                         </div>
@@ -690,8 +690,8 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                     </div>
                     {/* Founder Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-base sm:text-lg md:text-xl font-bold text-gray-900">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1">
+                        <h4 className="text-sm sm:text-lg md:text-xl font-bold text-gray-900 truncate">
                           {founderName}
                         </h4>
                         {/* LinkedIn Icon */}
@@ -702,14 +702,15 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                               : `https://${founderLinkedInUrls[index]}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="border border-gray-300 rounded-full p-1.5 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                            className="border border-gray-300 rounded-full p-1 sm:p-1.5 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Image
                               src="/images/linkedinLogo.svg"
                               alt="LinkedIn"
                               width={16}
                               height={16}
-                              className="w-4 h-4 sm:w-4 sm:h-4"
+                              className="w-3 h-3 sm:w-4 sm:h-4"
                             />
           </a>
         )}
@@ -721,33 +722,34 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                               : `https://${founderTwitterUrls[index]}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="border border-gray-300 rounded-full p-1.5 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                            className="border border-gray-300 rounded-full p-1 sm:p-1.5 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer flex-shrink-0"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Image
                               src="/images/twitterLogo.svg"
                               alt="Twitter"
                               width={16}
                               height={16}
-                              className="w-4 h-4 sm:w-4 sm:h-4"
+                              className="w-3 h-3 sm:w-4 sm:h-4"
                             />
                           </a>
                         )}
                       </div>
-                      <p className="text-xs sm:text-sm text-gray-500 mb-2 md:mb-3">Founder</p>
+                      <p className="text-[10px] sm:text-sm text-gray-500 mb-1 sm:mb-2 md:mb-3">Founder</p>
                       {founderBackgroundsArray[index] && (
-                        <div className="text-xs sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line">
+                        <div className="text-[11px] sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line line-clamp-3 sm:line-clamp-none">
                           {founderBackgroundsArray[index]}
                         </div>
         )}
       </div>
                     {/* Selection Control - Radio button for single selection */}
-                    <div className="flex-shrink-0 flex items-center">
+                    <div className="flex-shrink-0 flex items-center self-center">
                       <input
                         type="radio"
                         name="founder-selection"
                         checked={isSelected}
                         onChange={handleFounderToggle}
-                        className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 border-gray-300 focus:ring-blue-500 cursor-pointer"
                         onClick={(e) => e.stopPropagation()}
                       />
                     </div>

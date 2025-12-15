@@ -211,16 +211,16 @@ export function ResumeCard({
     <>
       <div 
         className={cn(
-          "bg-white rounded-2xl border p-6 transition-all flex flex-col shadow-sm cursor-pointer",
+          "bg-white rounded-xl sm:rounded-2xl border p-4 sm:p-6 transition-all flex flex-col shadow-sm cursor-pointer",
           // Only selected cards have blue border, all others have gray border
           isSelected ? "border-blue-300 border-2" : "border-gray-200"
         )}
         onClick={handleCardClick}
       >
-        <div className="flex-1 mb-4">
-          <div className="flex items-start justify-between gap-2 mb-2 relative">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 truncate" title={displayName}>
+        <div className="flex-1 mb-3 sm:mb-4">
+          <div className="flex items-start justify-between gap-2 mb-1.5 sm:mb-2 relative">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 truncate" title={displayName}>
                 {displayName}
               </h3>
               {resumeId && (
@@ -229,46 +229,46 @@ export function ResumeCard({
                     e.stopPropagation();
                     setIsEditOpen(true);
                   }}
-                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900 flex-shrink-0 cursor-pointer"
+                  className="p-1 sm:p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900 flex-shrink-0 cursor-pointer"
                   aria-label="Edit resume name"
                   title="Edit resume name"
                 >
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               {resumeId && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsDeleteOpen(true);
                   }}
-                  className="p-1.5 rounded-md hover:bg-red-100 transition-colors text-red-600 hover:text-red-700 cursor-pointer"
+                  className="p-1 sm:p-1.5 rounded-md hover:bg-red-100 transition-colors text-red-600 hover:text-red-700 cursor-pointer"
                   aria-label="Delete resume"
                   title="Delete resume"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               )}
             </div>
           </div>
           {resumeName && (
-            <p className="text-sm text-gray-500 truncate" title={fileName}>
+            <p className="text-xs sm:text-sm text-gray-500 truncate" title={fileName}>
               {fileName}
             </p>
           )}
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5 sm:gap-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setIsPreviewOpen(true);
             }}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all cursor-pointer"
+            className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all cursor-pointer"
           >
-            <Eye className="w-4 h-4" />
-            <span className="text-sm font-medium">Preview</span>
+            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="text-xs sm:text-sm font-medium">Preview</span>
           </button>
           <button
             onClick={(e) => {
@@ -277,22 +277,22 @@ export function ResumeCard({
               router.push(`/resumes/tailor?resumeId=${resumeId}`);
             }}
             className={cn(
-              "flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg transition-all text-sm font-medium",
+              "flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-white rounded-lg transition-all text-xs sm:text-sm font-medium",
               isPrimary 
                 ? "bg-black hover:bg-blue-300" 
                 : "bg-black hover:bg-blue-300"
             )}
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Enhance</span>
           </button>
           {hasEnhancedVersion && (
             <button
               onClick={handleDownloadNewResume}
               disabled={isDownloadingNewResume}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-300 hover:bg-blue-400 text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-300 hover:bg-blue-400 text-white rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{isDownloadingNewResume ? 'Downloading...' : 'Download New Resume'}</span>
             </button>
           )}
