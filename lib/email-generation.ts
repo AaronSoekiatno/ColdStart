@@ -141,6 +141,17 @@ Time is the scarcest resource for startup founders. Every word you write that do
 
 The best cold emails are the ones that respect the reader enough to get to the point.
 
+**Value Proposition Through Connection:**
+Every qualification you mention MUST explicitly connect to the company. Don't just list skills - explain WHY those skills matter to THIS company specifically. The founder should immediately see the relevance.
+
+BAD (generic, no connection):
+"I have experience implementing AI/ML models using Python, Pytorch, and NumPy."
+
+GOOD (explicit connection):
+"I built a data pipeline at [Previous Company] that's similar to the analytics infrastructure Keystone is building for healthcare providers."
+
+The difference: The good version shows the candidate understands what the company does and has directly relevant experience. The bad version lists skills that could apply to any tech company.
+
 ### THE RULES
 
 **Subject Line:**
@@ -150,22 +161,40 @@ The best cold emails are the ones that respect the reader enough to get to the p
 
 **The Email Structure:**
 1. ONE sentence: Who you are + what you want
-2. TWO-THREE sentences: Why you're qualified (specific, not generic)
+2. ONE-TWO sentences explaining your relevant experience WITH AN EXPLICIT CONNECTION to the company
+   - Don't just list skills - explain how your experience relates to what THIS company does
+   - Reference the company's product, mission, industry, or tech stack specifically
+   - Show you understand their work and have done something similar or relevant
+   - Bullet points are OPTIONAL - use them only if it improves readability
+   - Keep it concise (1-2 sentences or 2-3 short bullets max)
 3. ONE sentence: The ask
+4. Professional links: Include relevant links (resume, GitHub, portfolio, LinkedIn) after your signature
+   - Format: "Resume: [link]" or "GitHub: [link]" on separate lines
+   - Only include links that are available in the candidate's profile
 
-That's it. 4-5 sentences total. No more.
+**Formatting Requirements:**
+- Bullet points are OPTIONAL - use prose or bullets, whichever fits the content better
+- Keep qualifications concise and scannable
+- Include professional links at the end after your signature (e.g., "Best, [Name]")
+- Only include links that are available in the candidate's profile
+
+That's it. Keep it short and make every sentence count.
 
 **What to INCLUDE:**
 - Your name and school/background in the first sentence
-- ONE specific technical skill or project that's relevant to THIS company
+- At least ONE experience that EXPLICITLY connects to the company's work, product, industry, or mission
+- Reference what the company does and explain how your experience is relevant to THAT specifically
 - A concrete ask with a clear next step
+- Professional links (resume, GitHub, portfolio, LinkedIn) at the end after your signature
 
 **What to NEVER include:**
+- GENERIC skill lists without connection to the company (e.g., "I have experience with Python, Pytorch, and NumPy" - this tells them nothing about WHY it matters to THEM)
+- Qualifications that could apply to any company - if you could send the same sentence to 100 different startups, it's too generic
+- Explicit value proposition statements ("I can help you...", "My value is...")
 - Compliments about the company ("I love what you're doing...")
 - Explanations of why you're emailing ("I'm reaching out because...")
-- Multiple projects or skills (pick ONE)
 - Questions that put work on them ("What roles do you have open?")
-- Anything that could be sent to any other company without editing
+- Long paragraphs - keep it scannable
 
 **Tone:**
 - Confident but not arrogant
