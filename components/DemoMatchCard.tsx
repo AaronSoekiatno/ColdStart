@@ -1,11 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { ExternalLink, Sparkles } from "lucide-react";
 import { ScrollAnimate } from "@/components/ScrollAnimate";
 
 export function DemoMatchCard() {
-  // Demo data for three startups
+  // Demo data for three startups - matching real UI structure
   const demoStartups = [
     {
       name: "Keystone",
@@ -13,8 +12,6 @@ export function DemoMatchCard() {
       batch: "Summer 2025",
       industry: "AI, Developer Tools",
       matchScore: 92,
-      logoColor: "from-blue-500 to-cyan-600",
-      logoLetter: "K",
       founders: [
         {
           name: "Pablo Hansen",
@@ -29,8 +26,6 @@ export function DemoMatchCard() {
       batch: "Summer 2025",
       industry: "AI, Healthcare",
       matchScore: 88,
-      logoColor: "from-purple-500 to-indigo-600",
-      logoLetter: "N",
       founders: [
         {
           name: "Aman Agarwal",
@@ -50,8 +45,6 @@ export function DemoMatchCard() {
       batch: "Summer 2025",
       industry: "AI, Developer Tools",
       matchScore: 85,
-      logoColor: "from-green-500 to-emerald-600",
-      logoLetter: "S",
       founders: [
         {
           name: "Julian Chen",
@@ -64,127 +57,129 @@ export function DemoMatchCard() {
 
   const renderMatchCard = (startup: typeof demoStartups[0], index: number) => {
     const isCenter = index === 1;
-    const scale = isCenter ? 1 : 0.8; // Center card is full size, others are smaller
-    const zIndex = isCenter ? 10 : index === 0 ? 8 : 9; // Center on top, then right, then left
-    const opacity = isCenter ? 1 : 0.75; // Side cards slightly transparent
-    
+    const scale = isCenter ? 1 : 0.85; // Center card is full size, others are slightly smaller
+    const zIndex = isCenter ? 10 : index === 0 ? 8 : 9;
+    const opacity = isCenter ? 1 : 0.8;
+
     return (
       <div
         key={index}
-        className="bg-white rounded-2xl shadow-xl border border-gray-200 p-4 md:p-6 flex-shrink-0"
+        className="bg-white rounded-2xl md:rounded-3xl shadow-xl border border-gray-200 p-4 md:p-6 flex-shrink-0"
         style={{
           transform: `scale(${scale})`,
           zIndex,
           opacity,
           width: '100%',
-          maxWidth: '380px',
+          maxWidth: '420px',
           transition: 'all 0.3s ease',
         }}
       >
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
           {/* Tabs */}
           <div className="flex gap-3">
-            <button className="text-xs font-medium text-gray-900 border-b-2 border-blue-500 pb-1">
+            <button className="text-xs sm:text-sm font-medium text-gray-900 border-b-2 border-blue-500 pb-1">
               Company
             </button>
-            <button className="text-xs font-medium text-gray-600 border-b-2 border-transparent pb-1">
+            <button className="text-xs sm:text-sm font-medium text-gray-600 border-b-2 border-transparent pb-1">
               Founders
             </button>
           </div>
-          
+
           {/* Generate Email Button */}
-          <button className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm">
+          <button className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm hover:from-blue-400 hover:to-indigo-400 transition">
             <Sparkles className="w-3 h-3" />
             Generate Email
           </button>
         </div>
 
-        {/* Company Section */}
-        <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 mb-4">
-          {/* Match Score */}
+        {/* Company Section - Logo, Name, Description, Match Score */}
+        <div className="flex items-start gap-4 mb-4">
+          {/* Logo - Placeholder with company initial */}
           <div className="flex-shrink-0">
-            <div className="bg-gray-50 border border-gray-200 rounded-3xl px-3 py-2 shadow-sm w-[110px] flex items-center justify-center">
-              <p className="text-xl font-bold text-blue-500">
-                {startup.matchScore}% <span className="text-sm font-normal text-gray-600">match</span>
-              </p>
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 border-2 border-gray-200 flex items-center justify-center">
+              <span className="text-gray-600 text-3xl md:text-4xl font-bold">
+                {startup.name.charAt(0)}
+              </span>
             </div>
           </div>
 
-          {/* Industry and Batch badges */}
-          <div className="flex flex-wrap gap-1.5">
-            {startup.industry && (
-              <span className="inline-block bg-blue-50 border border-blue-500 rounded-2xl px-2 py-0.5 text-xs text-gray-900 font-medium">
-                {startup.industry}
-              </span>
-            )}
-            {startup.batch && (
-              <span className="inline-block bg-gray-50 border border-gray-300 rounded-2xl px-2 py-0.5 text-xs text-gray-900 font-medium">
-                {startup.batch}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Logo and Company Info */}
-        <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-4">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-gradient-to-br ${startup.logoColor} flex items-center justify-center`}>
-              <span className="text-white text-xl font-bold">{startup.logoLetter}</span>
-            </div>
-          </div>
-
-          {/* Name, Description */}
+          {/* Name, Description, and Match Score */}
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">
-              {startup.name}
-            </h3>
-            <p className="text-sm text-gray-600">
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <h2 className="text-xl md:text-2xl font-semibold text-gray-900">
+                {startup.name}
+              </h2>
+              <div className="bg-gray-50 border border-gray-200 rounded-3xl px-2.5 py-1.5 shadow-sm min-w-[100px] flex items-center justify-center">
+                <p className="text-sm md:text-base font-bold text-blue-500">
+                  {startup.matchScore}%{" "}
+                  <span className="text-xs font-normal text-gray-600">match</span>
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
               {startup.description}
             </p>
+            {/* Website Button */}
+            <div className="flex gap-2">
+              <button className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 font-medium hover:bg-gray-100 transition-colors">
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Website</span>
+              </button>
+            </div>
           </div>
         </div>
 
+        {/* Separator */}
+        <div className="border-t border-gray-200 my-4"></div>
+
         {/* Active Founders Section */}
-        <div className="border-t border-gray-200 pt-4">
+        <div>
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-semibold text-gray-900">Active Founders</h4>
             <span className="text-xs text-gray-500">Select a founder</span>
           </div>
 
           <div className="space-y-2">
-            {startup.founders.slice(0, 1).map((founder, founderIndex) => (
-              <div
-                key={founderIndex}
-                className="bg-gray-50 rounded-lg p-3 border border-gray-200"
-              >
-                <div className="flex items-start gap-3">
-                  {/* Avatar */}
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <span className="text-blue-600 font-semibold text-sm">
-                      {founder.name.charAt(0)}
-                    </span>
-                  </div>
+            {startup.founders.slice(0, 1).map((founder, founderIndex) => {
+              const initial = founder.name.charAt(0);
 
-                  {/* Founder Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <h5 className="font-semibold text-sm text-gray-900">{founder.name}</h5>
+              return (
+                <div
+                  key={founderIndex}
+                  className={`bg-white rounded-xl shadow-sm border p-3 sm:p-4 transition-all ${
+                    isCenter ? 'border-blue-500 border-2 bg-blue-50' : 'border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {/* Founder Photo - Placeholder with initial */}
+                    <div className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border-2 border-gray-200 flex items-center justify-center">
+                      <span className="text-gray-600 text-2xl md:text-3xl font-semibold">
+                        {initial.toUpperCase()}
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-600 mb-1">{founder.role}</p>
-                    <p className="text-xs text-gray-700 leading-relaxed line-clamp-2">{founder.bio}</p>
-                  </div>
 
-                  {/* Radio Button */}
-                  <div className="flex-shrink-0">
-                    <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
-                      {isCenter && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
+                    {/* Founder Info */}
+                    <div className="flex-1 min-w-0">
+                      <h5 className="text-base md:text-lg font-bold text-gray-900 mb-1">
+                        {founder.name}
+                      </h5>
+                      <p className="text-xs text-gray-500 mb-2">{founder.role}</p>
+                      <p className="text-xs md:text-sm text-gray-700 leading-relaxed line-clamp-2">
+                        {founder.bio}
+                      </p>
+                    </div>
+
+                    {/* Radio Button */}
+                    <div className="flex-shrink-0 flex items-center">
+                      <div className="w-4 h-4 rounded-full border-2 border-gray-300 flex items-center justify-center">
+                        {isCenter && <div className="w-2 h-2 rounded-full bg-blue-500"></div>}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

@@ -66,12 +66,12 @@ export function PricingSection({ userEmail, onGetStarted }: PricingSectionProps)
               onClick={onGetStarted}
               className="w-full py-6 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium text-base transition-all duration-300"
             >
-              Create Free Resume
+              Get Free Matches
             </Button>
           </div>
 
           {/* Premium Plan Card */}
-          <div className="bg-white rounded-2xl p-8 border-2 border-blue-500 flex flex-col relative shadow-md">
+          <div className="bg-white rounded-2xl p-8 border-2 border-blue-300 flex flex-col relative shadow-md">
             {/* Most Popular Badge */}
             <div className="absolute -top-4 left-1/2 -translate-x-1/2">
               <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-1 rounded-full">
@@ -86,7 +86,7 @@ export function PricingSection({ userEmail, onGetStarted }: PricingSectionProps)
                 <span className="text-4xl font-bold text-gray-900">$20</span>
                 <span className="text-gray-600 text-lg ml-2">/month</span>
               </div>
-              <div className="text-blue-600 text-sm font-semibold">$0 payment today</div>
+              <div className="text-blue-300 text-sm font-semibold">$0 payment today</div>
             </div>
 
             <div className="flex-1 space-y-3 mb-8">
