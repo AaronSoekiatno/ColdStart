@@ -446,15 +446,21 @@ export async function POST(request: NextRequest) {
       // Build a minimal StructuredResumeData object from the Gemini extraction
       structuredResumeData = {
         personal: {
-          name: extractionResult.name,
+          // Ensure required strings are never null/undefined
+          name: extractionResult.name || accountName || 'Unknown',
           email: accountEmail,
-          location: extractionResult.location,
+          // Only include location if we have a non-empty string
+          ...(extractionResult.location && { location: extractionResult.location }),
         },
-        summary: extractionResult.summary,
+        // Optional summary; omit if empty/null
+        ...(extractionResult.summary && { summary: extractionResult.summary }),
         experience: [],
         education: [],
         projects: [],
-        skills: extractionResult.skills,
+        // Filter out any falsy / nullish entries just in case
+        skills: Array.isArray(extractionResult.skills)
+          ? extractionResult.skills.filter((s): s is string => !!s && s.trim().length > 0)
+          : [],
         certifications: [],
       };
       
