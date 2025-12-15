@@ -52,12 +52,12 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white border-gray-200 text-gray-900 sm:max-w-md">
+      <DialogContent className="bg-black border-white/20 text-white sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold text-gray-900 text-center">
-            Welcome to ColdStart!
+          <DialogTitle className="text-2xl font-semibold text-white text-center">
+            Welcome to Hermes!
           </DialogTitle>
-          <DialogDescription className="text-gray-600 text-center mt-2">
+          <DialogDescription className="text-white/60 text-center mt-2">
             Let's personalize your experience. What type of position are you looking for?
           </DialogDescription>
         </DialogHeader>
@@ -67,36 +67,36 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
             onClick={() => setSelectedJobType('full-time')}
             className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
               selectedJobType === 'full-time'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-blue-500 bg-blue-500/20'
+                : 'border-white/20 hover:border-white/40 bg-white/5'
             }`}
           >
-            <div className="font-medium text-gray-900">Full-Time</div>
-            <div className="text-sm text-gray-600 mt-1">Permanent, full-time positions</div>
+            <div className="font-medium text-white">Full-Time</div>
+            <div className="text-sm text-white/60 mt-1">Permanent, full-time positions</div>
           </button>
 
           <button
             onClick={() => setSelectedJobType('part-time')}
             className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
               selectedJobType === 'part-time'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-blue-500 bg-blue-500/20'
+                : 'border-white/20 hover:border-white/40 bg-white/5'
             }`}
           >
-            <div className="font-medium text-gray-900">Part-Time</div>
-            <div className="text-sm text-gray-600 mt-1">Part-time or contract positions</div>
+            <div className="font-medium text-white">Part-Time</div>
+            <div className="text-sm text-white/60 mt-1">Part-time or contract positions</div>
           </button>
 
           <button
             onClick={() => setSelectedJobType('internship')}
             className={`w-full p-4 rounded-lg border-2 transition-all text-left ${
               selectedJobType === 'internship'
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-200 hover:border-gray-300'
+                ? 'border-blue-500 bg-blue-500/20'
+                : 'border-white/20 hover:border-white/40 bg-white/5'
             }`}
           >
-            <div className="font-medium text-gray-900">Internship</div>
-            <div className="text-sm text-gray-600 mt-1">Summer, winter, or year-round internships</div>
+            <div className="font-medium text-white">Internship</div>
+            <div className="text-sm text-white/60 mt-1">Summer, winter, or year-round internships</div>
           </button>
         </div>
 
@@ -104,7 +104,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
           <Button
             onClick={handleSubmit}
             disabled={!selectedJobType || isSubmitting}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full bg-white hover:bg-gray-100 text-black font-medium"
           >
             {isSubmitting ? 'Saving...' : 'Continue'}
           </Button>

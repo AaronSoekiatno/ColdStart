@@ -43,14 +43,14 @@ export function NewHowItWorks() {
               rootMargin="0px"
             >
               <div className="space-y-4 bg-white rounded-2xl p-8 shadow-md border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                <div className="text-5xl font-light text-gray-400">
-                  {step.number}
-                </div>
-                <h3 className="text-2xl font-medium text-gray-900">{step.title}</h3>
-                <p className="text-base text-gray-600 leading-relaxed">
-                  {step.description}
-                </p>
+              <div className="text-5xl font-light text-gray-400">
+                {step.number}
               </div>
+              <h3 className="text-2xl font-medium text-gray-900">{step.title}</h3>
+              <p className="text-base text-gray-600 leading-relaxed">
+                {step.description}
+              </p>
+            </div>
             </ScrollAnimate>
           ))}
         </div>
