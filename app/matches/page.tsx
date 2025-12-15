@@ -7,55 +7,32 @@ import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
-
-interface MatchRecord {
-  id: string;
-  score: number;
-  matched_at: string;
-  startup: {
-    id?: string;
-    name: string;
-    industry: string;
-    location: string;
-    funding_stage: string;
-    funding_amount: string;
-    tags: string;
-    website: string;
-    founder_emails?: string;
-    founder_names?: string;
-    founder_linkedin?: string;
-    founder_backgrounds?: string;
-    batch?: string;
-    description?: string;
-    company_logo?: string;
-    yc_link?: string;
-  } | null;
-}
-
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasMore: boolean;
-}
+import { useMatches } from '@/hooks/use-matches';
 
 export default function MatchesPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [matches, setMatches] = useState<MatchRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
-  const [hasError, setHasError] = useState(false);
-  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
 
-  // Load initial data
+  // Use the custom hook for match management
+  const {
+    matches,
+    currentIndex,
+    setCurrentIndex,
+    loadMoreIfNeeded,
+    isInitialLoading,
+    isLoadingMore,
+    hasMore,
+    hasError: matchesError,
+  } = useMatches();
+
+  // Check authentication and premium status
   useEffect(() => {
     const initialize = async () => {
       try {
         const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
-        
+
         if (authError || !currentUser) {
           router.push(`/?signup=true&redirect=/matches`);
           return;
@@ -72,50 +49,43 @@ export default function MatchesPage() {
           const candidateInfo = await candidateResponse.json();
           setIsPremium(isSubscribed(candidateInfo));
         }
-
-        // Get matches
-        const response = await fetch('/api/matches?page=1&limit=6', {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            router.push('/?error=no_resume');
-            return;
-          }
-          throw new Error('Failed to load matches');
-        }
-
-        const data = await response.json();
-        setMatches(data.matches || []);
-        setPagination(data.pagination);
       } catch (error) {
         console.error('Error initializing matches page:', error);
-        setHasError(true);
       } finally {
-        setIsLoading(false);
+        setIsAuthChecking(false);
       }
     };
 
     initialize();
   }, [router]);
 
-  // Reset current match index when matches change
-  useEffect(() => {
-    if (matches.length > 0 && currentMatchIndex >= matches.length) {
-      setCurrentMatchIndex(0);
-    }
-  }, [matches.length, currentMatchIndex]);
-
-  // Memoized values - must be called before any conditional returns
+  // Memoized values
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
-  
-  const matchCountText = useMemo(() => {
-    if (!hasMatches) return 'Upload a resume to see personalized startup matches.';    
-    return 'Review these companies and send personalized emails.';
-  }, [hasMatches]);
 
-  if (isLoading) {
+  const currentMatch = useMemo(
+    () => matches[currentIndex],
+    [matches, currentIndex]
+  );
+
+  // Navigation handlers
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    }
+  };
+
+  const handleNext = async () => {
+    if (currentIndex < matches.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else if (hasMore) {
+      // At the end of loaded matches, try to load more
+      await loadMoreIfNeeded();
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  // Loading state
+  if (isAuthChecking || isInitialLoading) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
@@ -130,7 +100,8 @@ export default function MatchesPage() {
     );
   }
 
-  if (hasError || !user) {
+  // Error state
+  if (matchesError || !user) {
     return (
       <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
@@ -145,6 +116,7 @@ export default function MatchesPage() {
     );
   }
 
+  // Main render
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
@@ -154,8 +126,8 @@ export default function MatchesPage() {
           <>
             {/* Left arrow button */}
             <button
-              onClick={() => setCurrentMatchIndex((prev) => Math.max(0, prev - 1))}
-              disabled={currentMatchIndex === 0}
+              onClick={handlePrevious}
+              disabled={currentIndex === 0}
               className="fixed left-1 sm:left-2 md:left-4 lg:left-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
               aria-label="Previous match"
             >
@@ -164,8 +136,8 @@ export default function MatchesPage() {
 
             {/* Right arrow button */}
             <button
-              onClick={() => setCurrentMatchIndex((prev) => Math.min(matches.length - 1, prev + 1))}
-              disabled={currentMatchIndex >= matches.length - 1}
+              onClick={handleNext}
+              disabled={(currentIndex >= matches.length - 1 && !hasMore) || isLoadingMore}
               className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[240px] sm:top-[260px] md:top-[320px] lg:top-[350px] z-50 w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
               aria-label="Next match"
             >
@@ -173,13 +145,24 @@ export default function MatchesPage() {
             </button>
           </>
         )}
+
         <div className="container mx-auto px-3 sm:px-4">
           {hasMatches ? (
             <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto relative pl-12 sm:pl-0 pr-12 sm:pr-0 md:pl-0 md:pr-0">
               {/* Single match card display */}
-              {matches[currentMatchIndex] && (
-                <div key={matches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard match={matches[currentMatchIndex]} isPremium={isPremium} />
+              {currentMatch && (
+                <div key={currentMatch.id} className="animate-fade-in">
+                  <MatchCard match={currentMatch} isPremium={isPremium} />
+                </div>
+              )}
+
+              {/* Loading indicator */}
+              {isLoadingMore && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 rounded-2xl md:rounded-3xl">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+                    <p className="text-sm text-gray-600">Loading more matches...</p>
+                  </div>
                 </div>
               )}
             </div>

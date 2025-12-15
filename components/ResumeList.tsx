@@ -111,7 +111,7 @@ export function ResumeList({ resumes, isPremium }: ResumeListProps) {
         <div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">My Resumes</h1>
           <p className="text-gray-600">
-            Manage all of your tailored resumes here!
+            Manage all of your resumes here!
           </p>
         </div>
         <button

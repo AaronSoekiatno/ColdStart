@@ -142,19 +142,19 @@ export const Header = ({ initialUser }: HeaderProps) => {
             <>
               <Link
                 href="/matches"
-                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
+                className="text-sm text-gray-800 hover:text-gray-800/80 transition-colors drop-shadow-md"
               >
                 Your Matches
               </Link>
               <Link
                 href="/tracker"
-                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
+                className="text-sm text-gray-800 hover:text-gray-800/80 transition-colors drop-shadow-md"
               >
                 Email Tracker
               </Link>
               <Link
                 href="/resumes"
-                className="text-sm text-gray-800 hover:text-gray-700 transition-colors"
+                className="text-sm text-gray-800 hover:text-gray-800/80 transition-colors drop-shadow-md"
               >
                 Resumes
               </Link>
