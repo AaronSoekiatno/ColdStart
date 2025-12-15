@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import ResumeUpload from "@/app/components/ResumeUpload";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { OnboardingModal } from "@/components/OnboardingModal";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
@@ -21,6 +22,7 @@ interface ResumeUploadModalProps {
 
 export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: ResumeUploadModalProps) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -29,6 +31,40 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
       setUser(user);
     });
   }, []);
+
+  const handleUploadSuccess = async () => {
+    onOpenChange(false);
+    
+    // Check if user needs onboarding (no job_type set)
+    if (user?.email) {
+      try {
+        const response = await fetch('/api/candidate/check-onboarding', {
+          credentials: 'include',
+        });
+        const data = await response.json();
+        
+        if (data.needsOnboarding) {
+          setShowOnboardingModal(true);
+        } else {
+          // Call the upload success callback if provided
+          if (onUploadSuccess) {
+            onUploadSuccess();
+          }
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // If check fails, just call success callback
+        if (onUploadSuccess) {
+          onUploadSuccess();
+        }
+      }
+    } else {
+      // Call the upload success callback if provided
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
+    }
+  };
 
   return (
     <>
@@ -44,13 +80,7 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
           </DialogHeader>
           <div className="mt-4">
             <ResumeUpload 
-              onSuccess={() => {
-                onOpenChange(false);
-                // Call the upload success callback if provided
-                if (onUploadSuccess) {
-                  onUploadSuccess();
-                }
-              }} 
+              onSuccess={handleUploadSuccess} 
               onUpgradeRequired={() => {
                 setShowUpgradeModal(true);
                 onOpenChange(false); // Close the upload modal
@@ -67,6 +97,19 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
           email={user.email || ''}
           customTitle="Upgrade to Premium"
           isPremium={false}
+        />
+      )}
+      {showOnboardingModal && (
+        <OnboardingModal
+          open={showOnboardingModal}
+          onOpenChange={setShowOnboardingModal}
+          onComplete={() => {
+            setShowOnboardingModal(false);
+            // Call the upload success callback after onboarding is complete
+            if (onUploadSuccess) {
+              onUploadSuccess();
+            }
+          }}
         />
       )}
     </>

@@ -71,6 +71,7 @@ export interface CandidateRow {
   university?: string;
   past_internships?: string; // Comma-separated string
   technical_projects?: string; // Comma-separated string
+  job_type?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
   resume_path?: string; // Path to resume file in Supabase Storage (DEPRECATED - use resumes table)
   resume_full_text?: string; // Full extracted text content from resume (DEPRECATED - use resumes table)
   resume_latex?: string; // LaTeX source code generated from resume
@@ -132,6 +133,7 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
         university: candidate.university,
         past_internships: candidate.past_internships,
         technical_projects: candidate.technical_projects,
+        job_type: candidate.job_type,
         resume_path: candidate.resume_path,
         resume_full_text: candidate.resume_full_text,
         resume_latex: candidate.resume_latex,

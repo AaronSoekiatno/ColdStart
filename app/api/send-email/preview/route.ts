@@ -192,6 +192,7 @@ export async function POST(request: NextRequest) {
         university: candidate.university || undefined,
         pastInternships: candidate.past_internships || undefined,
         technicalProjects: candidate.technical_projects || undefined,
+        jobType: candidate.job_type || undefined,
       },
       {
         name: startup.name,

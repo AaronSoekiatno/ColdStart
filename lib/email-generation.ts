@@ -29,6 +29,7 @@ export interface CandidateProfile {
   university?: string;
   pastInternships?: string; // Comma-separated string
   technicalProjects?: string; // Comma-separated string
+  jobType?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
 }
 
 export interface StartupInfo {
@@ -70,6 +71,37 @@ export interface GeneratedEmail {
 }
 
 // ---------- Internal helpers ----------
+
+/**
+ * Get the job type text for use in prompts
+ * Defaults to "internship" if not specified
+ */
+function getJobTypeText(jobType?: 'full-time' | 'part-time' | 'internship'): string {
+  switch (jobType) {
+    case 'full-time':
+      return 'full-time position';
+    case 'part-time':
+      return 'part-time position';
+    case 'internship':
+    default:
+      return 'internship';
+  }
+}
+
+/**
+ * Get the job type short text for subject lines
+ */
+function getJobTypeShort(jobType?: 'full-time' | 'part-time' | 'internship'): string {
+  switch (jobType) {
+    case 'full-time':
+      return 'full-time';
+    case 'part-time':
+      return 'part-time';
+    case 'internship':
+    default:
+      return 'internship';
+  }
+}
 
 function getGeminiClient() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -128,11 +160,14 @@ function buildEmailPrompt(
         : novaflowContext;
   }
 
+  const jobTypeText = getJobTypeText(candidate.jobType);
+  const jobTypeShort = getJobTypeShort(candidate.jobType);
+
   return `
 You are writing a cold email for ${candidate.name} to ${rawFounderName} at ${startup.name}.
 
 ### YOUR PHILOSOPHY
-Time is the scarcest resource for startup founders. Every word you write that doesn't directly serve the goal of getting an internship is a word that wastes their time and reduces your chances. 
+Time is the scarcest resource for startup founders. Every word you write that doesn't directly serve the goal of getting a ${jobTypeText} is a word that wastes their time and reduces your chances. 
 
 The best cold emails are the ones that respect the reader enough to get to the point.
 
@@ -151,7 +186,7 @@ The difference: The good version shows the candidate understands what the compan
 
 **Subject Line:**
 - State exactly what you want in 3-6 words
-- Examples that work: "Summer internship at [Company]?" / "ML intern - UCSD student" / "[Company] internship inquiry"
+- Examples that work: "Summer ${jobTypeShort} at [Company]?" / "ML ${jobTypeShort === 'internship' ? 'intern' : jobTypeShort} - UCSD student" / "[Company] ${jobTypeShort} inquiry"
 - What NOT to do: Clever tricks, fake internal memos, clickbait
 
 **The Email Structure:**
@@ -252,6 +287,7 @@ function buildGenuineFanPrompt(
   match: MatchContext
 ): string {
   const rawFounderName = startup.founderName || 'Founder';
+  const jobTypeText = getJobTypeText(candidate.jobType);
   const linksText = candidate.links
     ? Object.entries(candidate.links)
         .map(([k, v]) => `${k}: ${v}`)
@@ -278,7 +314,7 @@ You are writing a "GENUINE FAN" email. This is FUNDAMENTALLY DIFFERENT from a ty
 **WHAT YOU MUST NEVER DO (these are deal-breakers):**
 - NEVER start with "My name is [Name], a [Title] at [School]..."
 - NEVER lead with your credentials, education, or qualifications
-- NEVER say "I'm writing to inquire about internship opportunities"
+- NEVER say "I'm writing to inquire about ${jobTypeText} opportunities" (be more specific and direct)
 - NEVER list your skills or experiences as the focus
 - NEVER make the ask about "discussing how my background could be a fit"
 - NEVER structure it as: introduction → qualifications → ask for meeting
@@ -297,7 +333,7 @@ This is about authentic connection. If you've actually used their product, care 
 ### GOOD vs BAD EXAMPLES
 
 **BAD (this is a Direct Ask disguised as Genuine Fan - DO NOT DO THIS):**
-"Hi Julian, My name is Robert, an EE student at UCLA, and I'm writing to inquire about internship opportunities at Stagewise. As the CTO of a startup, I led development of a full-stack app using React Native and Node.js. I'd love to discuss how my background could be a fit."
+"Hi Julian, My name is Robert, an EE student at UCLA, and I'm writing to inquire about ${jobTypeText} opportunities at Stagewise. As the CTO of a startup, I led development of a full-stack app using React Native and Node.js. I'd love to discuss how my background could be a fit."
 
 **GOOD (this is a true Genuine Fan email - DO THIS):**
 "Hi Julian, I've been obsessed with the idea of AI-powered coding agents, so when I found Stagewise I immediately tried it on one of my React projects. The way it understands component context is unlike anything else I've used. I actually built something similar (much simpler) at my startup - would love to hear how you approached the frontend parsing problem."
@@ -412,6 +448,7 @@ function buildValueFirstPrompt(
   match: MatchContext
 ): string {
   const rawFounderName = startup.founderName || 'Founder';
+  const jobTypeText = getJobTypeText(candidate.jobType);
   const linksText = candidate.links
     ? Object.entries(candidate.links)
         .map(([k, v]) => `${k}: ${v}`)
@@ -490,7 +527,7 @@ Option B - "Here's exactly what I'd do":
 - Examples of BAD endings:
   * "I would love to build this for [Company] as an intern this summer."
   * "Let me know if you'd like me to do this for you."
-  * "I'm looking for an internship and would love to work on this."
+  * "I'm looking for a ${jobTypeText} and would love to work on this."
 
 **The Value Test:**
 The email should be useful to them even if they don't hire you. They should learn something or get something from reading it.
@@ -626,9 +663,10 @@ export async function generateColdEmail(
   } catch (error) {
     // Fallback: treat the whole response as the body, and construct a subject.
     body = responseText.trim();
+    const jobTypeShort = getJobTypeShort(candidate.jobType);
     subject =
       subjectPrefix +
-      `Intro: ${candidate.name} → ${startup.name} (internship interest)`;
+      `Intro: ${candidate.name} → ${startup.name} (${jobTypeShort} interest)`;
   }
 
   // Ensure subject has the requested prefix if provided.
@@ -637,9 +675,10 @@ export async function generateColdEmail(
   }
 
   if (!subject) {
+    const jobTypeShort = getJobTypeShort(candidate.jobType);
     subject =
       subjectPrefix +
-      `Intro: ${candidate.name} → ${startup.name} (internship interest)`;
+      `Intro: ${candidate.name} → ${startup.name} (${jobTypeShort} interest)`;
   }
 
   if (!body) {
