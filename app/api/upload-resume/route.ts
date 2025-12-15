@@ -15,6 +15,7 @@ import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByN
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
+import { parseResumeToStructured } from '@/lib/parse-resume';
 
 export const runtime = 'nodejs';
 
@@ -441,28 +442,59 @@ export async function POST(request: NextRequest) {
       extractionResult = extraction;
       resumeFullText = fullText;
       resumeLatex = latexCode;
-      
-      // Build a minimal StructuredResumeData object from the Gemini extraction
-      structuredResumeData = {
-        personal: {
-          // Ensure required strings are never null/undefined
-          name: extractionResult.name || accountName || 'Unknown',
-          email: accountEmail || '',
-          // Only include location if we have a non-empty string
-          ...(extractionResult.location && { location: extractionResult.location }),
-        },
-        // Optional summary; omit if empty/null
-        ...(extractionResult.summary && { summary: extractionResult.summary }),
-        experience: [],
-        education: [],
-        projects: [],
-        // Filter out any falsy / nullish entries just in case
-        skills: Array.isArray(extractionResult.skills)
-          ? extractionResult.skills.filter((s): s is string => !!s && s.trim().length > 0)
-          : [],
-        certifications: [],
-      };
-      
+
+      // Parse resume into structured data for template-based editing
+      if (resumeFullText && resumeFullText.trim().length > 0) {
+        try {
+          console.log('Starting structured resume parsing...');
+          structuredResumeData = await parseResumeToStructured(resumeFullText);
+          console.log('Successfully parsed resume into structured format:', {
+            hasPersonal: !!structuredResumeData?.personal,
+            experienceCount: structuredResumeData?.experience?.length || 0,
+            educationCount: structuredResumeData?.education?.length || 0,
+            projectsCount: structuredResumeData?.projects?.length || 0,
+            skillsCount: structuredResumeData?.skills?.length || 0,
+          });
+        } catch (parseError) {
+          console.error('Failed to parse resume into structured format:', parseError);
+          console.error('Parse error details:', parseError instanceof Error ? parseError.message : parseError);
+          // Fallback to minimal structured data if parsing fails
+          structuredResumeData = {
+            personal: {
+              name: extractionResult.name || accountName || 'Unknown',
+              email: accountEmail || '',
+              ...(extractionResult.location && { location: extractionResult.location }),
+            },
+            ...(extractionResult.summary && { summary: extractionResult.summary }),
+            experience: [],
+            education: [],
+            projects: [],
+            skills: Array.isArray(extractionResult.skills)
+              ? extractionResult.skills.filter((s): s is string => !!s && s.trim().length > 0)
+              : [],
+            certifications: [],
+          };
+        }
+      } else {
+        console.log('Skipping structured parsing - no resume text available');
+        // Fallback to minimal structured data
+        structuredResumeData = {
+          personal: {
+            name: extractionResult.name || accountName || 'Unknown',
+            email: accountEmail || '',
+            ...(extractionResult.location && { location: extractionResult.location }),
+          },
+          ...(extractionResult.summary && { summary: extractionResult.summary }),
+          experience: [],
+          education: [],
+          projects: [],
+          skills: Array.isArray(extractionResult.skills)
+            ? extractionResult.skills.filter((s): s is string => !!s && s.trim().length > 0)
+            : [],
+          certifications: [],
+        };
+      }
+
       // Extract raw text for response
       // For PDFs, use the extracted full text; for DOCX, it's already in resumeFullText
       rawText = resumeFullText || 'Resume text extraction completed';
@@ -679,6 +711,7 @@ export async function POST(request: NextRequest) {
           file_name: resumeFileName,
           resume_path: resumePath,
           resume_full_text: resumeFullText,
+          structured_data: structuredResumeData, // Store structured data per-resume for template-based editing
           is_active: true, // New resumes are active by default
           is_primary: shouldSetAsPrimary, // First resume is automatically primary
         });

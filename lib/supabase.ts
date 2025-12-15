@@ -92,6 +92,7 @@ export interface ResumeRow {
   file_name: string; // Original uploaded file name
   resume_path?: string; // Path to resume file in Supabase Storage
   resume_full_text?: string; // Full extracted text content from resume
+  structured_data?: any; // Structured resume data (StructuredResumeData) for template-based editing
   is_active?: boolean; // Whether this resume is active/available for use
   is_primary?: boolean; // Whether this resume is the primary/current resume for email generation
   created_at?: string;
@@ -430,26 +431,51 @@ export async function findStartupIdsByNames(names: string[]): Promise<Map<string
     return resultMap;
   }
 
-  // Use parallel individual lookups - much faster than sequential
-  // This is still faster than sequential because all queries run in parallel
-  // Typical improvement: 100 sequential queries (5-10s) -> 100 parallel queries (<1s)
-  const lookupPromises = validNames.map(async (name) => {
-    try {
-      const id = await findStartupIdByName(name);
-      return { name, id };
-    } catch (error) {
-      console.warn(`Error looking up startup "${name}":`, error instanceof Error ? error.message : 'Unknown error');
-      return { name, id: null };
-    }
-  });
-
-  const results = await Promise.all(lookupPromises);
+  // Batch queries in chunks to avoid overwhelming Supabase
+  // Process 20 startups at a time to prevent connection timeouts
+  const BATCH_SIZE = 20;
+  const batches: string[][] = [];
   
-  results.forEach(({ name, id }) => {
-    if (id) {
-      resultMap.set(name, id);
+  for (let i = 0; i < validNames.length; i += BATCH_SIZE) {
+    batches.push(validNames.slice(i, i + BATCH_SIZE));
+  }
+
+  // Process batches sequentially, but queries within each batch in parallel
+  for (const batch of batches) {
+    const lookupPromises = batch.map(async (name) => {
+      try {
+        // Add timeout wrapper to prevent hanging queries
+        const timeoutPromise = new Promise<{ name: string; id: null }>((resolve) => {
+          setTimeout(() => resolve({ name, id: null }), 5000); // 5 second timeout per query
+        });
+
+        const queryPromise = findStartupIdByName(name).then(id => ({ name, id }));
+        
+        const result = await Promise.race([queryPromise, timeoutPromise]);
+        return result;
+      } catch (error) {
+        // Silently handle errors - don't log every timeout to avoid spam
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        if (!errorMessage.includes('timeout') && !errorMessage.includes('ECONNRESET') && !errorMessage.includes('disconnect')) {
+          console.warn(`Error looking up startup "${name}":`, errorMessage);
+        }
+        return { name, id: null };
+      }
+    });
+
+    const batchResults = await Promise.allSettled(lookupPromises);
+    
+    batchResults.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value.id) {
+        resultMap.set(result.value.name, result.value.id);
+      }
+    });
+
+    // Small delay between batches to avoid overwhelming Supabase
+    if (batches.indexOf(batch) < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
-  });
+  }
 
   return resultMap;
 }
