@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -38,11 +38,7 @@ function EnhanceResumePageContent() {
   const [structuredResumeData, setStructuredResumeData] = useState<StructuredResumeData | null>(null);
   const [originalStructuredResumeData, setOriginalStructuredResumeData] = useState<StructuredResumeData | null>(null);
   const [highlightedFields, setHighlightedFields] = useState<Set<ResumePath>>(new Set());
-  const [hoveredSuggestionId, setHoveredSuggestionId] = useState<string | null>(null);
-  const [hoveredElementPosition, setHoveredElementPosition] = useState<{ top: number; left: number } | null>(null);
-  const [isModalHovered, setIsModalHovered] = useState(false);
-  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const resumePreviewRef = useRef<HTMLDivElement>(null);
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Helper function to apply suggestions to structured resume data
@@ -62,6 +58,73 @@ function EnhanceResumePageContent() {
       updatedData: result.updatedData,
       highlightedFields: result.modifiedPaths,
     };
+  };
+
+  const handleLoadSuggestions = async (currentStructuredData?: StructuredResumeData) => {
+    if (!resumeId) return;
+
+    // Use provided data or fall back to state
+    const dataToUse = currentStructuredData || structuredResumeData;
+
+    try {
+      setIsLoadingSuggestions(true);
+      setSuggestionsRequested(true);
+
+      const response = await fetch("/api/resume-suggestions-general", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          resumeId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load resume suggestions');
+      }
+
+      const suggestions = data.suggestions || [];
+      setResumeSuggestions(suggestions);
+
+      // Apply all suggestions immediately to preview
+      if (dataToUse && suggestions.length > 0) {
+        const { updatedData, highlightedFields: newHighlighted } = applySuggestionsToStructuredData(
+          dataToUse,
+          suggestions
+        );
+        setStructuredResumeData(updatedData);
+        setHighlightedFields(newHighlighted);
+
+        // Set all as 'pending' initially (they're applied but not confirmed)
+        const initialStatuses: Record<string, 'pending'> = {};
+        suggestions.forEach((s: ResumeSuggestion) => {
+          initialStatuses[s.id] = 'pending';
+        });
+        setSuggestionStatuses(initialStatuses);
+      } else {
+        // Fallback: set all as pending without applying
+        const initialStatuses: Record<string, 'pending'> = {};
+        suggestions.forEach((s: ResumeSuggestion) => {
+          initialStatuses[s.id] = 'pending';
+        });
+        setSuggestionStatuses(initialStatuses);
+      }
+    } catch (error) {
+      console.error('Error loading suggestions:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load resume suggestions';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setSuggestionsRequested(false);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
   };
 
   // Handler for downloading PDF with applied suggestions
@@ -161,6 +224,13 @@ function EnhanceResumePageContent() {
         if (data.structuredResumeData) {
           setStructuredResumeData(data.structuredResumeData);
           setOriginalStructuredResumeData(data.structuredResumeData);
+
+          // Automatically load suggestions after resume data is loaded
+          // Pass the structured data directly to avoid race condition with state updates
+          handleLoadSuggestions(data.structuredResumeData);
+        } else if (resumeId) {
+          // If no structured data, still try to load suggestions
+          handleLoadSuggestions();
         }
       } catch (error) {
         console.error('Error fetching resume data:', error);
@@ -173,125 +243,11 @@ function EnhanceResumePageContent() {
     });
   }, [router, resumeId]);
 
-  const handleLoadSuggestions = async () => {
-    if (!resumeId) return;
-
-    try {
-      setIsLoadingSuggestions(true);
-      setSuggestionsRequested(true);
-
-      const response = await fetch("/api/resume-suggestions-general", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          resumeId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load resume suggestions');
-      }
-
-      const suggestions = data.suggestions || [];
-      setResumeSuggestions(suggestions);
-
-      // Apply all suggestions immediately to preview
-      if (structuredResumeData && suggestions.length > 0) {
-        const { updatedData, highlightedFields: newHighlighted } = applySuggestionsToStructuredData(
-          structuredResumeData,
-          suggestions
-        );
-        setStructuredResumeData(updatedData);
-        setHighlightedFields(newHighlighted);
-
-        // Set all as 'pending' initially (they're applied but not confirmed)
-        const initialStatuses: Record<string, 'pending'> = {};
-        suggestions.forEach((s: ResumeSuggestion) => {
-          initialStatuses[s.id] = 'pending';
-        });
-        setSuggestionStatuses(initialStatuses);
-      } else {
-        // Fallback: set all as pending without applying
-        const initialStatuses: Record<string, 'pending'> = {};
-        suggestions.forEach((s: ResumeSuggestion) => {
-          initialStatuses[s.id] = 'pending';
-        });
-        setSuggestionStatuses(initialStatuses);
-      }
-    } catch (error) {
-      console.error('Error loading suggestions:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load resume suggestions';
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      setSuggestionsRequested(false);
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  };
-
-  const handleSuggestionHover = (suggestionId: string, event: React.MouseEvent) => {
-    if (!resumePreviewRef.current) return;
-
-    // Clear any pending close timeout
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
-
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const containerRect = resumePreviewRef.current.getBoundingClientRect();
-
-    setHoveredSuggestionId(suggestionId);
-    setIsModalHovered(false);
-    // Position above the changed line
-    setHoveredElementPosition({
-      top: rect.top - containerRect.top - 8,
-      left: rect.left - containerRect.left + rect.width / 2,
-    });
-  };
-
-  const handleSuggestionLeave = () => {
-    leaveTimeoutRef.current = setTimeout(() => {
-      if (!isModalHovered) {
-        setHoveredSuggestionId(null);
-        setHoveredElementPosition(null);
-      }
-      leaveTimeoutRef.current = null;
-    }, 800);
-  };
-
-  const handleModalEnter = () => {
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
-    setIsModalHovered(true);
-  };
-
-  const handleModalLeave = () => {
-    setIsModalHovered(false);
-    leaveTimeoutRef.current = setTimeout(() => {
-      setHoveredSuggestionId(null);
-      setHoveredElementPosition(null);
-      leaveTimeoutRef.current = null;
-    }, 500);
+  const handleSuggestionClick = (suggestionId: string) => {
+    setSelectedSuggestionId(suggestionId);
   };
 
   const handleSuggestionAccept = (suggestionId: string) => {
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
-
     setSuggestionStatuses(prev => {
       const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestionId]: 'accepted' };
       return newStatuses;
@@ -307,17 +263,11 @@ function EnhanceResumePageContent() {
       });
     }
 
-    setHoveredSuggestionId(null);
-    setHoveredElementPosition(null);
-    setIsModalHovered(false);
+    // Keep the suggestion selected so user can see the result
+    // setSelectedSuggestionId(null);
   };
 
   const handleSuggestionDeny = (suggestionId: string) => {
-    if (leaveTimeoutRef.current) {
-      clearTimeout(leaveTimeoutRef.current);
-      leaveTimeoutRef.current = null;
-    }
-
     setSuggestionStatuses(prev => {
       const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prev, [suggestionId]: 'rejected' };
 
@@ -338,9 +288,8 @@ function EnhanceResumePageContent() {
       return newStatuses;
     });
 
-    setHoveredSuggestionId(null);
-    setHoveredElementPosition(null);
-    setIsModalHovered(false);
+    // Keep the suggestion selected so user can see it was rejected
+    // setSelectedSuggestionId(null);
   };
 
   if (!user || !resumeId) {
@@ -351,7 +300,7 @@ function EnhanceResumePageContent() {
     <div className="h-screen overflow-hidden flex flex-col bg-white">
       <Header initialUser={user} />
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
-        <div className="h-full w-full flex flex-col px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="h-full w-full flex flex-col px-4 sm:px-6 lg:px-8 max-w-full mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-6 flex-shrink-0">
             <div className="flex items-center gap-4">
@@ -363,7 +312,7 @@ function EnhanceResumePageContent() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Enhance Your Resume</h1>
-                <p className="text-sm text-gray-600">Improve your resume with AI-powered suggestions</p>
+                <p className="text-sm text-gray-600">Click on highlights to view suggestions</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -383,119 +332,148 @@ function EnhanceResumePageContent() {
                   )}
                 </>
               )}
-              {resumeSuggestions.length === 0 && (
-                <Button
-                  onClick={handleLoadSuggestions}
-                  disabled={isLoadingSuggestions}
-                  className="bg-blue-300 hover:bg-blue-300 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-6"
-                >
-                  {isLoadingSuggestions ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Generating Suggestions...
-                    </span>
-                  ) : (
-                    "Generate Suggestions"
-                  )}
-                </Button>
-              )}
             </div>
           </div>
 
-          {/* Resume Preview */}
-          <div className="flex-1 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            {resumeSuggestions.length > 0 ? (
-              <div className="h-full overflow-y-auto">
-                {resumeText && (
-                  <div className="overflow-hidden relative" ref={resumePreviewRef}>
-                    {structuredResumeData && structuredResumeData.personal ? (
-                      <>
-                        <JakesResumeTemplate
-                          data={structuredResumeData}
-                          highlightedFields={highlightedFields}
-                          pathToSuggestionId={new Map(
-                            resumeSuggestions
-                              .filter(s => s.patch)
-                              .map(s => [s.patch!.path, s.id])
-                          )}
-                          pathToSuggestion={new Map(
-                            resumeSuggestions
-                              .filter(s => s.patch)
-                              .map(s => [s.patch!.path, { original: s.original, suggested: s.suggested }])
-                          )}
-                          onHover={handleSuggestionHover}
-                          onLeave={handleSuggestionLeave}
-                        />
-                        {/* Hover Modal */}
-                        {hoveredSuggestionId && hoveredElementPosition && (
-                          <div
-                            className="absolute z-50 pointer-events-auto"
-                            style={{
-                              top: `${hoveredElementPosition.top}px`,
-                              left: `${hoveredElementPosition.left}px`,
-                              transform: 'translate(-50%, -100%)'
-                            }}
-                            onMouseEnter={handleModalEnter}
-                            onMouseLeave={handleModalLeave}
-                          >
-                            <div className="bg-white border border-gray-300 rounded shadow-lg flex gap-1 p-1">
-                              <Button
-                                onClick={() => handleSuggestionAccept(hoveredSuggestionId)}
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-7 px-3 text-green-600 hover:bg-green-50 hover:text-green-700 border-green-300"
-                              >
-                                Accept
-                              </Button>
-                              <Button
-                                onClick={() => handleSuggestionDeny(hoveredSuggestionId)}
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-7 px-3 text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
-                              >
-                                Deny
-                              </Button>
+          {/* Two-column layout: Resume Preview (left) + Suggestions Sidebar (right) */}
+          <div className="flex-1 min-h-0 flex gap-6">
+            {/* Resume Preview - Left Column (2/3 width) */}
+            <div className="flex-1 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+              {!resumeText && !structuredResumeData ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-300 mb-4" />
+                  <p className="text-gray-600 text-sm">Loading resume...</p>
+                </div>
+              ) : (
+                <div className="h-full overflow-y-auto">
+                  {structuredResumeData && structuredResumeData.personal ? (
+                    <JakesResumeTemplate
+                      data={structuredResumeData}
+                      highlightedFields={highlightedFields}
+                      pathToSuggestionId={new Map(
+                        resumeSuggestions
+                          .filter(s => s.patch)
+                          .map(s => [s.patch!.path, s.id])
+                      )}
+                      pathToSuggestion={new Map(
+                        resumeSuggestions
+                          .filter(s => s.patch)
+                          .map(s => [s.patch!.path, { original: s.original, suggested: s.suggested }])
+                      )}
+                      onClick={handleSuggestionClick}
+                    />
+                  ) : resumeText ? (
+                    <EditableResumePreview
+                      originalText={resumeText}
+                      acceptedSuggestions={resumeSuggestions.filter(
+                        s => suggestionStatuses[s.id] === 'accepted' || suggestionStatuses[s.id] === 'pending'
+                      )}
+                    />
+                  ) : (
+                    <div className="p-8 text-gray-600 text-center">
+                      Resume not available. Please upload your resume first.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Suggestions Sidebar - Right Column (1/3 width) */}
+            {(resumeSuggestions.length > 0 || isLoadingSuggestions) && (
+              <div className="w-96 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                <div className="p-4 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">Suggestions</h2>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {isLoadingSuggestions ? 'Generating suggestions...' : 'Click on a highlight to view details'}
+                  </p>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                  {isLoadingSuggestions ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-300 mb-4" />
+                      <p className="text-sm text-gray-600">Analyzing your resume...</p>
+                    </div>
+                  ) : selectedSuggestionId ? (
+                    <div className="space-y-4">
+                      {(() => {
+                        const suggestion = resumeSuggestions.find(s => s.id === selectedSuggestionId);
+                        if (!suggestion) return null;
+                        const status = suggestionStatuses[selectedSuggestionId];
+
+                        return (
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Section</h3>
+                              <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded">{suggestion.section}</p>
+                            </div>
+
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Original</h3>
+                              <p className="text-sm text-gray-700 bg-red-50 p-3 rounded border border-red-200">{suggestion.original}</p>
+                            </div>
+
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Suggested</h3>
+                              <p className="text-sm text-gray-700 bg-green-50 p-3 rounded border border-green-200">{suggestion.suggested}</p>
+                            </div>
+
+                            <div>
+                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Reason</h3>
+                              <p className="text-sm text-gray-600">{suggestion.reason}</p>
+                            </div>
+
+                            {suggestion.keywords && suggestion.keywords.length > 0 && (
+                              <div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-2">Keywords</h3>
+                                <div className="flex flex-wrap gap-2">
+                                  {suggestion.keywords.map((keyword, idx) => (
+                                    <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                      {keyword}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex gap-2 pt-2">
+                              {status === 'pending' && (
+                                <>
+                                  <Button
+                                    onClick={() => handleSuggestionAccept(selectedSuggestionId)}
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                  >
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleSuggestionDeny(selectedSuggestionId)}
+                                    variant="outline"
+                                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                                  >
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              {status === 'accepted' && (
+                                <div className="w-full p-3 bg-green-50 border border-green-200 rounded text-center text-sm text-green-700 font-medium">
+                                  ✓ Accepted
+                                </div>
+                              )}
+                              {status === 'rejected' && (
+                                <div className="w-full p-3 bg-red-50 border border-red-200 rounded text-center text-sm text-red-700 font-medium">
+                                  ✗ Rejected
+                                </div>
+                              )}
                             </div>
                           </div>
-                        )}
-                      </>
-                    ) : resumeText ? (
-                      <EditableResumePreview
-                        originalText={resumeText}
-                        acceptedSuggestions={resumeSuggestions.filter(
-                          s => suggestionStatuses[s.id] === 'accepted' || suggestionStatuses[s.id] === 'pending'
-                        )}
-                      />
-                    ) : (
-                      <div className="p-8 text-gray-600 text-center">
-                        Resume not available. Please upload your resume first.
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : resumeText ? (
-              <div className="h-full overflow-y-auto">
-                {structuredResumeData && structuredResumeData.personal ? (
-                  <JakesResumeTemplate
-                    data={structuredResumeData}
-                    highlightedFields={new Set()}
-                  />
-                ) : resumeText ? (
-                  <EditableResumePreview
-                    originalText={resumeText}
-                    acceptedSuggestions={[]}
-                  />
-                ) : (
-                  <div className="p-8 text-gray-600 text-center">
-                    Resume not available. Please upload your resume first.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-300 mb-4" />
-                <p className="text-gray-600 text-sm">Loading resume...</p>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                      <p className="text-sm text-gray-600">Select a highlighted section in your resume to view the suggestion</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>

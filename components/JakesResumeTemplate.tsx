@@ -9,10 +9,11 @@ interface JakesResumeTemplateProps {
   pathToSuggestionId?: Map<string, string>; // Map field paths to suggestion IDs
   pathToSuggestion?: Map<string, { original: string; suggested: string }>; // Map field paths to suggestion text
   onHover?: (suggestionId: string, event: React.MouseEvent) => void;
+  onClick?: (suggestionId: string) => void;
   onLeave?: () => void;
 }
 
-export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), onHover, onLeave }: JakesResumeTemplateProps) {
+export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), onHover, onClick, onLeave }: JakesResumeTemplateProps) {
   const isHighlighted = (fieldPath: string) => highlightedFields.has(fieldPath);
   const getSuggestionId = (fieldPath: string) => pathToSuggestionId.get(fieldPath);
   const getSuggestion = (fieldPath: string) => pathToSuggestion.get(fieldPath);
@@ -80,9 +81,10 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
           const suggestionId = getSuggestionId(fieldPath);
           const highlighted = isHighlighted(fieldPath);
           return (
-            <div 
+            <div
               className={`mb-3 ${highlighted ? 'px-2 py-1 cursor-pointer' : ''}`}
               onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
+              onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
               onMouseLeave={highlighted && onLeave ? onLeave : undefined}
             >
               <p className="text-justify text-sm leading-relaxed">{data.summary}</p>
@@ -162,6 +164,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                         key={bulletIdx}
                         className={`text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''}`}
                         onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
+                        onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                         onMouseLeave={highlighted && onLeave ? onLeave : undefined}
                       >
                         <span className="mr-1.5">•</span>
@@ -221,6 +224,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                               key={bulletIdx}
                               className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''}`}
                               onMouseEnter={isBulletHighlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
+                              onClick={isBulletHighlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                               onMouseLeave={isBulletHighlighted && onLeave ? onLeave : undefined}
                             >
                               <span className="mr-1.5">•</span>
