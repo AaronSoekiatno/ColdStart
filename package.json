@@ -50,7 +50,8 @@
     "backfill:founders": "tsx scripts/backfill-guessed-founder-emails.ts",
     "scrape:workatastartup": "tsx yc_companies/scrape_workatastartup.ts",
     "scrape:workatastartup:python": "python yc_companies/scrape_workatastartup_directory.py",
-    "clean": "powershell -ExecutionPolicy Bypass -File scripts/clean.ps1"
+    "clean": "powershell -ExecutionPolicy Bypass -File scripts/clean.ps1",
+    "send-waitlist": "tsx scripts/send-waitlist-emails.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -77,6 +78,7 @@
     "puppeteer": "^24.31.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "resend": "^6.6.0",
     "stripe": "^20.0.0",
     "tailwind-merge": "^3.4.0",
     "techcrunch-api": "^1.1.1"

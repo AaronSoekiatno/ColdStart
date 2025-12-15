@@ -691,7 +691,7 @@ export async function* generateColdEmailStream(
 
   try {
     const result = await model.generateContentStream(prompt);
-
+    
     for await (const chunk of result.stream) {
       const chunkText = chunk.text();
       if (chunkText) {
