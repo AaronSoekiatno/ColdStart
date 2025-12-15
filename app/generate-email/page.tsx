@@ -320,14 +320,14 @@ export default function GenerateEmailPage() {
   };
 
   const handleSuggestionLeave = () => {
-    // Add a delay before closing to allow moving to the modal
+    // Add a longer delay before closing to allow moving to the modal
     leaveTimeoutRef.current = setTimeout(() => {
       if (!isModalHovered) {
         setHoveredSuggestionId(null);
         setHoveredElementPosition(null);
       }
       leaveTimeoutRef.current = null;
-    }, 200); // 200ms delay
+    }, 800); // 800ms delay - gives more time to move to modal
   };
 
   const handleModalEnter = () => {
@@ -341,12 +341,12 @@ export default function GenerateEmailPage() {
 
   const handleModalLeave = () => {
     setIsModalHovered(false);
-    // Close modal after a short delay
+    // Close modal after a longer delay to prevent accidental closes
     leaveTimeoutRef.current = setTimeout(() => {
       setHoveredSuggestionId(null);
       setHoveredElementPosition(null);
       leaveTimeoutRef.current = null;
-    }, 200);
+    }, 500);
   };
 
   const handleSuggestionAccept = (suggestionId: string) => {
@@ -676,8 +676,9 @@ export default function GenerateEmailPage() {
                                         <div className="bg-white border border-gray-300 rounded shadow-lg flex gap-1 p-1">
                                           <Button
                                             onClick={() => handleSuggestionAccept(hoveredSuggestionId)}
+                                            variant="outline"
                                             size="sm"
-                                            className="text-xs h-7 px-3 bg-gray-900 hover:bg-[#498EDC] text-white"
+                                            className="text-xs h-7 px-3 text-green-600 hover:bg-green-50 hover:text-green-700 border-green-300"
                                           >
                                             Accept
                                           </Button>
