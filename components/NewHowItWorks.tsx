@@ -439,20 +439,23 @@ export function NewHowItWorks() {
                         <div className="text-center">
                           <h3 className="text-2xl font-semibold text-white mb-2">Interview Secured</h3>
                           <p className="text-gray-400 max-w-sm">
-                            Watch the responses roll in while you focus on preparation
+                            Set the date on your calendar and let the AI handle the rest.
                           </p>
                         </div>
-                        {/* Success indicator */}
-                        <div className="flex items-center gap-4 px-6 py-4 bg-green-500/20 border border-green-500/30 rounded-xl">
-                          <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                          <div className="text-left">
-                            <p className="text-green-400 font-medium">Interview Invitation</p>
-                            <p className="text-green-500/70 text-sm">Founder just replied!</p>
-                          </div>
+                        {/* Mini Calendar - Block Style */}
+                        <div className="grid grid-cols-7 gap-3 max-w-md">
+                          {[12, 13, 14, 15, 16, 17, 18].map((date) => (
+                            <div
+                              key={date}
+                              className={`w-16 h-16 rounded-lg border flex items-center justify-center transition-all duration-300 ${
+                                date === 15
+                                  ? 'bg-green-500 border-green-500 text-white font-semibold shadow-lg shadow-green-500/50 hover:-translate-y-1'
+                                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-600'
+                              }`}
+                            >
+                              <span className="text-sm">{date}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
