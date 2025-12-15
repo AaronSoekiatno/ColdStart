@@ -196,6 +196,20 @@ That's it. Keep it short and make every sentence count.
 - Professional but not stiff
 - Direct but not rude
 
+### CLOSING & SIGNATURE
+- Vary your closing/signature - do NOT always use "Best," 
+- Choose a closing that matches the tone and context of the email
+- Examples of appropriate closings:
+  * "Best," (professional, standard)
+  * "Best regards," (slightly more formal)
+  * "Looking forward to hearing from you," (when you've made a specific ask)
+  * "Thanks," (casual, friendly)
+  * "Thanks for your time," (respectful, acknowledges their busy schedule)
+  * "Hope to connect," (friendly, forward-looking)
+  * "Cheers," (casual, modern)
+- Match the closing to the email's tone - if it's more casual, use a casual closing; if it's more formal, use a formal closing
+- Always sign with the candidate's name: ${candidate.name}
+
 ### NAMING RULES
 - If founder name has "Dr." or "Prof." → Use it: "Hi Dr. Smith,"
 - Otherwise → First name only: "Hi Alex,"
@@ -323,6 +337,19 @@ Notice the difference:
 - It's okay to be informal, excited, even a little nerdy about the topic
 - Your personality should come through
 
+### CLOSING & SIGNATURE
+- Vary your closing/signature - do NOT always use "Best,"
+- Choose a closing that matches the warm, conversational tone of this persona
+- Examples of appropriate closings:
+  * "Best," (standard, friendly)
+  * "Thanks," (casual, appreciative)
+  * "Looking forward to connecting," (when you've expressed interest in learning more)
+  * "Excited to hear more," (when you've shown genuine enthusiasm)
+  * "Cheers," (casual, modern)
+  * "Talk soon," (very casual, friendly)
+- Match the closing to the email's energy - if you're excited about their work, show it in the closing
+- Always sign with the candidate's name: ${candidate.name}
+
 ### THE GENUINE TEST
 Before generating: Could this email ONLY be sent to this specific company? If you could swap the company name and send it elsewhere, it fails.
 
@@ -420,23 +447,50 @@ This is the highest-effort approach, but it has the highest hit rate.
 ### THE RULES
 
 **Subject Line:**
-- Lead with the value, not the ask
-- Examples: "Found 3 bugs in your checkout flow" / "Built a prototype for [specific feature]" / "Idea: [specific suggestion]"
-- The subject alone should make them curious enough to open
+- Lead with curiosity or a project idea - NOT a sales pitch
+- The subject should feel like a peer reaching out with a genuine idea, not someone selling a service
+- DO NOT make it sound like an advertisement or a pitch for something they should buy
+- Examples of GOOD subject lines:
+  * "Quick project idea for [specific area]"
+  * "Thought about your [product] - had an idea"
+  * "Project idea: [brief description]"
+  * "Something I built that might interest you"
+- Examples of BAD subject lines (sound like ads/pitches):
+  * "A low-cost solution for [Company]"
+  * "Proposal: [Service] for [Company]"
+  * "Idea: [Thing] - let me build it for you"
+- The subject should make them curious, not feel like they're being sold to
 
 **The Email Structure:**
 
 Option A - "I already did the work":
 1. State what you built/found/fixed (one sentence)
 2. Brief context on why/how (one sentence)
-3. Link to the work
-4. Soft ask: "If this is useful, I'd love to do more of it this summer"
+3. Link to the work (if available)
+4. Subtle interest in working there: Show that you're interested in being part of their work without directly asking for a job
+   - DO: "I've been looking for ways to work on problems like this" / "This is the kind of work I want to spend my time on"
+   - DON'T: "I would love to build this for you as an intern" / "Hire me to do this"
 
 Option B - "Here's exactly what I'd do":
 1. Identify a specific problem they likely have
 2. Propose a specific solution with enough detail that they can evaluate it
-3. Explain why you're capable of executing it
-4. Ask for the chance to prove it
+3. Explain why you're capable of executing it (briefly)
+4. Express interest in their work, not just the job: The ending should show you want to be part of what they're building, not that you're pitching yourself as a contractor
+   - DO: "Would love to explore this further" / "Happy to chat about this if it's interesting"
+   - DON'T: "I would love to build this for [Company] as an intern" / "Let me do this for you"
+
+**CRITICAL - The Ending:**
+- The ending should NOT sound like you're pitching a service or asking for a job directly
+- Instead, it should express genuine interest in the problem/company in a way that naturally invites further conversation
+- The goal is to seem like a peer who shares their interest in the problem, not someone trying to sell them on hiring you
+- Examples of GOOD endings:
+  * "Happy to chat more about this if it's interesting to you."
+  * "Would love to hear your thoughts on this approach."
+  * "This is the kind of problem I'm excited about - would be great to connect."
+- Examples of BAD endings:
+  * "I would love to build this for [Company] as an intern this summer."
+  * "Let me know if you'd like me to do this for you."
+  * "I'm looking for an internship and would love to work on this."
 
 **The Value Test:**
 The email should be useful to them even if they don't hire you. They should learn something or get something from reading it.
@@ -455,6 +509,24 @@ The email should be useful to them even if they don't hire you. They should lear
 - Confident - you're offering value, not begging for a chance
 - Specific - details matter
 - Humble but not self-deprecating - present your work, let them judge
+
+### LENGTH REQUIREMENT
+- Keep the email body to 70 words maximum - founders are busy and won't read long emails
+- Be concise and value-focused - every word must serve the purpose of showing what you've done or can do
+- Quality over quantity - a short, impactful email beats a long one
+
+### CLOSING & SIGNATURE
+- Vary your closing/signature - do NOT always use "Best,"
+- Choose a closing that matches the confident, value-focused tone of this persona
+- Examples of appropriate closings:
+  * "Best," (professional, standard)
+  * "Thanks," (appreciative, acknowledges their time)
+  * "Looking forward to your thoughts," (when you've presented work for feedback)
+  * "Hope this helps," (when you've provided value)
+  * "Let me know if you'd like to discuss," (when you've proposed something)
+  * "Cheers," (casual, confident)
+- Match the closing to what you've done - if you've built something, acknowledge their time; if you've proposed something, invite discussion
+- Always sign with the candidate's name: ${candidate.name}
 
 ### NAMING RULES
 - First name unless they have "Dr." or "Prof."
@@ -574,9 +646,12 @@ export async function generateColdEmail(
     const fallbackFounderName = (startup.founderName || startup.name).split(
       ' '
     )[0]; // Use first name as fallback
+    // Use varied closings even in fallback
+    const closings = ['Best,', 'Thanks,', 'Looking forward to hearing from you,'];
+    const randomClosing = closings[Math.floor(Math.random() * closings.length)];
     body = `Hi ${fallbackFounderName},\n\nMy name is ${candidate.name} and I'm interested in opportunities that align with my background in ${candidate.skills.join(
       ', '
-    )}.\n\nWould you be open to a quick chat about this?\n\nBest,\n${candidate.name}`;
+    )}.\n\nWould you be open to a quick chat about this?\n\n${randomClosing}\n${candidate.name}`;
   }
 
   return {
