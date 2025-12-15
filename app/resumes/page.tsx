@@ -40,10 +40,24 @@ export default async function ResumePage() {
   const adminClient = supabaseAdmin;
 
   // Get candidate info to find resumes
-  const candidate = await getCandidate(user.email ?? '');
-  
+  let candidate = await getCandidate(user.email ?? '');
+
+  // If candidate not found immediately, retry with exponential backoff
+  // This handles database replication delays after onboarding
   if (!candidate) {
-    redirect(`/?signup=true&redirect=/resumes`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    candidate = await getCandidate(user.email ?? '');
+  }
+
+  if (!candidate) {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    candidate = await getCandidate(user.email ?? '');
+  }
+
+  // If still no candidate after retries, redirect to onboarding instead of home
+  // This prevents redirect loops
+  if (!candidate) {
+    redirect('/onboarding');
   }
 
   // Check if user is premium

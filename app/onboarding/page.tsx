@@ -159,8 +159,9 @@ export default function OnboardingPage() {
           // Continue even if processing fails
         }
 
-        // Redirect to resumes page after successful onboarding
-        router.push('/resumes');
+        // Redirect to matches page after onboarding completion
+        // Use window.location to ensure a full page reload with updated session
+        window.location.href = '/matches';
       } else {
         throw new Error('Unexpected response from server');
       }

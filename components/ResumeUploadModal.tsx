@@ -38,45 +38,15 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
       setUser(user);
     });
 
-    // Listen for auth state changes (e.g., when user signs up)
+    // Listen for auth state changes to update user state only
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      // If user just signed up/in, check for onboarding
-      if (session?.user?.email) {
-        // Close sign up/in modals
-        setShowSignUpModal(false);
-        setShowSignInModal(false);
-        
-        // Check for onboarding
-        try {
-          const response = await fetch('/api/candidate/check-onboarding', {
-            credentials: 'include',
-          });
-          const data = await response.json();
-          
-          if (data.needsOnboarding) {
-            // Redirect to full-screen onboarding page
-            router.push('/onboarding');
-          } else {
-            // Call the upload success callback if provided
-            if (onUploadSuccess) {
-              onUploadSuccess();
-            }
-          }
-        } catch (error) {
-          console.error('Error checking onboarding status:', error);
-          // If check fails, just call success callback
-          if (onUploadSuccess) {
-            onUploadSuccess();
-          }
-        }
-      }
     });
 
     return () => subscription.unsubscribe();
-  }, [onUploadSuccess, router]);
+  }, [router]);
 
   const handleUploadSuccess = async () => {
     onOpenChange(false);
