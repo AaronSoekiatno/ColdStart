@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, Check, Star, Pencil } from 'lucide-react';
+import { Eye, Pencil, Trash2, Sparkles } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   Dialog,
@@ -11,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ResumeCardProps {
   fileName: string;
@@ -19,21 +21,28 @@ interface ResumeCardProps {
   isPrimary?: boolean;
   resumeId?: string;
   isPremium?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 }
 
-export function ResumeCard({ 
-  fileName, 
-  resumeUrl, 
-  resumeName, 
+export function ResumeCard({
+  fileName,
+  resumeUrl,
+  resumeName,
   isPrimary = false,
   resumeId,
   isPremium = false,
+  isSelected = false,
+  onSelect,
 }: ResumeCardProps) {
+  const router = useRouter();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [isSettingPrimary, setIsSettingPrimary] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editedName, setEditedName] = useState(resumeName || fileName);
+  const { toast } = useToast();
 
   if (!resumeUrl) {
     return null;
@@ -78,12 +87,13 @@ export function ResumeCard({
     }
   };
 
-  const handleSetPrimary = async () => {
-    if (!resumeId || isPrimary) return;
+
+  const handleDelete = async () => {
+    if (!resumeId) return;
     
-    setIsSettingPrimary(true);
+    setIsDeleting(true);
     try {
-      const response = await fetch('/api/resumes/set-primary', {
+      const response = await fetch('/api/resumes/delete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,53 +102,87 @@ export function ResumeCard({
         credentials: 'include',
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Failed to set primary resume' }));
-        
-        if (errorData.upgradeRequired) {
-          alert('Setting a primary resume is a Premium feature. Please upgrade to Premium.');
-        } else {
-          throw new Error(errorData.error || 'Failed to set primary resume');
-        }
-        return;
+        throw new Error(data.error || 'Failed to delete resume');
       }
 
-      // Success - reload the page to show updated state
+      toast({
+        title: "Resume deleted",
+        description: "The resume has been deleted successfully.",
+      });
+
+      // Close dialog and reload the page to show updated list
+      setIsDeleteOpen(false);
       window.location.reload();
     } catch (error) {
-      console.error('Failed to set primary resume:', error);
-      alert(error instanceof Error ? error.message : 'Failed to set primary resume. Please try again.');
+      console.error('Failed to delete resume:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to delete resume. Please try again.',
+        variant: "destructive",
+      });
     } finally {
-      setIsSettingPrimary(false);
+      setIsDeleting(false);
     }
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger selection if clicking on buttons or interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('a') ||
+      target.closest('[role="button"]')
+    ) {
+      return;
+    }
+    onSelect?.();
   };
 
   return (
     <>
-      <div className={cn(
-        "bg-white rounded-2xl border p-6 transition-all flex flex-col shadow-sm",
-        isPrimary ? "border-blue-500 border-2" : "border-gray-200"
-      )}>
+      <div 
+        className={cn(
+          "bg-white rounded-2xl border p-6 transition-all flex flex-col shadow-sm cursor-pointer",
+          // Only selected cards have blue border, all others have gray border
+          isSelected ? "border-blue-300 border-2" : "border-gray-200"
+        )}
+        onClick={handleCardClick}
+      >
         <div className="flex-1 mb-4">
           <div className="flex items-start justify-between gap-2 mb-2 relative">
-            <h3 className="text-lg font-semibold text-gray-900 truncate flex-1" title={displayName}>
-              {displayName}
-            </h3>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {isPrimary && (
-                <div className="flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-medium">
-                  <Star className="w-3 h-3 fill-current" />
-                  <span>Current</span>
-                </div>
-              )}
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900 truncate" title={displayName}>
+                {displayName}
+              </h3>
               {resumeId && (
                 <button
-                  onClick={() => setIsEditOpen(true)}
-                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditOpen(true);
+                  }}
+                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900 flex-shrink-0"
                   aria-label="Edit resume name"
                   title="Edit resume name"
                 >
                   <Pencil className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {resumeId && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDeleteOpen(true);
+                  }}
+                  className="p-1.5 rounded-md hover:bg-red-100 transition-colors text-red-600 hover:text-red-700"
+                  aria-label="Delete resume"
+                  title="Delete resume"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -151,31 +195,26 @@ export function ResumeCard({
         </div>
         <div className="flex flex-col gap-2">
           <button
-            onClick={() => setIsPreviewOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPreviewOpen(true);
+            }}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all"
           >
             <Eye className="w-4 h-4" />
             <span className="text-sm font-medium">Preview</span>
           </button>
-          {isPremium && !isPrimary && resumeId && (
-            <button
-              onClick={handleSetPrimary}
-              disabled={isSettingPrimary}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-all text-sm font-medium"
-            >
-              {isSettingPrimary ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Setting...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  <span>Set as Current</span>
-                </>
-              )}
-            </button>
-          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!resumeId) return;
+              router.push(`/resumes/tailor?resumeId=${resumeId}`);
+            }}
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-blue-300 text-white rounded-lg transition-all text-sm font-medium"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Enhance</span>
+          </button>
         </div>
       </div>
 
@@ -253,7 +292,7 @@ export function ResumeCard({
               <button
                 onClick={handleEditName}
                 disabled={isUpdatingName || !editedName.trim() || editedName.trim() === (resumeName || fileName)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-300 hover:bg-blue-300 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isUpdatingName ? (
                   <>
@@ -265,6 +304,51 @@ export function ResumeCard({
                 )}
               </button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="bg-white border-gray-200 text-gray-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Delete Resume
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Are you sure you want to delete "{displayName}"? This action cannot be undone.
+              {isPrimary && (
+                <span className="block mt-2 text-amber-600 font-medium">
+                  Note: This is your active resume. Another resume will be set as active automatically.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete</span>
+                </>
+              )}
+            </button>
           </div>
         </DialogContent>
       </Dialog>

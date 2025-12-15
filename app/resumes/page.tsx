@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getResumesForCandidate, getCandidate, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { Header } from '@/components/Header';
-import { ResumeCard } from '@/components/ResumeCard';
+import { ResumeList } from '@/components/ResumeList';
 
 export default async function ResumePage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -83,34 +83,16 @@ export default async function ResumePage() {
       <Header initialUser={user} />
       
       <main className="container mx-auto px-4 pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 max-w-6xl">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Resumes</h1>
-          <p className="text-gray-600">
-            Manage all of your tailored resumes here!
-          </p>
-        </div>
-
-        {resumesWithUrls.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {resumesWithUrls.map((resume) => (
-              <ResumeCard 
-                key={resume.id}
-                fileName={resume.fileName} 
-                resumeUrl={resume.resumeUrl || null}
-                resumeName={resume.name}
-                isPrimary={resume.id === primaryResumeId}
-                resumeId={resume.id}
-                isPremium={isPremium}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
-            <p className="text-gray-600 text-lg">
-              No resumes found. Upload your resume to get started!
-            </p>
-          </div>
-        )}
+        <ResumeList 
+          resumes={resumesWithUrls.map((resume) => ({
+            id: resume.id,
+            fileName: resume.fileName,
+            resumeUrl: resume.resumeUrl || null,
+            name: resume.name,
+            isPrimary: resume.id === primaryResumeId,
+          }))}
+          isPremium={isPremium}
+        />
       </main>
     </div>
   );
