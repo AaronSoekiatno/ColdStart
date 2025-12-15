@@ -226,20 +226,8 @@ export function NewHowItWorks() {
 
   return (
     <section ref={sectionRef} className="relative bg-white">
-      {/* Section Header */}
-      <div className="pt-24 pb-12 px-6">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-normal tracking-tight leading-tight text-gray-900 mb-4">
-            How It Works
-          </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            From upload to interview in four simple steps
-          </p>
-        </div>
-      </div>
-
       {/* Scroll-driven Content - Increased height for scroll distance */}
-      <div ref={scrollableRef} className="relative" style={{ height: `${steps.length * 100}vh` }}>
+      <div ref={scrollableRef} className="relative pt-8" style={{ height: `${steps.length * 100}vh` }}>
         {/* Sticky Container */}
         <div className="sticky top-0 h-screen flex items-center">
           <div className="w-full max-w-6xl mx-auto px-6">

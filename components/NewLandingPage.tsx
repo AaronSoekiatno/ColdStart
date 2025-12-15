@@ -42,7 +42,6 @@ export function NewLandingPage() {
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [pendingResumeUpload, setPendingResumeUpload] = useState(false);
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
 
@@ -53,19 +52,6 @@ export function NewLandingPage() {
     // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-
-      // Check if there's a pending resume upload from sessionStorage (for OAuth redirects)
-      if (typeof window !== 'undefined') {
-        const hasPendingUpload = sessionStorage.getItem('pendingResumeUpload') === 'true';
-        if (hasPendingUpload && session?.user) {
-          // User signed in and has pending upload - open the upload modal
-          sessionStorage.removeItem('pendingResumeUpload');
-          setShowResumeUpload(true);
-        } else if (hasPendingUpload) {
-          // Set state from sessionStorage if not signed in yet
-          setPendingResumeUpload(true);
-        }
-      }
     });
 
     // Listen for auth changes
@@ -73,26 +59,10 @@ export function NewLandingPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-
-      // If user just signed in and there's a pending resume upload, open the upload modal
-      if (session?.user) {
-        // Check both state and sessionStorage
-        const hasPendingUpload = pendingResumeUpload ||
-          (typeof window !== 'undefined' && sessionStorage.getItem('pendingResumeUpload') === 'true');
-
-        if (hasPendingUpload) {
-          setPendingResumeUpload(false);
-          if (typeof window !== 'undefined') {
-            sessionStorage.removeItem('pendingResumeUpload');
-          }
-          setShowSignIn(false);
-          setShowResumeUpload(true);
-        }
-      }
     });
 
     return () => subscription.unsubscribe();
-  }, [pendingResumeUpload]);
+  }, []);
 
   // Fetch candidate info to check premium status - only when email changes
   useEffect(() => {
@@ -143,19 +113,8 @@ export function NewLandingPage() {
   }, []);
 
   const handleGetStarted = () => {
-    // Check if user is authenticated first
-    if (!user) {
-      // User not authenticated - show sign-in modal first and mark that we have a pending upload
-      setPendingResumeUpload(true);
-      // Persist to sessionStorage in case of OAuth redirect
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('pendingResumeUpload', 'true');
-      }
-      setShowSignIn(true);
-    } else {
-      // User is authenticated - proceed with resume upload
-      setShowResumeUpload(true);
-    }
+    // Open resume upload modal
+    setShowResumeUpload(true);
   };
 
   const handleSignOut = async () => {
@@ -462,24 +421,7 @@ export function NewLandingPage() {
       {/* Modals */}
       <SignInModal
         open={showSignIn}
-        onOpenChange={(open) => {
-          setShowSignIn(open);
-          // If sign-in modal is closed without signing in, clear pending upload flag after a delay
-          // The delay allows the auth state change to process first
-          if (!open && !user && pendingResumeUpload) {
-            setTimeout(() => {
-              // Double-check user is still not authenticated after delay
-              supabase.auth.getUser().then(({ data: { user: currentUser } }) => {
-                if (!currentUser) {
-                  setPendingResumeUpload(false);
-                  if (typeof window !== 'undefined') {
-                    sessionStorage.removeItem('pendingResumeUpload');
-                  }
-                }
-              });
-            }, 500);
-          }
-        }}
+        onOpenChange={setShowSignIn}
       />
       <SignUpModal
         open={showSignUp}
