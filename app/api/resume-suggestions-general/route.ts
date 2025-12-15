@@ -165,37 +165,17 @@ Focus on the most impactful changes that would make the biggest difference to th
       },
     });
 
-    // Retry logic with exponential backoff for rate limits
-    let result;
-    let retries = 5;
-    let delay = 2000;
-
-    for (let i = 0; i < retries; i++) {
-      try {
-        result = await model.generateContent([
-          { text: prompt },
-          {
-            fileData: {
-              fileUri: fileMetadata.uri,
-              mimeType: fileMetadata.mimeType,
-            },
-          },
-        ]);
-        break;
-      } catch (error: any) {
-        if (error?.status === 429 && i < retries - 1) {
-          console.log(`Rate limited, retrying in ${delay}ms... (attempt ${i + 1}/${retries})`);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          delay *= 2;
-        } else {
-          throw error;
-        }
-      }
-    }
-
-    if (!result) {
-      throw new Error('Failed to generate content after retries');
-    }
+    // Generate suggestions without retry logic to reduce API costs
+    // If rate limited, fail fast and let the user know to try again later
+    const result = await model.generateContent([
+      { text: prompt },
+      {
+        fileData: {
+          fileUri: fileMetadata.uri,
+          mimeType: fileMetadata.mimeType,
+        },
+      },
+    ]);
 
     // Clean up
     try {

@@ -15,7 +15,6 @@ import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByN
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
-import { parseResumeToStructured } from '@/lib/parse-resume';
 
 export const runtime = 'nodejs';
 
@@ -75,13 +74,12 @@ async function extractResumeDataWithGemini(
   "technical_projects": ["Array of notable technical/personal projects with brief descriptions, or empty array if none found"]
 }`;
 
-  // Try different model names in order of preference
-  // Start with Flash models (faster, cheaper) to avoid rate limits on Pro
-  // Using newer Gemini 2.x models as 1.5 models are deprecated
-  const modelNames = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro'];
-  let lastError: any = null;
-  
-  // Extract DOCX text once before the loop (only needed for DOCX files)
+  // Use gemini-2.0-flash-exp for fast, cost-effective resume extraction
+  // This model is optimized for speed and cost while maintaining quality
+  // No fallback loop to avoid excessive API calls
+  const modelName = 'gemini-2.0-flash-exp';
+
+  // Extract DOCX text once before processing (only needed for DOCX files)
   if (!isPdfFile(file)) {
     const docxText = await extractDocxText(buffer);
     if (docxText && docxText.trim().length > 0) {
@@ -89,177 +87,155 @@ async function extractResumeDataWithGemini(
     }
   }
 
-  for (const modelName of modelNames) {
-    try {
-      const model = genAI.getGenerativeModel({ model: modelName });
-      let result;
+  try {
+    const model = genAI.getGenerativeModel({ model: modelName });
+    let result;
 
-      if (isPdfFile(file)) {
-        // For PDFs: Upload to Gemini File API first, then use the file reference
-        // This is the recommended approach for PDFs
-        console.log(`[${modelName}] Uploading PDF to Gemini File API...`);
-        const uploadResult = await fileManager.uploadFile(buffer, {
-          mimeType: 'application/pdf',
-          displayName: file!.name,
-        });
+    if (isPdfFile(file)) {
+      // For PDFs: Upload to Gemini File API first, then use the file reference
+      // This is the recommended approach for PDFs
+      console.log(`[${modelName}] Uploading PDF to Gemini File API...`);
+      const uploadResult = await fileManager.uploadFile(buffer, {
+        mimeType: 'application/pdf',
+        displayName: file!.name,
+      });
 
-        const uploadedFile = uploadResult.file;
-        uploadedFileName = uploadedFile.name; // Store for cleanup
-        console.log(`[${modelName}] PDF uploaded, state: ${uploadedFile.state}, name: ${uploadedFile.name}`);
+      const uploadedFile = uploadResult.file;
+      uploadedFileName = uploadedFile.name; // Store for cleanup
+      console.log(`[${modelName}] PDF uploaded, state: ${uploadedFile.state}, name: ${uploadedFile.name}`);
 
-        // Wait for the file to be processed with optimized polling
-        let fileMetadata = uploadedFile;
-        let pollCount = 0;
-        const maxPolls = 20; // Max 5 seconds (20 * 250ms)
-        while (fileMetadata.state === 'PROCESSING' && pollCount < maxPolls) {
-          console.log(`[${modelName}] Waiting for PDF processing... (${pollCount + 1}/${maxPolls})`);
-          await new Promise((resolve) => setTimeout(resolve, 250)); // Faster polling: 250ms instead of 1000ms
-          fileMetadata = await fileManager.getFile(uploadedFile.name);
-          pollCount++;
-        }
-        
-        if (fileMetadata.state === 'PROCESSING') {
-          console.warn(`[${modelName}] PDF processing timeout after ${maxPolls} polls`);
-        }
+      // Wait for the file to be processed with optimized polling
+      let fileMetadata = uploadedFile;
+      let pollCount = 0;
+      const maxPolls = 20; // Max 5 seconds (20 * 250ms)
+      while (fileMetadata.state === 'PROCESSING' && pollCount < maxPolls) {
+        console.log(`[${modelName}] Waiting for PDF processing... (${pollCount + 1}/${maxPolls})`);
+        await new Promise((resolve) => setTimeout(resolve, 250)); // Faster polling: 250ms instead of 1000ms
+        fileMetadata = await fileManager.getFile(uploadedFile.name);
+        pollCount++;
+      }
 
-        if (fileMetadata.state === 'FAILED') {
-          throw new Error('PDF processing failed');
-        }
+      if (fileMetadata.state === 'PROCESSING') {
+        console.warn(`[${modelName}] PDF processing timeout after ${maxPolls} polls`);
+      }
 
-        console.log(`[${modelName}] PDF ready, generating content with fileUri: ${fileMetadata.uri}`);
+      if (fileMetadata.state === 'FAILED') {
+        throw new Error('PDF processing failed');
+      }
 
-        // Store file URI for full text extraction
-        uploadedFileUri = fileMetadata.uri;
-        uploadedFileMimeType = fileMetadata.mimeType;
+      console.log(`[${modelName}] PDF ready, generating content with fileUri: ${fileMetadata.uri}`);
 
-        // Now use the uploaded file in the request
-        result = await model.generateContent([
-          { text: prompt },
-          {
-            fileData: {
-              fileUri: fileMetadata.uri,
-              mimeType: fileMetadata.mimeType,
-            },
+      // Store file URI for full text extraction
+      uploadedFileUri = fileMetadata.uri;
+      uploadedFileMimeType = fileMetadata.mimeType;
+
+      // Now use the uploaded file in the request
+      result = await model.generateContent([
+        { text: prompt },
+        {
+          fileData: {
+            fileUri: fileMetadata.uri,
+            mimeType: fileMetadata.mimeType,
           },
-        ]);
-      } else {
-        // For DOCX: Use the text we already extracted
-        if (!docxFullText || docxFullText.trim().length === 0) {
-          throw new Error('Could not extract text from DOCX file. The file may be corrupted or empty.');
-        }
-        
-        result = await model.generateContent(`${prompt}\n\nHere is the resume text:\n\n${docxFullText}`);
+        },
+      ]);
+    } else {
+      // For DOCX: Use the text we already extracted
+      if (!docxFullText || docxFullText.trim().length === 0) {
+        throw new Error('Could not extract text from DOCX file. The file may be corrupted or empty.');
       }
 
-      // If we get here, the model worked - process the response
-      const response = result.response;
-      const responseText = response.text();
-      const cleanedResponse = cleanJsonResponse(responseText);
-      const parsed = JSON.parse(cleanedResponse) as ResumeExtractionResult;
-
-      // Validate the response structure
-      if (typeof parsed.name !== 'string') {
-        throw new Error('Invalid response: name must be a string');
-      }
-      if (typeof parsed.email !== 'string') {
-        throw new Error('Invalid response: email must be a string');
-      }
-      if (!Array.isArray(parsed.skills)) {
-        throw new Error('Invalid response: skills must be an array');
-      }
-      if (typeof parsed.summary !== 'string') {
-        throw new Error('Invalid response: summary must be a string');
-      }
-      if (typeof parsed.location !== 'string') {
-        throw new Error('Invalid response: location must be a string');
-      }
-      if (typeof parsed.education_level !== 'string') {
-        throw new Error('Invalid response: education_level must be a string');
-      }
-      if (typeof parsed.university !== 'string') {
-        throw new Error('Invalid response: university must be a string');
-      }
-      if (!Array.isArray(parsed.past_internships)) {
-        throw new Error('Invalid response: past_internships must be an array');
-      }
-      if (!Array.isArray(parsed.technical_projects)) {
-        throw new Error('Invalid response: technical_projects must be an array');
-      }
-
-      // Ensure skills count is between 6-12
-      if (parsed.skills.length < 6) {
-        console.warn(
-          `Gemini returned fewer than 6 skills (${parsed.skills.length})`
-        );
-      }
-      if (parsed.skills.length > 12) {
-        parsed.skills = parsed.skills.slice(0, 12);
-      }
-
-      // Extract full text - for PDFs use pdf-parse, for DOCX we already have it
-      let fullText = '';
-      let latexCode = '';
-
-      if (isPdfFile(file)) {
-        // Extract full text from PDF using pdf-parse (local, fast, free)
-        console.log('Extracting full text from PDF using pdf-parse...');
-        fullText = await extractFullTextFromPdf(buffer);
-        console.log(`Extracted ${fullText.length} characters of full text from PDF`);
-        
-        // Clean up: delete the uploaded file from Gemini (no longer needed for text extraction)
-        if (uploadedFileName) {
-          try {
-            await fileManager.deleteFile(uploadedFileName);
-            console.log(`[${modelName}] Deleted uploaded file from Gemini`);
-          } catch (error) {
-            console.warn('Failed to delete uploaded file:', error);
-            // Continue even if deletion fails
-          }
-        }
-
-        // Generate LaTeX from extracted text (local conversion, no API cost)
-        console.log('Generating LaTeX from extracted text...');
-        latexCode = generateLatexFromResumeText(fullText);
-      } else if (!isPdfFile(file) && docxFullText) {
-        // For DOCX, use the text we already extracted
-        fullText = docxFullText;
-        console.log(`Using extracted ${fullText.length} characters of full text from DOCX`);
-
-        // Generate LaTeX from DOCX text (local conversion, no API cost)
-        console.log('Generating LaTeX from DOCX text...');
-        latexCode = generateLatexFromResumeText(fullText);
-      }
-
-      return { extraction: parsed, fullText, latexCode };
-    } catch (error: any) {
-      // If it's a model not found error (404), try the next model
-      if (error?.message?.includes('not found') || error?.message?.includes('404')) {
-        lastError = error;
-        console.warn(`Model ${modelName} not available, trying next model...`);
-        continue;
-      }
-      // If it's a 400 error with inline_data issue, the model doesn't support native PDF
-      // Try the next model (should be a 1.5 model that supports it)
-      if (
-        error?.message?.includes('400') ||
-        error?.message?.includes('Bad Request') ||
-        error?.message?.includes('inline_data') ||
-        error?.message?.includes('scalar field')
-      ) {
-        lastError = error;
-        console.warn(`Model ${modelName} doesn't support native PDF processing (${error?.message}), trying next model...`);
-        continue;
-      }
-      // For other errors (parsing, validation, etc.), re-throw immediately
-      throw error;
+      result = await model.generateContent(`${prompt}\n\nHere is the resume text:\n\n${docxFullText}`);
     }
-  }
 
-  // If all models failed, throw the last error with helpful message
-  throw new Error(
-    `All Gemini models failed. Last error: ${lastError?.message || 'Unknown error'}. ` +
-    `Please check your API key and ensure you have access to Gemini models.`
-  );
+    // Process the response
+    const response = result.response;
+    const responseText = response.text();
+    const cleanedResponse = cleanJsonResponse(responseText);
+    const parsed = JSON.parse(cleanedResponse) as ResumeExtractionResult;
+
+    // Validate the response structure
+    if (typeof parsed.name !== 'string') {
+      throw new Error('Invalid response: name must be a string');
+    }
+    if (typeof parsed.email !== 'string') {
+      throw new Error('Invalid response: email must be a string');
+    }
+    if (!Array.isArray(parsed.skills)) {
+      throw new Error('Invalid response: skills must be an array');
+    }
+    if (typeof parsed.summary !== 'string') {
+      throw new Error('Invalid response: summary must be a string');
+    }
+    if (typeof parsed.location !== 'string') {
+      throw new Error('Invalid response: location must be a string');
+    }
+    if (typeof parsed.education_level !== 'string') {
+      throw new Error('Invalid response: education_level must be a string');
+    }
+    if (typeof parsed.university !== 'string') {
+      throw new Error('Invalid response: university must be a string');
+    }
+    if (!Array.isArray(parsed.past_internships)) {
+      throw new Error('Invalid response: past_internships must be an array');
+    }
+    if (!Array.isArray(parsed.technical_projects)) {
+      throw new Error('Invalid response: technical_projects must be an array');
+    }
+
+    // Ensure skills count is between 6-12
+    if (parsed.skills.length < 6) {
+      console.warn(
+        `Gemini returned fewer than 6 skills (${parsed.skills.length})`
+      );
+    }
+    if (parsed.skills.length > 12) {
+      parsed.skills = parsed.skills.slice(0, 12);
+    }
+
+    // Extract full text - for PDFs use pdf-parse, for DOCX we already have it
+    let fullText = '';
+    let latexCode = '';
+
+    if (isPdfFile(file)) {
+      // Extract full text from PDF using pdf-parse (local, fast, free)
+      console.log('Extracting full text from PDF using pdf-parse...');
+      fullText = await extractFullTextFromPdf(buffer);
+      console.log(`Extracted ${fullText.length} characters of full text from PDF`);
+
+      // Clean up: delete the uploaded file from Gemini (no longer needed for text extraction)
+      if (uploadedFileName) {
+        try {
+          await fileManager.deleteFile(uploadedFileName);
+          console.log(`[${modelName}] Deleted uploaded file from Gemini`);
+        } catch (error) {
+          console.warn('Failed to delete uploaded file:', error);
+          // Continue even if deletion fails
+        }
+      }
+
+      // Generate LaTeX from extracted text (local conversion, no API cost)
+      console.log('Generating LaTeX from extracted text...');
+      latexCode = generateLatexFromResumeText(fullText);
+    } else if (!isPdfFile(file) && docxFullText) {
+      // For DOCX, use the text we already extracted
+      fullText = docxFullText;
+      console.log(`Using extracted ${fullText.length} characters of full text from DOCX`);
+
+      // Generate LaTeX from DOCX text (local conversion, no API cost)
+      console.log('Generating LaTeX from DOCX text...');
+      latexCode = generateLatexFromResumeText(fullText);
+    }
+
+    return { extraction: parsed, fullText, latexCode };
+  } catch (error: any) {
+    // Re-throw error with helpful context
+    console.error(`Failed to extract resume data with ${modelName}:`, error);
+    throw new Error(
+      `Failed to process resume: ${error?.message || 'Unknown error'}. ` +
+      `Please ensure the file is a valid PDF or DOCX and try again.`
+    );
+  }
 }
 
 /**
@@ -466,24 +442,10 @@ export async function POST(request: NextRequest) {
       resumeFullText = fullText;
       resumeLatex = latexCode;
       
-      // Parse resume into structured data for template-based editing
-      if (resumeFullText && resumeFullText.trim().length > 0) {
-        try {
-          console.log('Starting structured resume parsing...');
-          structuredResumeData = await parseResumeToStructured(resumeFullText);
-          console.log('Successfully parsed resume into structured format:', {
-            hasPersonal: !!structuredResumeData?.personal,
-            experienceCount: structuredResumeData?.experience?.length || 0,
-            educationCount: structuredResumeData?.education?.length || 0,
-          });
-        } catch (parseError) {
-          console.error('Failed to parse resume into structured format:', parseError);
-          console.error('Parse error details:', parseError instanceof Error ? parseError.message : parseError);
-          // Continue without structured data - not critical for basic functionality
-        }
-      } else {
-        console.log('Skipping structured parsing - no resume text available');
-      }
+      // NOTE: Removed duplicate parseResumeToStructured() call to reduce API costs
+      // The extractResumeDataWithGemini() function already extracts all necessary data
+      // Structured parsing was redundant and added unnecessary API calls
+      console.log('Skipping duplicate structured parsing - using extraction result instead');
       
       // Extract raw text for response
       // For PDFs, use the extracted full text; for DOCX, it's already in resumeFullText
