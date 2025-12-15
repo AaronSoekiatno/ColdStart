@@ -12,7 +12,7 @@ function TypingEmailPreview({ isActive }: { isActive: boolean }) {
 
   const emailText = `Hi Aman,
 
-I'm reaching out because I saw Novaflow is bridging the gap between AI and biology...`;
+I'm reaching out because I was really impressed by the work you're doing at Novaflow...`;
 
   useEffect(() => {
     // Reset when step becomes active
