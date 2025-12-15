@@ -176,7 +176,10 @@ export async function POST(request: NextRequest) {
     // Generate signed URL for resume preview (get primary/current resume)
     // Note: No download parameter - we want inline display for iframe, not download
     let resumeUrl = null;
-    if (resume?.resume_path) {
+    let resumeText = null;
+    const structuredData = candidate.structured_resume_data || null;
+    
+    if (candidate.resume_path) {
       const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (serviceRoleKey) {
         const supabaseAdmin = createClient(
@@ -193,6 +196,15 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+    
+    // Fetch resume text for editing
+    resumeText = candidate.resume_full_text || null;
+
+    // Log for debugging
+    console.log('Preview endpoint - structuredData:', structuredData ? 'exists' : 'null');
+    if (structuredData) {
+      console.log('Preview endpoint - structuredData keys:', Object.keys(structuredData));
+    }
 
     return NextResponse.json({
       success: true,
@@ -200,6 +212,8 @@ export async function POST(request: NextRequest) {
       body: generatedEmail.body,
       to: targetEmail,
       resumeUrl,
+      resumeText,
+      structuredResumeData: structuredData,
     });
   } catch (error) {
     console.error('Preview email error:', error);

@@ -3,10 +3,14 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
+import { getStartup, getCandidate } from '@/lib/supabase';
+import type { ResumePatch } from '@/types/resume-patch';
+import type { StructuredResumeData } from '@/types/resume';
 import { getCandidate, getPrimaryResumeForCandidate } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
+// Legacy interface for backward compatibility during migration
 interface ResumeSuggestion {
   id: string;
   section: string;
@@ -14,19 +18,28 @@ interface ResumeSuggestion {
   suggested: string;
   reason: string;
   keywords: string[];
+  // New patch-based fields
+  patch?: ResumePatch;
 }
 
 /**
  * Generates ATS-optimized resume suggestions using Gemini
+ * Returns patches with explicit JSONPath locations
  */
 async function generateResumeSuggestionsWithGemini(
   resumeBuffer: Buffer,
   resumeMimeType: string,
   resumeFileName: string,
+  structuredResumeData: StructuredResumeData | null,
   startupInfo: {
     name: string;
     industry: string;
-    tags: string;
+    keywords: string;
+    description: string;
+    business_type?: string;
+    hiring_roles?: string;
+    team_size?: string;
+    job_openings?: string;
   }
 ): Promise<ResumeSuggestion[]> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -37,39 +50,127 @@ async function generateResumeSuggestionsWithGemini(
   const genAI = new GoogleGenerativeAI(apiKey);
   const fileManager = new GoogleAIFileManager(apiKey);
 
+  // Build structured data context for AI
+  const structuredDataContext = structuredResumeData 
+    ? `\n\nSTRUCTURED RESUME DATA (for reference - use this to determine exact paths):
+${JSON.stringify(structuredResumeData, null, 2)}
+
+IMPORTANT: Use this structured data to identify the EXACT JSONPath where each change should be made.
+For example:
+- To edit the first bullet point of the first experience: "experience[0].description[0]"
+- To edit a skill: "skills[2]"
+- To edit a project description bullet: "projects[1].description[0]"
+- To edit personal info: "personal.name" or "personal.email"
+- To edit summary: "summary"`
+    : '\n\nNote: Structured resume data is not available. You will need to infer paths from the resume content.';
+
+  // Build rich startup context from available fields
+  const startupContext = `
+STARTUP CONTEXT:
+Company: ${startupInfo.name}
+Industry: ${startupInfo.industry}
+What They Build: ${startupInfo.description || 'Not specified'}
+${startupInfo.business_type ? `Business Model: ${startupInfo.business_type}` : ''}
+${startupInfo.team_size ? `Team Size: ${startupInfo.team_size}` : ''}
+${startupInfo.keywords ? `Focus Areas: ${startupInfo.keywords} (use for high-level alignment only, not for adding skills)` : ''}
+
+INSTRUCTIONS:
+- Extract technical themes from "What They Build" to understand what experience to emphasize
+- Use industry to determine appropriate terminology and framing
+- Use focus areas only to understand priorities, NOT to add skills the candidate doesn't have
+`.trim();
+
   const prompt = `You are an expert ATS (Applicant Tracking System) resume optimizer.
 
-STARTUP CONTEXT:
-- Company: ${startupInfo.name}
-- Industry: ${startupInfo.industry}
-- Tags/Focus Areas: ${startupInfo.tags}
+${startupContext}${structuredDataContext}
+
+CRITICAL RULES:
+1. ONLY suggest improvements using technologies, skills, and experiences that ALREADY EXIST in the candidate's resume
+2. DO NOT add skills, technologies, or experiences the candidate doesn't have
+3. DO NOT fabricate achievements or metrics
+4. Focus on REFRAMING and REPHRASING existing content to better align with the startup
+5. If the candidate lacks relevant experience for this startup, suggest fewer or no changes rather than inventing experience
 
 TASK:
-Analyze this resume and suggest 3-5 specific improvements to help this candidate pass ATS screening and stand out for THIS startup. Focus on:
+Based on the startup's description and industry, analyze this resume and suggest 3-5 improvements that:
 
-1. **Technical ATS Keywords**: Add industry-standard keywords that ATS systems scan for (e.g., "React.js", "microservices", "CI/CD", "Agile")
-2. **Quantifiable Achievements**: Convert vague statements into specific, measurable results
-3. **Startup-Relevant Skills**: Highlight experience that matches the startup's industry and tech stack
-4. **Action Verbs**: Use strong action verbs (Led, Implemented, Architected, Scaled, etc.)
+1. **Reframe Existing Experience**: Highlight aspects of the candidate's actual experience that align with what this startup builds
+   - If startup builds AI tools → emphasize any ML/data work from resume
+   - If startup is B2B SaaS → emphasize scalability, enterprise features
+   - If startup is early-stage → emphasize scrappy, full-stack, ownership examples
+   - Use terminology from the startup's description
 
-IMPORTANT RULES:
-- Each suggestion MUST include the exact original text from the resume
-- Each suggestion MUST be a direct improvement (more specific, quantified, or keyword-rich)
-- Focus on real ATS improvements, not minor wording changes
-- Only suggest changes that significantly improve ATS score or relevance
+2. **Add Measurable Impact**: Convert vague statements into specific, quantifiable results
+   - Add percentages, numbers, scale metrics from their actual work
+   - Example: "Improved performance" → "Reduced API response time by 40%, handling 10k requests/sec"
+   - Only use metrics that could reasonably be inferred or should be added from their actual work
+
+3. **Specify Technologies**: Make technology mentions more specific where the candidate already uses them
+   - If they mention "JavaScript" and built web apps → specify "React.js" if that's what they likely used
+   - If they mention "databases" → specify "PostgreSQL" or whatever they actually used
+   - ONLY if the technology is already mentioned or clearly implied in their resume
+
+4. **Industry-Specific Terminology**: Use domain language matching the startup's industry
+   - Healthcare startup → emphasize "compliance", "patient data", "HIPAA" if relevant to their work
+   - FinTech → emphasize "security", "transactions", "regulatory" if relevant
+   - Only apply if the candidate has relevant experience
+
+GOOD SUGGESTIONS:
+- Candidate has: "Built web application with JavaScript"
+  Startup builds: "React-based dashboard tools"
+  Suggestion: "Architected React.js web application with TypeScript, implementing 15+ dashboard components and real-time data visualization"
+  ✓ Uses existing JavaScript experience
+  ✓ Adds specificity (React, TypeScript)
+  ✓ Adds metrics (15+ components)
+  ✓ Aligns with startup's focus on dashboards
+
+BAD SUGGESTIONS:
+- Candidate has: "Built Python backend API"
+  Startup builds: "Kubernetes-based infrastructure"
+  Suggestion: "Deployed microservices on Kubernetes with auto-scaling"
+  ✗ Adds Kubernetes experience candidate doesn't have
+  ✗ Better to emphasize their actual Python API work instead
+
+CRITICAL REQUIREMENTS:
+- Each suggestion MUST include the exact JSONPath to the field being modified
+- Each suggestion MUST include the exact original value from the structured data
+- Each suggestion MUST include the new improved value
+- Use JSONPath notation: "experience[0].description[1]" for arrays, "personal.name" for objects
+- For array items, use bracket notation: "skills[2]", "experience[0].description[0]"
+- For object properties, use dot notation: "personal.email", "summary"
+
+PATH EXAMPLES:
+- Experience bullet: "experience[0].description[0]" (first experience, first bullet)
+- Project description: "projects[1].description[2]" (second project, third bullet)
+- Skill: "skills[3]" (fourth skill in array)
+- Education degree: "education[0].degree"
+- Education major: "education[0].major"
+- Education minor: "education[0].minor"
+- Relevant course: "education[0].relevantCourses[0]" (first course)
+- Summary: "summary"
+- Personal info: "personal.name", "personal.email"
 
 Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 {
   "suggestions": [
     {
-      "section": "Experience | Skills | Projects | Education",
-      "original": "exact text from the resume that needs improvement",
-      "suggested": "improved version with ATS keywords and quantifiable metrics",
+      "type": "edit",
+      "path": "experience[0].description[1]",
+      "oldValue": "exact original text/value from the structured data",
+      "newValue": "improved version with ATS keywords and quantifiable metrics",
       "reason": "brief explanation of why this helps (mention specific keywords added)",
-      "keywords": ["keyword1", "keyword2"]
+      "keywords": ["keyword1", "keyword2"],
+      "section": "Experience"
     }
   ]
 }
+
+PATH EXAMPLES:
+- Experience bullet: "experience[0].description[0]" (first experience, first bullet)
+- Project description: "projects[1].description[2]" (second project, third bullet)
+- Skill: "skills[3]" (fourth skill in array)
+- Summary: "summary"
+- Personal info: "personal.name", "personal.email"
 
 If the resume is already well-optimized, return fewer suggestions or an empty array.`;
 
@@ -160,15 +261,34 @@ If the resume is already well-optimized, return fewer suggestions or an empty ar
       throw new Error('Invalid response format: missing suggestions array');
     }
 
-    // Add unique IDs and validate
-    return parsed.suggestions.map((suggestion: any, index: number) => ({
-      id: `suggestion-${Date.now()}-${index}`,
-      section: suggestion.section || 'General',
-      original: suggestion.original || '',
-      suggested: suggestion.suggested || '',
-      reason: suggestion.reason || '',
-      keywords: Array.isArray(suggestion.keywords) ? suggestion.keywords : [],
-    }));
+    // Convert AI response to patches and legacy format
+    const timestamp = Date.now();
+    return parsed.suggestions.map((suggestion: any, index: number) => {
+      const id = `suggestion-${timestamp}-${index}`;
+      
+      // Create patch object
+      const patch: ResumePatch = {
+        id,
+        type: suggestion.type || 'edit',
+        path: suggestion.path || '',
+        oldValue: suggestion.oldValue,
+        newValue: suggestion.newValue,
+        reason: suggestion.reason || '',
+        keywords: Array.isArray(suggestion.keywords) ? suggestion.keywords : [],
+        section: suggestion.section || 'General',
+      };
+      
+      // Return both patch and legacy format for backward compatibility
+      return {
+        id,
+        section: patch.section,
+        original: typeof patch.oldValue === 'string' ? patch.oldValue : JSON.stringify(patch.oldValue),
+        suggested: typeof patch.newValue === 'string' ? patch.newValue : JSON.stringify(patch.newValue),
+        reason: patch.reason,
+        keywords: patch.keywords || [],
+        patch, // Include the patch object
+      };
+    });
   } catch (error) {
     console.error('Error generating resume suggestions:', error);
     throw error;
@@ -211,7 +331,7 @@ export async function POST(request: NextRequest) {
       error: authError,
     } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (authError || !user || !user.email) {
       return NextResponse.json(
         { error: 'Unauthorized. Please sign in.' },
         { status: 401 }
@@ -255,7 +375,7 @@ export async function POST(request: NextRequest) {
       serviceRoleKey
     );
 
-    // Fetch candidate info
+    // Fetch candidate info including structured resume data
     const candidate = await getCandidate(user.email);
 
     if (!candidate) {
@@ -275,16 +395,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch startup info
-    const { data: startup, error: startupError } = await supabaseAdmin
-      .from('startups')
-      .select('name, industry, tags')
-      .eq('id', startupId)
-      .single();
+    // Fetch startup info using the same method as the preview endpoint
+    const startup = await getStartup(startupId);
 
-    if (startupError || !startup) {
+    if (!startup) {
+      console.error('Startup lookup error:', {
+        startupId,
+        message: 'Startup not found in database'
+      });
       return NextResponse.json(
-        { error: 'Startup not found' },
+        { error: `Startup not found. Searched for ID: ${startupId}` },
         { status: 404 }
       );
     }
@@ -310,15 +430,24 @@ export async function POST(request: NextRequest) {
     const fileExt = resume.resume_path.split('.').pop()?.toLowerCase();
     const mimeType = fileExt === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-    // Generate suggestions using Gemini
+    // Get structured resume data for AI context
+    const structuredResumeData = candidate.structured_resume_data as StructuredResumeData | null;
+
+    // Generate suggestions using Gemini with rich startup context
     const suggestions = await generateResumeSuggestionsWithGemini(
       resumeBuffer,
       mimeType,
       resume.resume_path,
+      structuredResumeData,
       {
         name: startup.name,
-        industry: startup.industry,
-        tags: startup.tags,
+        industry: startup.industry || '',
+        keywords: startup.keywords || '',
+        description: startup.description || '',
+        business_type: startup.business_type,
+        hiring_roles: startup.hiring_roles,
+        team_size: startup.team_size,
+        job_openings: startup.job_openings,
       }
     );
 

@@ -6,7 +6,11 @@
       "Bash(npm run build:*)",
       "Bash(findstr:*)",
       "Bash(find:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next lint:*)"
     ],
     "deny": [],
     "ask": []
