@@ -1,0 +1,10 @@
+{
+  "crons": [
+    {
+      "path": "/api/scrape-techcrunch",
+      "schedule": "0 13-22 * * *"
+    }
+  ]
+}
+
+
