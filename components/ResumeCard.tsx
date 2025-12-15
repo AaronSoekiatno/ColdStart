@@ -210,7 +210,12 @@ export function ResumeCard({
               if (!resumeId) return;
               router.push(`/resumes/tailor?resumeId=${resumeId}`);
             }}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-black hover:bg-blue-300 text-white rounded-lg transition-all text-sm font-medium"
+            className={cn(
+              "flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg transition-all text-sm font-medium",
+              isPrimary 
+                ? "bg-black hover:bg-green-600" 
+                : "bg-black hover:bg-blue-300"
+            )}
           >
             <Sparkles className="w-4 h-4" />
             <span>Enhance</span>

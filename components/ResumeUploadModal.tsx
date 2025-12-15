@@ -16,9 +16,10 @@ import type { User } from "@supabase/supabase-js";
 interface ResumeUploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUploadSuccess?: () => void; // Optional callback when upload succeeds
 }
 
-export function ResumeUploadModal({ open, onOpenChange }: ResumeUploadModalProps) {
+export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: ResumeUploadModalProps) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
@@ -43,7 +44,13 @@ export function ResumeUploadModal({ open, onOpenChange }: ResumeUploadModalProps
           </DialogHeader>
           <div className="mt-4">
             <ResumeUpload 
-              onSuccess={() => onOpenChange(false)} 
+              onSuccess={() => {
+                onOpenChange(false);
+                // Call the upload success callback if provided
+                if (onUploadSuccess) {
+                  onUploadSuccess();
+                }
+              }} 
               onUpgradeRequired={() => {
                 setShowUpgradeModal(true);
                 onOpenChange(false); // Close the upload modal

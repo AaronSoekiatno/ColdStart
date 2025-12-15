@@ -7,6 +7,20 @@ export async function GET(request: NextRequest) {
   const token = requestUrl.searchParams.get('token');
   const type = requestUrl.searchParams.get('type');
   const origin = requestUrl.origin;
+  
+  // Check for Supabase OAuth errors first
+  const error = requestUrl.searchParams.get('error');
+  const errorDescription = requestUrl.searchParams.get('error_description');
+  if (error) {
+    console.error('OAuth error from Supabase:', error, errorDescription);
+    // Redirect to home with error details
+    const errorUrl = new URL('/', origin);
+    errorUrl.searchParams.set('error', 'auth_failed');
+    if (errorDescription) {
+      errorUrl.searchParams.set('error_description', errorDescription);
+    }
+    return NextResponse.redirect(errorUrl);
+  }
 
   // Import cookies dynamically
   const { cookies } = await import('next/headers');

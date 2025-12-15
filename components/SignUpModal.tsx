@@ -30,9 +30,11 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
   const handleGoogleSignUp = async () => {
     try {
       setIsLoading(true);
+      // Use environment variable for app URL, fallback to window.location.origin
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
       const redirectUrl = redirectTo 
-        ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`
-        : `${window.location.origin}/auth/callback`;
+        ? `${appUrl}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`
+        : `${appUrl}/auth/callback`;
       
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -93,9 +95,11 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
     try {
       setIsLoading(true);
       // Use signUp with email and password
+      // Use environment variable for app URL, fallback to window.location.origin
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
       const redirectUrl = redirectTo 
-        ? `${window.location.origin}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`
-        : `${window.location.origin}/auth/callback`;
+        ? `${appUrl}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`
+        : `${appUrl}/auth/callback`;
       
       const { error } = await supabase.auth.signUp({
         email,

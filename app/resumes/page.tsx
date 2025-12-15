@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getResumesForCandidate, getCandidate, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { Header } from '@/components/Header';
 import { ResumeList } from '@/components/ResumeList';
+import { ResumePageContent } from '@/components/ResumePageContent';
 
 export default async function ResumePage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -83,7 +84,7 @@ export default async function ResumePage() {
       <Header initialUser={user} />
       
       <main className="container mx-auto px-4 pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 max-w-6xl">
-        <ResumeList 
+        <ResumePageContent
           resumes={resumesWithUrls.map((resume) => ({
             id: resume.id,
             fileName: resume.fileName,
