@@ -277,6 +277,11 @@ Tristan Walker emailed FourSquare eight times. He got the job because his enthus
 3. Show you've actually engaged with their work (used the product, read their posts, etc.)
 4. Make the ask feel natural, not transactional
 
+**Length Requirement:**
+- Keep the email body to approximately 60 words total
+- Be concise but authentic - every word should serve the connection
+- Quality over quantity - a short, genuine email beats a long one
+
 **The "Genuine Test":**
 Before generating, ask: Could this email ONLY be sent to this specific company? If you could swap out the company name and send it elsewhere, it's not genuine enough.
 

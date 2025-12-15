@@ -120,21 +120,34 @@ export async function POST(request: NextRequest) {
 
     // Check if we already have a generated email for this candidate-startup pair (one-to-one mapping)
     // We check cached emails FIRST so users can view previously generated emails even if they've hit the limit
-    const { data: existingGeneratedEmail, error: fetchError } = await supabase
+    const { data: existingGeneratedEmailData, error: fetchError } = await supabase
       .from('generated_emails')
-      .select('subject, body, recipient_email')
+      .select('subject, body, recipient_email, persona')
       .eq('candidate_id', candidate.id)
       .eq('startup_id', startupId)
       .maybeSingle();
+    
+    const existingGeneratedEmail = existingGeneratedEmailData as {
+      subject: string;
+      body: string;
+      recipient_email: string | null;
+      persona: string | null;
+    } | null;
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching existing generated email:', fetchError);
     }
 
     // Check if we should use cached email or regenerate
-    // Regenerate if persona is different from stored persona (premium users changing persona)
-    // Otherwise, return cached email if it exists
-    const shouldUseCached = !!existingGeneratedEmail;
+    // Regenerate if:
+    // 1. No cached email exists, OR
+    // 2. The cached email's persona doesn't match the requested persona
+    // Otherwise, return cached email if it exists and persona matches
+    const cachedPersona = existingGeneratedEmail?.persona as EmailPersona | null;
+    const personaMatches = cachedPersona === emailPersona || (cachedPersona === null && emailPersona === 'direct-ask');
+    
+    // Only use cached email if it exists AND persona matches
+    const shouldUseCached = !!existingGeneratedEmail && personaMatches;
 
     // If we have an existing generated email, return it immediately (no streaming needed)
     // Note: Cached emails don't count toward the limit, so we bypass limit check for cached emails
@@ -290,9 +303,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate a new email if no existing email found (first time for this user-startup pair)
+    // Generate a new email if:
+    // 1. No existing email found (first time for this user-startup pair), OR
+    // 2. Persona doesn't match cached email (user selected different persona)
     if (!shouldUseCached) {
-      console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+      if (existingGeneratedEmail && cachedPersona !== emailPersona) {
+        console.log(`[Generated Email] Persona mismatch: cached='${cachedPersona}', requested='${emailPersona}', regenerating email with Gemini`);
+      } else {
+        console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+      }
     }
 
     // Decide which email address to use (real or guessed)
@@ -471,6 +490,7 @@ export async function POST(request: NextRequest) {
               const upsertData: any = {
                 candidate_id: candidate.id,
                 startup_id: startupId,
+                persona: emailPersona,
                 subject,
                 body,
                 match_score: matchScore,
@@ -505,6 +525,7 @@ export async function POST(request: NextRequest) {
             const upsertData: any = {
               candidate_id: candidate.id,
               startup_id: startupId,
+              persona: emailPersona,
               subject,
               body,
               match_score: matchScore,
