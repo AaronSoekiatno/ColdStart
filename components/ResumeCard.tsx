@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, Check, Star, Pencil } from 'lucide-react';
+import { Eye, Check, Star, Pencil, Trash2 } from 'lucide-react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ResumeCardProps {
   fileName: string;
@@ -31,9 +32,12 @@ export function ResumeCard({
 }: ResumeCardProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isSettingPrimary, setIsSettingPrimary] = useState(false);
   const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editedName, setEditedName] = useState(resumeName || fileName);
+  const { toast } = useToast();
 
   if (!resumeUrl) {
     return null;
@@ -96,7 +100,11 @@ export function ResumeCard({
         const errorData = await response.json().catch(() => ({ error: 'Failed to set primary resume' }));
         
         if (errorData.upgradeRequired) {
-          alert('Setting a primary resume is a Premium feature. Please upgrade to Premium.');
+          toast({
+            title: "Premium feature",
+            description: 'Setting a primary resume is a Premium feature. Please upgrade to Premium.',
+            variant: "destructive",
+          });
         } else {
           throw new Error(errorData.error || 'Failed to set primary resume');
         }
@@ -107,9 +115,53 @@ export function ResumeCard({
       window.location.reload();
     } catch (error) {
       console.error('Failed to set primary resume:', error);
-      alert(error instanceof Error ? error.message : 'Failed to set primary resume. Please try again.');
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to set primary resume. Please try again.',
+        variant: "destructive",
+      });
     } finally {
       setIsSettingPrimary(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!resumeId) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch('/api/resumes/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ resumeId }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete resume');
+      }
+
+      toast({
+        title: "Resume deleted",
+        description: "The resume has been deleted successfully.",
+      });
+
+      // Close dialog and reload the page to show updated list
+      setIsDeleteOpen(false);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete resume:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to delete resume. Please try again.',
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -132,14 +184,24 @@ export function ResumeCard({
                 </div>
               )}
               {resumeId && (
-                <button
-                  onClick={() => setIsEditOpen(true)}
-                  className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900"
-                  aria-label="Edit resume name"
-                  title="Edit resume name"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
+                <>
+                  <button
+                    onClick={() => setIsEditOpen(true)}
+                    className="p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900"
+                    aria-label="Edit resume name"
+                    title="Edit resume name"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsDeleteOpen(true)}
+                    className="p-1.5 rounded-md hover:bg-red-100 transition-colors text-red-600 hover:text-red-700"
+                    aria-label="Delete resume"
+                    title="Delete resume"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -265,6 +327,51 @@ export function ResumeCard({
                 )}
               </button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="bg-white border-gray-200 text-gray-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Delete Resume
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Are you sure you want to delete "{displayName}"? This action cannot be undone.
+              {isPrimary && (
+                <span className="block mt-2 text-amber-600 font-medium">
+                  Note: This is your current primary resume. Another resume will be set as primary automatically.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => setIsDeleteOpen(false)}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isDeleting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Deleting...</span>
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete</span>
+                </>
+              )}
+            </button>
           </div>
         </DialogContent>
       </Dialog>

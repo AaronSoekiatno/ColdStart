@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import { useToast } from '@/hooks/use-toast';
 
 interface UpgradeButtonProps {
   email: string;
@@ -11,8 +11,18 @@ interface UpgradeButtonProps {
 
 export function UpgradeButton({ email, className = '', showTrialCTA = false }: UpgradeButtonProps) {
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleUpgrade = async () => {
+    if (!email) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to subscribe to Premium.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -28,7 +38,14 @@ export function UpgradeButton({ email, className = '', showTrialCTA = false }: U
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout session');
+        // Show user-friendly error message
+        const errorMessage = data.error || 'Failed to create checkout session';
+        toast({
+          title: "Cannot subscribe",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        return;
       }
 
       // Redirect to Stripe Checkout
@@ -37,7 +54,11 @@ export function UpgradeButton({ email, className = '', showTrialCTA = false }: U
       }
     } catch (error: any) {
       console.error('Error upgrading:', error);
-      alert(error.message || 'Failed to start checkout process');
+      toast({
+        title: "Error",
+        description: error.message || 'Failed to start checkout process. Please try again.',
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }

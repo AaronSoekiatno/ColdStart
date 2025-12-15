@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStripe, STRIPE_PRICE_IDS, PRODUCT_CONFIG } from '@/lib/stripe';
 import { createServerClient } from '@supabase/ssr';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, getCandidate, getResumeCountForCandidate } from '@/lib/supabase';
 
 /**
  * POST /api/stripe/create-checkout-session
@@ -48,12 +48,12 @@ export async function POST(request: NextRequest) {
 
     if (authError || !user || user.email !== email) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'You must be signed in to subscribe to Premium. Please sign in and try again.' },
         { status: 401 }
       );
     }
 
-    // Get candidate data to check if they already have a customer ID
+    // Get candidate data to check prerequisites
     if (!supabaseAdmin) {
       return NextResponse.json(
         { error: 'Server configuration error' },
@@ -61,7 +61,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: candidate } = await supabaseAdmin
+    // Check if candidate exists and has uploaded a resume
+    const candidate = await getCandidate(email);
+    
+    if (!candidate) {
+      return NextResponse.json(
+        { error: 'Please upload your resume before subscribing to Premium. Premium features require a resume to match you with startups.' },
+        { status: 400 }
+      );
+    }
+
+    // Check if candidate has at least one active resume
+    const resumeCount = await getResumeCountForCandidate(candidate.id);
+    
+    if (resumeCount === 0) {
+      return NextResponse.json(
+        { error: 'Please upload your resume before subscribing to Premium. Premium features require a resume to match you with startups.' },
+        { status: 400 }
+      );
+    }
+
+    // Get candidate's Stripe customer ID
+    const { data: candidateData } = await supabaseAdmin
       .from('candidates')
       .select('stripe_customer_id')
       .eq('email', email)
@@ -70,7 +91,7 @@ export async function POST(request: NextRequest) {
     const stripe = getStripe();
 
     // Create or retrieve Stripe customer
-    let customerId = candidate?.stripe_customer_id;
+    let customerId = candidateData?.stripe_customer_id;
     let customerExists = false;
 
     // If we have a customer ID, verify it still exists in Stripe
