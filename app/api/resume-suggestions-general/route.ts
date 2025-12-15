@@ -360,8 +360,10 @@ export async function POST(request: NextRequest) {
     const fileExt = resume.resume_path.split('.').pop()?.toLowerCase();
     const mimeType = fileExt === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-    // Get structured resume data
-    const structuredResumeData = (resume.structured_data || candidate.structured_resume_data) as StructuredResumeData | null;
+    // Get structured resume data - prefer per-resume structured_data, fall back to candidate-level legacy field
+    const structuredResumeData = (resume.structured_data ||
+      (candidate as any).structured_resume_data ||
+      null) as StructuredResumeData | null;
 
     // Generate general suggestions
     const suggestions = await generateGeneralResumeSuggestions(

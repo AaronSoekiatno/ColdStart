@@ -95,7 +95,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       resumeText: resume.full_text,
-      structuredResumeData: resume.structured_data || candidate.structured_resume_data,
+      // Prefer per-resume structured_data; fall back to legacy candidate-level structured_resume_data
+      structuredResumeData: resume.structured_data || (candidate as any).structured_resume_data || null,
     });
   } catch (error) {
     console.error('Error in get-resume API:', error);

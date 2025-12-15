@@ -50,7 +50,6 @@ export default function MatchesPage() {
   const [hasError, setHasError] = useState(false);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
-  const [isRematching, setIsRematching] = useState(false);
 
   // Load initial data
   useEffect(() => {
@@ -199,44 +198,6 @@ export default function MatchesPage() {
     }
   }, [currentMatchIndex, matches]);
 
-  // Rematch function
-  const handleRematch = async () => {
-    setIsRematching(true);
-    try {
-      const response = await fetch('/api/rematch', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to rematch');
-      }
-
-      const data = await response.json();
-      
-      // Reload matches after successful rematch
-      const matchesResponse = await fetch('/api/matches?page=1&limit=20', {
-        credentials: 'include',
-      });
-
-      if (matchesResponse.ok) {
-        const matchesData = await matchesResponse.json();
-        setMatches(matchesData.matches || []);
-        setPagination(matchesData.pagination);
-        setCurrentMatchIndex(0);
-      }
-
-      // Show success message
-      alert(`Successfully rematched with ${data.count || 0} startups!`);
-    } catch (error) {
-      console.error('Error rematching:', error);
-      alert(`Failed to rematch: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsRematching(false);
-    }
-  };
-
   // Memoized values
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
 
@@ -296,18 +257,6 @@ export default function MatchesPage() {
         )}
 
         <div className="container mx-auto px-3 sm:px-4">
-          {/* Rematch button */}
-          <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto mb-4 flex justify-end">
-            <button
-              onClick={handleRematch}
-              disabled={isRematching}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-300 text-white rounded-lg hover:bg-blue-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRematching ? 'animate-spin' : ''}`} />
-              {isRematching ? 'Rematching...' : 'Rematch with New Startups'}
-            </button>
-          </div>
-
           {hasMatches ? (
             <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto relative pl-12 sm:pl-0 pr-12 sm:pr-0 md:pl-0 md:pr-0">
               {/* Single match card display */}
