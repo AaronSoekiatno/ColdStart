@@ -3,6 +3,88 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 
+// Typing animation component for email preview
+function TypingEmailPreview({ isActive }: { isActive: boolean }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showCursor, setShowCursor] = useState(true);
+  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const emailText = `Hi Aman,
+
+I'm reaching out because I saw Novaflow is bridging the gap between AI and biology...`;
+
+  useEffect(() => {
+    // Reset when step becomes active
+    if (isActive) {
+      setCurrentIndex(0);
+      setDisplayedText("");
+      
+      // Clear any existing interval
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+
+      // Start typing animation
+      typingIntervalRef.current = setInterval(() => {
+        setCurrentIndex((prev) => {
+          if (prev >= emailText.length) {
+            if (typingIntervalRef.current) {
+              clearInterval(typingIntervalRef.current);
+            }
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 30); // Typing speed: 30ms per character
+    } else {
+      // Reset when step becomes inactive
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+      setCurrentIndex(0);
+      setDisplayedText("");
+    }
+
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
+  }, [isActive, emailText.length]);
+
+  // Cursor blink effect
+  useEffect(() => {
+    const cursorInterval = setInterval(() => {
+      setShowCursor((prev) => !prev);
+    }, 530);
+    return () => clearInterval(cursorInterval);
+  }, []);
+
+  useEffect(() => {
+    setDisplayedText(emailText.slice(0, currentIndex));
+  }, [currentIndex, emailText]);
+
+  return (
+    <div className="w-full max-w-md bg-gray-800 rounded-xl p-4 border border-gray-700">
+      {currentIndex === 0 ? (
+        <div className="space-y-2">
+          <div className="h-2 bg-gray-600 rounded w-1/3"></div>
+          <div className="h-2 bg-gray-700 rounded w-full"></div>
+          <div className="h-2 bg-gray-700 rounded w-5/6"></div>
+          <div className="h-2 bg-gray-700 rounded w-4/5"></div>
+        </div>
+      ) : (
+        <div className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono">
+          {displayedText}
+          <span className={`inline-block w-0.5 h-4 bg-green-500 ml-0.5 align-middle ${showCursor ? 'opacity-100' : 'opacity-0'}`}></span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Step {
   number: string;
   title: string;
@@ -10,10 +92,36 @@ interface Step {
   icon: React.ReactNode;
 }
 
+interface StartupLogo {
+  id: string;
+  name: string;
+  company_logo: string;
+}
+
 export function NewHowItWorks() {
   const [activeStep, setActiveStep] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
+  const scrollableRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [matchingLogos, setMatchingLogos] = useState<StartupLogo[]>([]);
+
+  // Fetch startup logos for AI Matching preview
+  useEffect(() => {
+    async function fetchLogos() {
+      try {
+        const response = await fetch("/api/startups/logos");
+        if (response.ok) {
+          const data = await response.json();
+          // Take just 6 random logos for the preview
+          const shuffled = (data.startups || []).sort(() => 0.5 - Math.random());
+          setMatchingLogos(shuffled.slice(0, 6));
+        }
+      } catch (err) {
+        console.error("Error fetching logos for matching preview:", err);
+      }
+    }
+    fetchLogos();
+  }, []);
 
   const steps: Step[] = [
     {
@@ -68,22 +176,44 @@ export function NewHowItWorks() {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (!sectionRef.current) return;
+      if (!sectionRef.current || !scrollableRef.current) return;
 
-      const sectionRect = sectionRef.current.getBoundingClientRect();
-      const sectionTop = sectionRect.top;
-      const sectionHeight = sectionRect.height;
+      const scrollableRect = scrollableRef.current.getBoundingClientRect();
+      const scrollableTop = scrollableRect.top;
+      const scrollableHeight = scrollableRect.height;
       const viewportHeight = window.innerHeight;
       
-      // Calculate scroll progress through the section
-      // Start tracking when section enters viewport
-      const scrollProgress = Math.max(0, (viewportHeight - sectionTop) / (sectionHeight));
+      // The scrollable distance is the height minus one viewport (since sticky container takes up 1 viewport)
+      // This is how much we need to scroll to go through all steps
+      const scrollableDistance = scrollableHeight - viewportHeight;
       
-      // Map scroll progress to step index
-      const stepProgress = scrollProgress * steps.length;
-      const newActiveStep = Math.min(Math.floor(stepProgress), steps.length - 1);
+      if (scrollableDistance <= 0) {
+        // If scrollable area is smaller than viewport, just show step 0
+        if (activeStep !== 0) setActiveStep(0);
+        return;
+      }
       
-      if (newActiveStep >= 0 && newActiveStep !== activeStep) {
+      // Calculate progress: 
+      // 0 when scrollable top reaches viewport top (step 0 starts)
+      // 1 when scrollable bottom reaches viewport bottom (step 3 ends)
+      const rawProgress = (viewportHeight - scrollableTop) / scrollableDistance;
+      const scrollProgress = Math.max(0, Math.min(1, rawProgress));
+      
+      // Map scroll progress to step index with step 0 getting 45% of scroll distance
+      // Step 0: 0 to 0.45 (45%), remaining 55% split among steps 1-3 (~18.33% each)
+      // Step 1: 0.45 to 0.633, Step 2: 0.633 to 0.817, Step 3: 0.817 to 1.0
+      let newActiveStep = 0;
+      if (scrollProgress >= 0.45) {
+        // After step 0, divide remaining 55% among 3 steps (~18.33% each)
+        const remainingProgress = (scrollProgress - 0.45) / 0.55; // Normalize to 0-1 for remaining steps
+        newActiveStep = 1 + Math.floor(remainingProgress * 3);
+        newActiveStep = Math.min(newActiveStep, steps.length - 1);
+      }
+      
+      // Clamp to valid step range
+      newActiveStep = Math.max(0, Math.min(newActiveStep, steps.length - 1));
+      
+      if (newActiveStep !== activeStep) {
         setActiveStep(newActiveStep);
       }
     };
@@ -109,7 +239,7 @@ export function NewHowItWorks() {
       </div>
 
       {/* Scroll-driven Content - Increased height for scroll distance */}
-      <div className="relative" style={{ height: `${steps.length * 100}vh` }}>
+      <div ref={scrollableRef} className="relative" style={{ height: `${steps.length * 100}vh` }}>
         {/* Sticky Container */}
         <div className="sticky top-0 h-screen flex items-center">
           <div className="w-full max-w-6xl mx-auto px-6">
@@ -231,19 +361,42 @@ export function NewHowItWorks() {
                             Scanning 2000+ YC startups to find your perfect matches
                           </p>
                         </div>
-                        {/* Mock match cards */}
+                        {/* Startup logo cards */}
                         <div className="grid grid-cols-3 gap-3 max-w-md">
-                          {[1, 2, 3, 4, 5, 6].map((i) => (
-                            <div
-                              key={i}
-                              className="w-16 h-16 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center"
-                              style={{
-                                animation: `pulse 2s ease-in-out ${i * 0.2}s infinite`,
-                              }}
-                            >
-                              <div className="w-8 h-8 rounded-md bg-gray-700"></div>
-                            </div>
-                          ))}
+                          {matchingLogos.length > 0 ? (
+                            matchingLogos.map((startup, i) => (
+                              <div
+                                key={startup.id}
+                                className="w-16 h-16 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50 cursor-pointer"
+                              >
+                                <Image
+                                  src={startup.company_logo}
+                                  alt={startup.name}
+                                  width={64}
+                                  height={64}
+                                  className="w-full h-full object-cover"
+                                  unoptimized
+                                  title={startup.name}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              </div>
+                            ))
+                          ) : (
+                            // Fallback placeholders while loading
+                            [1, 2, 3, 4, 5, 6].map((i) => (
+                              <div
+                                key={i}
+                                className="w-16 h-16 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-purple-500/50"
+                                style={{
+                                  animation: `pulse 2s ease-in-out ${i * 0.2}s infinite`,
+                                }}
+                              >
+                                <div className="w-8 h-8 rounded-md bg-gray-700"></div>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
@@ -266,15 +419,8 @@ export function NewHowItWorks() {
                             AI crafts unique emails using founder data and your background
                           </p>
                         </div>
-                        {/* Mock email preview */}
-                        <div className="w-full max-w-md bg-gray-800 rounded-xl p-4 border border-gray-700">
-                          <div className="space-y-2">
-                            <div className="h-2 bg-gray-600 rounded w-1/3"></div>
-                            <div className="h-2 bg-gray-700 rounded w-full"></div>
-                            <div className="h-2 bg-gray-700 rounded w-5/6"></div>
-                            <div className="h-2 bg-gray-700 rounded w-4/5"></div>
-                          </div>
-                        </div>
+                        {/* Animated typing email preview */}
+                        <TypingEmailPreview isActive={activeStep === 2} />
                       </div>
                     </div>
 
@@ -293,20 +439,23 @@ export function NewHowItWorks() {
                         <div className="text-center">
                           <h3 className="text-2xl font-semibold text-white mb-2">Interview Secured</h3>
                           <p className="text-gray-400 max-w-sm">
-                            Watch the responses roll in while you focus on preparation
+                            Set the date on your calendar and let the AI handle the rest.
                           </p>
                         </div>
-                        {/* Success indicator */}
-                        <div className="flex items-center gap-4 px-6 py-4 bg-green-500/20 border border-green-500/30 rounded-xl">
-                          <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
-                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                          <div className="text-left">
-                            <p className="text-green-400 font-medium">Interview Invitation</p>
-                            <p className="text-green-500/70 text-sm">Founder just replied!</p>
-                          </div>
+                        {/* Mini Calendar - Block Style */}
+                        <div className="grid grid-cols-7 gap-3 max-w-md">
+                          {[12, 13, 14, 15, 16, 17, 18].map((date) => (
+                            <div
+                              key={date}
+                              className={`w-16 h-16 rounded-lg border flex items-center justify-center transition-all duration-300 ${
+                                date === 15
+                                  ? 'bg-green-500 border-green-500 text-white font-semibold shadow-lg shadow-green-500/50 hover:-translate-y-1'
+                                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:-translate-y-1 hover:shadow-lg hover:border-gray-600'
+                              }`}
+                            >
+                              <span className="text-sm">{date}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     </div>
