@@ -378,6 +378,12 @@ export async function POST(request: NextRequest) {
               resumeFullText: resume?.resume_full_text || undefined,
               // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
               links: resume?.resume_full_text ? extractLinksFromResume(resume.resume_full_text) : undefined,
+              // Additional Supabase candidate fields
+              location: candidate.location || undefined,
+              educationLevel: candidate.education_level || undefined,
+              university: candidate.university || undefined,
+              pastInternships: candidate.past_internships || undefined,
+              technicalProjects: candidate.technical_projects || undefined,
             },
             {
               name: startup.name,
@@ -393,6 +399,11 @@ export async function POST(request: NextRequest) {
                 .filter((t: string) => t.length > 0),
               founderName: founderName,
               scrapedContext: undefined, // Can be added later if scraped intel is stored in database
+              // Additional Supabase startup fields
+              batch: startup.batch || undefined,
+              jobOpenings: startup.job_openings || undefined,
+              founderEmails: startup.founder_emails || undefined,
+              founderLinkedIn: startup.founder_linkedin || undefined,
             },
             { score: matchScore },
             { tone: emailTone }

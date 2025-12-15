@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         );
       }
       // Validate tone value
-      const validTones: EmailTone[] = ['professional_casual', 'enthusiastic', 'conversational'];
+      const validTones: readonly EmailTone[] = ['professional', 'classy', 'informative', 'ambitious', 'conversational'] as const;
       if (validTones.includes(tone as EmailTone)) {
         emailTone = tone as EmailTone;
       }
@@ -144,6 +144,39 @@ export async function POST(request: NextRequest) {
     // Get primary/current resume for resume_full_text
     const resume = await getPrimaryResumeForCandidate(candidate.id);
 
+    // Extract founder name (use first founder if multiple)
+    const founderName = startup.founder_names
+      ? startup.founder_names.split(',')[0].trim()
+      : undefined;
+
+    // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
+    const extractLinksFromResume = (resumeText: string): Record<string, string> => {
+      const links: Record<string, string> = {};
+      const patterns = [
+        { key: 'github', regex: /github\.com[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+(?:\/[a-zA-Z0-9\-_.]+)?)/gi },
+        { key: 'portfolio', regex: /(?:portfolio|website|personal site)[\s:]+(https?:\/\/[^\s]+)/gi },
+        { key: 'linkedin', regex: /linkedin\.com\/in[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+)/gi },
+        { key: 'website', regex: /(?:http[s]?:\/\/)?(?:www\.)?([a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi },
+      ];
+      for (const pattern of patterns) {
+        const matches = resumeText.match(pattern.regex);
+        if (matches && matches.length > 0) {
+          let link = matches[0].replace(/^(?:github|portfolio|website|personal site|linkedin)[\s:]+/i, '').trim();
+          if (link && !link.startsWith('http')) {
+            if (pattern.key === 'github') {
+              link = `https://github.com/${link.replace(/github\.com\/?/i, '').trim()}`;
+            } else if (pattern.key === 'linkedin') {
+              link = `https://linkedin.com/in/${link.replace(/linkedin\.com\/in\/?/i, '').trim()}`;
+            } else {
+              link = `https://${link}`;
+            }
+          }
+          if (link) links[pattern.key] = link;
+        }
+      }
+      return links;
+    };
+
     // Generate email (but do NOT send it)
     const generatedEmail = await generateColdEmail(
       {
@@ -155,6 +188,14 @@ export async function POST(request: NextRequest) {
           .map((s: string) => s.trim())
           .filter((s: string) => s.length > 0),
         resumeFullText: resume?.resume_full_text || undefined,
+        // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
+        links: resume?.resume_full_text ? extractLinksFromResume(resume.resume_full_text) : undefined,
+        // Additional Supabase candidate fields
+        location: candidate.location || undefined,
+        educationLevel: candidate.education_level || undefined,
+        university: candidate.university || undefined,
+        pastInternships: candidate.past_internships || undefined,
+        technicalProjects: candidate.technical_projects || undefined,
       },
       {
         name: startup.name,
@@ -168,6 +209,12 @@ export async function POST(request: NextRequest) {
           ?.split(', ')
           .map((t: string) => t.trim())
           .filter((t: string) => t.length > 0),
+        founderName: founderName,
+        // Additional Supabase startup fields
+        batch: startup.batch || undefined,
+        jobOpenings: startup.job_openings || undefined,
+        founderEmails: startup.founder_emails || undefined,
+        founderLinkedIn: startup.founder_linkedin || undefined,
       },
       { score: matchScore },
       { tone: emailTone }

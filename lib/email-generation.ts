@@ -23,6 +23,12 @@ export interface CandidateProfile {
   skills: string[]; // normalized list of skills/keywords
   resumeFullText?: string; // Full resume text for additional context (GitHub links, etc.)
   links?: Record<string, string>; // Links like GitHub, portfolio, etc.
+  // Additional Supabase fields
+  location?: string;
+  educationLevel?: string;
+  university?: string;
+  pastInternships?: string; // Comma-separated string
+  technicalProjects?: string; // Comma-separated string
 }
 
 export interface StartupInfo {
@@ -36,6 +42,11 @@ export interface StartupInfo {
   tags?: string[];
   founderName?: string; // Full founder name (may include "Dr.", "Prof.", etc.)
   scrapedContext?: string; // Scraped intel/news about the startup
+  // Additional Supabase fields
+  batch?: string; // YC batch (e.g., "Summer 2025")
+  jobOpenings?: string; // Available job openings
+  founderEmails?: string; // Comma-separated founder emails
+  founderLinkedIn?: string; // Comma-separated LinkedIn URLs
 }
 
 export interface MatchContext {
@@ -201,17 +212,29 @@ Use a consistent structure across emails so they feel like they follow the same 
 5) use a professional sign off at the end of the email (e.g. "Best regards, [Your Name]"), try to include contact information if they have it on their resume
 6) start the email with "Hi [Founder Name]," or an introduction that includes the founder's name
 
-### 4. DATA INPUTS
+### 4. DATA INPUTS (From Supabase Database)
 **CANDIDATE (ME):**
 - Name: ${candidate.name}
 - Email: ${candidate.email}
 - Summary: ${candidate.summary}
 - Skills: ${candidate.skills.join(', ')}
+- Location: ${candidate.location || 'Not specified'}
+- Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
+- Past Internships: ${candidate.pastInternships || 'None listed'}
+- Technical Projects: ${candidate.technicalProjects || 'None listed'}
 - Links: ${linksText}${resumeContext}
 
 **STARTUP (THEM):**
 - Name: ${startup.name}
-- Founder Name Input: ${rawFounderName}
+- Industry: ${startup.industry || 'Not specified'}
+- Location: ${startup.location || 'Not specified'}
+- Website: ${startup.website || 'Not specified'}
+- YC Batch: ${startup.batch || 'Not specified'}
+- Funding Stage: ${startup.fundingStage || 'Not specified'}
+- Funding Amount: ${startup.fundingAmount || 'Not specified'}
+- Tags/Keywords: ${startup.tags?.join(', ') || 'None'}
+- Job Openings: ${startup.jobOpenings || 'Not specified'}
+- Founder Name: ${rawFounderName}
 - **Intel/News (HIGH PRIORITY):** ${scrapedIntel}
 - Description: ${startup.description || 'N/A'}
 
@@ -348,17 +371,29 @@ You are emailing ${rawFounderName} at ${startup.name}.
   - *Bad:* "Let me know if you'd like to connect." (Vague, doesn't specify next step)
   - *Bad:* "If you need hands on this, I'd love to help." (No clear ask)
 
-### 4. DATA INPUTS
+### 4. DATA INPUTS (From Supabase Database)
 **CANDIDATE (ME):**
 - Name: ${candidate.name}
 - Email: ${candidate.email}
 - Summary: ${candidate.summary}
 - Skills: ${candidate.skills.join(', ')}
+- Location: ${candidate.location || 'Not specified'}
+- Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
+- Past Internships: ${candidate.pastInternships || 'None listed'}
+- Technical Projects: ${candidate.technicalProjects || 'None listed'}
 - Links: ${linksText}${resumeContext}
 
 **STARTUP (THEM):**
 - Name: ${startup.name}
-- Founder Name Input: ${rawFounderName}
+- Industry: ${startup.industry || 'Not specified'}
+- Location: ${startup.location || 'Not specified'}
+- Website: ${startup.website || 'Not specified'}
+- YC Batch: ${startup.batch || 'Not specified'}
+- Funding Stage: ${startup.fundingStage || 'Not specified'}
+- Funding Amount: ${startup.fundingAmount || 'Not specified'}
+- Tags/Keywords: ${startup.tags?.join(', ') || 'None'}
+- Job Openings: ${startup.jobOpenings || 'Not specified'}
+- Founder Name: ${rawFounderName}
 - **Intel/News (HIGH PRIORITY):** ${scrapedIntel}
 - Description: ${startup.description || 'N/A'}
 
