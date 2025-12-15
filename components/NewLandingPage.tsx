@@ -20,7 +20,6 @@ import { SignInModal } from "@/components/SignInModal";
 import { SignUpModal } from "@/components/SignUpModal";
 import { ResumeUploadModal } from "@/components/ResumeUploadModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { OnboardingModal } from "@/components/OnboardingModal";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import {
@@ -41,7 +40,6 @@ export function NewLandingPage() {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -447,13 +445,6 @@ export function NewLandingPage() {
         onDismiss={() => setShowPremiumModal(false)}
         customTitle="Our Premium Plan"
         isPremium={isPremium}
-      />
-      <OnboardingModal
-        open={showOnboardingModal}
-        onOpenChange={setShowOnboardingModal}
-        onComplete={() => {
-          setShowOnboardingModal(false);
-        }}
       />
     </div>
   );

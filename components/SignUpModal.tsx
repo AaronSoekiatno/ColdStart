@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,10 +23,18 @@ interface SignUpModalProps {
 }
 
 export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchToSignIn, redirectTo }: SignUpModalProps) => {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Preload onboarding page when sign-up modal opens for faster navigation
+  useEffect(() => {
+    if (open) {
+      router.prefetch('/onboarding');
+    }
+  }, [open, router]);
 
   const handleGoogleSignUp = async () => {
     try {

@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import ResumeUpload from "@/app/components/ResumeUpload";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { OnboardingModal } from "@/components/OnboardingModal";
+import { SignUpModal } from "@/components/SignUpModal";
+import { SignInModal } from "@/components/SignInModal";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 
 interface ResumeUploadModalProps {
   open: boolean;
@@ -21,22 +23,67 @@ interface ResumeUploadModalProps {
 }
 
 export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: ResumeUploadModalProps) {
+  const router = useRouter();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showSignInModal, setShowSignInModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Preload onboarding page for faster navigation
+    router.prefetch('/onboarding');
+
     // Get current user for upgrade modal
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
-  }, []);
+
+    // Listen for auth state changes (e.g., when user signs up)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setUser(session?.user ?? null);
+      // If user just signed up/in, check for onboarding
+      if (session?.user?.email) {
+        // Close sign up/in modals
+        setShowSignUpModal(false);
+        setShowSignInModal(false);
+        
+        // Check for onboarding
+        try {
+          const response = await fetch('/api/candidate/check-onboarding', {
+            credentials: 'include',
+          });
+          const data = await response.json();
+          
+          if (data.needsOnboarding) {
+            // Redirect to full-screen onboarding page
+            router.push('/onboarding');
+          } else {
+            // Call the upload success callback if provided
+            if (onUploadSuccess) {
+              onUploadSuccess();
+            }
+          }
+        } catch (error) {
+          console.error('Error checking onboarding status:', error);
+          // If check fails, just call success callback
+          if (onUploadSuccess) {
+            onUploadSuccess();
+          }
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [onUploadSuccess, router]);
 
   const handleUploadSuccess = async () => {
     onOpenChange(false);
     
-    // Check if user needs onboarding (no job_type set)
+    // Check if user is authenticated
     if (user?.email) {
+      // User is authenticated - check if they need onboarding
       try {
         const response = await fetch('/api/candidate/check-onboarding', {
           credentials: 'include',
@@ -44,7 +91,8 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
         const data = await response.json();
         
         if (data.needsOnboarding) {
-          setShowOnboardingModal(true);
+          // Redirect to full-screen onboarding page
+          router.push('/onboarding');
         } else {
           // Call the upload success callback if provided
           if (onUploadSuccess) {
@@ -59,10 +107,8 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
         }
       }
     } else {
-      // Call the upload success callback if provided
-      if (onUploadSuccess) {
-        onUploadSuccess();
-      }
+      // User is NOT authenticated - prompt them to sign up
+      setShowSignUpModal(true);
     }
   };
 
@@ -99,19 +145,18 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
           isPremium={false}
         />
       )}
-      {showOnboardingModal && (
-        <OnboardingModal
-          open={showOnboardingModal}
-          onOpenChange={setShowOnboardingModal}
-          onComplete={() => {
-            setShowOnboardingModal(false);
-            // Call the upload success callback after onboarding is complete
-            if (onUploadSuccess) {
-              onUploadSuccess();
-            }
-          }}
-        />
-      )}
+      <SignUpModal
+        open={showSignUpModal}
+        onOpenChange={setShowSignUpModal}
+        onSwitchToSignIn={() => {
+          setShowSignUpModal(false);
+          setShowSignInModal(true);
+        }}
+      />
+      <SignInModal
+        open={showSignInModal}
+        onOpenChange={setShowSignInModal}
+      />
     </>
   );
 }
