@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase, isSubscribed } from '@/lib/supabase';
 import { MatchCard } from '@/components/MatchCard';
 import { Header } from '@/components/Header';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { useMatches } from '@/hooks/use-matches';
 
@@ -87,14 +87,10 @@ export default function MatchesPage() {
   // Loading state
   if (isAuthChecking || isInitialLoading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
         <Header initialUser={user} />
-        <section className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20">
-          <div className="container mx-auto px-4">
-            <div className="text-center text-gray-900">
-              <p>Loading matches...</p>
-            </div>
-          </div>
+        <section className="flex-1 flex items-center justify-center px-4">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-300" />
         </section>
       </div>
     );

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { getCandidate } from '@/lib/supabase';
-import { applyResumeSuggestions } from '@/lib/apply-suggestions-to-pdf';
+import { applyResumeSuggestions, generateUpdatedResumePDF } from '@/lib/apply-suggestions-to-pdf';
+import { structuredResumeToPlainText } from '@/lib/structured-resume-to-text';
+import type { StructuredResumeData } from '@/types/resume';
 
 interface Suggestion {
   id: string;
@@ -38,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { acceptedSuggestions } = await request.json();
+    const { acceptedSuggestions, updatedStructuredResumeData } = await request.json();
 
     if (!acceptedSuggestions || !Array.isArray(acceptedSuggestions)) {
       return NextResponse.json(
@@ -57,19 +59,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!candidate.resume_full_text) {
-      return NextResponse.json(
-        { error: 'Resume text not available. Please re-upload your resume.' },
-        { status: 400 }
+    let pdfBytes: Uint8Array;
+
+    if (updatedStructuredResumeData) {
+      // Use the updated structured resume from the client (matches on-screen template)
+      const updatedText = structuredResumeToPlainText(updatedStructuredResumeData as StructuredResumeData);
+      pdfBytes = await generateUpdatedResumePDF(updatedText, candidate.name);
+    } else {
+      if (!candidate.resume_full_text) {
+        return NextResponse.json(
+          { error: 'Resume text not available. Please re-upload your resume.' },
+          { status: 400 }
+        );
+      }
+
+      // Legacy path: apply suggestions against stored full-text resume
+      pdfBytes = await applyResumeSuggestions(
+        candidate.resume_full_text,
+        acceptedSuggestions,
+        candidate.name
       );
     }
-
-    // Apply suggestions and generate updated PDF
-    const pdfBytes = await applyResumeSuggestions(
-      candidate.resume_full_text,
-      acceptedSuggestions,
-      candidate.name
-    );
 
     // Convert Uint8Array to Buffer for NextResponse
     const buffer = Buffer.from(pdfBytes);
