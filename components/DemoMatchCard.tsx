@@ -192,7 +192,7 @@ export function DemoMatchCard() {
   };
 
   return (
-    <section className="py-24 px-6 bg-gray-50">
+    <section className="py-24 px-6 bg-white">
       <div className="max-w-6xl mx-auto">
         <ScrollAnimate direction="up" delay={0} threshold={0.2}>
           <div className="text-center mb-12">

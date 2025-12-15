@@ -7,6 +7,7 @@ interface NewHeroProps {
 }
 
 export function NewHero({ onGetStarted }: NewHeroProps) {
+
   return (
     <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
       <div className="max-w-5xl mx-auto text-center">
@@ -30,15 +31,18 @@ export function NewHero({ onGetStarted }: NewHeroProps) {
         </div>
 
         {/* Value Proposition */}
-        <div className="mt-24 space-y-2">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight leading-tight text-white drop-shadow-md">
-            Your AI agent networks
-            <br />
-            with 2000+ YC founders
-          </h2>
-          <p className="text-xl md:text-2xl text-white mt-4 drop-shadow-sm">
-            Personalized outreach. Land Interviews. Get Actual Offers.
-          </p>
+        <div className="mt-24 relative">
+          {/* Foreground Text */}
+          <div className="relative z-10 space-y-2">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight leading-tight text-white drop-shadow-md">
+              Your AI agent networks
+              <br />
+              with 2000+ YC founders
+            </h2>
+            <p className="text-xl md:text-2xl text-white mt-4 drop-shadow-sm">
+              Personalized outreach. Land Interviews. Get Actual Offers.
+            </p>
+          </div>
         </div>
       </div>
     </section>

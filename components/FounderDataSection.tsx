@@ -14,7 +14,7 @@ export function FounderDataSection() {
           </ScrollAnimate>
           <ScrollAnimate direction="up" delay={150} threshold={0.2}>
           <p className="text-xl text-gray-600 leading-relaxed">
-            99 verified YC founders with real emails and LinkedIn. No scraped
+            1000s of founders with real emails and LinkedIn. No scraped
             junk—actual decision makers. Automatically tracks responses for
             contextual follow-ups so no opportunity slips through.
           </p>

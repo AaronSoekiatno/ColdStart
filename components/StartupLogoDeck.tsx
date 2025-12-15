@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { ScrollAnimate } from "@/components/ScrollAnimate";
 
@@ -14,6 +14,50 @@ export function StartupLogoDeck() {
   const [startups, setStartups] = useState<StartupLogo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [shouldAnimate, setShouldAnimate] = useState(false);
+  
+  // Direct IntersectionObserver for reliable scroll detection
+  useEffect(() => {
+    if (!wrapperRef.current || shouldAnimate) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setShouldAnimate(true);
+            observer.disconnect(); // Only trigger once
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: "50px",
+      }
+    );
+    
+    observer.observe(wrapperRef.current);
+    
+    // Check if already visible on mount
+    const checkInitialVisibility = () => {
+      if (wrapperRef.current && !shouldAnimate) {
+        const rect = wrapperRef.current.getBoundingClientRect();
+        const isInViewport = rect.top < window.innerHeight * 1.5 && rect.bottom > -200;
+        if (isInViewport) {
+          setShouldAnimate(true);
+          observer.disconnect();
+        }
+      }
+    };
+    
+    // Check after a short delay to ensure DOM is ready
+    const timeoutId = setTimeout(checkInitialVisibility, 100);
+    
+    return () => {
+      observer.disconnect();
+      clearTimeout(timeoutId);
+    };
+  }, [shouldAnimate, startups.length]);
 
   useEffect(() => {
     async function fetchStartupLogos() {
@@ -74,15 +118,15 @@ export function StartupLogoDeck() {
           </div>
         </ScrollAnimate>
 
-        <ScrollAnimate direction="up" delay={150} threshold={0.2}>
+        <div ref={wrapperRef} className={`w-full logo-grid-wrapper ${shouldAnimate ? 'is-visible' : ''}`}>
           <div className="w-full px-2">
             <div className="grid grid-cols-12 sm:grid-cols-[repeat(15,minmax(0,1fr))] md:grid-cols-[repeat(18,minmax(0,1fr))] lg:grid-cols-[repeat(24,minmax(0,1fr))] gap-0.5">
               {startups.slice(0, 144).map((startup, index) => (
                 <div
                   key={startup.id}
-                  className="bg-white rounded-sm p-0 border border-gray-200 hover:border-blue-400 transition-all duration-300 aspect-square flex items-center justify-center group overflow-hidden"
+                  className="bg-white rounded-sm p-0 border border-gray-200 hover:border-blue-400 transition-all duration-300 aspect-square flex items-center justify-center group overflow-hidden logo-item"
                   style={{
-                    animation: `fadeInUp 0.5s ease-out ${index * 0.03}s both`,
+                    animationDelay: `${index * 0.03}s`,
                   }}
                 >
                   <Image
@@ -106,10 +150,19 @@ export function StartupLogoDeck() {
               ))}
             </div>
           </div>
-        </ScrollAnimate>
+        </div>
 
         {/* Add CSS animation for fadeInUp */}
         <style jsx>{`
+          .logo-item {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          
+          .logo-grid-wrapper.is-visible .logo-item {
+            animation: fadeInUp 0.5s ease-out both;
+          }
+          
           @keyframes fadeInUp {
             from {
               opacity: 0;
