@@ -31,6 +31,16 @@ interface MatchCardProps {
       company_logo?: string;
       yc_link?: string;
       company_twitter_url?: string;
+      founders?: Array<{
+        id: string;
+        name: string;
+        email?: string;
+        role?: string;
+        linkedin_url?: string;
+        twitter_url?: string;
+        background?: string;
+        profile_picture?: string;
+      }>;
     } | null;
   };
   isPremium?: boolean;
@@ -81,61 +91,114 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
 
   const startup = match.startup;
 
-  // Parse founder names (comma-separated) and filter out false positives
-  const founderNames = splitFounderNames(startup.founder_names);
+  // Use founders from founders table if available, otherwise fall back to CSV columns
+  const foundersFromTable = startup.founders && startup.founders.length > 0
+    ? startup.founders
+    : null;
 
-  // Parse LinkedIn URLs (comma-separated, one per founder)
-  const founderLinkedInUrls = startup.founder_linkedin
-    ? startup.founder_linkedin.split(',').map(url => url.trim())
-    : [];
+  // Parse founder data - prefer founders table, fallback to CSV columns
+  const founderNames = foundersFromTable
+    ? foundersFromTable.map(f => f.name)
+    : splitFounderNames(startup.founder_names);
 
-  // Parse Twitter URLs (comma-separated, one per founder)
-  const founderTwitterUrls = startup.founder_twitter_urls
-    ? startup.founder_twitter_urls.split(',').map(url => url.trim())
-    : [];
+  const founderLinkedInUrls = foundersFromTable
+    ? foundersFromTable.map(f => f.linkedin_url || '')
+    : (startup.founder_linkedin
+        ? startup.founder_linkedin.split(',').map(url => url.trim())
+        : []);
 
-  // Parse founder emails (comma-separated, one per founder)
-  const founderEmails = startup.founder_emails
-    ? startup.founder_emails.split(',').map(email => email.trim())
-    : [];
+  const founderTwitterUrls = foundersFromTable
+    ? foundersFromTable.map(f => f.twitter_url || '')
+    : (startup.founder_twitter_urls
+        ? startup.founder_twitter_urls.split(',').map(url => url.trim())
+        : []);
 
-  // Parse founder profile pictures (could be array or comma-separated string)
-  const founderProfilePictures = startup.founders_pfp
-    ? Array.isArray(startup.founders_pfp)
-      ? startup.founders_pfp.map(url => String(url).trim())
-      : String(startup.founders_pfp).split(',').map(url => url.trim())
-    : [];
+  const founderEmails = foundersFromTable
+    ? foundersFromTable.map(f => f.email || '')
+    : (startup.founder_emails
+        ? startup.founder_emails.split(',').map(email => email.trim())
+        : []);
 
-  // Debug: Log founder profile pictures
-  if (founderProfilePictures.length > 0) {
-    console.log('Founder profile pictures:', founderProfilePictures);
+  // Get profile pictures - prefer from founders table, fallback to founders_pfp array
+  const founderProfilePictures: string[] = [];
+  
+  if (foundersFromTable) {
+    // Use profile_picture from founders table if available
+    for (let i = 0; i < foundersFromTable.length; i++) {
+      const profilePicture = foundersFromTable[i].profile_picture;
+      if (profilePicture) {
+        founderProfilePictures[i] = profilePicture;
+      }
+    }
+  }
+  
+  // Fallback: Use founders_pfp from startup (handles case when founders table doesn't exist)
+  if (startup.founders_pfp) {
+    // Parse founders_pfp - handle both array and string formats
+    let founderProfilePicturesRaw: string[] = [];
+    
+    if (Array.isArray(startup.founders_pfp)) {
+      // PostgreSQL array comes as array
+      founderProfilePicturesRaw = startup.founders_pfp
+        .map(url => String(url).trim())
+        .filter(url => url && url !== '');
+    } else if (typeof startup.founders_pfp === 'string') {
+      // Comma-separated string
+      founderProfilePicturesRaw = startup.founders_pfp
+        .split(',')
+        .map(url => url.trim())
+        .filter(url => url && url !== '');
+    }
+
+    // Map profile pictures to founders by index
+    // If founders table exists, only fill in missing ones; otherwise use founders_pfp for all
+    for (let i = 0; i < founderNames.length; i++) {
+      // Only set if not already set from founders table, or if founders table doesn't exist
+      if (!founderProfilePictures[i] && founderProfilePicturesRaw[i]) {
+        founderProfilePictures[i] = founderProfilePicturesRaw[i];
+      }
+    }
   }
 
-  // Parse founder backgrounds - split by "Name:" pattern
-  const founderBackgroundsArray = founderNames.map((name, idx) => {
-    if (!startup.founder_backgrounds) return '';
-
-    // Create regex to find "FounderName: background text"
-    // Match from "Name:" until the next founder's "Name:" or end of string
-    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const nextFounderName = idx < founderNames.length - 1 ? founderNames[idx + 1] : null;
-
-    let pattern;
-    if (nextFounderName) {
-      const escapedNextName = nextFounderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*?)(?=\\n*${escapedNextName}:|$)`, 'i');
-    } else {
-      // Last founder - match until end of string
-      pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*)$`, 'i');
-    }
-
-    const match = startup.founder_backgrounds.match(pattern);
-    if (match && match[1]) {
-      return match[1].trim();
-    }
-
-    return '';
+  // Debug: Log founder profile pictures
+  console.log('[MatchCard] Profile picture debug:', {
+    startupName: startup.name,
+    foundersFromTable: foundersFromTable?.length || 0,
+    foundersPfpFromStartup: startup.founders_pfp,
+    foundersPfpType: typeof startup.founders_pfp,
+    foundersPfpIsArray: Array.isArray(startup.founders_pfp),
+    founderProfilePictures,
+    founderNames,
+    founderProfilePicturesLength: founderProfilePictures.length
   });
+
+  // Parse founder backgrounds - use from founders table if available, otherwise parse CSV
+  const founderBackgroundsArray = foundersFromTable
+    ? foundersFromTable.map(f => f.background || '')
+    : founderNames.map((name, idx) => {
+        if (!startup.founder_backgrounds) return '';
+
+        // Create regex to find "FounderName: background text"
+        // Match from "Name:" until the next founder's "Name:" or end of string
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const nextFounderName = idx < founderNames.length - 1 ? founderNames[idx + 1] : null;
+
+        let pattern;
+        if (nextFounderName) {
+          const escapedNextName = nextFounderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*?)(?=\\n*${escapedNextName}:|$)`, 'i');
+        } else {
+          // Last founder - match until end of string
+          pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*)$`, 'i');
+        }
+
+        const match = startup.founder_backgrounds.match(pattern);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
+
+        return '';
+      });
 
   // Get selected founder email (single selection only)
   const selectedFounderEmail = selectedFounderIndex !== null && founderEmails[selectedFounderIndex]
@@ -491,7 +554,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                   <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
                     {/* Founder Photo */}
                     <div className="flex-shrink-0 w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
-                      {founderProfilePictures[index] && !failedImages.has(index) ? (
+                      {founderProfilePictures[index] && founderProfilePictures[index].trim() !== '' && !failedImages.has(index) ? (
                         <Image
                           src={`/api/image-proxy?url=${encodeURIComponent(founderProfilePictures[index])}`}
                           alt={`${founderName} profile picture`}
@@ -501,6 +564,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                           unoptimized
                           loading="eager"
                           onError={() => {
+                            console.log(`[MatchCard] Image failed to load for founder ${founderName} at index ${index}:`, founderProfilePictures[index]);
                             setFailedImages(prev => new Set(prev).add(index));
                           }}
                         />
