@@ -285,7 +285,7 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
                 type="checkbox"
                 checked={displayedEmails.length > 0 && selectedEmailIds.size === displayedEmails.length}
                 onChange={toggleSelectAll}
-                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                className="w-4 h-4 text-blue-300 bg-gray-100 border-gray-300 rounded focus:ring-blue-300 cursor-pointer"
               />
               <span className="text-sm font-medium text-gray-700">
                 {selectedEmailIds.size} Email{selectedEmailIds.size !== 1 ? 's' : ''} Selected
@@ -344,7 +344,7 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
                       type="checkbox"
                       checked={selectedEmailIds.has(email.id)}
                       onChange={() => toggleEmailSelection(email.id)}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                      className="w-4 h-4 text-blue-300 bg-gray-100 border-gray-300 rounded focus:ring-blue-300 cursor-pointer"
                     />
                   </div>
                 )}
