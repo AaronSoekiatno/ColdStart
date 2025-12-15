@@ -12,7 +12,7 @@ function TypingEmailPreview({ isActive }: { isActive: boolean }) {
 
   const emailText = `Hi Aman,
 
-I'm reaching out because I saw Novaflow is revolutionizing bioinformatics for biology labs...`;
+I'm reaching out because I saw Novaflow is bridging the gap between AI and biology...`;
 
   useEffect(() => {
     // Reset when step becomes active
@@ -101,6 +101,7 @@ interface StartupLogo {
 export function NewHowItWorks() {
   const [activeStep, setActiveStep] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
+  const scrollableRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [matchingLogos, setMatchingLogos] = useState<StartupLogo[]>([]);
 
@@ -175,22 +176,44 @@ export function NewHowItWorks() {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (!sectionRef.current) return;
+      if (!sectionRef.current || !scrollableRef.current) return;
 
-      const sectionRect = sectionRef.current.getBoundingClientRect();
-      const sectionTop = sectionRect.top;
-      const sectionHeight = sectionRect.height;
+      const scrollableRect = scrollableRef.current.getBoundingClientRect();
+      const scrollableTop = scrollableRect.top;
+      const scrollableHeight = scrollableRect.height;
       const viewportHeight = window.innerHeight;
       
-      // Calculate scroll progress through the section
-      // Start tracking when section enters viewport
-      const scrollProgress = Math.max(0, (viewportHeight - sectionTop) / (sectionHeight));
+      // The scrollable distance is the height minus one viewport (since sticky container takes up 1 viewport)
+      // This is how much we need to scroll to go through all steps
+      const scrollableDistance = scrollableHeight - viewportHeight;
       
-      // Map scroll progress to step index
-      const stepProgress = scrollProgress * steps.length;
-      const newActiveStep = Math.min(Math.floor(stepProgress), steps.length - 1);
+      if (scrollableDistance <= 0) {
+        // If scrollable area is smaller than viewport, just show step 0
+        if (activeStep !== 0) setActiveStep(0);
+        return;
+      }
       
-      if (newActiveStep >= 0 && newActiveStep !== activeStep) {
+      // Calculate progress: 
+      // 0 when scrollable top reaches viewport top (step 0 starts)
+      // 1 when scrollable bottom reaches viewport bottom (step 3 ends)
+      const rawProgress = (viewportHeight - scrollableTop) / scrollableDistance;
+      const scrollProgress = Math.max(0, Math.min(1, rawProgress));
+      
+      // Map scroll progress to step index with step 0 getting 45% of scroll distance
+      // Step 0: 0 to 0.45 (45%), remaining 55% split among steps 1-3 (~18.33% each)
+      // Step 1: 0.45 to 0.633, Step 2: 0.633 to 0.817, Step 3: 0.817 to 1.0
+      let newActiveStep = 0;
+      if (scrollProgress >= 0.45) {
+        // After step 0, divide remaining 55% among 3 steps (~18.33% each)
+        const remainingProgress = (scrollProgress - 0.45) / 0.55; // Normalize to 0-1 for remaining steps
+        newActiveStep = 1 + Math.floor(remainingProgress * 3);
+        newActiveStep = Math.min(newActiveStep, steps.length - 1);
+      }
+      
+      // Clamp to valid step range
+      newActiveStep = Math.max(0, Math.min(newActiveStep, steps.length - 1));
+      
+      if (newActiveStep !== activeStep) {
         setActiveStep(newActiveStep);
       }
     };
@@ -216,7 +239,7 @@ export function NewHowItWorks() {
       </div>
 
       {/* Scroll-driven Content - Increased height for scroll distance */}
-      <div className="relative" style={{ height: `${steps.length * 100}vh` }}>
+      <div ref={scrollableRef} className="relative" style={{ height: `${steps.length * 100}vh` }}>
         {/* Sticky Container */}
         <div className="sticky top-0 h-screen flex items-center">
           <div className="w-full max-w-6xl mx-auto px-6">
