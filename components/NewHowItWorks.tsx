@@ -3,6 +3,88 @@
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 
+// Typing animation component for email preview
+function TypingEmailPreview({ isActive }: { isActive: boolean }) {
+  const [displayedText, setDisplayedText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showCursor, setShowCursor] = useState(true);
+  const typingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const emailText = `Hi Aman,
+
+I'm reaching out because I saw Novaflow is revolutionizing bioinformatics for biology labs...`;
+
+  useEffect(() => {
+    // Reset when step becomes active
+    if (isActive) {
+      setCurrentIndex(0);
+      setDisplayedText("");
+      
+      // Clear any existing interval
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+
+      // Start typing animation
+      typingIntervalRef.current = setInterval(() => {
+        setCurrentIndex((prev) => {
+          if (prev >= emailText.length) {
+            if (typingIntervalRef.current) {
+              clearInterval(typingIntervalRef.current);
+            }
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 30); // Typing speed: 30ms per character
+    } else {
+      // Reset when step becomes inactive
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+      setCurrentIndex(0);
+      setDisplayedText("");
+    }
+
+    return () => {
+      if (typingIntervalRef.current) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
+  }, [isActive, emailText.length]);
+
+  // Cursor blink effect
+  useEffect(() => {
+    const cursorInterval = setInterval(() => {
+      setShowCursor((prev) => !prev);
+    }, 530);
+    return () => clearInterval(cursorInterval);
+  }, []);
+
+  useEffect(() => {
+    setDisplayedText(emailText.slice(0, currentIndex));
+  }, [currentIndex, emailText]);
+
+  return (
+    <div className="w-full max-w-md bg-gray-800 rounded-xl p-4 border border-gray-700">
+      {currentIndex === 0 ? (
+        <div className="space-y-2">
+          <div className="h-2 bg-gray-600 rounded w-1/3"></div>
+          <div className="h-2 bg-gray-700 rounded w-full"></div>
+          <div className="h-2 bg-gray-700 rounded w-5/6"></div>
+          <div className="h-2 bg-gray-700 rounded w-4/5"></div>
+        </div>
+      ) : (
+        <div className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-mono">
+          {displayedText}
+          <span className={`inline-block w-0.5 h-4 bg-green-500 ml-0.5 align-middle ${showCursor ? 'opacity-100' : 'opacity-0'}`}></span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Step {
   number: string;
   title: string;
@@ -266,15 +348,8 @@ export function NewHowItWorks() {
                             AI crafts unique emails using founder data and your background
                           </p>
                         </div>
-                        {/* Mock email preview */}
-                        <div className="w-full max-w-md bg-gray-800 rounded-xl p-4 border border-gray-700">
-                          <div className="space-y-2">
-                            <div className="h-2 bg-gray-600 rounded w-1/3"></div>
-                            <div className="h-2 bg-gray-700 rounded w-full"></div>
-                            <div className="h-2 bg-gray-700 rounded w-5/6"></div>
-                            <div className="h-2 bg-gray-700 rounded w-4/5"></div>
-                          </div>
-                        </div>
+                        {/* Animated typing email preview */}
+                        <TypingEmailPreview isActive={activeStep === 2} />
                       </div>
                     </div>
 
