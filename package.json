@@ -13,6 +13,7 @@
     "lint:fix": "next lint --fix",
     "ingest": "tsx scripts/ingest-csv.ts",
     "ingest-supabase": "tsx scripts/ingest-csv-supabase.ts",
+    "ingest:waitlist": "tsx scripts/ingest-waitlist-emails.ts",
     "scrape-techcrunch": "tsx yc_companies/scrape_techcrunch.ts",
     "test-scrape-techcrunch": "tsx yc_companies/test_scrape_techcrunch.ts",
     "scrape-and-ingest-techcrunch": "tsx yc_companies/scrape_and_ingest_techcrunch.ts",

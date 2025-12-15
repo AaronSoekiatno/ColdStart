@@ -191,13 +191,6 @@ export function NewLandingPage() {
                 >
                   Resumes
                 </Link>
-                <Button
-                  onClick={handlePremiumClick}
-                  variant="ghost"
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md rounded-full h-9 px-4"
-                >
-                  Premium Plan
-                </Button>
               </>
             ) : null}
           </nav>
@@ -227,6 +220,12 @@ export function NewLandingPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        onSelect={handlePremiumClick}
+                      >
+                        Premium Plan
+                      </DropdownMenuItem>
                       {isPremium && (
                         <DropdownMenuItem
                           className="cursor-pointer"
