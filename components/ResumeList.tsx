@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { ResumeCard } from '@/components/ResumeCard';
 import { useToast } from '@/hooks/use-toast';
-import { Check } from 'lucide-react';
+import { Check, Upload } from 'lucide-react';
 
 interface Resume {
   id: string;
@@ -16,9 +16,10 @@ interface Resume {
 interface ResumeListProps {
   resumes: Resume[];
   isPremium: boolean;
+  onUploadClick?: () => void; // Callback to open upload modal
 }
 
-export function ResumeList({ resumes, isPremium }: ResumeListProps) {
+export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProps) {
   // Sort resumes: active (primary) first, then others
   const sortedResumes = useMemo(() => {
     return [...resumes].sort((a, b) => {
@@ -104,6 +105,7 @@ export function ResumeList({ resumes, isPremium }: ResumeListProps) {
   const selectedResume = effectiveSelectedResumeId ? sortedResumes.find(r => r.id === effectiveSelectedResumeId) : null;
   const canSetPrimary = isPremium && selectedResume && !selectedResume.isPrimary;
   const isButtonDisabled = !isPremium || !selectedResume || selectedResume.isPrimary || isSettingPrimary;
+  const isAlreadyActive = selectedResume?.isPrimary ?? false;
 
   return (
     <>
@@ -111,18 +113,36 @@ export function ResumeList({ resumes, isPremium }: ResumeListProps) {
         <div>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">My Resumes</h1>
           <p className="text-gray-600">
-            Manage all of your tailored resumes here!
+            Manage all of your resumes here!
           </p>
+          {onUploadClick && (
+            <button
+              onClick={onUploadClick}
+              className="mt-4 flex items-center justify-center gap-2 px-6 py-2.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-sm font-medium shadow-sm"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload Resume</span>
+            </button>
+          )}
         </div>
         <button
           onClick={handleSetPrimary}
           disabled={isButtonDisabled}
-          className="flex items-center justify-center gap-2 px-6 py-2.5 bg-black hover:bg-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium shadow-sm"
+          className={`flex items-center justify-center gap-2 px-6 py-2.5 text-white rounded-lg transition-all text-sm font-medium shadow-sm ${
+            isAlreadyActive && isButtonDisabled
+              ? 'bg-green-600 hover:bg-green-600 disabled:bg-green-600 disabled:cursor-not-allowed'
+              : 'bg-black hover:bg-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed'
+          }`}
         >
           {isSettingPrimary ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Setting...</span>
+            </>
+          ) : isAlreadyActive ? (
+            <>
+              <Check className="w-4 h-4" />
+              <span>Active</span>
             </>
           ) : (
             <>
