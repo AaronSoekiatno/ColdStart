@@ -107,6 +107,8 @@ export async function GET(request: NextRequest) {
         name: string;
         industry: string;
         location: string;
+        yc_description?: string;
+        team_size?: string;
         funding_stage: string;
         funding_amount: string;
         tags: string;
@@ -199,6 +201,8 @@ export async function GET(request: NextRequest) {
             name: s.name,
             industry: s.industry || '',
             location: s.location || '',
+            yc_description: s.yc_description ?? undefined,
+            team_size: s.team_size ?? undefined,
             funding_stage: s.funding_stage || '',
             funding_amount: s.funding_amount || '',
             tags: s.tags || '',
