@@ -2,74 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
 export async function GET(request: NextRequest) {
-  try {
-    console.log('[Gmail Status] Incoming request cookies:', request.cookies.getAll());
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll();
-          },
-          setAll() {},
-        },
-      }
-    );
-
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    console.log('[Gmail Status] Auth result:', {
-      authError,
-      userEmail: user?.email,
-      userId: user?.id,
-    });
-    
-    if (authError || !user || !user.email) {
-      return NextResponse.json(
-        { connected: false, error: 'Not authenticated' },
-        { status: 401 }
-      );
-    }
-
-    // Check if Gmail is connected
-    const { data: emailConnection, error: connectionError } = await supabase
-      .from('user_email_connections')
-      .select('provider, expires_at')
-      .eq('user_email', user.email)
-      .eq('provider', 'gmail')
-      .single();
-
-    console.log('[Gmail Status] Connection lookup:', {
-      connectionError,
-      emailConnection,
-      lookedUpEmail: user.email,
-    });
-
-    if (connectionError || !emailConnection) {
-      return NextResponse.json({ connected: false });
-    }
-
-    // Check if token is expired
-    const isExpired = emailConnection.expires_at 
-      ? new Date(emailConnection.expires_at) < new Date()
-      : false;
-
-    console.log('[Gmail Status] Final status:', {
-      connected: true,
-      expired: isExpired,
-    });
-
-    return NextResponse.json({
-      connected: true,
-      expired: isExpired,
-    });
-  } catch (error) {
-    console.error('Gmail status check error:', error);
-    return NextResponse.json(
-      { connected: false, error: 'Failed to check status' },
-      { status: 500 }
-    );
-  }
+  // Gmail OAuth disabled - automatic email sending is no longer supported
+  // Restricted scope gmail.send has been removed from OAuth consent screen
+  return NextResponse.json(
+    { connected: false, error: 'Gmail OAuth is no longer available. Automatic email sending has been disabled.' },
+    { status: 410 } // 410 Gone - indicates the feature is permanently removed
+  );
 }
 

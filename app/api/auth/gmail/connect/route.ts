@@ -86,17 +86,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/?error=gmail_config_missing', request.url));
     }
 
-    // Request Gmail send permission
-    // Pass both email and session token in state: "email:token"
-    const scopes = ['https://www.googleapis.com/auth/gmail.send'];
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: scopes,
-      prompt: 'consent', // Force consent to get refresh token
-      state: `${user.email}:${sessionToken}`, // Pass email and token to identify and authenticate in callback
-    });
-
-    return NextResponse.redirect(authUrl);
+    // Gmail OAuth disabled - automatic email sending is no longer supported
+    // Restricted scope gmail.send has been removed from OAuth consent screen
+    return NextResponse.json(
+      { error: 'Gmail OAuth is no longer available. Automatic email sending has been disabled.' },
+      { status: 410 } // 410 Gone - indicates the feature is permanently removed
+    );
   } catch (error) {
     console.error('Gmail connect error:', error);
     return NextResponse.redirect(new URL('/?error=gmail_connect_failed', request.url));

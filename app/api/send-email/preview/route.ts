@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { generateColdEmail, type EmailTone } from '@/lib/email-generation';
+import { generateColdEmail, type EmailPersona } from '@/lib/email-generation';
 import { getCandidate, getStartup, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startupId, matchScore, tone } = await request.json();
+    const { startupId, matchScore, persona } = await request.json();
 
     if (!startupId || matchScore === undefined) {
       return NextResponse.json(
@@ -62,22 +62,18 @@ export async function POST(request: NextRequest) {
     // Check if user is premium
     const isPremium = isSubscribed(candidate);
 
-    // Email tone changes are premium-only feature
-    let emailTone: EmailTone | undefined = undefined;
-    if (tone) {
-      if (!isPremium) {
-        return NextResponse.json(
-          {
-            error: 'Email tone customization is a Premium feature. Upgrade to Premium to change email tone.',
-            upgradeRequired: true,
-          },
-          { status: 403 }
-        );
-      }
-      // Validate tone value
-      const validTones: EmailTone[] = ['professional', 'classy', 'informative', 'ambitious', 'conversational'];
-      if (validTones.includes(tone as EmailTone)) {
-        emailTone = tone as EmailTone;
+    // Email persona selection is premium-only feature
+    let emailPersona: EmailPersona = 'direct-ask'; // Default for free users
+    if (persona) {
+      if (!isPremium && persona !== 'direct-ask') {
+        // Free users can only use 'direct-ask' - force it to default
+        emailPersona = 'direct-ask';
+      } else {
+        // Validate persona value
+        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan', 'value-first'];
+        if (validPersonas.includes(persona as EmailPersona)) {
+          emailPersona = persona as EmailPersona;
+        }
       }
     }
 
@@ -144,6 +140,39 @@ export async function POST(request: NextRequest) {
     // Get primary/current resume for resume_full_text
     const resume = await getPrimaryResumeForCandidate(candidate.id);
 
+    // Extract founder name (use first founder if multiple)
+    const founderName = startup.founder_names
+      ? startup.founder_names.split(',')[0].trim()
+      : undefined;
+
+    // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
+    const extractLinksFromResume = (resumeText: string): Record<string, string> => {
+      const links: Record<string, string> = {};
+      const patterns = [
+        { key: 'github', regex: /github\.com[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+(?:\/[a-zA-Z0-9\-_.]+)?)/gi },
+        { key: 'portfolio', regex: /(?:portfolio|website|personal site)[\s:]+(https?:\/\/[^\s]+)/gi },
+        { key: 'linkedin', regex: /linkedin\.com\/in[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+)/gi },
+        { key: 'website', regex: /(?:http[s]?:\/\/)?(?:www\.)?([a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi },
+      ];
+      for (const pattern of patterns) {
+        const matches = resumeText.match(pattern.regex);
+        if (matches && matches.length > 0) {
+          let link = matches[0].replace(/^(?:github|portfolio|website|personal site|linkedin)[\s:]+/i, '').trim();
+          if (link && !link.startsWith('http')) {
+            if (pattern.key === 'github') {
+              link = `https://github.com/${link.replace(/github\.com\/?/i, '').trim()}`;
+            } else if (pattern.key === 'linkedin') {
+              link = `https://linkedin.com/in/${link.replace(/linkedin\.com\/in\/?/i, '').trim()}`;
+            } else {
+              link = `https://${link}`;
+            }
+          }
+          if (link) links[pattern.key] = link;
+        }
+      }
+      return links;
+    };
+
     // Generate email (but do NOT send it)
     const generatedEmail = await generateColdEmail(
       {
@@ -155,6 +184,14 @@ export async function POST(request: NextRequest) {
           .map((s: string) => s.trim())
           .filter((s: string) => s.length > 0),
         resumeFullText: resume?.resume_full_text || undefined,
+        // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
+        links: resume?.resume_full_text ? extractLinksFromResume(resume.resume_full_text) : undefined,
+        // Additional Supabase candidate fields
+        location: candidate.location || undefined,
+        educationLevel: candidate.education_level || undefined,
+        university: candidate.university || undefined,
+        pastInternships: candidate.past_internships || undefined,
+        technicalProjects: candidate.technical_projects || undefined,
       },
       {
         name: startup.name,
@@ -168,52 +205,22 @@ export async function POST(request: NextRequest) {
           ?.split(', ')
           .map((t: string) => t.trim())
           .filter((t: string) => t.length > 0),
+        founderName: founderName,
+        // Additional Supabase startup fields
+        batch: startup.batch || undefined,
+        jobOpenings: startup.job_openings || undefined,
+        founderEmails: startup.founder_emails || undefined,
+        founderLinkedIn: startup.founder_linkedin || undefined,
       },
-      { score: matchScore },
-      { tone: emailTone }
+            { score: matchScore },
+            { persona: emailPersona }
     );
-
-    // Generate signed URL for resume preview (get primary/current resume)
-    // Note: No download parameter - we want inline display for iframe, not download
-    let resumeUrl = null;
-    let resumeText = null;
-    const structuredData = candidate.structured_resume_data || null;
-    
-    if (candidate.resume_path) {
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if (serviceRoleKey) {
-        const supabaseAdmin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          serviceRoleKey
-        );
-
-        const { data } = await supabaseAdmin.storage
-          .from('resumes')
-          .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
-
-        if (data?.signedUrl) {
-          resumeUrl = data.signedUrl;
-        }
-      }
-    }
-    
-    // Fetch resume text for editing
-    resumeText = candidate.resume_full_text || null;
-
-    // Log for debugging
-    console.log('Preview endpoint - structuredData:', structuredData ? 'exists' : 'null');
-    if (structuredData) {
-      console.log('Preview endpoint - structuredData keys:', Object.keys(structuredData));
-    }
 
     return NextResponse.json({
       success: true,
       subject: generatedEmail.subject,
       body: generatedEmail.body,
       to: targetEmail,
-      resumeUrl,
-      resumeText,
-      structuredResumeData: structuredData,
     });
   } catch (error) {
     console.error('Preview email error:', error);

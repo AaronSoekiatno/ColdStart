@@ -15,6 +15,29 @@ sudo do-release-upgrade
 **Option 2: Use Docker for Helix**
 If upgrading isn't possible, ensure Helix runs in a Docker container with a newer base image.
 
+## Environment Variables
+
+Create a `.env.local` file in the root directory with the following variables:
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Resend (for waitlist emails)
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=your_verified_email@yourdomain.com  # Optional, defaults to onboarding@resend.dev
+
+# App URL (for email links)
+NEXT_PUBLIC_APP_URL=https://yourdomain.com  # Optional, defaults to https://coldstart.ai
+
+# Waitlist Email Content (optional - can customize in script)
+WAITLIST_EMAIL_SUBJECT=Your Launch Subject
+WAITLIST_EMAIL_HTML=<your HTML email template>
+WAITLIST_EMAIL_TEXT=<your plain text email template>
+```
+
 ## Getting Started
 
 First, run the development server:
