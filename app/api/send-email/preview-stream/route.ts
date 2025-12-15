@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { generateColdEmailStream, type EmailTone } from '@/lib/email-generation';
+import { generateColdEmailStream, type EmailPersona } from '@/lib/email-generation';
 import { getCandidate, getStartup, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startupId, matchScore, tone } = await request.json();
+    const { startupId, matchScore, persona } = await request.json();
 
     if (!startupId || matchScore === undefined) {
       return new Response(
@@ -103,57 +103,65 @@ export async function POST(request: NextRequest) {
     // Check if user is premium
     const isPremium = isSubscribed(candidate);
 
-    // Email tone changes are premium-only feature
-    let emailTone: EmailTone | undefined = undefined;
-    if (tone) {
-      if (!isPremium) {
-        return new Response(
-          JSON.stringify({
-            error: 'Email tone customization is a Premium feature. Upgrade to Premium to change email tone.',
-            upgradeRequired: true,
-          }),
-          { status: 403, headers: { 'Content-Type': 'application/json' } }
-        );
+    // Email persona selection is premium-only feature
+    let emailPersona: EmailPersona = 'direct-ask'; // Default for free users
+    if (persona) {
+      if (!isPremium && persona !== 'direct-ask') {
+        // Free users can only use 'direct-ask' - force it to default
+        emailPersona = 'direct-ask';
+        console.log(`[Email Generation] Free user requested '${persona}', forcing to 'direct-ask'`);
+      } else {
+        // Validate persona value
+        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan', 'value-first'];
+        if (validPersonas.includes(persona as EmailPersona)) {
+          emailPersona = persona as EmailPersona;
+          console.log(`[Email Generation] Using persona: '${emailPersona}' (premium: ${isPremium})`);
+        } else {
+          console.log(`[Email Generation] Invalid persona '${persona}', defaulting to 'direct-ask'`);
+        }
       }
-      // Validate tone value
-      const validTones: EmailTone[] = ['professional', 'classy', 'informative', 'ambitious', 'conversational'];
-      if (validTones.includes(tone as EmailTone)) {
-        emailTone = tone as EmailTone;
-      }
+    } else {
+      console.log(`[Email Generation] No persona provided, defaulting to 'direct-ask'`);
     }
 
     // Check if we already have a generated email for this candidate-startup pair (one-to-one mapping)
     // We check cached emails FIRST so users can view previously generated emails even if they've hit the limit
-    const { data: existingGeneratedEmail, error: fetchError } = await supabase
+    const { data: existingGeneratedEmailData, error: fetchError } = await supabase
       .from('generated_emails')
-      .select('subject, body, recipient_email, email_tone')
+      .select('subject, body, recipient_email, persona')
       .eq('candidate_id', candidate.id)
       .eq('startup_id', startupId)
       .maybeSingle();
+    
+    const existingGeneratedEmail = existingGeneratedEmailData as {
+      subject: string;
+      body: string;
+      recipient_email: string | null;
+      persona: string | null;
+    } | null;
 
     if (fetchError && fetchError.code !== 'PGRST116') {
       console.error('Error fetching existing generated email:', fetchError);
     }
 
     // Check if we should use cached email or regenerate
-    // Regenerate if: tone is provided AND different from stored tone (premium users changing tone)
-    // Otherwise, return cached email if it exists
-    const storedTone = existingGeneratedEmail?.email_tone || null;
-    const requestedTone = emailTone || null;
+    // Regenerate if:
+    // 1. No cached email exists, OR
+    // 2. The cached email's persona doesn't match the requested persona
+    // Otherwise, return cached email if it exists and persona matches
+    const cachedPersona = existingGeneratedEmail?.persona as EmailPersona | null;
+    const personaMatches = cachedPersona === emailPersona || (cachedPersona === null && emailPersona === 'direct-ask');
     
-    // Regenerate if tone is explicitly provided (for premium users) and differs from stored tone
-    // This handles premium users changing tone after initial generation
-    // Note: We only regenerate if emailTone is provided (premium user) and it's different
-    const shouldRegenerate = existingGeneratedEmail && 
-      emailTone !== undefined && 
-      storedTone !== requestedTone;
+    console.log(`[Email Generation] Caching check - cached persona: '${cachedPersona}', requested: '${emailPersona}', matches: ${personaMatches}`);
     
-    const shouldUseCached = existingGeneratedEmail && !shouldRegenerate;
+    // Only use cached email if it exists AND persona matches
+    let shouldUseCached = !!existingGeneratedEmail && personaMatches;
+    let finalExistingEmail = existingGeneratedEmail;
 
-    // If we have an existing generated email with matching tone, return it immediately (no streaming needed)
+    // If we have an existing generated email, return it immediately (no streaming needed)
     // Note: Cached emails don't count toward the limit, so we bypass limit check for cached emails
-    if (shouldUseCached) {
-      console.log('[Generated Email] Found existing email in database with matching tone, returning stored version (Gemini will NOT be called)');
+    if (shouldUseCached && finalExistingEmail) {
+      console.log('[Generated Email] Found existing email in database, returning stored version (Gemini will NOT be called)');
       
       // Generate signed URL for resume preview (get primary/current resume)
       // Note: No download parameter - we want inline display for iframe, not download
@@ -177,33 +185,34 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Type guard: finalExistingEmail is guaranteed to be non-null here due to the if condition
+      const cachedEmail = finalExistingEmail;
+
       // Return existing email as a stream (but all at once since we already have it)
       const stream = new ReadableStream({
         start(controller) {
           const encoder = new TextEncoder();
           
-          // Send metadata (including resume data for preview)
+          // Send metadata
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({
-              type: 'metadata',
-              targetEmail: existingGeneratedEmail.recipient_email || '',
-              resumeUrl,
-              resumeText: resume?.resume_full_text || '',
-              structuredResumeData: candidate.structured_resume_data || null
+            encoder.encode(`data: ${JSON.stringify({ 
+              type: 'metadata', 
+              targetEmail: cachedEmail.recipient_email || '', 
+              resumeUrl 
             })}\n\n`)
           );
 
           // Send the existing email body as a single chunk
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: existingGeneratedEmail.body })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ type: 'chunk', text: cachedEmail.body })}\n\n`)
           );
 
           // Send done event with final subject and body
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify({ 
               type: 'done', 
-              subject: existingGeneratedEmail.subject, 
-              body: existingGeneratedEmail.body 
+              subject: cachedEmail.subject,
+              body: cachedEmail.body
             })}\n\n`)
           );
 
@@ -224,8 +233,8 @@ export async function POST(request: NextRequest) {
     // This MUST happen BEFORE any email generation logic starts (resume fetching, Gemini API calls, etc.)
     // Free: 3 email generations per day (counts NEW generations, not cached retrievals or regenerations)
     // Premium: Unlimited
-    // Note: We only check limits when generating NEW emails (not cached retrievals or tone regenerations)
-    const isNewEmail = !existingGeneratedEmail; // True if this is a completely new email (not cached, not regeneration)
+    // Note: We only check limits when generating NEW emails (not cached retrievals)
+    const isNewEmail = !finalExistingEmail; // True if this is a completely new email (not cached, not regeneration)
     
     if (!isPremium && candidate.id && isNewEmail) {
       // CRITICAL: Check limit BEFORE any generation logic
@@ -307,12 +316,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate a new email if:
-    // 1. No existing email found (first time for this user-startup pair)
-    // 2. Existing email found but tone changed (premium user regenerating with new tone)
-    if (shouldRegenerate) {
-      console.log('[Generated Email] Tone change detected - regenerating email with new tone via Gemini API');
-    } else {
-      console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+    // 1. No existing email found (first time for this user-startup pair), OR
+    // 2. Persona doesn't match cached email (user selected different persona)
+    if (!shouldUseCached) {
+      // CRITICAL: Double-check for existing email right before generating
+      // This prevents race conditions where multiple requests check before any save
+      const { data: doubleCheckEmail, error: doubleCheckError } = await supabase
+        .from('generated_emails')
+        .select('subject, body, recipient_email, persona')
+        .eq('candidate_id', candidate.id)
+        .eq('startup_id', startupId)
+        .maybeSingle();
+
+      if (!doubleCheckError && doubleCheckEmail) {
+        const doubleCheckPersona = doubleCheckEmail.persona as EmailPersona | null;
+        const doubleCheckMatches = doubleCheckPersona === emailPersona || (doubleCheckPersona === null && emailPersona === 'direct-ask');
+        
+        if (doubleCheckMatches) {
+          // Another request just created this email - use it instead of generating
+          console.log('[Generated Email] Found email created by concurrent request, using cached version (avoiding duplicate Gemini call)');
+          shouldUseCached = true;
+          // Update to use the double-checked one
+          finalExistingEmail = doubleCheckEmail;
+        }
+      }
+
+      if (!shouldUseCached) {
+        if (finalExistingEmail && cachedPersona !== emailPersona) {
+          console.log(`[Generated Email] Persona mismatch: cached='${cachedPersona}', requested='${emailPersona}', regenerating email with Gemini`);
+        } else {
+          console.log('[Generated Email] No existing email found, generating new email with Gemini (first time for this user-startup pair)');
+        }
+      }
     }
 
     // Decide which email address to use (real or guessed)
@@ -356,15 +391,9 @@ export async function POST(request: NextRequest) {
         const encoder = new TextEncoder();
         
         try {
-          // Send initial metadata (including resume data for preview)
+          // Send initial metadata
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({
-              type: 'metadata',
-              targetEmail,
-              resumeUrl,
-              resumeText: resume?.resume_full_text || '',
-              structuredResumeData: candidate.structured_resume_data || null
-            })}\n\n`)
+            encoder.encode(`data: ${JSON.stringify({ type: 'metadata', targetEmail, resumeUrl })}\n\n`)
           );
 
           // Extract founder name (use first founder if multiple)
@@ -386,6 +415,12 @@ export async function POST(request: NextRequest) {
               resumeFullText: resume?.resume_full_text || undefined,
               // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
               links: resume?.resume_full_text ? extractLinksFromResume(resume.resume_full_text) : undefined,
+              // Additional Supabase candidate fields
+              location: candidate.location || undefined,
+              educationLevel: candidate.education_level || undefined,
+              university: candidate.university || undefined,
+              pastInternships: candidate.past_internships || undefined,
+              technicalProjects: candidate.technical_projects || undefined,
             },
             {
               name: startup.name,
@@ -401,9 +436,14 @@ export async function POST(request: NextRequest) {
                 .filter((t: string) => t.length > 0),
               founderName: founderName,
               scrapedContext: undefined, // Can be added later if scraped intel is stored in database
+              // Additional Supabase startup fields
+              batch: startup.batch || undefined,
+              jobOpenings: startup.job_openings || undefined,
+              founderEmails: startup.founder_emails || undefined,
+              founderLinkedIn: startup.founder_linkedin || undefined,
             },
             { score: matchScore },
-            { tone: emailTone }
+            { persona: emailPersona }
           );
 
           for await (const chunk of emailStream) {
@@ -445,12 +485,11 @@ export async function POST(request: NextRequest) {
           }
 
           // Save generated email to database (upsert - replace if exists for same candidate-startup pair)
-          // When tone changes, this upsert will replace the old email with the new one
           // The unique constraint on (candidate_id, startup_id) ensures only one email per user-startup pair
           const nowISO = new Date().toISOString();
           
           // Check if this is a new email or an update to existing email
-          const isNewEmail = !existingGeneratedEmail;
+          const isNewEmail = !finalExistingEmail;
           
           // Double-check limit before saving if this is a NEW email (not an update)
           // This prevents race conditions where limit might have been exceeded between check and save
@@ -487,7 +526,7 @@ export async function POST(request: NextRequest) {
               const upsertData: any = {
                 candidate_id: candidate.id,
                 startup_id: startupId,
-                email_tone: emailTone || null,
+                persona: emailPersona,
                 subject,
                 body,
                 match_score: matchScore,
@@ -496,8 +535,7 @@ export async function POST(request: NextRequest) {
               };
               
               // Only set created_at explicitly if this is a NEW email
-              // For updates (regenerations with new tone), created_at should remain unchanged
-              // This ensures limit counting works correctly - regenerations don't count as new generations
+              // This ensures limit counting works correctly
               if (isNewEmail) {
                 upsertData.created_at = nowISO;
                 console.log('[Save Email] Saving NEW email with created_at:', nowISO);
@@ -515,11 +553,7 @@ export async function POST(request: NextRequest) {
                 console.error('Error saving generated email to database:', saveError);
                 // Don't fail the request, just log the error
               } else {
-                if (shouldRegenerate) {
-                  console.log('[Generated Email] Successfully updated email in database with new tone');
-                } else {
-                  console.log('[Generated Email] Successfully saved email to database (first time for this user-startup pair)');
-                }
+                console.log('[Generated Email] Successfully saved email to database');
               }
             }
           } else {
@@ -527,7 +561,7 @@ export async function POST(request: NextRequest) {
             const upsertData: any = {
               candidate_id: candidate.id,
               startup_id: startupId,
-              email_tone: emailTone || null,
+              persona: emailPersona,
               subject,
               body,
               match_score: matchScore,
@@ -549,11 +583,7 @@ export async function POST(request: NextRequest) {
             if (saveError) {
               console.error('Error saving generated email to database:', saveError);
             } else {
-              if (shouldRegenerate) {
-                console.log('[Generated Email] Successfully updated email in database with new tone');
-              } else {
-                console.log('[Generated Email] Successfully saved email to database (first time for this user-startup pair)');
-              }
+              console.log('[Generated Email] Successfully saved email to database');
             }
           }
 

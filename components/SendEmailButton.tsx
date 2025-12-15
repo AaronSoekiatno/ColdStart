@@ -10,6 +10,7 @@ interface SendEmailButtonProps {
   startupId: string;
   matchScore: number;
   founderEmail?: string;
+  persona?: 'direct-ask' | 'genuine-fan' | 'value-first';
   onSent?: () => void;
   variant?: "default" | "outline" | "ghost";
   className?: string;
@@ -22,6 +23,7 @@ export const SendEmailButton = ({
   startupId,
   matchScore,
   founderEmail,
+  persona = 'direct-ask',
   variant = "default",
   className,
   disabled = false,
@@ -33,6 +35,7 @@ export const SendEmailButton = ({
   const { toast } = useToast();
 
   const handleOpenPreview = () => {
+    console.log(`[SendEmailButton] handleOpenPreview called with persona: ${persona}`);
     // Check if founder selection is required but no founder is selected
     if (requiresFounderSelection && !isFounderSelected) {
       toast({
@@ -44,11 +47,13 @@ export const SendEmailButton = ({
     }
 
     setIsNavigating(true);
-    // Navigate to the generate email page with founder email if available
+    // Navigate to the generate email page with founder email and persona if available
     const params = new URLSearchParams({
       startupId,
       matchScore: matchScore.toString(),
+      persona: persona,
     });
+    console.log(`[SendEmailButton] Navigating with persona param: ${persona}, full URL: /generate-email?${params.toString()}`);
     if (founderEmail) {
       params.append('founderEmail', founderEmail);
     }
