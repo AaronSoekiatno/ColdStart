@@ -213,7 +213,7 @@ export function ResumeCard({
             className={cn(
               "flex items-center justify-center gap-2 px-4 py-2 text-white rounded-lg transition-all text-sm font-medium",
               isPrimary 
-                ? "bg-black hover:bg-green-600" 
+                ? "bg-black hover:bg-blue-300" 
                 : "bg-black hover:bg-blue-300"
             )}
           >
