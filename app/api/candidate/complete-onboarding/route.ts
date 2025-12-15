@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, getCandidate, saveCandidate } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,27 +57,55 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update the candidate's job_type and role_type
-    const { error: updateError } = await supabaseAdmin
-      .from('candidates')
-      .update({ 
+    // Check if candidate exists, create if not
+    let candidate = await getCandidate(user.email);
+    
+    if (!candidate) {
+      // Create a new candidate record with basic info from auth
+      const candidateName = user.user_metadata?.full_name || 
+                           user.user_metadata?.name || 
+                           user.email?.split('@')[0] || 
+                           'User';
+      
+      candidate = await saveCandidate({
+        email: user.email,
+        name: candidateName,
+        summary: '',
+        skills: '',
         job_type: jobType,
         role_type: roleType,
-      })
-      .eq('email', user.email);
+      });
+      
+      console.log('Created new candidate during onboarding:', {
+        id: candidate.id,
+        email: candidate.email,
+        jobType,
+        roleType,
+      });
+    } else {
+      // Update existing candidate's job_type and role_type
+      const { error: updateError } = await supabaseAdmin
+        .from('candidates')
+        .update({ 
+          job_type: jobType,
+          role_type: roleType,
+        })
+        .eq('email', user.email);
 
-    if (updateError) {
-      console.error('Error updating onboarding preferences:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update preferences' },
-        { status: 500 }
-      );
+      if (updateError) {
+        console.error('Error updating onboarding preferences:', updateError);
+        return NextResponse.json(
+          { error: 'Failed to update preferences' },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({ 
       success: true, 
       jobType,
       roleType,
+      candidateId: candidate.id,
     });
   } catch (error) {
     console.error('Exception completing onboarding:', error);

@@ -115,14 +115,59 @@ export default function OnboardingPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save preferences');
+        // Try to parse error message from response
+        let errorMessage = 'Failed to save preferences';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If JSON parsing fails, use default message
+        }
+        throw new Error(errorMessage);
       }
 
-      // Redirect to matches page after successful onboarding
-      router.push('/matches');
+      const data = await response.json();
+      
+      // Verify success before redirecting
+      if (data.success) {
+        // Check if there's stored resume data from before signup
+        try {
+          const storedResumeData = sessionStorage.getItem('pendingResumeData');
+          if (storedResumeData) {
+            const resumeData = JSON.parse(storedResumeData);
+            
+            // Process the stored resume data
+            const processResponse = await fetch('/api/candidate/process-stored-resume', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({ resumeData }),
+            });
+
+            if (processResponse.ok) {
+              // Clear stored data after successful processing
+              sessionStorage.removeItem('pendingResumeData');
+              console.log('Successfully processed stored resume data');
+            } else {
+              console.error('Failed to process stored resume data');
+            }
+          }
+        } catch (error) {
+          console.error('Error processing stored resume:', error);
+          // Continue even if processing fails
+        }
+
+        // Redirect to resumes page after successful onboarding
+        router.push('/resumes');
+      } else {
+        throw new Error('Unexpected response from server');
+      }
     } catch (error) {
       console.error('Error saving preferences:', error);
-      alert('Failed to save your preferences. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save your preferences. Please try again.';
+      alert(errorMessage);
       setIsSubmitting(false);
     }
   };
@@ -139,7 +184,7 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl relative">
         {/* Logo */}
-        <div className="flex justify-center items-center gap-3 mb-12">
+        <div className="flex justify-center items-center gap-3 mb-12 w-full">
           <Image 
             src="/images/hermes.png" 
             alt="Hermes" 

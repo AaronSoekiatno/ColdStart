@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, FileText, X, AlertCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface FilePreview {
   file: File;
@@ -19,7 +20,15 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check authentication status
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setIsAuthenticated(!!user);
+    });
+  }, []);
 
   const validateFile = (file: File): string | null => {
     const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
@@ -142,6 +151,61 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
 
       const data = await response.json();
       setUploadStatus('success');
+      
+      // If user is not authenticated, store resume data in sessionStorage for later use
+      // Check if data was saved to database
+      if (!data.savedToDatabase && !isAuthenticated && file) {
+        // Convert file to base64 for storage (use existing preview if available, otherwise convert)
+        const convertFileToBase64 = (filePreview: FilePreview): Promise<string> => {
+          return new Promise((resolve, reject) => {
+            // If we already have a preview (PDF), use it
+            if (filePreview.preview?.startsWith('data:')) {
+              resolve(filePreview.preview);
+              return;
+            }
+            // Otherwise, read the file
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(filePreview.file);
+          });
+        };
+
+        // Convert file to base64 asynchronously (don't block the success callback)
+        convertFileToBase64(file).then((fileBase64) => {
+          // Store resume data temporarily for use after signup/onboarding
+          const resumeData = {
+            extraction: {
+              name: data.name,
+              email: data.email,
+              skills: data.skills,
+              summary: data.summary,
+              location: data.location,
+              education_level: data.education_level,
+              university: data.university,
+              past_internships: data.past_internships,
+              technical_projects: data.technical_projects,
+            },
+            rawText: data.rawText,
+            embedding: data.embedding,
+            matches: data.matches || [],
+            fileName: file.file.name,
+            fileType: file.file.type,
+            fileSize: file.file.size,
+            fileBase64: fileBase64,
+          };
+          
+          try {
+            sessionStorage.setItem('pendingResumeData', JSON.stringify(resumeData));
+            console.log('Stored resume data in sessionStorage for later use');
+          } catch (error) {
+            console.error('Failed to store resume data:', error);
+          }
+        }).catch((error) => {
+          console.error('Failed to convert file to base64:', error);
+        });
+      }
+      
       setFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
