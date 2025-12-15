@@ -49,16 +49,33 @@ export function NewLandingPage() {
   const userEmail = useMemo(() => user?.email, [user?.email]);
 
   useEffect(() => {
-    // Check initial session
+    // Helper to open resume upload modal after successful authentication
+    const maybeOpenPendingUpload = (session: { user: User | null } | null) => {
+      if (!session?.user) return;
+      if (typeof window === "undefined") return;
+
+      const hasPendingUpload =
+        window.sessionStorage.getItem("pendingResumeUpload") === "true";
+
+      if (hasPendingUpload) {
+        window.sessionStorage.removeItem("pendingResumeUpload");
+        setShowSignIn(false);
+        setShowResumeUpload(true);
+      }
+    };
+
+    // Check initial session (handles returning from OAuth redirect)
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      maybeOpenPendingUpload(session);
     });
 
-    // Listen for auth changes
+    // Listen for auth changes (handles in-app email/password sign-in)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      maybeOpenPendingUpload(session);
     });
 
     return () => subscription.unsubscribe();
@@ -113,7 +130,16 @@ export function NewLandingPage() {
   }, []);
 
   const handleGetStarted = () => {
-    // Open resume upload modal
+    // If not authenticated, prompt sign-in first and remember intent to upload.
+    if (!user) {
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("pendingResumeUpload", "true");
+      }
+      setShowSignIn(true);
+      return;
+    }
+
+    // Already authenticated – open resume upload modal immediately.
     setShowResumeUpload(true);
   };
 
