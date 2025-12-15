@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useRef, useState } from "react";
+import { memo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { DollarSign, ExternalLink } from "lucide-react";
 import { SendEmailButton } from "./SendEmailButton";
@@ -41,6 +41,26 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   // For premium users: array of selected indices (multiple selection)
   // For free users: array with max 1 item (single selection)
   const [selectedFounderIndices, setSelectedFounderIndices] = useState<number[]>([]);
+  const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
+  
+  // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('emailPersona');
+      if (stored === 'genuine-fan' || stored === 'direct-ask' || stored === 'value-first') {
+        return stored as 'direct-ask' | 'genuine-fan' | 'value-first';
+      }
+    }
+    return 'direct-ask';
+  });
+
+  // Sync emailPersona to sessionStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('emailPersona', emailPersona);
+      console.log(`[MatchCard] emailPersona changed to: ${emailPersona}, isPremium: ${isPremium}, saved to sessionStorage`);
+    }
+  }, [emailPersona, isPremium]);
 
   if (!match.startup) {
     return null;
@@ -102,9 +122,53 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
     ? selectedFounderEmails.join(',') 
     : undefined;
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>) => {
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>, tab: 'company' | 'founders') => {
+    if (ref.current) {
+      // Calculate offset to account for sticky header (approximately 80px)
+      const offset = 80;
+      const elementPosition = ref.current.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+      
+      // Update active tab state
+      setActiveTab(tab);
+    }
   };
+
+  // Update active tab based on scroll position
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!companySectionRef.current || !foundersSectionRef.current) return;
+
+      const companyRect = companySectionRef.current.getBoundingClientRect();
+      const foundersRect = foundersSectionRef.current.getBoundingClientRect();
+      const offset = 100; // Offset for sticky header
+
+      // Check which section is more visible in the viewport
+      const companyTop = companyRect.top;
+      const foundersTop = foundersRect.top;
+
+      // If founders section is in view and above the offset, switch to founders tab
+      if (foundersTop <= offset && foundersTop > -foundersRect.height / 2) {
+        setActiveTab('founders');
+      } 
+      // If company section is in view and above the offset, switch to company tab
+      else if (companyTop <= offset && companyTop > -companyRect.height / 2) {
+        setActiveTab('company');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Check initial state
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   return (
     <article className="relative rounded-2xl md:rounded-3xl bg-white px-3 pt-2 pb-4 sm:px-4 -pt-4 sm:pb-6 md:px-6 md:pb-8 lg:px-8 lg:pb-12 shadow-md w-full max-w-full">
@@ -115,30 +179,111 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
           {/* Tabs */}
           <div className="flex gap-2 sm:gap-3">
             <button
-              onClick={() => scrollToSection(companySectionRef)}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors border-b-2 border-transparent hover:border-blue-300"
+              onClick={() => scrollToSection(companySectionRef, 'company')}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'company'
+                  ? 'text-gray-900 border-blue-500'
+                  : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
+              }`}
             >
               Company
             </button>
             <button
-              onClick={() => scrollToSection(foundersSectionRef)}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors border-b-2 border-transparent hover:border-blue-300"
+              onClick={() => scrollToSection(foundersSectionRef, 'founders')}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'founders'
+                  ? 'text-gray-900 border-blue-500'
+                  : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
+              }`}
             >
               Founders
             </button>
           </div>
-          {/* Generate Email Button */}
+          {/* Email Persona Selection (Premium Only) and Generate Email Button */}
           {match.startup.id && (
-            <div className="flex-shrink-0">
-              <SendEmailButton
-                startupId={match.startup.id}
-                matchScore={match.score}
-                founderEmail={selectedFounderEmail}
-                variant="default"
-                requiresFounderSelection={founderNames.length > 0}
-                isFounderSelected={selectedFounderIndices.length > 0}
-                className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
-              />
+            <div className="flex items-center gap-7">
+              {/* Email Persona Selection - Premium Only */}
+              {isPremium && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setEmailPersona('direct-ask');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'direct-ask');
+                      }
+                    }}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                      emailPersona === 'direct-ask'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Direct Ask
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log(`[MatchCard] Genuine Fan clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
+                      setEmailPersona('genuine-fan');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'genuine-fan');
+                      }
+                    }}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                      emailPersona === 'genuine-fan'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Genuine Fan
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log(`[MatchCard] Value-First clicked - current: ${emailPersona}, isPremium: ${isPremium}`);
+                      setEmailPersona('value-first');
+                      if (typeof window !== 'undefined') {
+                        sessionStorage.setItem('emailPersona', 'value-first');
+                      }
+                    }}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                      emailPersona === 'value-first'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Value-First
+                  </button>
+                </div>
+              )}
+              {/* Generate Email Button */}
+              {(() => {
+                // Double-check sessionStorage in case state was reset by Fast Refresh
+                let finalPersona = emailPersona;
+                if (typeof window !== 'undefined' && isPremium === true) {
+                  const storedPersona = sessionStorage.getItem('emailPersona');
+                  if (storedPersona === 'genuine-fan' || storedPersona === 'direct-ask' || storedPersona === 'value-first') {
+                    finalPersona = storedPersona as 'direct-ask' | 'genuine-fan' | 'value-first';
+                    // Sync state if it was reset
+                    if (finalPersona !== emailPersona) {
+                      console.log(`[MatchCard] State mismatch detected - state: ${emailPersona}, sessionStorage: ${storedPersona}, syncing...`);
+                      setEmailPersona(finalPersona);
+                    }
+                  }
+                }
+                const computedPersona = (isPremium === true) ? finalPersona : 'direct-ask';
+                console.log(`[MatchCard] Rendering SendEmailButton - isPremium: ${isPremium}, emailPersona: ${emailPersona}, finalPersona: ${finalPersona}, computed persona: ${computedPersona}`);
+                return (
+                  <SendEmailButton
+                    startupId={match.startup.id}
+                    matchScore={match.score}
+                    founderEmail={selectedFounderEmail}
+                    persona={computedPersona}
+                    variant="default"
+                    requiresFounderSelection={founderNames.length > 0}
+                    isFounderSelected={selectedFounderIndices.length > 0}
+                    className="rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-2 py-0.5 text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                  />
+                );
+              })()}
             </div>
           )}
         </div>

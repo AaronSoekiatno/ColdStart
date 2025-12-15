@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ function GenerateEmailPageContent() {
   const matchScoreParam = searchParams.get("matchScore");
   const matchScore = matchScoreParam ? parseFloat(matchScoreParam) : 0;
   const founderEmail = searchParams.get("founderEmail");
+  const personaParam = searchParams.get("persona");
   
   const [user, setUser] = useState<User | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -26,9 +27,20 @@ function GenerateEmailPageContent() {
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewBody, setPreviewBody] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  const [emailTone, setEmailTone] = useState<'professional' | 'classy' | 'informative' | 'ambitious' | 'conversational'>('professional');
+  // Initialize emailPersona from URL param if valid, otherwise default to 'direct-ask'
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
+    const initialPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first')
+      ? personaParam as 'direct-ask' | 'genuine-fan' | 'value-first'
+      : 'direct-ask';
+    console.log(`[Generate Email Page] Initializing - personaParam from URL: '${personaParam}', initializing emailPersona to: '${initialPersona}'`);
+    return initialPersona;
+  });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
+
+  // Ref to prevent concurrent API calls
+  const isLoadingRef = useRef(false);
+  const currentRequestRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Check auth and premium status
@@ -62,12 +74,40 @@ function GenerateEmailPageContent() {
   const loadEmailPreview = async () => {
     if (!startupId || !user) return;
 
+    // Use personaParam directly from URL as source of truth, fallback to emailPersona state
+    // This prevents race conditions where state hasn't synced yet
+    const currentPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first')
+      ? personaParam as 'direct-ask' | 'genuine-fan' | 'value-first'
+      : emailPersona;
+    
+    // Create a unique request key to deduplicate concurrent requests
+    const requestKey = `${startupId}-${currentPersona}-${matchScore}`;
+    
+    // If we're already loading this exact request, skip it
+    if (isLoadingRef.current && currentRequestRef.current === requestKey) {
+      console.log('[Email Preview] Skipping duplicate request:', requestKey);
+      return;
+    }
+
+    // If we're loading a different request, wait for it to finish
+    if (isLoadingRef.current) {
+      console.log('[Email Preview] Another request in progress, waiting...');
+      // Wait a bit and retry
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return loadEmailPreview();
+    }
+
+    // Mark as loading and set current request
+    isLoadingRef.current = true;
+    currentRequestRef.current = requestKey;
+
     try {
       setIsPreviewLoading(true);
       setPreviewSubject('');
       setPreviewBody('');
 
       // Use streaming endpoint
+      console.log(`[Email Preview] Requesting email generation with persona: '${currentPersona}' (from URL param: '${personaParam}', state: '${emailPersona}') for startupId: ${startupId}`);
       const response = await fetch("/api/send-email/preview-stream", {
         method: 'POST',
         headers: {
@@ -77,7 +117,7 @@ function GenerateEmailPageContent() {
         body: JSON.stringify({
           startupId,
           matchScore,
-          tone: isPremium ? emailTone : undefined,
+          persona: currentPersona,
         }),
       });
 
@@ -86,6 +126,8 @@ function GenerateEmailPageContent() {
       // This ensures instant feedback when limit is exceeded
       if (response.status === 403) {
         setIsPreviewLoading(false);
+        isLoadingRef.current = false;
+        currentRequestRef.current = null;
         setShowUpgradeModal(true);
         // Cancel any pending stream reading to free resources
         // We don't need to read the error message - we already know it's a limit error
@@ -125,6 +167,8 @@ function GenerateEmailPageContent() {
                     if (data.type === 'error' && data.upgradeRequired) {
                       setShowUpgradeModal(true);
                       setIsPreviewLoading(false);
+                      isLoadingRef.current = false;
+                      currentRequestRef.current = null;
                       return;
                     }
                   } catch (e) {
@@ -141,6 +185,8 @@ function GenerateEmailPageContent() {
             if (errorData.upgradeRequired) {
               setShowUpgradeModal(true);
               setIsPreviewLoading(false);
+              isLoadingRef.current = false;
+              currentRequestRef.current = null;
               return;
             }
             throw new Error(errorData.error || 'Failed to generate email preview');
@@ -219,6 +265,8 @@ function GenerateEmailPageContent() {
                 setPreviewSubject(finalSubject);
                 setPreviewBody(finalBody);
                 setIsPreviewLoading(false);
+                isLoadingRef.current = false;
+                currentRequestRef.current = null;
                 // Email is automatically saved to Supabase by the API route
                 toast({
                   title: "Email drafted",
@@ -228,6 +276,8 @@ function GenerateEmailPageContent() {
               } else if (data.type === 'error') {
                 // Handle error events from SSE stream
                 setIsPreviewLoading(false);
+                isLoadingRef.current = false;
+                currentRequestRef.current = null;
                 if (data.upgradeRequired) {
                   setShowUpgradeModal(true);
                   return; // Don't throw, just show modal
@@ -242,9 +292,13 @@ function GenerateEmailPageContent() {
       }
 
       setIsPreviewLoading(false);
+      isLoadingRef.current = false;
+      currentRequestRef.current = null;
     } catch (error) {
       console.error('Preview email error:', error);
       setIsPreviewLoading(false);
+      isLoadingRef.current = false;
+      currentRequestRef.current = null;
       const errorMessage = error instanceof Error ? error.message : 'Failed to generate email preview';
       
       // Check if this is a limit exceeded error - if so, show upgrade modal instead of redirecting
@@ -272,12 +326,42 @@ function GenerateEmailPageContent() {
   };
 
   useEffect(() => {
-    // Load email when component mounts or when startupId/user changes
+    // Load email when component mounts or when startupId/user/persona changes
     // The API route will check Supabase for existing email, or generate new one if not found
-    if (user && startupId) {
+    // Skip if already loading to prevent duplicate calls
+    // Note: We use personaParam in the dependency array to ensure we reload when URL changes
+    if (user && startupId && !isLoadingRef.current) {
       loadEmailPreview();
     }
-  }, [startupId, matchScore, user, isPremium, emailTone]);
+  }, [startupId, matchScore, user, personaParam]); // Use personaParam instead of emailPersona to avoid race conditions
+
+  // Sync persona with query param when it changes, but enforce premium restrictions
+  // This MUST run BEFORE the email loading useEffect to ensure state is synced
+  useEffect(() => {
+    console.log(`[Generate Email Page] Persona sync effect - personaParam: '${personaParam}', emailPersona: '${emailPersona}', isPremium: ${isPremium}`);
+    if (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first') {
+      // Only allow 'genuine-fan' and 'value-first' for premium users
+      if ((personaParam === 'genuine-fan' || personaParam === 'value-first') && !isPremium) {
+        // Free users can't use premium personas - force to 'direct-ask'
+        if (emailPersona !== 'direct-ask') {
+          console.log(`[Generate Email Page] Free user tried to use '${personaParam}', forcing to 'direct-ask'`);
+          setEmailPersona('direct-ask');
+        }
+      } else {
+        // Only update if different to prevent unnecessary re-renders
+        if (emailPersona !== personaParam) {
+          console.log(`[Generate Email Page] Syncing emailPersona from '${emailPersona}' to '${personaParam}'`);
+          setEmailPersona(personaParam as 'direct-ask' | 'genuine-fan' | 'value-first');
+        }
+      }
+    } else {
+      // Default to 'direct-ask' if invalid or missing
+      if (emailPersona !== 'direct-ask') {
+        console.log(`[Generate Email Page] Invalid personaParam '${personaParam}', defaulting to 'direct-ask'`);
+        setEmailPersona('direct-ask');
+      }
+    }
+  }, [personaParam, isPremium]); // Removed emailPersona from deps to prevent loops
 
   const handleSendEmail = async () => {
     if (!startupId || !previewSubject || !previewBody) return;
@@ -402,96 +486,6 @@ function GenerateEmailPageContent() {
                             <Copy className="w-4 h-4 text-gray-600" />
                           </button>
                         </div>
-                      </div>
-                    )}
-                    {isPremium && (previewSubject || previewBody) && (
-                      <div className="space-y-1.5 flex-shrink-0">
-                        <label className="text-xs text-gray-700 block">Email Tone:</label>
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => {
-                              const newTone = 'professional';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'professional'
-                                ? 'bg-blue-300 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Professional
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'classy';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'classy'
-                                ? 'bg-blue-300 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Classy
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'informative';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'informative'
-                                ? 'bg-blue-300 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Informative
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'ambitious';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'ambitious'
-                                ? 'bg-blue-300 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Ambitious
-                          </button>
-                          <button
-                            onClick={() => {
-                              const newTone = 'conversational';
-                              if (newTone !== emailTone) {
-                                setEmailTone(newTone);
-                              }
-                            }}
-                            disabled={isPreviewLoading}
-                            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                              emailTone === 'conversational'
-                                ? 'bg-blue-300 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            } ${isPreviewLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                          >
-                            Conversational
-                          </button>
-                        </div>
-                        {isPreviewLoading && (
-                          <p className="text-xs text-gray-500">Regenerating email with new tone...</p>
-                        )}
                       </div>
                     )}
                     <div className="space-y-1.5 flex-shrink-0">
