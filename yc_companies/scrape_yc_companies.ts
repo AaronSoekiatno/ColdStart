@@ -1,13 +1,25 @@
 import { resolve } from 'path';
 import { config } from 'dotenv';
-// Load .env.local file
-config({ path: resolve(process.cwd(), '.env.local') });
+
+// Load .env.local file from project root
+// Try current directory first, then parent directory
+const currentDir = process.cwd();
+const parentDir = resolve(currentDir, '..');
+const envPath = resolve(currentDir, '.env.local');
+const parentEnvPath = resolve(parentDir, '.env.local');
+
+// Try parent directory first (if running from yc_companies folder)
+const result = config({ path: parentEnvPath }) || config({ path: envPath });
+if (!result.parsed || Object.keys(result.parsed).length === 0) {
+  console.warn('⚠️  No environment variables loaded. Make sure .env.local exists in project root.');
+}
 
 import { randomUUID } from 'crypto';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as csv from 'csv-parse/sync';
+import { processImagesInParallel } from './utils/image-storage';
 
 // Types
 interface YCCompany {
@@ -32,6 +44,7 @@ interface YCPageData {
     linkedIn: string;
     twitterUrl?: string; // Founder Twitter/X URL
     description?: string; // Founder bio/description
+    profilePicture?: string; // Founder profile picture URL
   }>;
   website: string;
   teamSize: string;
@@ -42,6 +55,7 @@ interface YCPageData {
   }>;
   location: string;
   oneLineSummary: string;
+  ycDescription?: string; // Main company description from YC page prose div (before founders section)
   companyTwitterUrl?: string; // Company Twitter/X URL
   fundingAmount?: string; // Funding amount (e.g., "US$ 500.0K", "$20M")
   roundType?: string; // Funding round type (e.g., "Pre seed", "Seed", "Series A")
@@ -225,7 +239,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       await page.evaluate(() => {
         window.scrollTo(0, document.body.scrollHeight);
       });
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait longer after scroll
     } catch (scrollError) {
       console.warn(`   ⚠️  Scroll error (non-critical): ${scrollError instanceof Error ? scrollError.message : String(scrollError)}`);
     }
@@ -265,6 +279,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
     let pageData;
     try {
       pageData = await page.evaluate(() => {
+      const debugInfo: string[] = [];
       try {
       const data: YCPageData = {
         founders: [],
@@ -1334,6 +1349,262 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       data.founders = uniqueFounders;
 
       // ============================================
+      // 1.5. EXTRACT FOUNDER PROFILE PICTURES
+      // ============================================
+      // Extract profile pictures from bookface-images URLs by matching alt text to founder names
+      // STRICT: Only extract from the "Active Founders" section
+      if (data.founders.length > 0) {
+        // STRICT: Find the "Active Founders" section using the specific DOM structure
+        const foundersSection = Array.from(document.querySelectorAll('section')).find(section => {
+          const classes = section.className || '';
+          const text = section.textContent?.toLowerCase() || '';
+          // Match the specific section: has the border-retro-sectionBorder class AND contains "active founders"
+          return (classes.includes('border-retro-sectionBorder') || 
+                  (classes.includes('relative') && classes.includes('isolate'))) &&
+                 text.includes('active founders');
+        }) as HTMLElement | undefined;
+        
+        if (!foundersSection) {
+          console.log('   ⚠️  Could not find Active Founders section for profile pictures');
+        } else {
+          // STRICT: Only search for images WITHIN the founders section
+          const allImages = Array.from(foundersSection.querySelectorAll('img[src*="bookface-images"]')) as HTMLImageElement[];
+          
+          // Filter out logos - keep only avatar images
+          const avatarImages = allImages.filter(img => {
+            const src = img.src || '';
+            const altText = (img.alt || '').toLowerCase();
+            
+            // Skip logos - they're in small_logos or /logos/ paths
+            if (src.includes('small_logos') || src.includes('/logos/') || altText.includes('logo')) {
+              return false;
+            }
+            
+            // Keep avatars (usually in /avatars/ path or have alt text with a name)
+            // Alt text should be a reasonable name length (2-50 chars) and look like a name
+            const isAvatar = src.includes('/avatars/');
+            const hasNameLikeAlt = altText.length >= 2 && 
+                                  altText.length <= 50 && 
+                                  !altText.includes('http') &&
+                                  /^[A-Za-z\s\.\-\']+$/.test(img.alt || ''); // Looks like a name
+            
+            return isAvatar || hasNameLikeAlt;
+          });
+          
+          // Track which images have been assigned to avoid duplicates
+          const assignedImages = new Set<string>();
+          
+          for (const founder of data.founders) {
+            const fullName = `${founder.firstName} ${founder.lastName}`.trim();
+            const firstName = founder.firstName.toLowerCase().trim();
+            const lastName = founder.lastName.toLowerCase().trim();
+            const fullNameLower = fullName.toLowerCase();
+            
+            // Try to find matching image by alt text - be more flexible with matching
+            for (const img of avatarImages) {
+              const altText = (img.alt || '').trim(); // Keep original case
+              const altTextLower = altText.toLowerCase();
+              const src = img.src || '';
+              
+              // Skip if already assigned to another founder
+              if (!src || src.length === 0 || assignedImages.has(src)) continue;
+              
+              // More flexible matching:
+              // 1. Exact match (case-insensitive) - "Juan Casian" matches "Juan Casian"
+              // 2. Contains both first and last name
+              // 3. First name matches exactly and alt looks like a name
+              const exactMatch = altTextLower === fullNameLower;
+              const containsBothNames = firstName && lastName && 
+                                        altTextLower.includes(firstName) && 
+                                        altTextLower.includes(lastName);
+              
+              // Also try matching with different name formats
+              const nameVariations = [
+                fullNameLower,
+                `${firstName} ${lastName}`,
+                `${lastName}, ${firstName}`, // "Casian, Juan"
+                `${firstName}${lastName}`, // No space
+                `${lastName} ${firstName}`, // Reversed
+              ];
+              
+              const matchesVariation = nameVariations.some(variation => 
+                altTextLower === variation || 
+                altTextLower.startsWith(variation + ' ') || 
+                altTextLower.endsWith(' ' + variation)
+              );
+              
+              // Also check if alt text is just the first name (if it's short and looks like a name)
+              const firstNameOnlyMatch = firstName && 
+                                         altTextLower === firstName && 
+                                         altText.length < 20 && 
+                                         /^[A-Za-z\s]+$/.test(altText);
+              
+              if (exactMatch || containsBothNames || matchesVariation || firstNameOnlyMatch) {
+                founder.profilePicture = src;
+                assignedImages.add(src);
+                break; // Found match, move to next founder
+              }
+            }
+            
+            // If no match found by alt text, try to find by proximity to founder name element
+            // STRICT: Only search within the founders section
+            if (!founder.profilePicture) {
+              // Find the founder's name element within the founders section
+              const nameElements = Array.from(foundersSection.querySelectorAll('*')).filter(el => {
+                const text = el.textContent?.trim() || '';
+                return text === fullName || 
+                       (text.includes(firstName) && text.includes(lastName)) ||
+                       text.toLowerCase() === fullNameLower;
+              });
+              
+              for (const nameEl of nameElements) {
+                // Look in the same card/container as the name - use more specific selectors
+                // STRICT: Make sure we're still within the founders section
+                const container = nameEl.closest('div.ycdc-card-new, div[class*="ycdc-card"], div[class*="card"], div[class*="founder"], section, article, div') || nameEl.parentElement;
+                if (container && foundersSection.contains(container)) {
+                  const nearbyImages = container.querySelectorAll('img[src*="bookface-images"]') as NodeListOf<HTMLImageElement>;
+                  for (const img of Array.from(nearbyImages)) {
+                    const src = img.src || '';
+                    // Skip logos
+                    if (src.includes('small_logos') || src.includes('/logos/')) continue;
+                    
+                    // Skip if already assigned
+                    if (assignedImages.has(src)) continue;
+                    
+                    // STRICT: Double-check the image is within the founders section
+                    if (!foundersSection.contains(img)) continue;
+                    
+                    // If we find an image in the same container as the name, it's likely the founder's picture
+                    founder.profilePicture = src;
+                    assignedImages.add(src);
+                    break;
+                  }
+                  if (founder.profilePicture) break;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // ============================================
+      // 1.6. EXTRACT YC COMPANY DESCRIPTION
+      // ============================================
+      // Extract the main company description from the prose div BEFORE founders section
+      // This is the div.prose.max-w-full.whitespace-pre-line that appears before "Active Founders"
+      try {
+        // First, find where the "Active Founders" section starts
+        const allElements = Array.from(document.querySelectorAll('*'));
+        const foundersHeading = allElements.find(el => {
+          const text = el.textContent?.trim() || '';
+          return text.toLowerCase() === 'active founders' ||
+                 text.toLowerCase().includes('active founders') ||
+                 text.toLowerCase() === 'founders';
+        });
+        
+        // Find the company link/header to locate description nearby
+        const companyLink = document.querySelector('a[href*="/companies/"]') as HTMLElement;
+        
+        // Find ALL divs with the exact classes: prose max-w-full whitespace-pre-line
+        // Try multiple approaches since React might render classes differently
+        // Define selectors inline since proseSelectors was not defined
+        const proseSelectors = [
+          'div.prose.max-w-full.whitespace-pre-line',
+          'div.prose.whitespace-pre-line',
+          'div[class*="prose"][class*="whitespace-pre-line"]',
+        ];
+        let proseDivs: HTMLElement[] = [];
+        for (const selector of proseSelectors) {
+          try {
+            const found = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
+            if (found.length > 0) {
+              proseDivs = found;
+              break;
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+        
+        if (proseDivs.length > 0) {
+          // If we found a founders heading, only get prose divs that appear BEFORE it
+          let targetProseDiv: HTMLElement | null = null;
+          
+          if (foundersHeading) {
+            // Get all elements in document order
+            const allDocElements = Array.from(document.querySelectorAll('*'));
+            const foundersHeadingIndex = allDocElements.indexOf(foundersHeading);
+            
+            // Find the first prose div that appears before the founders heading
+            for (const proseDiv of proseDivs) {
+              const proseDivIndex = allDocElements.indexOf(proseDiv);
+              
+              // Only consider prose divs that come before the founders section
+              if (proseDivIndex < foundersHeadingIndex) {
+                // Check that this prose div is not within a founder card
+                // (founder cards also have prose divs for descriptions)
+                const closestContainer = proseDiv.closest('div, section, article');
+                const isInFounderCard = closestContainer?.querySelector('.text-xl.font-bold, div[class*="text-xl"][class*="font-bold"], h2, h3, h4');
+                
+                // Also check if it's near founder images
+                const hasFounderImages = closestContainer?.querySelector('img[src*="bookface-images"]');
+                
+                // If it's not in a founder card area and doesn't have founder images nearby, it's likely the company description
+                if (!isInFounderCard && !hasFounderImages) {
+                  targetProseDiv = proseDiv;
+                  break; // Use the first valid one
+                }
+              }
+            }
+          } else {
+            // No founders heading found, use the first prose div that's not in a founder context
+            for (const proseDiv of proseDivs) {
+              // Check that this prose div is not within a founder card
+              const closestContainer = proseDiv.closest('div, section, article');
+              const isInFounderCard = closestContainer?.querySelector('.text-xl.font-bold, div[class*="text-xl"][class*="font-bold"], h2, h3, h4');
+              const hasFounderImages = closestContainer?.querySelector('img[src*="bookface-images"]');
+              
+              if (!isInFounderCard && !hasFounderImages) {
+                targetProseDiv = proseDiv;
+                break;
+              }
+            }
+          }
+          
+          if (targetProseDiv) {
+            // Extract text directly from the div
+            let descriptionText = targetProseDiv.textContent?.trim() || targetProseDiv.innerText?.trim() || '';
+            
+            // Clean up whitespace (normalize multiple spaces to single space)
+            descriptionText = descriptionText.replace(/\s+/g, ' ').trim();
+            
+            // Validate it's a reasonable company description (at least 100 chars, not too long)
+            if (descriptionText && descriptionText.length >= 100 && descriptionText.length <= 2000) {
+              // Make sure it doesn't contain founder-specific keywords that might indicate bleeding
+              const lowerText = descriptionText.toLowerCase();
+              const hasFounderKeywords = (lowerText.includes('prior to') || lowerText.includes('before')) && 
+                                        (lowerText.includes('co-founded') || lowerText.includes('founded') || lowerText.includes('worked at') || lowerText.includes('was at'));
+              
+              // Exclude navigation/footer text patterns
+              const isNavigationText = lowerText.includes('startup directory') ||
+                                      lowerText.includes('founder directory') ||
+                                      lowerText.includes('launch yc') ||
+                                      (lowerText.includes('companies') && descriptionText.length < 200) ||
+                                      lowerText.split(/\s+/).length < 10;
+              
+              // If it doesn't have founder keywords and isn't navigation text, it's likely the company description
+              if (!hasFounderKeywords && !isNavigationText) {
+                data.ycDescription = descriptionText;
+              }
+            }
+          }
+        }
+      } catch (descError) {
+        // Ignore errors in description extraction
+        // Don't log warnings as it's expected that some pages might not have this
+      }
+
+      // ============================================
       // 2. EXTRACT WEBSITE
       // ============================================
       // Look for external website links - YC pages typically show the company website prominently
@@ -1968,6 +2239,11 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
 
         // Store debug info in a way we can access it
         (data as any)._tagDebug = debugInfo;
+        
+        // Store yc_description debug info if available
+        if ((window as any).__ycDescriptionDebug) {
+          (data as any)._ycDescriptionDebug = (window as any).__ycDescriptionDebug;
+        }
 
         return data;
       } catch (evalError) {
@@ -1980,6 +2256,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           jobPostings: [],
           location: '',
           oneLineSummary: '',
+          ycDescription: undefined,
           fundingAmount: undefined,
           roundType: undefined,
           fundingDate: undefined,
@@ -2012,6 +2289,14 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       }
       // Remove debug info from pageData
       delete (pageData as any)._tagDebug;
+    }
+    
+    // Log debug info about yc_description extraction if available
+    if ((pageData as any)._ycDescriptionDebug) {
+      const debug = (pageData as any)._ycDescriptionDebug;
+      console.log(`   🔍 YC Description Debug: ${debug}`);
+      // Remove debug info from pageData
+      delete (pageData as any)._ycDescriptionDebug;
     }
 
     // ============================================
@@ -2241,8 +2526,9 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       const descriptions = pageData.founders
         .filter(f => f.description && f.description.trim().length > 0)
         .map(f => {
+          // TypeScript doesn't narrow the type after filter, so we need to check again
           if (!f.description) return '';
-          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();      
+          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();
           if (fullName) {
             return `${fullName}: ${f.description.trim()}`;
           }
@@ -2255,12 +2541,54 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       }
     }
 
-    // Update only founder_backgrounds (skip keywords for speed)
+    // Collect founder profile picture URLs and download/store them permanently
+    const founderPfpUrls: string[] = [];
+    const founderNames: string[] = [];
+    
+    if (pageData.founders && pageData.founders.length > 0) {
+      pageData.founders.forEach(f => {
+        if (f.profilePicture && f.profilePicture.trim()) {
+          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();
+          founderPfpUrls.push(f.profilePicture.trim());
+          founderNames.push(fullName || 'Unknown');
+        }
+      });
+    }
+
+    // Download and store images permanently in Supabase Storage
+    let permanentPfpUrls: string[] = [];
+    if (founderPfpUrls.length > 0) {
+      console.log(`   📥 Downloading and storing ${founderPfpUrls.length} founder profile picture(s)...`);
+      try {
+        permanentPfpUrls = await processImagesInParallel(
+          founderPfpUrls,
+          supabase,
+          normalized.companyName,
+          founderNames,
+          3 // Process 3 images at a time
+        );
+        console.log(`   ✅ Successfully stored ${permanentPfpUrls.length}/${founderPfpUrls.length} images`);
+      } catch (error: any) {
+        console.error(`   ❌ Error storing images: ${error.message}`);
+        // Fallback to original URLs if storage fails
+        permanentPfpUrls = founderPfpUrls;
+      }
+    }
+    
+    const foundersPfp = permanentPfpUrls;
+
+    // Update founder_backgrounds, founders_pfp, and yc_description
     const updateData: {
       founder_backgrounds?: string;
+      founders_pfp?: string[];
+      yc_description?: string;
     } = {
       // Founder backgrounds - full descriptions from YC page
       founder_backgrounds: founderBackgrounds || undefined,
+      // Founder profile pictures array
+      founders_pfp: foundersPfp.length > 0 ? foundersPfp : undefined,
+      // YC company description from prose div (before founders section)
+      yc_description: pageData.ycDescription || undefined,
     };
     
     if (founderBackgrounds) {
@@ -2268,6 +2596,14 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       console.log(`   💾 Updating founder_backgrounds with descriptions from YC page (${founderBackgrounds.length} characters)`);
     } else {
       console.log(`   👤 No founder descriptions found on YC page`);
+    }
+    
+    if (permanentPfpUrls.length > 0) {
+      console.log(`   📸 Found ${founderPfpUrls.length} founder profile picture(s), stored ${permanentPfpUrls.length} permanently`);
+    }
+    
+    if (pageData.ycDescription) {
+      console.log(`   📝 Found YC description (${pageData.ycDescription.length} characters)`);
     }
     
     const { data, error } = await supabase
@@ -2292,6 +2628,12 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
         console.log(`   ✅ Founder backgrounds stored successfully (${founderBackgrounds.length} characters)`);
       } else {
         console.log(`   ⚠️  No founder backgrounds to store`);
+      }
+      if (foundersPfp.length > 0) {
+        console.log(`   ✅ Founders profile pictures stored successfully (${foundersPfp.length} pictures)`);
+      }
+      if (pageData.ycDescription) {
+        console.log(`   ✅ YC description stored successfully (${pageData.ycDescription.length} characters)`);
       }
     }
 
@@ -2325,148 +2667,57 @@ async function scrapeYCCompanies() {
     );
   }
 
-  // Get already processed companies
-  console.log('🔍 Checking for already-processed companies...');
-  const processedLinks = await getAlreadyProcessedLinks();
-  console.log(`   Found ${processedLinks.size} already-processed companies`);
-
-
-  // Load all companies from CSV files
-  console.log('📂 Loading YC companies from CSV files...');
-  const csvFiles = getAllYCCsvFiles();
-  console.log(`   Found ${csvFiles.length} CSV file(s)`);
-
-  let allCompanies: YCCompany[] = [];
-  for (const csvFile of csvFiles) {
-    const companies = loadCompaniesFromCSV(csvFile);
-    console.log(`   Loaded ${companies.length} companies from ${csvFile.split(/[/\\]/).pop()}`);
-    allCompanies = allCompanies.concat(companies);
-  }
-
-  // Filter by batch if specified
-  if (batchFilter) {
-    console.log(`\n🔍 Filtering for batch: ${batchFilter}`);
-    allCompanies = allCompanies.filter(c => {
-      const normalized = normalizeCompanyData(c);
-      return normalized.batch.toLowerCase() === batchFilter.toLowerCase();
-    });
-  }
-
-  // Filter by company name or URL if specified
+  // Fetch ALL companies from startups table
+  console.log('📂 Fetching all companies from startups table...');
   const companyFilter = args.find(arg => arg.startsWith('--company='))?.split('=')[1];
-  if (companyFilter) {
-    console.log(`\n🔍 Filtering for company: ${companyFilter}`);
-    const beforeFilter = allCompanies.length;
-    allCompanies = allCompanies.filter(c => {
-      const normalized = normalizeCompanyData(c);
-      const nameMatch = normalized.companyName.toLowerCase().includes(companyFilter.toLowerCase());
-      const urlMatch = normalized.ycLink.toLowerCase().includes(companyFilter.toLowerCase());
-      return nameMatch || urlMatch;
-    });
-    console.log(`   Found ${allCompanies.length} matching company(ies) in CSV (from ${beforeFilter} total)`);
-    if (allCompanies.length > 0) {
-      allCompanies.forEach(c => {
-        const normalized = normalizeCompanyData(c);
-        console.log(`   - ${normalized.companyName} (${normalized.ycLink})`);
-      });
-    } else {
-      console.log(`   ⚠️  No companies found matching "${companyFilter}" in CSV files`);
-      console.log(`   💡 Tip: Check if the company name or URL contains "${companyFilter}"`);
-    }
-  }
-
-  console.log(`\n📊 Total companies to process: ${allCompanies.length}`);
-
-  // Get companies that HAVE founder_backgrounds (so we can skip them)
-  console.log('🔍 Checking for companies with founder_backgrounds...');
-  const { data: companiesWithBackgroundsData, error: backgroundsError } = await supabase
-    .from('startups')
-    .select('yc_link')
-    .eq('data_source', 'yc')
-    .not('yc_link', 'is', null)
-    .not('founder_backgrounds', 'is', null)
-    .neq('founder_backgrounds', '');
-
-  const companiesWithBackgrounds = new Set<string>();
-  if (!backgroundsError && companiesWithBackgroundsData) {
-    companiesWithBackgroundsData.forEach((row: any) => {
-      if (row.yc_link) {
-        const normalized = row.yc_link.toLowerCase().replace(/\/$/, '');
-        companiesWithBackgrounds.add(normalized);
-      }
-    });
-  }
-  console.log(`   Found ${companiesWithBackgrounds.size} companies with founder_backgrounds already populated\n`);
-
-  // Filter to get companies that ARE in database AND don't have founder_backgrounds
-  const companiesToUpdate = allCompanies.filter(company => {
-    const normalized = normalizeCompanyData(company);
-    if (!normalized.ycLink) return false;
-    // Normalize URL for comparison (lowercase, remove trailing slash)
-    const normalizedLink = normalized.ycLink.toLowerCase().replace(/\/$/, '');
-    // Only process if: already in database AND doesn't have founder_backgrounds
-    const inDatabase = processedLinks.has(normalizedLink);
-    const hasBackgrounds = companiesWithBackgrounds.has(normalizedLink);
-    
-    // Debug logging for filtered companies when using --company filter
-    if (companyFilter && normalized.companyName.toLowerCase().includes(companyFilter.toLowerCase())) {
-      console.log(`   🔍 ${normalized.companyName}:`);
-      console.log(`      YC Link: ${normalized.ycLink}`);
-      console.log(`      Normalized link: ${normalizedLink}`);
-      console.log(`      In database: ${inDatabase ? '✅' : '❌'}`);
-      console.log(`      Has founder_backgrounds: ${hasBackgrounds ? '✅' : '❌'}`);
-      console.log(`      Will process: ${inDatabase && !hasBackgrounds ? '✅' : '❌'}`);
-      
-      // Additional debug: Check if the link exists in processedLinks with different normalization
-      if (!inDatabase) {
-        console.log(`      🔍 Debug: Checking processedLinks for variations...`);
-        const variations = [
-          normalizedLink,
-          normalized.ycLink.toLowerCase(),
-          normalized.ycLink.toLowerCase() + '/',
-          normalized.ycLink,
-        ];
-        variations.forEach(variant => {
-          if (processedLinks.has(variant)) {
-            console.log(`         ✅ Found variant: "${variant}"`);
-          }
-        });
-        // Show a few sample URLs from processedLinks for comparison
-        const sampleLinks = Array.from(processedLinks).slice(0, 5);
-        if (sampleLinks.length > 0) {
-          console.log(`      🔍 Debug: Sample processedLinks (first 5):`);
-          sampleLinks.forEach(link => console.log(`         - ${link}`));
-        }
-      }
-    }
-    
-    return inDatabase && !hasBackgrounds;
-  });
-
-  const initiallySkippedCount = allCompanies.length - companiesToUpdate.length;
-  console.log(`📋 Companies to update founder_backgrounds: ${companiesToUpdate.length} (${initiallySkippedCount} skipped - not in DB or already have founder_backgrounds)\n`);
   
-  if (companyFilter && companiesToUpdate.length === 0 && allCompanies.length > 0) {
-    console.log(`   ⚠️  Company "${companyFilter}" found in CSV but:`);
-    const normalized = normalizeCompanyData(allCompanies[0]);
-    const normalizedLink = normalized.ycLink.toLowerCase().replace(/\/$/, '');
-    if (!processedLinks.has(normalizedLink)) {
-      console.log(`      - Not in database (yc_link: ${normalized.ycLink})`);
-      console.log(`      💡 The company needs to be imported to the database first`);
-    } else if (companiesWithBackgrounds.has(normalizedLink)) {
-      console.log(`      - Already has founder_backgrounds in database`);
-      console.log(`      💡 Use --force flag to re-scrape (if implemented)`);
-    }
-    console.log();
+  let query = supabase
+    .from('startups')
+    .select('id, name, yc_link, batch')
+    .eq('data_source', 'yc')
+    .not('yc_link', 'is', null);
+  
+  // Apply filters if specified
+  if (batchFilter) {
+    query = query.eq('batch', batchFilter);
+    console.log(`   Filtering by batch: ${batchFilter}`);
   }
-
-  if (companiesToUpdate.length === 0 && !companyFilter) {
-    console.log('✅ All companies already have founder_backgrounds!');
+  
+  if (companyFilter) {
+    query = query.ilike('name', `%${companyFilter}%`);
+    console.log(`   Filtering by company: ${companyFilter}`);
+  }
+  
+  const { data: allStartups, error: fetchError } = await query;
+  
+  if (fetchError) {
+    throw new Error(`Failed to fetch startups: ${fetchError.message}`);
+  }
+  
+  if (!allStartups || allStartups.length === 0) {
+    console.log('❌ No companies found in database');
     return;
   }
   
-  if (companiesToUpdate.length === 0 && companyFilter) {
-    console.log(`❌ No companies to process for "${companyFilter}"`);
+  console.log(`   Found ${allStartups.length} company(ies) to process\n`);
+
+  // Convert startups to YCCompany format for compatibility
+  const companiesToUpdate: Array<{ startup: any; company: YCCompany }> = allStartups
+    .filter((startup: any) => startup.yc_link) // Only process if has YC link
+    .map((startup: any) => ({
+      startup,
+      company: {
+        Company_Name: startup.name || 'Unknown',
+        YC_Link: startup.yc_link,
+        company_description: '',
+        Batch: startup.batch || '',
+      } as YCCompany
+    }));
+
+  console.log(`📋 Companies to process: ${companiesToUpdate.length}\n`);
+  
+  if (companiesToUpdate.length === 0) {
+    console.log('❌ No companies to process');
     return;
   }
 
@@ -2506,7 +2757,7 @@ async function scrapeYCCompanies() {
 
   try {
     for (let i = 0; i < companiesToUpdate.length; i++) {
-      const company = companiesToUpdate[i];
+      const { startup, company } = companiesToUpdate[i];
       const normalized = normalizeCompanyData(company);
 
       try {
@@ -2565,8 +2816,10 @@ async function scrapeYCCompanies() {
         if (pageData.founders.length > 0) {
           const foundersWithDescriptions = pageData.founders.filter(f => f.description).length;
           const foundersWithTwitter = pageData.founders.filter(f => f.twitterUrl).length;
+          const foundersWithPfp = pageData.founders.filter(f => f.profilePicture).length;
           console.log(`   Founders with descriptions: ${foundersWithDescriptions}/${pageData.founders.length}`);
           console.log(`   Founders with Twitter: ${foundersWithTwitter}/${pageData.founders.length}`);
+          console.log(`   Founders with profile pictures: ${foundersWithPfp}/${pageData.founders.length}`);
         }
         console.log(`   Website: ${pageData.website || 'Not found'}`);
         console.log(`   Company Twitter: ${pageData.companyTwitterUrl || 'Not found'}`);
@@ -2580,13 +2833,18 @@ async function scrapeYCCompanies() {
         if (pageData.fundingAmount || pageData.roundType || pageData.fundingDate) {
           console.log(`   💰 Funding: ${pageData.fundingAmount || 'N/A'} | ${pageData.roundType || 'N/A'} | ${pageData.fundingDate || 'N/A'}`);
         }
+        if (pageData.ycDescription) {
+          console.log(`   📝 YC Description: ${pageData.ycDescription.substring(0, 100)}${pageData.ycDescription.length > 100 ? '...' : ''}`);
+        } else {
+          console.log(`   📝 YC Description: Not found`);
+        }
 
         // Store in Supabase
         const success = await storeYCCompanyInSupabase(company, pageData);
 
         if (success) {
           successCount++;
-          console.log('   ✅ Successfully updated founder_backgrounds in Supabase');
+          console.log('   ✅ Successfully updated founder profile pictures in Supabase');
         } else {
           skippedCount++;
         }

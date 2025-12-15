@@ -125,7 +125,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
     <header className="fixed top-0 left-0 right-0 z-50 bg-white transition-all duration-300 mb-4 border border-gray-200">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo and Title */}
-        <Link href="/" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3 flex-shrink-0">
           <Image
             src="/images/blacked.svg"
             alt="Hermes logo"
@@ -133,31 +133,40 @@ export const Header = ({ initialUser }: HeaderProps) => {
             height={32}
             priority
           />
-          <span className="text-xl font-semibold text-gray-800">Hermes</span>
+          <span className="text-xl font-normal text-gray-800" style={{ fontFamily: 'var(--font-sora), Inter, sans-serif' }}>Hermes</span>
         </Link>
 
         {/* Desktop Navigation - Hidden on mobile */}
-        <nav className="hidden lg:flex items-center gap-4">
+        <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center">
           {user ? (
             <>
               <Link
                 href="/matches"
-                className="text-sm text-gray-800 hover:text-gray-800/80 transition-colors drop-shadow-md"
+                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
               >
                 Your Matches
               </Link>
               <Link
                 href="/tracker"
-                className="text-sm text-gray-800 hover:text-gray-800/80 transition-colors drop-shadow-md"
+                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
               >
                 Email Tracker
               </Link>
               <Link
                 href="/resumes"
-                className="text-sm text-gray-800 hover:text-gray-800/80 transition-colors drop-shadow-md"
+                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
               >
                 Resumes
               </Link>
+            </>
+          ) : null}
+        </nav>
+
+        {/* Right side - User menu */}
+        <div className="hidden lg:flex items-center gap-4 flex-shrink-0">
+          {user ? (
+            <>
+              <span className="text-sm text-gray-800">{user.email}</span>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -232,7 +241,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
               </DropdownMenu>
             </>
           ) : null}
-        </nav>
+        </div>
 
         {/* Mobile Navigation - Hamburger Menu */}
         <div className="lg:hidden flex items-center gap-2">

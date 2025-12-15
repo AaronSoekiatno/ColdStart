@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
         founder_linkedin?: string;
         founder_twitter_urls?: string;
         founder_backgrounds?: string;
+        founders_pfp?: string;
         batch?: string;
         description?: string;
         company_logo?: string;
@@ -146,6 +147,7 @@ export async function GET(request: NextRequest) {
             founder_linkedin: s.founder_linkedin ?? undefined,
             founder_twitter_urls: s.founder_twitter_urls ?? undefined,
             founder_backgrounds: s.founder_backgrounds ?? undefined,
+            founders_pfp: s.founders_pfp ?? undefined,
             batch: s.batch ?? undefined,
             description: s.description ?? undefined,
             company_logo: s.company_logo ?? undefined,

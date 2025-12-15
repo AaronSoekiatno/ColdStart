@@ -25,6 +25,7 @@ interface MatchCardProps {
       founder_linkedin?: string;
       founder_twitter_urls?: string;
       founder_backgrounds?: string;
+      founders_pfp?: string;
       batch?: string;
       description?: string;
       company_logo?: string;
@@ -43,6 +44,8 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
   const [showPersonaOptions, setShowPersonaOptions] = useState(false);
   const hidePersonaTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Track failed image loads to fall back to placeholder
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   
   // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
   const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
@@ -95,6 +98,18 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   const founderEmails = startup.founder_emails
     ? startup.founder_emails.split(',').map(email => email.trim())
     : [];
+
+  // Parse founder profile pictures (could be array or comma-separated string)
+  const founderProfilePictures = startup.founders_pfp
+    ? Array.isArray(startup.founders_pfp)
+      ? startup.founders_pfp.map(url => String(url).trim())
+      : String(startup.founders_pfp).split(',').map(url => url.trim())
+    : [];
+
+  // Debug: Log founder profile pictures
+  if (founderProfilePictures.length > 0) {
+    console.log('Founder profile pictures:', founderProfilePictures);
+  }
 
   // Parse founder backgrounds - split by "Name:" pattern
   const founderBackgroundsArray = founderNames.map((name, idx) => {
@@ -355,6 +370,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                   height={112}
                   className="object-contain w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
                   unoptimized
+                  loading="eager"
                 />
               ) : (
                 <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
@@ -473,13 +489,28 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
                   onClick={handleCardClick}
                 >
                   <div className="flex flex-col sm:flex-row items-start gap-3 md:gap-4">
-                    {/* Founder Photo Placeholder */}
+                    {/* Founder Photo */}
                     <div className="flex-shrink-0 w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
-                      <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                        <span className="text-gray-400 text-xl sm:text-2xl md:text-3xl font-semibold">
-                          {initial.toUpperCase()}
-                        </span>
-                      </div>
+                      {founderProfilePictures[index] && !failedImages.has(index) ? (
+                        <Image
+                          src={`/api/image-proxy?url=${encodeURIComponent(founderProfilePictures[index])}`}
+                          alt={`${founderName} profile picture`}
+                          width={80}
+                          height={80}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                          loading="eager"
+                          onError={() => {
+                            setFailedImages(prev => new Set(prev).add(index));
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+                          <span className="text-gray-400 text-xl sm:text-2xl md:text-3xl font-semibold">
+                            {initial.toUpperCase()}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     {/* Founder Info */}
                     <div className="flex-1 min-w-0">
