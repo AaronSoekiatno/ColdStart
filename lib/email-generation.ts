@@ -62,7 +62,10 @@ export type EmailTone =
   | 'ambitious'
   | 'conversational';
 
+export type EmailPersona = 'direct-ask' | 'genuine-fan';
+
 export interface EmailGenerationOptions {
+  persona?: EmailPersona; // Which persona to use for email generation
   tone?: EmailTone;
   maxWords?: number; // soft limit; prompt hint only
   includeSubjectPrefix?: string; // e.g. "[ResumeSender]"
@@ -234,6 +237,105 @@ Return ONLY valid JSON:
 `.trim();
 }
 
+/**
+ * Builds the email generation prompt using Persona 2: "The Genuine Fan"
+ */
+function buildGenuineFanPrompt(
+  candidate: CandidateProfile,
+  startup: StartupInfo,
+  match: MatchContext
+): string {
+  const rawFounderName = startup.founderName || 'Founder';
+  const linksText = candidate.links
+    ? Object.entries(candidate.links)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ')
+    : 'None';
+
+  // Add Novaflow-specific context for testing
+  let scrapedIntel = startup.scrapedContext || 'None available';
+  if (startup.name.toLowerCase() === 'novaflow') {
+    const novaflowContext = `Novaflow is the AI data analyst for biology labs. Bioinformatics data analysis is a time-consuming and expensive process for scientists. With Novaflow, life scientists can upload experimental data, ask questions in plain English, and get instant, publication-ready plots, giving them results in minutes instead of months. Researchers at leading institutions like UCSF, Mount Sinai, UC Berkeley, and Harvard are already using Novaflow in their labs.`;
+    scrapedIntel =
+      scrapedIntel !== 'None available'
+        ? `${scrapedIntel}\n\n${novaflowContext}`
+        : novaflowContext;
+  }
+
+  return `
+You are writing a cold email for ${candidate.name} to ${rawFounderName} at ${startup.name}.
+
+### YOUR PHILOSOPHY
+Behind every startup is a founder who cares deeply about a problem. The best cold emails don't just ask for a job - they show that you genuinely give a damn about the same thing they do.
+
+This isn't about sucking up. It's about authentic connection. If you've actually used their product, actually care about the problem they're solving, or have a genuine story about why THIS company matters to you - that beats a perfect resume every time.
+
+Tristan Walker emailed FourSquare eight times. He got the job because his enthusiasm was obvious and real: "I can assure you I'm humble and I'm hungry!"
+
+### THE RULES
+
+**Subject Line:**
+- Personal and specific to them, not generic
+- Can reference something they did, said, or built
+- Examples: "Your YC demo blew my mind" / "Question about [specific feature]" / "Fellow [shared interest] here"
+
+**The Email Structure:**
+1. Open with YOUR story - why you specifically care about what they're building
+2. Connect your experience to their mission (not just "I have skills")
+3. Show you've actually engaged with their work (used the product, read their posts, etc.)
+4. Make the ask feel natural, not transactional
+
+**The "Genuine Test":**
+Before generating, ask: Could this email ONLY be sent to this specific company? If you could swap out the company name and send it elsewhere, it's not genuine enough.
+
+**What makes this persona different:**
+- Lead with emotion and story, not credentials
+- It's okay to be a little vulnerable ("I'm not from a CS background, but...")
+- Your enthusiasm should be specific, not generic ("I love your company" = bad, "I've been using [feature] since [time] and it changed how I [specific thing]" = good)
+- Let personality come through
+
+**Tone:**
+- Warm and human
+- Enthusiastic but not desperate
+- Conversational, like you're writing to a person you respect
+- It's okay to be informal if it's authentic to you
+
+### NAMING RULES
+- First name only (this persona is personal): "Hi Alex,"
+- Exception: Keep "Dr." or "Prof." if present
+
+### DATA INPUTS
+
+**CANDIDATE:**
+- Name: ${candidate.name}
+- Email: ${candidate.email}
+- Summary: ${candidate.summary}
+- Skills: ${candidate.skills.join(', ')}
+- Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
+- Past Experience: ${candidate.pastInternships || 'None listed'}
+- Projects: ${candidate.technicalProjects || 'None listed'}
+- Links: ${linksText}
+- Resume Context: ${candidate.resumeFullText || 'Not provided'}
+
+**STARTUP:**
+- Name: ${startup.name}
+- Founder: ${rawFounderName}
+- Industry: ${startup.industry || 'Not specified'}
+- Description: ${startup.description || 'N/A'}
+- Recent News/Intel: ${scrapedIntel}
+- What they do: ${startup.description || 'N/A'}
+
+**IMPORTANT:** Use the scraped intel to find something SPECIFIC to reference. If there's nothing specific, invent a plausible detail about why the candidate would care about this company based on their background. The connection must feel real.
+
+### OUTPUT FORMAT
+Return ONLY valid JSON:
+{
+  "subject": "Your subject line here",
+  "body": "The complete email body"
+}
+`.trim();
+}
+
 // ---------- Public API ----------
 
 /**
@@ -255,7 +357,11 @@ export async function generateColdEmail(
     ? `[${options.includeSubjectPrefix}] `
     : '';
 
-  const prompt = buildEmailPrompt(candidate, startup, match);
+  // Select prompt based on persona (default to 'direct-ask')
+  const persona = options.persona || 'direct-ask';
+  const prompt = persona === 'genuine-fan' 
+    ? buildGenuineFanPrompt(candidate, startup, match)
+    : buildEmailPrompt(candidate, startup, match);
 
   const result = await model.generateContent(prompt);
   const responseText = result.response.text();
@@ -322,7 +428,11 @@ export async function* generateColdEmailStream(
   const genAI = getGeminiClient();
   const model = genAI.getGenerativeModel({ model: DEFAULT_EMAIL_MODEL });
 
-  const prompt = buildEmailPrompt(candidate, startup, match);
+  // Select prompt based on persona (default to 'direct-ask')
+  const persona = options.persona || 'direct-ask';
+  const prompt = persona === 'genuine-fan' 
+    ? buildGenuineFanPrompt(candidate, startup, match)
+    : buildEmailPrompt(candidate, startup, match);
 
   try {
     const result = await model.generateContentStream(prompt);

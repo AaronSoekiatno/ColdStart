@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // import { google } from 'googleapis';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { generateColdEmail } from '@/lib/email-generation';
+import { generateColdEmail, type EmailPersona } from '@/lib/email-generation';
 import { getCandidate, getStartup, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
@@ -226,7 +226,8 @@ export async function POST(request: NextRequest) {
           founderEmails: startup.founder_emails || undefined,
           founderLinkedIn: startup.founder_linkedin || undefined,
         },
-        { score: matchScore }
+        { score: matchScore },
+        { persona: 'direct-ask' as EmailPersona }
       );
       emailSubject = generatedEmail.subject;
       emailBody = generatedEmail.body;

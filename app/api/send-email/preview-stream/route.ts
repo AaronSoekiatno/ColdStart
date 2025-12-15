@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { generateColdEmailStream, type EmailTone } from '@/lib/email-generation';
+import { generateColdEmailStream, type EmailTone, type EmailPersona } from '@/lib/email-generation';
 import { getCandidate, getStartup, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
 import { guessFounderEmailFromStartup } from '@/lib/founder-email';
 
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startupId, matchScore, tone } = await request.json();
+    const { startupId, matchScore, persona, tone } = await request.json();
 
     if (!startupId || matchScore === undefined) {
       return new Response(
@@ -102,6 +102,21 @@ export async function POST(request: NextRequest) {
 
     // Check if user is premium
     const isPremium = isSubscribed(candidate);
+
+    // Email persona selection is premium-only feature
+    let emailPersona: EmailPersona = 'direct-ask'; // Default for free users
+    if (persona) {
+      if (!isPremium && persona !== 'direct-ask') {
+        // Free users can only use 'direct-ask' - force it to default
+        emailPersona = 'direct-ask';
+      } else {
+        // Validate persona value
+        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan'];
+        if (validPersonas.includes(persona as EmailPersona)) {
+          emailPersona = persona as EmailPersona;
+        }
+      }
+    }
 
     // Email tone changes are premium-only feature
     let emailTone: EmailTone | undefined = undefined;
@@ -406,7 +421,7 @@ export async function POST(request: NextRequest) {
               founderLinkedIn: startup.founder_linkedin || undefined,
             },
             { score: matchScore },
-            { tone: emailTone }
+            { persona: emailPersona, tone: emailTone }
           );
 
           for await (const chunk of emailStream) {

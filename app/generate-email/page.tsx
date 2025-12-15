@@ -29,6 +29,7 @@ export default function GenerateEmailPage() {
   const matchScoreParam = searchParams.get("matchScore");
   const matchScore = matchScoreParam ? parseFloat(matchScoreParam) : 0;
   const founderEmail = searchParams.get("founderEmail");
+  const personaParam = searchParams.get("persona");
   
   const [user, setUser] = useState<User | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -42,6 +43,7 @@ export default function GenerateEmailPage() {
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [emailTone, setEmailTone] = useState<'professional' | 'classy' | 'informative' | 'ambitious' | 'conversational'>('professional');
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>('direct-ask');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { toast } = useToast();
 
@@ -296,7 +298,23 @@ export default function GenerateEmailPage() {
     if (user && startupId) {
       loadEmailPreview();
     }
-  }, [startupId, matchScore, user, isPremium, emailTone]);
+  }, [startupId, matchScore, user, isPremium, emailTone, emailPersona]);
+
+  // Sync persona with query param when it changes, but enforce premium restrictions
+  useEffect(() => {
+    if (personaParam === 'genuine-fan' || personaParam === 'direct-ask') {
+      // Only allow 'genuine-fan' for premium users
+      if (personaParam === 'genuine-fan' && !isPremium) {
+        // Free users can't use 'genuine-fan' - force to 'direct-ask'
+        setEmailPersona('direct-ask');
+      } else {
+        setEmailPersona(personaParam);
+      }
+    } else {
+      // Default to 'direct-ask' if invalid or missing
+      setEmailPersona('direct-ask');
+    }
+  }, [personaParam, isPremium]);
 
   const handleLoadSuggestions = async () => {
     if (!startupId) return;
@@ -314,6 +332,7 @@ export default function GenerateEmailPage() {
         body: JSON.stringify({
           startupId,
           matchScore,
+          persona: emailPersona,
         }),
       });
 

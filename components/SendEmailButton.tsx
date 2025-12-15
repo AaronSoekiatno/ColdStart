@@ -10,6 +10,7 @@ interface SendEmailButtonProps {
   startupId: string;
   matchScore: number;
   founderEmail?: string;
+  persona?: 'direct-ask' | 'genuine-fan';
   onSent?: () => void;
   variant?: "default" | "outline" | "ghost";
   className?: string;
@@ -22,6 +23,7 @@ export const SendEmailButton = ({
   startupId,
   matchScore,
   founderEmail,
+  persona = 'direct-ask',
   variant = "default",
   className,
   disabled = false,
@@ -44,10 +46,11 @@ export const SendEmailButton = ({
     }
 
     setIsNavigating(true);
-    // Navigate to the generate email page with founder email if available
+    // Navigate to the generate email page with founder email and persona if available
     const params = new URLSearchParams({
       startupId,
       matchScore: matchScore.toString(),
+      persona: persona,
     });
     if (founderEmail) {
       params.append('founderEmail', founderEmail);

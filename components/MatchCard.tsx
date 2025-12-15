@@ -42,6 +42,7 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
   // For free users: array with max 1 item (single selection)
   const [selectedFounderIndices, setSelectedFounderIndices] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
+  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan'>('direct-ask');
 
   if (!match.startup) {
     return null;
@@ -180,13 +181,40 @@ const MatchCardComponent = ({ match, isPremium = false }: MatchCardProps) => {
               Founders
             </button>
           </div>
-          {/* Generate Email Button */}
+          {/* Email Persona Selection (Premium Only) and Generate Email Button */}
           {match.startup.id && (
-            <div className="flex-shrink-0">
+            <div className="flex items-center gap-7">
+              {/* Email Persona Selection - Premium Only */}
+              {isPremium && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEmailPersona('direct-ask')}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                      emailPersona === 'direct-ask'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Direct Ask
+                  </button>
+                  <button
+                    onClick={() => setEmailPersona('genuine-fan')}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                      emailPersona === 'genuine-fan'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Genuine Fan
+                  </button>
+                </div>
+              )}
+              {/* Generate Email Button */}
               <SendEmailButton
                 startupId={match.startup.id}
                 matchScore={match.score}
                 founderEmail={selectedFounderEmail}
+                persona={isPremium ? emailPersona : 'direct-ask'}
                 variant="default"
                 requiresFounderSelection={founderNames.length > 0}
                 isFounderSelected={selectedFounderIndices.length > 0}
