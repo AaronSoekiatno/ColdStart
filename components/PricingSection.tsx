@@ -19,7 +19,6 @@ const freeFeatures = [
 
 const premiumFeatures = [
   "All free features",
-  "Send to multiple founders simultaneously",
   "Email persona selection",
   "Resume editor",
   "Unlimited uploaded resumes",
