@@ -137,6 +137,21 @@ export function ResumeCard({
 
     setIsDownloadingNewResume(true);
     try {
+      // Track the download event
+      await fetch('/api/resumes/track-download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          resumeId,
+          downloadType: 'enhanced',
+        }),
+      }).catch((error) => {
+        // Don't block the download if tracking fails
+        console.warn('Failed to track download:', error);
+      });
       // Fetch structured resume data for this resume
       const resumeResponse = await fetch(`/api/resumes/get-resume?resumeId=${resumeId}`, {
         credentials: 'include',
@@ -261,8 +276,25 @@ export function ResumeCard({
         </div>
         <div className="flex flex-col gap-1.5 sm:gap-2">
           <button
-            onClick={(e) => {
+            onClick={async (e) => {
               e.stopPropagation();
+              if (resumeId) {
+                // Track the preview event
+                await fetch('/api/resumes/track-download', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    resumeId,
+                    downloadType: 'preview',
+                  }),
+                }).catch((error) => {
+                  // Don't block the preview if tracking fails
+                  console.warn('Failed to track preview:', error);
+                });
+              }
               setIsPreviewOpen(true);
             }}
             className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg text-gray-900 transition-all cursor-pointer"
