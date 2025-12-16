@@ -126,8 +126,8 @@ function GenerateEmailPageContent() {
 
     try {
       setIsPreviewLoading(true);
-      setPreviewSubject('');
-      setPreviewBody('');
+      // Don't reset subject/body to empty strings - let them stay null during initial loading
+      // so the research messages can show
 
       // Use streaming endpoint
       console.log(`[Email Preview] Requesting email generation with persona: '${currentPersona}' (from URL param: '${personaParam}', state: '${emailPersona}') for startupId: ${startupId}`);
@@ -245,42 +245,9 @@ function GenerateEmailPageContent() {
               if (data.type === 'metadata') {
                 // Metadata received - can be used for future extensions
               } else if (data.type === 'chunk') {
-                // Accumulate text as it streams in
+                // Accumulate text as it streams in for debugging
                 accumulatedText += data.text;
-                
-                // Try to extract body text from JSON for real-time display
-                // This creates a ChatGPT-like streaming effect
-                try {
-                  // Look for the body field and extract its value as it streams
-                  const bodyStartIndex = accumulatedText.indexOf('"body"');
-                  if (bodyStartIndex !== -1) {
-                    // Find the start of the body value (after "body":")
-                    const valueStart = accumulatedText.indexOf('"', bodyStartIndex + 7) + 1;
-                    if (valueStart > 0) {
-                      // Extract everything after the opening quote
-                      let bodyValue = accumulatedText.substring(valueStart);
-                      // Remove any trailing JSON structure (closing quote, brace, etc.)
-                      bodyValue = bodyValue.replace(/"[^"]*$/, '').replace(/"}?\s*$/, '');
-                      // Unescape JSON string characters
-                      bodyValue = bodyValue
-                        .replace(/\\n/g, '\n')
-                        .replace(/\\"/g, '"')
-                        .replace(/\\\\/g, '\\')
-                        .replace(/\\t/g, '\t');
-                      if (bodyValue) {
-                        setPreviewBody(bodyValue);
-                      }
-                    }
-                  }
-                  
-                  // Try to extract subject
-                  const subjectMatch = accumulatedText.match(/"subject"\s*:\s*"([^"]*)"/);
-                  if (subjectMatch && subjectMatch[1]) {
-                    setPreviewSubject(subjectMatch[1]);
-                  }
-                } catch {
-                  // If extraction fails, the final 'done' event will have the correct values
-                }
+                // Don't try to parse JSON in real-time - just wait for the final result
               } else if (data.type === 'done') {
                 // Final result
                 const finalSubject = data.subject || '';
@@ -469,48 +436,7 @@ function GenerateEmailPageContent() {
       <Header initialUser={user} />
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
         <div className="h-full w-full flex flex-col">
-          {isPreviewLoading && previewSubject === null && previewBody === null ? (
-            <div className="flex flex-col items-center justify-center flex-1 space-y-6">
-              {/* Animated AI Thinking Icon */}
-              <div className="relative">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                  </div>
-                </div>
-                {/* Glossy overlay animation */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
-              </div>
-
-              {/* Research Status Messages */}
-              <div className="text-center space-y-3 max-w-md">
-                <div className="relative">
-                  <p className="text-gray-700 text-base font-medium transition-all duration-500 ease-in-out transform">
-                    {researchMessages[currentResearchMessage]}
-                  </p>
-                  {/* Glossy text effect */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-text opacity-60 pointer-events-none"></div>
-                </div>
-                <div className="flex justify-center space-x-1">
-                  {researchMessages.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                        index === currentResearchMessage
-                          ? 'bg-blue-500 scale-125'
-                          : 'bg-gray-300'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Progress indicator */}
-              <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-progress-bar"></div>
-              </div>
-            </div>
-          ) : (previewSubject || previewBody || isPreviewLoading) ? (
+          {(previewSubject || previewBody || isPreviewLoading) ? (
             <div className="flex-1 flex flex-col min-h-0 w-full h-full">
               {/* Email Preview */}
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -637,7 +563,7 @@ function GenerateEmailPageContent() {
                             // Body editing is local only - Supabase stores the generated version
                           }}
                           className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-300 resize-none pr-10 text-base sm:text-lg"
-                          placeholder={isPreviewLoading ? "Your email will appear here as it's generated..." : "Email body"}
+                          placeholder={isPreviewLoading ? researchMessages[currentResearchMessage] : "Email body"}
                         />
                         <button
                           onClick={async () => {
