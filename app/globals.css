@@ -232,3 +232,27 @@
   }
 }
 
+/* Google Sign-In Button Customization */
+.google-signin-button iframe {
+  width: 100% !important;
+}
+
+/* Override Google's button styling to center logo with text */
+.google-signin-button > div {
+  width: 100% !important;
+}
+
+.google-signin-button button {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+/* Make Google sign-in button text black */
+.google-signin-button button span {
+  color: #000000 !important;
+  font-weight: 500 !important;
+}
+
