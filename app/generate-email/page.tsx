@@ -564,6 +564,11 @@ function GenerateEmailPageContent() {
                           }}
                           className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-300 resize-none pr-10 text-base sm:text-lg"
                           placeholder={isPreviewLoading ? researchMessages[currentResearchMessage] : "Email body"}
+                          style={isPreviewLoading && !previewBody ? {
+                            background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
+                            backgroundSize: '200% 100%',
+                            animation: 'shimmer 2s infinite',
+                          } : undefined}
                         />
                         <button
                           onClick={async () => {
