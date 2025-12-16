@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Copy, X, Mail } from "lucide-react";
+import { Loader2, Copy, X, Mail, AlertTriangle } from "lucide-react";
 import { Header } from "@/components/Header";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -492,6 +492,16 @@ function GenerateEmailPageContent() {
                       >
                         <X className="w-5 h-5" />
                       </button>
+                    </div>
+                  </div>
+                  <div className="mb-3 flex-shrink-0">
+                    <div className="rounded-md p-2 flex items-start gap-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-900">
+                          <span className="font-medium">85% email accuracy:</span> If your email bounces, please alert us through the feedback button.
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <div className="flex-1 flex flex-col space-y-4 min-h-0">
