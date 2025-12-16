@@ -63,8 +63,18 @@ export default async function ResumePage() {
   // Check if user is premium
   const isPremium = isSubscribed(candidate);
 
+  // Check if user is a new sign-up (created within last 7 days)
+  const isNewUser = candidate.created_at
+    ? (Date.now() - new Date(candidate.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000
+    : false;
+
   // Get all active resumes for this candidate
   const resumes = await getResumesForCandidate(candidate.id);
+
+  // If no resumes exist, redirect to home with flag to open upload modal
+  if (resumes.length === 0) {
+    redirect('/?uploadResume=true');
+  }
 
   // Get the primary resume to identify which one is current
   const primaryResume = await getPrimaryResumeForCandidate(candidate.id);
@@ -109,6 +119,8 @@ export default async function ResumePage() {
             hasEnhancedVersion: !!(resume as any).has_been_enhanced,
           }))}
           isPremium={isPremium}
+          isNewUser={isNewUser}
+          primaryResumeId={primaryResumeId || undefined}
         />
       </main>
     </div>
