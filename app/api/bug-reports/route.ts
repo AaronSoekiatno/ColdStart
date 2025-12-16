@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { description, page_url, user_agent, browser_info } = body;
+    const { description, page_url, user_agent, browser_info, bounced_email, startup_id } = body;
 
     // Validate required fields
     if (!description || typeof description !== "string" || description.trim().length === 0) {
@@ -57,6 +57,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build metadata object if bounced email is provided
+    const metadata = bounced_email || startup_id 
+      ? {
+          bounced_email: bounced_email || null,
+          startup_id: startup_id || null,
+          report_type: bounced_email ? "bounced_email" : "bug",
+        }
+      : null;
+
     // Insert bug report
     const { data, error } = await supabaseAdmin
       .from("bug_reports")
@@ -68,6 +77,7 @@ export async function POST(request: NextRequest) {
         user_agent: user_agent || null,
         browser_info: browser_info || null,
         status: "new",
+        metadata: metadata,
       })
       .select()
       .single();

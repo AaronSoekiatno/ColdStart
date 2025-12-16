@@ -11,6 +11,7 @@ import { Header } from "@/components/Header";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { BugReportModal } from "@/components/BugReportModal";
 
 function GenerateEmailPageContent() {
   const router = useRouter();
@@ -36,6 +37,7 @@ function GenerateEmailPageContent() {
     return initialPersona;
   });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [currentResearchMessage, setCurrentResearchMessage] = useState(0);
   const { toast } = useToast();
 
@@ -484,7 +486,14 @@ function GenerateEmailPageContent() {
                       <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <p className="text-xs text-gray-900">
-                          <span className="font-medium">85% email accuracy:</span> If your email bounces, please alert us through the feedback button.
+                          <span className="font-medium">85% email accuracy:</span> If your email bounces, please{" "}
+                          <button
+                            onClick={() => setShowFeedbackModal(true)}
+                            className="text-blue-600 hover:text-blue-700 underline font-medium"
+                          >
+                            alert us through feedback
+                          </button>
+                          .
                         </p>
                       </div>
                     </div>
@@ -626,6 +635,12 @@ function GenerateEmailPageContent() {
           }}
         />
       )}
+      <BugReportModal
+        open={showFeedbackModal}
+        onOpenChange={setShowFeedbackModal}
+        bouncedEmail={founderEmail || undefined}
+        startupId={startupId || undefined}
+      />
     </div>
   );
 }
