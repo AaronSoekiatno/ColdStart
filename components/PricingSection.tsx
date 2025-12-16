@@ -22,6 +22,7 @@ const premiumFeatures = [
   "Email persona selection",
   "Resume editor",
   "Unlimited uploaded resumes",
+  "Unlimited email enhancement",
 ];
 
 export function PricingSection({ userEmail, onGetStarted }: PricingSectionProps) {
