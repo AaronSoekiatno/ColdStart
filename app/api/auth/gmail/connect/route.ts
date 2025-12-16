@@ -3,8 +3,8 @@ import { google } from 'googleapis';
 import { createServerClient } from '@supabase/ssr';
 
 const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_GMAIL_CLIENT_ID,
+  process.env.GOOGLE_GMAIL_CLIENT_SECRET,
   `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/gmail/callback`
 );
 
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/?error=session_missing', request.url));
     }
 
-    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    if (!process.env.GOOGLE_GMAIL_CLIENT_ID || !process.env.GOOGLE_GMAIL_CLIENT_SECRET) {
       console.error('Missing Google OAuth credentials');
       return NextResponse.redirect(new URL('/?error=gmail_config_missing', request.url));
     }
