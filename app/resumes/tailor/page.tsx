@@ -320,10 +320,71 @@ function EnhanceResumePageContent() {
   const handleDoneEnhancing = async () => {
     if (showFinishButton) {
       // Second click - redirect to resumes page
-      // Set flag to show matches banner on resumes page
+      // Preload matches and images before redirecting
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('justEnhancedResume', 'true');
+        
+        // Preload matches and founder profile pictures
+        try {
+          const response = await fetch('/api/matches?page=1&limit=5', {
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const matches = data.matches || [];
+            
+            // Extract founder profile pictures from top matches
+            const pfps: Array<{ url: string; name: string }> = [];
+            matches.forEach((match: any) => {
+              if (match.startup?.founders_pfp) {
+                // Parse founders_pfp - handle both array and string formats
+                let founderProfilePictures: string[] = [];
+                if (Array.isArray(match.startup.founders_pfp)) {
+                  founderProfilePictures = match.startup.founders_pfp
+                    .map((url: any) => String(url).trim())
+                    .filter((url: string) => url && url !== '');
+                } else if (typeof match.startup.founders_pfp === 'string') {
+                  founderProfilePictures = match.startup.founders_pfp
+                    .split(',')
+                    .map((url: string) => url.trim())
+                    .filter((url: string) => url && url !== '');
+                }
+
+                // Get founder names
+                const founderNames = match.startup.founder_names
+                  ? match.startup.founder_names.split(',').map((n: string) => n.trim())
+                  : [];
+
+                // Add first founder from each match (limit to 4 total)
+                if (founderProfilePictures.length > 0 && pfps.length < 4) {
+                  const firstName = founderNames[0] || match.startup.name || 'Founder';
+                  pfps.push({
+                    url: founderProfilePictures[0],
+                    name: firstName,
+                  });
+                }
+              }
+            });
+
+            const finalPfps = pfps.slice(0, 4);
+            
+            // Store in sessionStorage for immediate access
+            sessionStorage.setItem('bannerFounderPfps', JSON.stringify(finalPfps));
+            
+            // Preload images immediately
+            finalPfps.forEach((founder) => {
+              if (founder.url && founder.url.trim() !== '') {
+                const img = new Image();
+                img.src = `/api/image-proxy?url=${encodeURIComponent(founder.url)}`;
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Error preloading matches for banner:', error);
+        }
       }
+      
       router.push('/resumes');
     } else {
       // First click - clear highlights and show "Finish" button

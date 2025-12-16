@@ -34,8 +34,25 @@ export function CheckMatchesBanner() {
         setShouldShow(true);
         // Clear the flag so it doesn't show again on refresh
         sessionStorage.removeItem('justEnhancedResume');
-        // Fetch top matches to get founder profile pictures
-        fetchTopMatches();
+        
+        // Check if founder pfps were preloaded and stored
+        const storedPfps = sessionStorage.getItem('bannerFounderPfps');
+        if (storedPfps) {
+          try {
+            const pfps = JSON.parse(storedPfps);
+            setFounderPfps(pfps);
+            // Clear stored data after using it
+            sessionStorage.removeItem('bannerFounderPfps');
+            // Images should already be cached from preloading
+          } catch (error) {
+            console.error('Error parsing stored founder pfps:', error);
+            // Fallback to fetching if parsing fails
+            fetchTopMatches();
+          }
+        } else {
+          // Fallback: fetch if not preloaded
+          fetchTopMatches();
+        }
       }
     }
   }, []);
@@ -84,13 +101,34 @@ export function CheckMatchesBanner() {
           }
         });
 
-        setFounderPfps(pfps.slice(0, 4)); // Limit to 4 profile pictures
+        const finalPfps = pfps.slice(0, 4); // Limit to 4 profile pictures
+        setFounderPfps(finalPfps);
+        
+        // Preload images immediately after fetching
+        preloadImages(finalPfps);
       }
     } catch (error) {
       console.error('Error fetching matches for banner:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const preloadImages = (pfps: FounderPfp[]) => {
+    pfps.forEach((founder, index) => {
+      if (founder.url && founder.url.trim() !== '') {
+        const img = new Image();
+        const imageUrl = `/api/image-proxy?url=${encodeURIComponent(founder.url)}`;
+        
+        img.onerror = () => {
+          console.log(`[CheckMatchesBanner] Failed to preload image for ${founder.name}:`, founder.url);
+          setFailedImages(prev => new Set(prev).add(index));
+        };
+        
+        // Start loading the image (browser will cache it)
+        img.src = imageUrl;
+      }
+    });
   };
 
   const handleDismiss = () => {
@@ -139,6 +177,8 @@ export function CheckMatchesBanner() {
                       height={48}
                       className="w-full h-full object-cover"
                       unoptimized
+                      loading="eager"
+                      priority={index < 2} // Prioritize first 2 images
                       onError={() => {
                         setFailedImages(prev => new Set(prev).add(index));
                       }}
