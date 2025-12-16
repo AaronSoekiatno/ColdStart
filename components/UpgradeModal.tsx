@@ -31,6 +31,7 @@ const premiumFeatures = [
   "Email persona selection",
   "Resume editor",
   "Unlimited uploaded resumes",
+  "Unlimited email enhancement",
 ];
 
 export function UpgradeModal({ open, onOpenChange, hiddenMatchCount, email, onDismiss, customTitle, isPremium: initialIsPremium = false }: UpgradeModalProps) {
