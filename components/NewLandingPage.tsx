@@ -65,7 +65,8 @@ export function NewLandingPage() {
       } else if (isNewSignIn) {
         // If user just signed in and there's no pending upload, redirect to matches
         setShowSignIn(false);
-        router.push("/matches");
+        // Use window.location for more reliable redirect
+        window.location.href = "/matches";
       }
     };
 
@@ -95,6 +96,11 @@ export function NewLandingPage() {
         const postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect');
         if (postAuthRedirect) {
           window.sessionStorage.removeItem('postAuthRedirect');
+          // Actually perform the redirect using window.location for reliability
+          setTimeout(() => {
+            window.location.href = postAuthRedirect;
+          }, 100);
+          return; // Exit early to prevent other redirects
         }
       }
       

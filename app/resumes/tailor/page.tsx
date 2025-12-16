@@ -320,6 +320,10 @@ function EnhanceResumePageContent() {
   const handleDoneEnhancing = async () => {
     if (showFinishButton) {
       // Second click - redirect to resumes page
+      // Set flag to show matches banner on resumes page
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('justEnhancedResume', 'true');
+      }
       router.push('/resumes');
     } else {
       // First click - clear highlights and show "Finish" button

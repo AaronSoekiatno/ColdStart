@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ResumeList } from '@/components/ResumeList';
 import { ResumeUploadModal } from '@/components/ResumeUploadModal';
+import { EnhancePortfolioBanner } from '@/components/EnhancePortfolioBanner';
+import { CheckMatchesBanner } from '@/components/CheckMatchesBanner';
 
 interface Resume {
   id: string;
@@ -16,9 +18,11 @@ interface Resume {
 interface ResumePageContentProps {
   resumes: Resume[];
   isPremium: boolean;
+  isNewUser?: boolean;
+  primaryResumeId?: string;
 }
 
-export function ResumePageContent({ resumes, isPremium }: ResumePageContentProps) {
+export function ResumePageContent({ resumes, isPremium, isNewUser = false, primaryResumeId }: ResumePageContentProps) {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   const handleUploadSuccess = () => {
@@ -28,8 +32,28 @@ export function ResumePageContent({ resumes, isPremium }: ResumePageContentProps
     }, 1500); // Wait for the success message to show
   };
 
+  // Check if user just finished enhancing (takes priority over new user banner)
+  const [justEnhanced, setJustEnhanced] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const justEnhancedFlag = sessionStorage.getItem('justEnhancedResume');
+      if (justEnhancedFlag === 'true') {
+        setJustEnhanced(true);
+      }
+    }
+  }, []);
+
   return (
     <>
+      <CheckMatchesBanner />
+      {/* Only show enhance banner if user didn't just finish enhancing */}
+      {!justEnhanced && (
+        <EnhancePortfolioBanner 
+          resumeId={primaryResumeId}
+          isNewUser={isNewUser}
+        />
+      )}
       <ResumeList 
         resumes={resumes}
         isPremium={isPremium}
