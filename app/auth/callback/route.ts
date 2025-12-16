@@ -8,6 +8,9 @@ export async function GET(request: NextRequest) {
   const type = requestUrl.searchParams.get('type');
   const origin = requestUrl.origin;
   
+  // Log for debugging - helps identify if callback is being called from wrong domain
+  console.log('[Auth Callback] Request origin:', origin, 'Full URL:', requestUrl.toString());
+  
   // Check for Supabase OAuth errors first
   const error = requestUrl.searchParams.get('error');
   const errorDescription = requestUrl.searchParams.get('error_description');
@@ -76,12 +79,51 @@ export async function GET(request: NextRequest) {
     // Check for redirect parameter
     const redirectTo = requestUrl.searchParams.get('redirect');
     
-    // Redirect to specified URL or home page after successful authentication
-    // Add new_signup parameter to trigger Gmail connection modal
-    const redirectUrl = new URL(redirectTo || '/', origin);
+    // For OAuth sign-in, default to /matches instead of home
+    // This can be overridden by the redirect parameter
+    let redirectPath = redirectTo || '/matches';
+    
+    // Ensure redirect path is relative (starts with /)
+    if (!redirectPath.startsWith('/')) {
+      redirectPath = '/' + redirectPath;
+    }
+    
+    // If redirectPath contains a full URL, extract just the pathname
+    // This prevents redirecting to production when on localhost
+    if (redirectPath.includes('://')) {
+      try {
+        const parsedUrl = new URL(redirectPath);
+        redirectPath = parsedUrl.pathname + parsedUrl.search;
+      } catch {
+        // If parsing fails, default to just the path part
+        const pathMatch = redirectPath.match(/\/\/[^\/]+(\/.*)/);
+        if (pathMatch) {
+          redirectPath = pathMatch[1];
+        } else {
+          redirectPath = '/';
+        }
+      }
+    }
+    
+    // Always construct URL using the request origin (localhost in dev, production in prod)
+    // Force use of request origin to prevent Supabase from redirecting to production
+    const redirectUrl = new URL(redirectPath, origin);
+    
+    // Double-check: if we're on localhost but redirectUrl is pointing to production, fix it
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      if (!redirectUrl.hostname.includes('localhost') && !redirectUrl.hostname.includes('127.0.0.1')) {
+        // Force localhost origin
+        redirectUrl.hostname = origin.includes('127.0.0.1') ? '127.0.0.1' : 'localhost';
+        redirectUrl.port = origin.includes(':') ? origin.split(':')[2] || '3000' : '3000';
+        redirectUrl.protocol = 'http:';
+      }
+    }
+    
     if (isNewSignUp && !redirectTo) {
       redirectUrl.searchParams.set('new_signup', 'true');
     }
+    
+    console.log('[Auth Callback] Redirecting to:', redirectUrl.toString(), 'from origin:', origin);
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -107,7 +149,46 @@ export async function GET(request: NextRequest) {
     const redirectTo = requestUrl.searchParams.get('redirect');
     
     // Redirect to specified URL or home page after successful authentication
-    return NextResponse.redirect(new URL(redirectTo || '/', origin));
+    // Always use the request origin to ensure localhost works correctly
+    let redirectPath = redirectTo || '/';
+    
+    // Ensure redirect path is relative (starts with /)
+    if (!redirectPath.startsWith('/')) {
+      redirectPath = '/' + redirectPath;
+    }
+    
+    // If redirectPath contains a full URL, extract just the pathname
+    // This prevents redirecting to production when on localhost
+    if (redirectPath.includes('://')) {
+      try {
+        const parsedUrl = new URL(redirectPath);
+        redirectPath = parsedUrl.pathname + parsedUrl.search;
+      } catch {
+        // If parsing fails, default to just the path part
+        const pathMatch = redirectPath.match(/\/\/[^\/]+(\/.*)/);
+        if (pathMatch) {
+          redirectPath = pathMatch[1];
+        } else {
+          redirectPath = '/';
+        }
+      }
+    }
+    
+    // Always construct URL using the request origin (localhost in dev, production in prod)
+    const redirectUrl = new URL(redirectPath, origin);
+    
+    // Double-check: if we're on localhost but redirectUrl is pointing to production, fix it
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      if (!redirectUrl.hostname.includes('localhost') && !redirectUrl.hostname.includes('127.0.0.1')) {
+        // Force localhost origin
+        redirectUrl.hostname = origin.includes('127.0.0.1') ? '127.0.0.1' : 'localhost';
+        redirectUrl.port = origin.includes(':') ? origin.split(':')[2] || '3000' : '3000';
+        redirectUrl.protocol = 'http:';
+      }
+    }
+    
+    console.log('[Auth Callback] Magic link redirecting to:', redirectUrl.toString(), 'from origin:', origin);
+    return NextResponse.redirect(redirectUrl);
   }
 
   // Check for hash fragments (password reset links use hash fragments)

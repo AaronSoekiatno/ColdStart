@@ -51,7 +51,7 @@ export function NewLandingPage() {
 
   useEffect(() => {
     // Helper to open resume upload modal after successful authentication
-    const maybeOpenPendingUpload = (session: { user: User | null } | null) => {
+    const maybeOpenPendingUpload = (session: { user: User | null } | null, isNewSignIn: boolean = false) => {
       if (!session?.user) return;
       if (typeof window === "undefined") return;
 
@@ -62,25 +62,49 @@ export function NewLandingPage() {
         window.sessionStorage.removeItem("pendingResumeUpload");
         setShowSignIn(false);
         setShowResumeUpload(true);
+      } else if (isNewSignIn) {
+        // If user just signed in and there's no pending upload, redirect to matches
+        setShowSignIn(false);
+        router.push("/matches");
       }
     };
 
+    let previousUser: User | null = null;
+    let initialLoadComplete = false;
+
     // Check initial session (handles returning from OAuth redirect)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      maybeOpenPendingUpload(session);
+      previousUser = session?.user ?? null;
+      setUser(previousUser);
+      initialLoadComplete = true;
+      // OAuth redirects are now handled server-side in the callback route
     });
 
     // Listen for auth changes (handles in-app email/password sign-in)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      maybeOpenPendingUpload(session);
+      const currentUser = session?.user ?? null;
+      // Only treat as new sign-in if initial load is complete and user changed from null to non-null
+      const isNewSignIn = initialLoadComplete && !previousUser && currentUser !== null;
+      
+      setUser(currentUser);
+      
+      // Check for post-auth redirect (for email sign-in)
+      if (isNewSignIn && typeof window !== 'undefined') {
+        const postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect');
+        if (postAuthRedirect) {
+          window.sessionStorage.removeItem('postAuthRedirect');
+        }
+      }
+      
+      maybeOpenPendingUpload(session, isNewSignIn);
+      
+      previousUser = currentUser;
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   // Fetch candidate info to check premium status - only when email changes
   useEffect(() => {
