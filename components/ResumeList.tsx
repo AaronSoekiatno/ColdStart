@@ -111,9 +111,9 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
   return (
     <>
       {/* Header Section */}
-      <div className="mb-6 sm:mb-8">
+      <div className="mb-4 sm:mb-5">
         {/* Title and Active Button Row */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-2 sm:mb-3">
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-1 sm:mb-2">My Resumes</h1>
             <p className="text-sm sm:text-base text-gray-600">
@@ -148,21 +148,10 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
             )}
           </button>
         </div>
-        
-        {/* Upload Button */}
-        {onUploadClick && (
-          <button
-            onClick={onUploadClick}
-            className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-xs sm:text-sm font-medium shadow-sm"
-          >
-            <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span>Upload Resume</span>
-          </button>
-        )}
       </div>
 
       {sortedResumes.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-5">
           {sortedResumes.map((resume) => (
             <ResumeCard 
               key={resume.id}
@@ -179,10 +168,23 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-6 sm:p-12 text-center shadow-sm">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-200 p-6 sm:p-12 text-center shadow-sm mb-4 sm:mb-5">
           <p className="text-gray-600 text-sm sm:text-lg">
             No resumes found. Upload your resume to get started!
           </p>
+        </div>
+      )}
+
+      {/* Upload Button - moved to bottom */}
+      {onUploadClick && (
+        <div className="flex justify-center mt-14 ">
+          <button
+            onClick={onUploadClick}
+            className="flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-sm sm:text-base font-medium shadow-sm"
+          >
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>Upload Resume</span>
+          </button>
         </div>
       )}
     </>

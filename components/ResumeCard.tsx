@@ -373,7 +373,7 @@ export function ResumeCard({
               <button
                 onClick={handleEditName}
                 disabled={isUpdatingName || !editedName.trim() || editedName.trim() === (resumeName || fileName)}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-300 hover:bg-blue-400 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer hover:shadow-md"
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-300 hover:bg-blue-500 rounded-lg transition-all disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer hover:shadow-md"
               >
                 {isUpdatingName ? (
                   <>
