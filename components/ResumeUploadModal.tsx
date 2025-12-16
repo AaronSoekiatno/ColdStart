@@ -50,13 +50,30 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
 
   const handleUploadSuccess = async () => {
     onOpenChange(false);
-    
+
     // If a custom callback is provided, use that instead (for other pages like /resumes)
     if (onUploadSuccess) {
       onUploadSuccess();
     } else {
-      // Default behavior: always navigate to resumes page after successful upload
-      router.push('/resumes');
+      // Check if user needs onboarding
+      try {
+        const response = await fetch('/api/candidate/check-onboarding', {
+          credentials: 'include',
+        });
+        const data = await response.json();
+
+        if (data.needsOnboarding) {
+          // New user - redirect to onboarding
+          router.push('/onboarding');
+        } else {
+          // Existing user - redirect to resumes page
+          router.push('/resumes');
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        // Default to resumes page on error
+        router.push('/resumes');
+      }
     }
   };
 

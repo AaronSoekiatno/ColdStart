@@ -36,11 +36,34 @@ function GenerateEmailPageContent() {
     return initialPersona;
   });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [currentResearchMessage, setCurrentResearchMessage] = useState(0);
   const { toast } = useToast();
+
+  // Research messages that simulate AI thinking
+  const researchMessages = [
+    "Analyzing startup profile and recent updates...",
+    "Researching founder background and expertise...",
+    "Reviewing company mission and values...",
+    "Examining market positioning and competition...",
+    "Crafting personalized outreach strategy...",
+  ];
 
   // Ref to prevent concurrent API calls
   const isLoadingRef = useRef(false);
   const currentRequestRef = useRef<string | null>(null);
+
+  // Rotate research messages during loading
+  useEffect(() => {
+    if (isPreviewLoading && previewSubject === null && previewBody === null) {
+      const interval = setInterval(() => {
+        setCurrentResearchMessage((prev) => (prev + 1) % researchMessages.length);
+      }, 2500); // Change message every 2.5 seconds
+
+      return () => clearInterval(interval);
+    } else {
+      setCurrentResearchMessage(0); // Reset when not loading
+    }
+  }, [isPreviewLoading, previewSubject, previewBody]);
 
   useEffect(() => {
     // Check auth and premium status
@@ -103,8 +126,8 @@ function GenerateEmailPageContent() {
 
     try {
       setIsPreviewLoading(true);
-      setPreviewSubject('');
-      setPreviewBody('');
+      // Don't reset subject/body to empty strings - let them stay null during initial loading
+      // so the research messages can show
 
       // Use streaming endpoint
       console.log(`[Email Preview] Requesting email generation with persona: '${currentPersona}' (from URL param: '${personaParam}', state: '${emailPersona}') for startupId: ${startupId}`);
@@ -222,42 +245,9 @@ function GenerateEmailPageContent() {
               if (data.type === 'metadata') {
                 // Metadata received - can be used for future extensions
               } else if (data.type === 'chunk') {
-                // Accumulate text as it streams in
+                // Accumulate text as it streams in for debugging
                 accumulatedText += data.text;
-                
-                // Try to extract body text from JSON for real-time display
-                // This creates a ChatGPT-like streaming effect
-                try {
-                  // Look for the body field and extract its value as it streams
-                  const bodyStartIndex = accumulatedText.indexOf('"body"');
-                  if (bodyStartIndex !== -1) {
-                    // Find the start of the body value (after "body":")
-                    const valueStart = accumulatedText.indexOf('"', bodyStartIndex + 7) + 1;
-                    if (valueStart > 0) {
-                      // Extract everything after the opening quote
-                      let bodyValue = accumulatedText.substring(valueStart);
-                      // Remove any trailing JSON structure (closing quote, brace, etc.)
-                      bodyValue = bodyValue.replace(/"[^"]*$/, '').replace(/"}?\s*$/, '');
-                      // Unescape JSON string characters
-                      bodyValue = bodyValue
-                        .replace(/\\n/g, '\n')
-                        .replace(/\\"/g, '"')
-                        .replace(/\\\\/g, '\\')
-                        .replace(/\\t/g, '\t');
-                      if (bodyValue) {
-                        setPreviewBody(bodyValue);
-                      }
-                    }
-                  }
-                  
-                  // Try to extract subject
-                  const subjectMatch = accumulatedText.match(/"subject"\s*:\s*"([^"]*)"/);
-                  if (subjectMatch && subjectMatch[1]) {
-                    setPreviewSubject(subjectMatch[1]);
-                  }
-                } catch {
-                  // If extraction fails, the final 'done' event will have the correct values
-                }
+                // Don't try to parse JSON in real-time - just wait for the final result
               } else if (data.type === 'done') {
                 // Final result
                 const finalSubject = data.subject || '';
@@ -446,12 +436,7 @@ function GenerateEmailPageContent() {
       <Header initialUser={user} />
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
         <div className="h-full w-full flex flex-col">
-          {isPreviewLoading && previewSubject === null && previewBody === null ? (
-            <div className="flex flex-col items-center justify-center flex-1 space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
-              <p className="text-gray-600 text-sm">Generating your email...</p>
-            </div>
-          ) : (previewSubject || previewBody || isPreviewLoading) ? (
+          {(previewSubject || previewBody || isPreviewLoading) ? (
             <div className="flex-1 flex flex-col min-h-0 w-full h-full">
               {/* Email Preview */}
                 <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -588,7 +573,12 @@ function GenerateEmailPageContent() {
                             // Body editing is local only - Supabase stores the generated version
                           }}
                           className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-300 resize-none pr-10 text-base sm:text-lg"
-                          placeholder={isPreviewLoading ? "Your email will appear here as it's generated..." : "Email body"}
+                          placeholder={isPreviewLoading ? researchMessages[currentResearchMessage] : "Email body"}
+                          style={isPreviewLoading && !previewBody ? {
+                            background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
+                            backgroundSize: '200% 100%',
+                            animation: 'shimmer 2s infinite',
+                          } : undefined}
                         />
                         <button
                           onClick={async () => {

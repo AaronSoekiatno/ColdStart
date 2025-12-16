@@ -97,7 +97,7 @@ export default async function ResumePage() {
     <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
       
-      <main className="container mx-auto px-3 sm:px-4 pt-16 sm:pt-20 md:pt-24 lg:pt-32 pb-8 sm:pb-12 max-w-6xl">
+      <main className="container mx-auto px-3 sm:px-4 pt-16 sm:pt-20 md:pt-24 lg:pt-32 pb-4 sm:pb-6 max-w-6xl">
         <ResumePageContent
           resumes={resumesWithUrls.map((resume) => ({
             id: resume.id,

@@ -127,7 +127,7 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
             className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 text-white rounded-lg transition-all text-xs sm:text-sm font-medium shadow-sm self-start sm:self-auto flex-shrink-0 ${
               isAlreadyActive && isButtonDisabled
                 ? 'bg-blue-300 hover:bg-blue-300 disabled:bg-blue-300 disabled:cursor-not-allowed'
-                : 'bg-black hover:bg-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed'
+                : 'bg-black hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed'
             }`}
           >
             {isSettingPrimary ? (
@@ -177,12 +177,12 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
 
       {/* Upload Button - moved to bottom */}
       {onUploadClick && (
-        <div className="flex justify-center mt-14 ">
+        <div className="flex justify-center mt-8 sm:mt-10">
           <button
             onClick={onUploadClick}
             className="flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-sm sm:text-base font-medium shadow-sm"
           >
-            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />  
             <span>Upload Resume</span>
           </button>
         </div>
