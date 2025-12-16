@@ -36,11 +36,34 @@ function GenerateEmailPageContent() {
     return initialPersona;
   });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [currentResearchMessage, setCurrentResearchMessage] = useState(0);
   const { toast } = useToast();
+
+  // Research messages that simulate AI thinking
+  const researchMessages = [
+    "Analyzing startup profile and recent updates...",
+    "Researching founder background and expertise...",
+    "Reviewing company mission and values...",
+    "Examining market positioning and competition...",
+    "Crafting personalized outreach strategy...",
+  ];
 
   // Ref to prevent concurrent API calls
   const isLoadingRef = useRef(false);
   const currentRequestRef = useRef<string | null>(null);
+
+  // Rotate research messages during loading
+  useEffect(() => {
+    if (isPreviewLoading && previewSubject === null && previewBody === null) {
+      const interval = setInterval(() => {
+        setCurrentResearchMessage((prev) => (prev + 1) % researchMessages.length);
+      }, 2500); // Change message every 2.5 seconds
+
+      return () => clearInterval(interval);
+    } else {
+      setCurrentResearchMessage(0); // Reset when not loading
+    }
+  }, [isPreviewLoading, previewSubject, previewBody]);
 
   useEffect(() => {
     // Check auth and premium status
@@ -447,9 +470,45 @@ function GenerateEmailPageContent() {
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
         <div className="h-full w-full flex flex-col">
           {isPreviewLoading && previewSubject === null && previewBody === null ? (
-            <div className="flex flex-col items-center justify-center flex-1 space-y-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-300" />
-              <p className="text-gray-600 text-sm">Generating your email...</p>
+            <div className="flex flex-col items-center justify-center flex-1 space-y-6">
+              {/* Animated AI Thinking Icon */}
+              <div className="relative">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                  <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+                {/* Glossy overlay animation */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+              </div>
+
+              {/* Research Status Messages */}
+              <div className="text-center space-y-3 max-w-md">
+                <div className="relative">
+                  <p className="text-gray-700 text-base font-medium transition-all duration-500 ease-in-out transform">
+                    {researchMessages[currentResearchMessage]}
+                  </p>
+                  {/* Glossy text effect */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer-text opacity-60 pointer-events-none"></div>
+                </div>
+                <div className="flex justify-center space-x-1">
+                  {researchMessages.map((_, index) => (
+                    <div
+                      key={index}
+                      className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        index === currentResearchMessage
+                          ? 'bg-blue-500 scale-125'
+                          : 'bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Progress indicator */}
+              <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full animate-progress-bar"></div>
+              </div>
             </div>
           ) : (previewSubject || previewBody || isPreviewLoading) ? (
             <div className="flex-1 flex flex-col min-h-0 w-full h-full">
