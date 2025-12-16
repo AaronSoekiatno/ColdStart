@@ -135,7 +135,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
             height={32}
             priority
           />
-          <span className="text-xl font-normal text-gray-800" style={{ fontFamily: 'var(--font-sora), Inter, sans-serif' }}>Hermes</span>
+          <span className="text-xl font-semibold text-gray-800">Hermes</span>
         </Link>
 
         {/* Desktop Navigation - Hidden on mobile */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import * as React from "react";
 import {
   Dialog,
   DialogContent,
@@ -16,12 +17,23 @@ import { supabase } from "@/lib/supabase";
 interface BugReportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  bouncedEmail?: string;
+  startupId?: string;
 }
 
-export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
+export function BugReportModal({ open, onOpenChange, bouncedEmail, startupId }: BugReportModalProps) {
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  // Pre-fill description when bounced email is provided
+  React.useEffect(() => {
+    if (open && bouncedEmail) {
+      setDescription(`The email ${bouncedEmail} bounced. Please update your email finder.`);
+    } else if (open && !bouncedEmail) {
+      setDescription("");
+    }
+  }, [open, bouncedEmail]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +81,8 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
           page_url: window.location.href,
           user_agent: navigator.userAgent,
           browser_info: browserInfo,
+          bounced_email: bouncedEmail || null,
+          startup_id: startupId || null,
         }),
       });
 
@@ -103,10 +117,12 @@ export function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
       <DialogContent className="bg-black border-white/20 text-white sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold text-white text-center">
-            Report a Bug
+            {bouncedEmail ? "Report Bounced Email" : "Report a Bug"}
           </DialogTitle>
           <DialogDescription className="text-white/60 text-center">
-            Help us improve by reporting any issues you encounter.
+            {bouncedEmail 
+              ? "Help us improve our email finder by reporting this bounced email."
+              : "Help us improve by reporting any issues you encounter."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
