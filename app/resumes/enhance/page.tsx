@@ -8,6 +8,7 @@ import { Loader2, Download, ArrowLeft, Pencil, Undo } from "lucide-react";
 import { Header } from "@/components/Header";
 import { JakesResumeTemplate } from "@/components/JakesResumeTemplate";
 import { EditableResumePreview } from "@/components/EditableResumePreview";
+import { ATSScoreBadge } from "@/components/ATSScoreBadge";
 import type { StructuredResumeData } from "@/types/resume";
 import type { ResumePatch, ResumePath } from "@/types/resume-patch";
 import { applyPatches } from "@/lib/resume-patch";
@@ -41,6 +42,12 @@ function EnhanceResumePageContent() {
   const [acceptHistory, setAcceptHistory] = useState<string[]>([]);
   const [isDoneEnhancing, setIsDoneEnhancing] = useState(false);
   const [showFinishButton, setShowFinishButton] = useState(false);
+  const [atsScore, setAtsScore] = useState<{
+    score: number;
+    category: 'Excellent' | 'Good' | 'Needs Work';
+    suggestions: string[];
+  } | null>(null);
+  const [isLoadingScore, setIsLoadingScore] = useState(false);
   const { toast } = useToast();
 
   // Helper function to apply suggestions to structured resume data
@@ -199,6 +206,46 @@ function EnhanceResumePageContent() {
     }
   };
 
+  // Handler for fetching ATS score
+  const fetchATSScore = async () => {
+    if (!resumeText || !resumeId) {
+      console.log('[ATS Score] Missing data - resumeText:', !!resumeText, 'resumeId:', !!resumeId);
+      return;
+    }
+
+    console.log('[ATS Score] Fetching score for resumeId:', resumeId);
+    setIsLoadingScore(true);
+    try {
+      const response = await fetch('/api/resume-ats-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          resumeText,
+          structuredData: structuredResumeData,
+          resumeId,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[ATS Score] Received score data:', data);
+        setAtsScore({
+          score: data.score,
+          category: data.category,
+          suggestions: data.suggestions || [],
+        });
+      } else {
+        const errorText = await response.text();
+        console.error('[ATS Score] Failed to fetch:', response.status, errorText);
+      }
+    } catch (error) {
+      console.error('[ATS Score] Error fetching:', error);
+    } finally {
+      setIsLoadingScore(false);
+    }
+  };
+
   useEffect(() => {
     // Check auth
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -245,7 +292,14 @@ function EnhanceResumePageContent() {
         });
       }
     });
-  }, [router, resumeId]);
+  }, [resumeId]);
+
+  // Fetch ATS score when resume text is available
+  useEffect(() => {
+    if (resumeText && resumeId) {
+      fetchATSScore();
+    }
+  }, [resumeText, resumeId]);
 
   const handleSuggestionClick = (suggestionId: string) => {
     setSelectedSuggestionId(suggestionId);
@@ -365,7 +419,16 @@ function EnhanceResumePageContent() {
                 <ArrowLeft className="w-5 h-5 text-gray-700" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Enhance Your Resume</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-bold text-gray-900">Enhance Your Resume</h1>
+                  {/* ATS Score Badge - next to title */}
+                  <ATSScoreBadge
+                    score={atsScore?.score ?? 0}
+                    category={atsScore?.category ?? 'Needs Work'}
+                    suggestions={atsScore?.suggestions ?? []}
+                    isLoading={isLoadingScore}
+                  />
+                </div>
                 <p className="text-sm text-gray-600">Click on highlights to view suggestions</p>
               </div>
             </div>
