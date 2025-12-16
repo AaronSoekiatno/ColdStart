@@ -22,6 +22,11 @@ const nextConfig: NextConfig = {
         hostname: "bookface-images.s3.amazonaws.com",
       },
     ],
+    localPatterns: [
+      {
+        pathname: "/**",
+      },
+    ],
   },
 };
 

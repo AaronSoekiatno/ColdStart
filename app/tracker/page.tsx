@@ -21,6 +21,8 @@ interface SentEmailRecord {
     industry: string;
     location: string;
     website: string;
+    founder_names: string;
+    founders_pfp: string[];
   } | null;
 }
 
@@ -92,12 +94,14 @@ export default async function TrackerPage() {
     industry: string;
     location: string;
     website: string;
+    founder_names: string;
+    founders_pfp: string[];
   }> = {};
 
   if (startupIds.length > 0) {
     const { data: startupRows, error: startupsError } = await supabaseAdmin
       .from('startups')
-      .select('id, name, industry, location, website')
+      .select('id, name, industry, location, website, founder_names, founders_pfp')
       .in('id', startupIds);
 
     if (startupsError) {
@@ -111,6 +115,8 @@ export default async function TrackerPage() {
         industry: s.industry,
         location: s.location,
         website: s.website,
+        founder_names: s.founder_names,
+        founders_pfp: s.founders_pfp,
       };
     }
   }

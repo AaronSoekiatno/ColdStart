@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronDown, Mail, X, Archive } from "lucide-react";
+import Image from "next/image";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,8 @@ interface SentEmailRecord {
     industry: string;
     location: string;
     website: string;
+    founder_names: string;
+    founders_pfp: string[];
   } | null;
 }
 
@@ -204,6 +207,36 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
+  const getFounderProfilePicture = (email: SentEmailRecord): string | null => {
+    if (!email.startup || !email.recipient_name) return null;
+
+    // Parse founder names
+    const founderNames = email.startup.founder_names
+      ? email.startup.founder_names.split(',').map(n => n.trim())
+      : [];
+
+    // Find the index of the recipient in the founder names
+    const founderIndex = founderNames.findIndex(name =>
+      name.toLowerCase() === email.recipient_name?.toLowerCase()
+    );
+
+    if (founderIndex === -1) return null;
+
+    // Get profile pictures array
+    const founderPfps = email.startup.founders_pfp;
+
+    // Parse if it's a string or already an array
+    let pfpArray: string[] = [];
+    if (Array.isArray(founderPfps)) {
+      pfpArray = founderPfps.map((url: any) => String(url).trim()).filter((url: any) => url && url !== '');
+    } else if (typeof founderPfps === 'string') {
+      pfpArray = (founderPfps as string).split(',').map((url: string) => url.trim()).filter((url: string) => url && url !== '');
+    }
+
+    // Return the profile picture URL for this founder
+    return pfpArray[founderIndex] || null;
+  };
+
   const getRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -350,8 +383,26 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
                 )}
 
                 {/* Founder Avatar */}
-                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-300 flex items-center justify-center text-white font-semibold text-lg shadow-sm">
-                  {getInitials(email.recipient_name)}
+                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-300 flex items-center justify-center text-white font-semibold text-lg shadow-sm overflow-hidden relative">
+                  {(() => {
+                    const profilePicture = getFounderProfilePicture(email);
+                    if (profilePicture) {
+                      return (
+                        <Image
+                          src={`/api/image-proxy?url=${encodeURIComponent(profilePicture)}`}
+                          alt={email.recipient_name || 'Founder'}
+                          fill
+                          className="object-cover"
+                          onError={(e) => {
+                            // Fallback to initials on error
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      );
+                    }
+                    return getInitials(email.recipient_name);
+                  })()}
                 </div>
 
                 {/* Founder & Startup Info */}
