@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Copy, X } from "lucide-react";
+import { Loader2, Copy, X, Mail } from "lucide-react";
 import { Header } from "@/components/Header";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
@@ -363,6 +363,33 @@ function GenerateEmailPageContent() {
     }
   }, [personaParam, isPremium]); // Removed emailPersona from deps to prevent loops
 
+  const handleSendViaMailto = () => {
+    if (!founderEmail || !previewSubject || !previewBody) return;
+
+    try {
+      // URL encode the subject and body for mailto
+      const encodedSubject = encodeURIComponent(previewSubject);
+      const encodedBody = encodeURIComponent(previewBody);
+
+      // Create mailto URL
+      const mailtoUrl = `mailto:${founderEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+
+      // Open in new browser tab
+      window.open(mailtoUrl, '_blank');
+
+      toast({
+        title: "Email app opened",
+        description: "Your email client should open in a new tab with the pre-filled email.",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to open email app",
+        description: "Please try copying the email content manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSendEmail = async () => {
     if (!startupId || !previewSubject || !previewBody) return;
 
@@ -433,17 +460,28 @@ function GenerateEmailPageContent() {
                     <h3 className="text-3xl sm:text-4xl font-semibold text-gray-900">Review Email</h3>
                     <div className="flex items-center gap-3">
                       <Button
+                        onClick={handleSendViaMailto}
+                        disabled={!founderEmail || isPreviewLoading}
+                        className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-4"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Mail className="h-4 w-4" />
+                          Open in Email App
+                        </span>
+                      </Button>
+                      <Button
                         onClick={handleSendEmail}
                         disabled={isSending || isPreviewLoading}
-                        className="bg-gray-900 hover:bg-[#498EDC] text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-4"
+                        variant="outline"
+                        className="border-gray-300 hover:bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-4"
                       >
                         {isSending ? (
                           <span className="flex items-center gap-2">
                             <Loader2 className="h-4 w-4 animate-spin" />
-                            Sending...
+                            Saving...
                           </span>
                         ) : (
-                          "Already Sent?"
+                          "Already Sent"
                         )}
                       </Button>
                       <button
