@@ -356,7 +356,7 @@ function EnhanceResumePageContent() {
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
         <div className="h-full w-full flex flex-col px-4 sm:px-6 lg:px-8 max-w-full mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6 flex-shrink-0">
+          <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => router.push('/resumes')}
@@ -366,7 +366,6 @@ function EnhanceResumePageContent() {
               </button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Enhance Your Resume</h1>
-                <p className="text-sm text-gray-600">Click on highlights to view suggestions</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -537,7 +536,7 @@ function EnhanceResumePageContent() {
                       <p className="text-sm text-gray-600">
                         {isDoneEnhancing
                           ? "Ready to Download"
-                          : "Select a highlighted section in your resume to view the suggestion"}
+                          : "No bullet points selected yet"}
                       </p>
                     </div>
                   )}
