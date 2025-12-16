@@ -31,6 +31,8 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
       setIsLoading(true);
       // Always use window.location.origin for redirects to ensure localhost works correctly
       const appUrl = window.location.origin;
+      // OAuth callback route now redirects to /matches by default
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -94,11 +96,18 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
         title: "Signed in",
         description: "Welcome back!",
       });
+      
+      // Store redirect intent for client-side redirect
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('postAuthRedirect', '/matches');
+      }
+      
       onOpenChange(false);
       
       // Clear form
       setEmail("");
       setPassword("");
+      // Note: Redirect to /matches is handled by onAuthStateChange in NewLandingPage
     } catch (error) {
       console.error('Email sign in error:', error);
       const errorMessage = error instanceof Error ? error.message : "Failed to sign in. Please try again.";
