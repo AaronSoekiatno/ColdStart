@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/NewHero";
@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 
 export function NewLandingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -78,7 +79,19 @@ export function NewLandingPage() {
       previousUser = session?.user ?? null;
       setUser(previousUser);
       initialLoadComplete = true;
-      // OAuth redirects are now handled server-side in the callback route
+      
+      // Check if we should open upload modal from query parameter
+      if (typeof window !== 'undefined' && session?.user) {
+        const uploadResume = searchParams.get('uploadResume');
+        if (uploadResume === 'true') {
+          // Remove query parameter from URL
+          const url = new URL(window.location.href);
+          url.searchParams.delete('uploadResume');
+          window.history.replaceState({}, '', url.toString());
+          // Open upload modal
+          setShowResumeUpload(true);
+        }
+      }
     });
 
     // Listen for auth changes (handles in-app email/password sign-in)

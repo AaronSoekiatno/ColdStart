@@ -71,6 +71,11 @@ export default async function ResumePage() {
   // Get all active resumes for this candidate
   const resumes = await getResumesForCandidate(candidate.id);
 
+  // If no resumes exist, redirect to home with flag to open upload modal
+  if (resumes.length === 0) {
+    redirect('/?uploadResume=true');
+  }
+
   // Get the primary resume to identify which one is current
   const primaryResume = await getPrimaryResumeForCandidate(candidate.id);
   const primaryResumeId = primaryResume?.id;

@@ -1,5 +1,14 @@
+import { Suspense } from "react";
 import { NewLandingPage } from "@/components/NewLandingPage";
 
-export default function Home() {
+function NewLandingPageWrapper() {
   return <NewLandingPage />;
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <NewLandingPageWrapper />
+    </Suspense>
+  );
 }

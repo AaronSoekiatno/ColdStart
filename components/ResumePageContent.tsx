@@ -44,11 +44,14 @@ export function ResumePageContent({ resumes, isPremium, isNewUser = false, prima
     }
   }, []);
 
+  // Check if user has any enhanced resume
+  const hasEnhancedResume = resumes.some(resume => resume.hasEnhancedVersion);
+
   return (
     <>
       <CheckMatchesBanner />
-      {/* Only show enhance banner if user didn't just finish enhancing */}
-      {!justEnhanced && (
+      {/* Only show enhance banner if user didn't just finish enhancing and doesn't have any enhanced resume */}
+      {!justEnhanced && !hasEnhancedResume && (
         <EnhancePortfolioBanner 
           resumeId={primaryResumeId}
           isNewUser={isNewUser}
