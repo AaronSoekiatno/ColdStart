@@ -51,19 +51,12 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
   const handleUploadSuccess = async () => {
     onOpenChange(false);
     
-    // Check if user is authenticated
-    if (user?.email) {
-      // User is authenticated - navigate to resumes page immediately
-      // If a custom callback is provided, use that instead (for other pages like /resumes)
-      if (onUploadSuccess) {
-        onUploadSuccess();
-      } else {
-        // Default behavior: navigate to resumes page
-        router.push('/resumes');
-      }
+    // If a custom callback is provided, use that instead (for other pages like /resumes)
+    if (onUploadSuccess) {
+      onUploadSuccess();
     } else {
-      // User is NOT authenticated - prompt them to sign up
-      setShowSignUpModal(true);
+      // Default behavior: always navigate to resumes page after successful upload
+      router.push('/resumes');
     }
   };
 
