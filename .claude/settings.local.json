@@ -11,7 +11,8 @@
       "Bash(npm run type-check:*)",
       "Bash(npx tsc:*)",
       "Bash(npx next lint:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
