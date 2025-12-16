@@ -155,7 +155,7 @@ export function ResumeCard({
         throw new Error('No structured resume data found for this resume');
       }
 
-      // Call the same PDF export endpoint used in the tailor page
+      // Call the same PDF export endpoint used in the enhance page
       const response = await fetch('/api/resumes/export-pdf', {
         method: 'POST',
         headers: {
@@ -274,7 +274,7 @@ export function ResumeCard({
             onClick={(e) => {
               e.stopPropagation();
               if (!resumeId) return;
-              router.push(`/resumes/tailor?resumeId=${resumeId}`);
+              router.push(`/resumes/enhance?resumeId=${resumeId}`);
             }}
             className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-xs sm:text-sm font-medium"
           >
