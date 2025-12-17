@@ -388,7 +388,12 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
                 
                 slug = url_match.group(1)
                 
-                # Try to get company name and batch from parent elements
+                # PRIMARY: Generate company name from slug (most reliable)
+                # Convert slug to readable name (e.g., "hey-telo" -> "Hey Telo", "yondu" -> "Yondu")
+                company_name = ' '.join(word.capitalize() for word in slug.split('-'))
+                
+                # Try to get batch from parent elements (company name from slug is already set)
+                batch = None
                 try:
                     # Try multiple parent selectors
                     parent = None
@@ -406,28 +411,25 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
                         except:
                             continue
                     
-                    parent_text = parent.text if parent else ""
-                    
-                    # Extract batch (e.g., S24, W22)
-                    batch_match = re.search(r'\(([SW]\d{2})\)', parent_text)
-                    batch = batch_match.group(1) if batch_match else None
-                    
-                    # Extract company name from parent text
-                    company_name_match = re.search(r'([A-Z][a-zA-Z\s&.]+?)\s*\([SW]\d{2}\)', parent_text)
-                    if company_name_match:
-                        company_name = company_name_match.group(1).strip()
-                    else:
-                        # Try to find company name in parent text (any capitalized words)
-                        name_match = re.search(r'([A-Z][a-zA-Z\s&.]+)', parent_text.split('\n')[0] if '\n' in parent_text else parent_text)
-                        company_name = name_match.group(1).strip() if name_match else None
+                    if parent:
+                        parent_text = parent.text if parent else ""
+                        
+                        # Extract batch (e.g., S24, W22)
+                        batch_match = re.search(r'\(([SW]\d{2})\)', parent_text)
+                        if batch_match:
+                            batch = batch_match.group(1)
+                        
+                        # Try to improve company name from parent if we find a better match
+                        # Look for company name pattern before "See all" or batch info
+                        improved_name_match = re.search(r'^([A-Z][a-zA-Z0-9\s&.\-]+?)(?:\s+\([SW]\d{2}\)|\s+See\s+all|$)', parent_text, re.MULTILINE)
+                        if improved_name_match:
+                            improved_name = improved_name_match.group(1).strip()
+                            # Only use if it's not "See all" or similar generic text
+                            if improved_name and improved_name.lower() not in ['see all', 'seeall', 'view', 'jobs'] and len(improved_name) > 2:
+                                company_name = improved_name
                 except Exception as e:
-                    print(f"      ⚠️  Could not extract from parent: {e}")
-                    company_name = None
-                    batch = None
-                
-                # Fallback: Generate company name from slug
-                if not company_name:
-                    company_name = ' '.join(word.capitalize() for word in slug.split('-'))
+                    # Silently continue - we already have company_name from slug
+                    pass
                 
                 # Extract job count from link text
                 job_count = None
@@ -1169,6 +1171,28 @@ def parse_with_classification(description: str) -> dict:
     return sections
 
 
+def company_has_jobs(company_name: str) -> bool:
+    """Check if company already has jobs in the database."""
+    try:
+        # Check if any jobs exist for this company
+        result = supabase.table("jobs").select("id").eq("company_name", company_name).limit(1).execute()
+        if result.data and len(result.data) > 0:
+            return True
+        
+        # Try case-insensitive match
+        result = supabase.table("jobs").select("id, company_name").ilike("company_name", f"%{company_name}%").limit(5).execute()
+        if result.data:
+            for job in result.data:
+                if job["company_name"].lower() == company_name.lower():
+                    return True
+        
+        return False
+    except Exception as e:
+        # If check fails, assume no jobs (safer to scrape than skip)
+        print(f"   ⚠️  Error checking for existing jobs: {e}")
+        return False
+
+
 def find_or_create_startup(company_name: str, batch: Optional[str] = None, description: Optional[str] = None) -> Optional[str]:
     """Find existing startup or create new one. Returns startup ID."""
     import uuid
@@ -1710,30 +1734,114 @@ def main():
     """Main function."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="Scrape jobs from workatastartup.com directory")
-    parser.add_argument("--limit", type=int, help="Limit number of companies to process")
+    parser = argparse.ArgumentParser(
+        description="Scrape jobs from workatastartup.com directory",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Test mode: process 1 company
+  python scrape_workatastartup_directory.py --test
+  
+  # Process 5 companies in batches of 5 (1 batch)
+  python scrape_workatastartup_directory.py --limit 5
+  
+  # Process all companies in batches of 5
+  python scrape_workatastartup_directory.py --batch-size 5
+  
+  # Process 20 companies in batches of 5 (4 batches)
+  python scrape_workatastartup_directory.py --limit 20 --batch-size 5
+        """
+    )
+    parser.add_argument("--limit", type=int, help="Limit total number of companies to process (default: all)")
     parser.add_argument("--test", action="store_true", help="Test mode: process 1 company")
+    parser.add_argument("--batch-size", type=int, default=5, help="Number of companies to process per batch (default: 5)")
+    parser.add_argument("--skip-existing", action="store_true", default=True, help="Skip companies that already have jobs (default: True)")
+    parser.add_argument("--no-skip-existing", dest="skip_existing", action="store_false", help="Process all companies even if they already have jobs (overrides --skip-existing)")
     
     args = parser.parse_args()
     
-    limit = 1 if args.test else args.limit
+    # Determine limit
+    if args.test:
+        limit = 1
+        batch_size = 1
+    else:
+        limit = args.limit
+        batch_size = args.batch_size
     
     print("🚀 Starting workatastartup.com scraper...")
+    if args.test:
+        print("🧪 Test mode: processing 1 company")
+    else:
+        print(f"📦 Batch processing: {batch_size} companies per batch")
+        if args.skip_existing:
+            print("⏭️  Skipping companies that already have jobs")
     
     # Get company URLs from directory
+    # Get all companies first (or up to limit)
     companies = get_company_urls_from_directory(limit)
     
     if not companies:
         print("⚠️  No companies found")
         return
     
-    # Scrape jobs for each company
-    total_jobs = 0
-    for company in companies:
-        jobs_saved = scrape_and_save_company_jobs(company)
-        total_jobs += jobs_saved
+    print(f"\n📊 Found {len(companies)} companies to process")
     
-    print(f"\n✅ Complete! Scraped {total_jobs} total jobs from {len(companies)} companies")
+    # Filter out companies that already have jobs if skip_existing is enabled
+    if args.skip_existing:
+        print("\n🔍 Checking for existing jobs...")
+        companies_to_process = []
+        skipped_count = 0
+        for company in companies:
+            if company_has_jobs(company["company_name"]):
+                print(f"   ⏭️  Skipping {company['company_name']} (already has jobs)")
+                skipped_count += 1
+            else:
+                companies_to_process.append(company)
+        print(f"   ✅ {len(companies_to_process)} companies to process, {skipped_count} skipped")
+        companies = companies_to_process
+    
+    if not companies:
+        print("⚠️  No new companies to process")
+        return
+    
+    # Process companies in batches
+    total_jobs = 0
+    total_companies_processed = 0
+    
+    for batch_start in range(0, len(companies), batch_size):
+        batch_end = min(batch_start + batch_size, len(companies))
+        batch_companies = companies[batch_start:batch_end]
+        batch_num = (batch_start // batch_size) + 1
+        total_batches = (len(companies) + batch_size - 1) // batch_size
+        
+        print(f"\n{'='*80}")
+        print(f"📦 Batch {batch_num}/{total_batches}: Processing companies {batch_start + 1}-{batch_end} of {len(companies)}")
+        print(f"{'='*80}")
+        
+        batch_jobs = 0
+        for idx, company in enumerate(batch_companies, 1):
+            print(f"\n[{batch_num}-{idx}/{len(batch_companies)}] Processing: {company['company_name']}")
+            try:
+                jobs_saved = scrape_and_save_company_jobs(company)
+                batch_jobs += jobs_saved
+                total_jobs += jobs_saved
+                total_companies_processed += 1
+            except Exception as e:
+                print(f"   ❌ Error processing {company['company_name']}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue
+        
+        print(f"\n✅ Batch {batch_num} complete: {batch_jobs} jobs from {len(batch_companies)} companies")
+        
+        # If not test mode and not the last batch, add a small delay
+        if not args.test and batch_end < len(companies):
+            print("⏸️  Pausing 2 seconds before next batch...")
+            time.sleep(2)
+    
+    print(f"\n{'='*80}")
+    print(f"✅ Complete! Scraped {total_jobs} total jobs from {total_companies_processed} companies")
+    print(f"{'='*80}")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { NewLandingPage } from "@/components/NewLandingPage";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
@@ -12,6 +12,7 @@ function NewLandingPageWrapper() {
 
 export default function Home() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
@@ -19,8 +20,33 @@ export default function Home() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // User is authenticated, redirect to matches
-          router.push('/matches');
+          // Check if uploadResume param is present - if so, show landing page
+          const uploadResume = searchParams.get('uploadResume');
+          if (uploadResume === 'true') {
+            setIsCheckingAuth(false);
+            return;
+          }
+
+          // Check if candidate exists before redirecting
+          try {
+            const candidateResponse = await fetch('/api/candidate-info', {
+              credentials: 'include',
+              cache: 'no-store',
+            });
+
+            if (candidateResponse.ok) {
+              // Candidate exists, redirect to matches
+              router.push('/matches');
+            } else {
+              // No candidate record - show landing page so user can upload resume first
+              // Onboarding will happen after resume upload
+              setIsCheckingAuth(false);
+            }
+          } catch (fetchError) {
+            console.error('Error checking candidate:', fetchError);
+            // Show landing page on error
+            setIsCheckingAuth(false);
+          }
         } else {
           // User is not authenticated, show landing page
           setIsCheckingAuth(false);
@@ -33,7 +59,7 @@ export default function Home() {
     };
 
     checkAuth();
-  }, [router]);
+  }, [router, searchParams]);
 
   // Show loading state while checking authentication
   if (isCheckingAuth) {
