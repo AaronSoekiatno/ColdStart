@@ -103,7 +103,7 @@ export function UpgradeModal({ open, onOpenChange, hiddenMatchCount, email, onDi
             {/* Header */}
             <div className="text-center">
               <DialogPrimitive.Title className="text-2xl font-bold text-white">
-                {customTitle || `🔒 ${hiddenMatchCount} More Match${hiddenMatchCount === 1 ? '' : 'es'} Available`}
+                {customTitle || `${hiddenMatchCount} More Match${hiddenMatchCount === 1 ? '' : 'es'} Available`}
               </DialogPrimitive.Title>
               <DialogPrimitive.Description className="text-white/60 text-sm mt-2">
                 Upgrade to Premium to unlock all your matches and premium features

@@ -67,16 +67,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if this is the only resume - prevent deletion if so
-    const resumeCount = await getResumeCountForCandidate(candidate.id);
-    if (resumeCount <= 1) {
-      return NextResponse.json(
-        { error: 'Cannot delete your only resume. Please upload another resume first, or contact support if you need to remove this one.' },
-        { status: 400 }
-      );
-    }
-
-    // If this is the primary resume, set another one as primary first
+    // If this is the primary resume and there are other resumes, set another one as primary first
     if (resume.is_primary) {
       const allResumes = await getResumesForCandidate(candidate.id);
       const otherResume = allResumes.find(r => r.id !== resumeId && r.is_active);
@@ -85,6 +76,7 @@ export async function POST(request: NextRequest) {
         // Set another resume as primary before deleting this one
         await setPrimaryResume(candidate.id, otherResume.id);
       }
+      // If this is the only resume, we'll just delete it (no need to set another as primary)
     }
 
     // Delete the resume (soft delete - sets is_active to false)

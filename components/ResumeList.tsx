@@ -39,7 +39,7 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
   const [isSettingPrimary, setIsSettingPrimary] = useState(false);
   const { toast } = useToast();
 
-  // Ensure at least one card is always selected - fallback to primary if somehow null
+  // Use selected resume ID, or fallback to primary if available
   const effectiveSelectedResumeId = selectedResumeId || primaryResumeId;
 
   const handleSetPrimary = async () => {
@@ -91,12 +91,10 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
   };
 
   const handleCardSelect = (resumeId: string) => {
-    // Prevent deselecting if this is the only selected card
-    // At least one card must always be selected
     setSelectedResumeId(prev => {
-      // If clicking on the currently selected card, prevent deselection
-      if (prev === resumeId) {
-        return prev; // Keep it selected
+      // If clicking on the currently selected card, allow deselection if there are multiple resumes
+      if (prev === resumeId && sortedResumes.length > 1) {
+        return null; // Allow deselection
       }
       // Otherwise, select the new card
       return resumeId;
