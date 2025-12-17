@@ -221,10 +221,10 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     
     try:
-        # Navigate to directory page
-        url = "https://www.workatastartup.com/companies?demographic=any&hasEquity=any&hasSalary=any&industry=any&interviewProcess=any&jobType=any&layout=list-compact&sortBy=created_desc&tab=any&usVisaNotRequired=any"
-        print(f"   📄 Navigating to {url}...")
-        driver.get(url)
+        # First, navigate to base page to check login status
+        base_url = "https://www.workatastartup.com/companies"
+        print(f"   📄 Navigating to base page to check login status...")
+        driver.get(base_url)
         time.sleep(3)
         
         # Login if credentials are provided
@@ -234,42 +234,75 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
         if email and password:
             print("   🔐 Attempting to log in...")
             try:
-                # Find and click "Log In" link
-                login_link = driver.find_element(By.XPATH, "//a[contains(@href, 'authenticate') or contains(text(), 'Log In')]")
-                if login_link:
-                    login_link.click()
-                    time.sleep(2)
-                    
-                    # Fill in credentials
-                    email_field = driver.find_element(By.NAME, "username")
-                    password_field = driver.find_element(By.NAME, "password")
-                    email_field.send_keys(email)
-                    password_field.send_keys(password)
-                    
-                    # Submit
-                    submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
-                    submit_button.click()
-                    time.sleep(3)
-                    print("   ✅ Logged in")
+                # Check if already logged in by looking for user profile elements
+                try:
+                    driver.find_element(By.XPATH, "//a[contains(text(), 'My profile') or contains(text(), 'Inbox')]")
+                    print("   ✅ Already logged in")
+                    logged_in = True
+                except:
+                    logged_in = False
+                
+                if not logged_in:
+                    # Find and click "Log In" link
+                    login_link = driver.find_element(By.XPATH, "//a[contains(@href, 'authenticate') or contains(text(), 'Log In')]")
+                    if login_link:
+                        login_link.click()
+                        time.sleep(2)
+                        
+                        # Fill in credentials
+                        email_field = driver.find_element(By.NAME, "username")
+                        password_field = driver.find_element(By.NAME, "password")
+                        email_field.send_keys(email)
+                        password_field.send_keys(password)
+                        
+                        # Submit
+                        submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+                        submit_button.click()
+                        time.sleep(5)  # Wait for redirect after login
+                        print("   ✅ Logged in")
             except Exception as e:
                 print(f"   ⚠️  Login failed or already logged in: {e}")
         
-        # Wait for page to fully load
-        print("   ⏳ Waiting for page to load...")
-        time.sleep(5)
+        # Now navigate to the directory page sorted by "Active companies" (sortBy=most_active)
+        # No filters applied - showing all companies, just sorted by most active
+        # This must be done AFTER login to ensure the sort persists
+        url = "https://www.workatastartup.com/companies?sortBy=most_active&layout=list-compact"
+        print(f"   📄 Navigating to filtered page: {url}...")
+        driver.get(url)
+        time.sleep(5)  # Wait for page to load with filter
         
-        # Scroll to load all content
+        # Verify the URL still has the correct filter
+        current_url = driver.current_url
+        if "sortBy=most_active" not in current_url:
+            print(f"   ⚠️  URL changed after load. Current: {current_url}")
+            print(f"   🔄 Re-navigating to ensure filter is applied...")
+            driver.get(url)
+            time.sleep(5)
+        
+        # Wait for page to fully load
+        print("   ⏳ Waiting for page to fully load...")
+        time.sleep(3)
+        
+        # Scroll to load all content (with progress logging)
         print("   📜 Scrolling to load content...")
         last_height = driver.execute_script("return document.body.scrollHeight")
         scroll_attempts = 0
-        max_scrolls = 10
+        max_scrolls = 20  # Increased for 1259 companies
+        total_scrolls = 0
+        
         while scroll_attempts < max_scrolls:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
+            time.sleep(1.5)  # Reduced from 2s to 1.5s
             new_height = driver.execute_script("return document.body.scrollHeight")
+            total_scrolls += 1
+            
+            if total_scrolls % 5 == 0:
+                print(f"      Scrolled {total_scrolls} times, page height: {new_height}px")
+            
             if new_height == last_height:
                 scroll_attempts += 1
                 if scroll_attempts >= 3:
+                    print(f"   ✅ Finished scrolling after {total_scrolls} attempts (page height stable)")
                     break
             else:
                 scroll_attempts = 0
@@ -1215,8 +1248,6 @@ def find_or_create_startup(company_name: str, batch: Optional[str] = None, descr
     new_id = str(uuid.uuid4())
     startup_data = {"id": new_id, "name": company_name, "needs_enrichment": True}
     
-    if batch:
-        startup_data["tags"] = [batch]
     if description:
         startup_data["description"] = description
     
@@ -1682,7 +1713,6 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     "job_type": job_type,  # Extracted from tags (e.g., "Full-time", "Internship")
                     "location": location,  # Extracted from tags (e.g., "Munich, BY, DE")
                     "job_url": job_url,
-                    "company_batch": batch,
                     "company_tagline": company_description,
                     "company_about": company_about,  # Extracted from description "About [Company]" section
                     "salary_range": salary_range,
