@@ -449,7 +449,7 @@ function GenerateEmailPageContent() {
                       <Button
                         onClick={handleSendViaMailto}
                         disabled={!founderEmail || isPreviewLoading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-4"
+                        className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-md px-4"
                       >
                         <span className="flex items-center gap-2">
                           <Mail className="h-4 w-4" />
@@ -460,7 +460,7 @@ function GenerateEmailPageContent() {
                         onClick={handleSendEmail}
                         disabled={isSending || isPreviewLoading}
                         variant="outline"
-                        className="border-gray-300 hover:bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md px-4"
+                        className="border-gray-300 hover:bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-md px-4"
                       >
                         {isSending ? (
                           <span className="flex items-center gap-2">
@@ -473,7 +473,7 @@ function GenerateEmailPageContent() {
                       </Button>
                       <button
                         onClick={() => router.push('/matches')}
-                        className="p-2 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900"
+                        className="p-2 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900 cursor-pointer"
                         aria-label="Close and return to matches"
                         title="Close"
                       >

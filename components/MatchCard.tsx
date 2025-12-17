@@ -317,7 +317,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
           <div className="flex gap-1 sm:gap-3">
             <button
               onClick={() => scrollToSection(companySectionRef, 'company')}
-              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
+              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${
                 activeTab === 'company'
                   ? 'text-gray-900 border-blue-500'
                   : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
@@ -327,7 +327,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
             </button>
             <button
               onClick={() => scrollToSection(foundersSectionRef, 'founders')}
-              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 ${
+              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${
                 activeTab === 'founders'
                   ? 'text-gray-900 border-blue-500'
                   : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
@@ -594,7 +594,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                     <button
                       type="button"
                       onClick={() => setShowFullYcDescription((prev) => !prev)}
-                      className="ml-2 text-[10px] sm:text-xs text-blue-300 hover:underline align-baseline"
+                      className="ml-2 text-[10px] sm:text-xs text-blue-300 hover:underline align-baseline cursor-pointer"
                     >
                       {showFullYcDescription ? "Show less" : "Show more"}
                     </button>
