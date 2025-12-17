@@ -157,7 +157,13 @@ const EMAIL_HTML = `
             <a href="${APP_URL}/terms" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Terms of Service</a>
             <a href="${APP_URL}/unsubscribe" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Unsubscribe</a>
           </div>
-          <p style="margin: 24px 0 0; font-size: 11px; color: rgba(161, 161, 170, 0.6);">
+          <p style="margin: 16px 0 0; font-size: 11px; color: rgba(161, 161, 170, 0.6);">
+            Hermes<br/>
+            13819 Dearborn St.<br/>
+            Eastvale, CA 92880<br/>
+            United States
+          </p>
+          <p style="margin: 12px 0 0; font-size: 11px; color: rgba(161, 161, 170, 0.6);">
             This is a test email to check deliverability.
           </p>
         </div>
@@ -195,6 +201,11 @@ Free to start • Premium features available
 
 ---
 © 2025 Hermes. All rights reserved.
+
+Hermes
+13819 Dearborn St.
+Eastvale, CA 92880
+United States
 
 This is a test email to check deliverability.
 `;
