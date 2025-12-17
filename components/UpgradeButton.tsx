@@ -68,7 +68,7 @@ export function UpgradeButton({ email, className = '', showTrialCTA = false }: U
     <button
       onClick={handleUpgrade}
       disabled={loading}
-      className={`px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-800 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+      className={`px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-800 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${className}`}
     >
       {loading ? 'Loading...' : showTrialCTA ? 'Try for $0.00' : 'Upgrade to Premium'}
     </button>

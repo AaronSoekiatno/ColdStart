@@ -154,18 +154,18 @@ export const Header = ({ initialUser }: HeaderProps) => {
               >
                 Email Tracker
               </Link>
-              <button
-                onClick={handlePremiumClick}
-                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors cursor-pointer"
-              >
-                Premium
-              </button>
               <Link
                 href="/resumes"
                 className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
               >
                 Resumes
               </Link>
+              <button
+                onClick={handlePremiumClick}
+                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors cursor-pointer"
+              >
+                Premium
+              </button>
               <button
                 onClick={() => setIsFeedbackOpen(true)}
                 className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
@@ -186,12 +186,6 @@ export const Header = ({ initialUser }: HeaderProps) => {
                   <div className="px-4 py-2 text-sm text-gray-800 border-b border-gray-200 rounded-t-2xl">
                     {user.email}
                   </div>
-                  <DropdownMenuItem
-                    className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"
-                    onSelect={handlePremiumClick}
-                  >
-                    Premium Plan
-                  </DropdownMenuItem>
                   {isPremium && (
                     <DropdownMenuItem
                       className="cursor-pointer font-medium text-black hover:text-black w-full px-4 py-2 text-center hover:bg-gray-50 focus:bg-gray-50 focus:text-black border-b border-gray-200"

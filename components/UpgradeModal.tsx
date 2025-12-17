@@ -144,7 +144,7 @@ export function UpgradeModal({ open, onOpenChange, hiddenMatchCount, email, onDi
                       onOpenChange(false);
                       onDismiss?.();
                     }}
-                    className="w-full py-2.5 border border-blue-500/30 rounded-lg text-blue-400 text-sm font-medium text-center hover:bg-white/5 transition-colors"
+                    className="w-full py-2.5 border border-blue-500/30 rounded-lg text-blue-400 text-sm font-medium text-center hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     Continue with Free
                   </Button>
@@ -192,7 +192,7 @@ export function UpgradeModal({ open, onOpenChange, hiddenMatchCount, email, onDi
                       onOpenChange(false);
                       onDismiss?.();
                     }}
-                    className="w-full py-2.5 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-400 text-sm font-medium text-center hover:bg-blue-500/10 transition-colors mt-auto"
+                    className="w-full py-2.5 bg-blue-500/20 border border-blue-500/30 rounded-lg text-blue-400 text-sm font-medium text-center hover:bg-blue-500/10 transition-colors mt-auto cursor-pointer"
                   >
                     Current Plan
                   </Button>

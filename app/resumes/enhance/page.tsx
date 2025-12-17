@@ -737,7 +737,7 @@ function EnhanceResumePageContent() {
                             <div className="bg-white/90 backdrop-blur-sm rounded-lg border border-blue-200 shadow-lg p-3 max-w-xs text-center pointer-events-auto">
                               <button
                                 onClick={() => setShowUpgradeModal(true)}
-                                className="w-full bg-blue-300 hover:bg-blue-400 text-white text-xs font-medium py-1.5 px-3 rounded transition-colors"
+                                className="w-full bg-blue-300 hover:bg-blue-400 text-white text-xs font-medium py-1.5 px-3 rounded transition-colors cursor-pointer"
                               >
                                 Upgrade
                               </button>
@@ -887,14 +887,14 @@ function EnhanceResumePageContent() {
                                 <>
                                   <Button
                                     onClick={() => handleSuggestionAccept(selectedSuggestionId)}
-                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white cursor-pointer"
                                   >
                                     Accept
                                   </Button>
                                   <Button
                                     onClick={() => handleSuggestionDeny(selectedSuggestionId)}
                                     variant="outline"
-                                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50 cursor-pointer"
                                   >
                                     Deny
                                   </Button>
