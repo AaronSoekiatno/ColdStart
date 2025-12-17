@@ -1,7 +1,14 @@
 import { Resend } from 'resend';
 
-// Initialize Resend client
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy-load Resend client to ensure env vars are loaded first
+let resendInstance: Resend | null = null;
+
+function getResendClient(): Resend {
+  if (!resendInstance) {
+    resendInstance = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendInstance;
+}
 
 export interface SendEmailResult {
   success: boolean;
@@ -37,6 +44,7 @@ export async function sendWaitlistEmail(
     // Resend requires verified domain - use joinhermes.co for DMARC compliance
     const from = fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@joinhermes.co';
 
+    const resend = getResendClient();
     const { data, error } = await resend.emails.send({
       from,
       to: email,

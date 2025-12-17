@@ -1,12 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * Script to send launch announcement emails to all waitlist users via Resend API
- * 
+ * Simple script to send a test email to yourself
+ *
  * Usage:
- *   npm run send-waitlist -- --dry-run              # Preview what would be sent
- *   npm run send-waitlist -- --limit 10             # Send to first 10 emails (testing)
- *   npm run send-waitlist                           # Send to all pending emails
- *   npm run send-waitlist -- --resend-failed        # Retry emails that previously failed
+ *   npm run test-email your.email@gmail.com
  */
 
 import { resolve } from 'path';
@@ -14,20 +11,11 @@ import { config } from 'dotenv';
 // Load .env.local file
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { createClient } from '@supabase/supabase-js';
 import { sendWaitlistEmail } from '../lib/resend';
 
-// Parse command line arguments
-const args = process.argv.slice(2);
-const isDryRun = args.includes('--dry-run');
-const resendFailed = args.includes('--resend-failed');
-const limitArg = args.find(arg => arg.startsWith('--limit='));
-const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : undefined;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
 
-// Email content - customize these for your launch announcement
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://coldstart.ai';
-const EMAIL_SUBJECT = process.env.WAITLIST_EMAIL_SUBJECT || 'Hermes is Now Live';
-const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
+const EMAIL_HTML = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -38,7 +26,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
   <div style="min-height: 100%; background-color: #0f0f1a; padding: 32px 16px;">
     <!-- Email Container -->
     <div style="max-width: 600px; margin: 0 auto; background-color: #1a1a2e; border-radius: 16px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);">
-      
+
       <!-- Header with Logo -->
       <div style="background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 50%, #1a1a2e 100%); padding: 48px 32px; text-align: center; position: relative;">
         <div style="position: relative;">
@@ -65,7 +53,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
           <h2 style="text-align: center; font-size: 24px; font-weight: 500; color: #f5f5f7; margin: 0 0 24px;">
             What's Inside
           </h2>
-          
+
           <!-- Feature 1 -->
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -145,7 +133,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
 
         <!-- CTA Button -->
         <div style="margin-top: 40px; text-align: center;">
-          <a href="https://joinhermes.co" 
+          <a href="https://joinhermes.co"
              style="display: inline-block; background: linear-gradient(135deg, #d4a853 0%, #c9a356 100%); color: #0f0f1a; padding: 16px 40px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 10px 25px rgba(212, 168, 83, 0.25);">
             Get Started Now
           </a>
@@ -167,10 +155,10 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
           <div style="margin-top: 16px;">
             <a href="${APP_URL}/privacy" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Privacy Policy</a>
             <a href="${APP_URL}/terms" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Terms of Service</a>
-            <a href="${APP_URL}/unsubscribe?email={{email}}" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Unsubscribe</a>
+            <a href="${APP_URL}/unsubscribe" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Unsubscribe</a>
           </div>
           <p style="margin: 24px 0 0; font-size: 11px; color: rgba(161, 161, 170, 0.6);">
-            You're receiving this email because you signed up for Hermes updates.
+            This is a test email to check deliverability.
           </p>
         </div>
       </div>
@@ -180,7 +168,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
 </html>
 `;
 
-const EMAIL_TEXT = process.env.WAITLIST_EMAIL_TEXT || `
+const EMAIL_TEXT = `
 HERMES IS NOW LIVE
 ==================
 
@@ -201,198 +189,68 @@ Upload your resume and get matched with startups that align with your skills, in
 📧 Email Tracking
 Track your outreach progress and manage all your startup communications in one place.
 
-GET STARTED: ${APP_URL}
+GET STARTED: https://joinhermes.co
 
 Free to start • Premium features available
 
 ---
 © 2025 Hermes. All rights reserved.
 
-Privacy Policy: ${APP_URL}/privacy
-Terms of Service: ${APP_URL}/terms
-Unsubscribe: ${APP_URL}/unsubscribe?email={{email}}
-
-You're receiving this email because you signed up for Hermes updates.
+This is a test email to check deliverability.
 `;
 
-interface WaitlistEntry {
-  id: string;
-  email: string;
-  created_at: string;
-  sent_at: string | null;
-  sent_status: 'pending' | 'sent' | 'failed' | null;
-  error_message: string | null;
-}
-
 async function main() {
-  // Validate environment variables
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const resendApiKey = process.env.RESEND_API_KEY;
+  const testEmail = process.argv[2];
 
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('❌ Missing Supabase configuration');
-    console.error('   Required: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+  if (!testEmail) {
+    console.error('❌ Please provide an email address');
+    console.error('   Usage: npm run test-email your.email@gmail.com');
     process.exit(1);
   }
 
-  if (!resendApiKey && !isDryRun) {
+  // Basic email validation
+  if (!testEmail.includes('@') || !testEmail.includes('.')) {
+    console.error('❌ Invalid email address format');
+    process.exit(1);
+  }
+
+  if (!process.env.RESEND_API_KEY) {
     console.error('❌ Missing RESEND_API_KEY environment variable');
-    console.error('   Add RESEND_API_KEY to your .env.local file');
     process.exit(1);
   }
 
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+  console.log('📧 Sending test email...');
+  console.log(`   To: ${testEmail}`);
+  console.log(`   From: ${process.env.RESEND_FROM_EMAIL || 'noreply@joinhermes.co'}`);
+  console.log(`   Subject: Hermes is Now Live\n`);
 
-  console.log('📧 Waitlist Email Sender');
-  console.log('========================\n');
+  const result = await sendWaitlistEmail(
+    testEmail,
+    'Hermes is Now Live',
+    EMAIL_HTML,
+    EMAIL_TEXT
+  );
 
-  if (isDryRun) {
-    console.log('🔍 DRY RUN MODE - No emails will be sent\n');
-  }
-
-  if (resendFailed) {
-    console.log('🔄 Resending failed emails\n');
-  }
-
-  if (limit) {
-    console.log(`📊 Limiting to ${limit} emails\n`);
-  }
-
-  // Fetch waitlist entries
-  let query = supabaseAdmin
-    .from('waitlist')
-    .select('id, email, created_at, sent_at, sent_status, error_message')
-    .order('created_at', { ascending: true });
-
-  if (resendFailed) {
-    // Only fetch failed emails
-    query = query.eq('sent_status', 'failed');
+  if (result.success) {
+    console.log('✅ Email sent successfully!');
+    console.log(`   Message ID: ${result.messageId}\n`);
+    console.log('📬 Next steps:');
+    console.log('   1. Check your inbox for the email');
+    console.log('   2. If not in inbox, check your spam/junk folder');
+    console.log('   3. If in spam, mark it as "Not Spam" to improve reputation');
+    console.log('   4. Check the email headers to see authentication results\n');
+    console.log('💡 To check email headers:');
+    console.log('   Gmail: Open email → Three dots → Show original');
+    console.log('   Outlook: Open email → File → Properties → Internet headers');
   } else {
-    // Fetch emails that haven't been sent yet
-    query = query.or('sent_status.is.null,sent_status.eq.pending');
-  }
+    console.error('❌ Failed to send email');
+    console.error(`   Error: ${result.error}\n`);
 
-  const { data: waitlistEntries, error: fetchError } = await query;
-
-  if (fetchError) {
-    console.error('❌ Error fetching waitlist:', fetchError);
+    if (result.error?.includes('not verified')) {
+      console.error('💡 Make sure your domain is verified in Resend:');
+      console.error('   https://resend.com/domains');
+    }
     process.exit(1);
-  }
-
-  if (!waitlistEntries || waitlistEntries.length === 0) {
-    console.log('✅ No emails to send!');
-    if (resendFailed) {
-      console.log('   No failed emails found.');
-    } else {
-      console.log('   All waitlist emails have already been sent.');
-    }
-    process.exit(0);
-  }
-
-  const totalEmails = waitlistEntries.length;
-  const emailsToSend = limit ? waitlistEntries.slice(0, limit) : waitlistEntries;
-  const actualCount = emailsToSend.length;
-
-  console.log(`📋 Found ${totalEmails} ${resendFailed ? 'failed' : 'pending'} email(s)`);
-  if (limit) {
-    console.log(`   Processing ${actualCount} email(s) (limited)\n`);
-  } else {
-    console.log(`   Processing all ${actualCount} email(s)\n`);
-  }
-
-  let sentCount = 0;
-  let failedCount = 0;
-  let skippedCount = 0;
-
-  // Process emails with rate limiting
-  const RATE_LIMIT_DELAY_MS = 100; // 100ms delay = ~10 emails/second (well under Resend's 100/second limit)
-
-  for (let i = 0; i < emailsToSend.length; i++) {
-    const entry = emailsToSend[i] as WaitlistEntry;
-    const progress = `[${i + 1}/${actualCount}]`;
-
-    if (isDryRun) {
-      console.log(`${progress} Would send to: ${entry.email}`);
-      skippedCount++;
-      continue;
-    }
-
-    // Replace email placeholder in unsubscribe link
-    const htmlContent = EMAIL_HTML.replace(/\{\{email\}\}/g, encodeURIComponent(entry.email));
-    const textContent = EMAIL_TEXT.replace(/\{\{email\}\}/g, encodeURIComponent(entry.email));
-
-    // Update status to 'pending' before sending
-    await supabaseAdmin
-      .from('waitlist')
-      .update({ sent_status: 'pending' })
-      .eq('id', entry.id);
-
-    // Send email
-    const result = await sendWaitlistEmail(
-      entry.email,
-      EMAIL_SUBJECT,
-      htmlContent,
-      textContent
-    );
-
-    if (result.success) {
-      // Update database with success
-      const { error: updateError } = await supabaseAdmin
-        .from('waitlist')
-        .update({
-          sent_at: new Date().toISOString(),
-          sent_status: 'sent',
-          error_message: null,
-        })
-        .eq('id', entry.id);
-
-      if (updateError) {
-        console.error(`${progress} ⚠️  Sent to ${entry.email} but failed to update database:`, updateError);
-      } else {
-        console.log(`${progress} ✅ Sent to ${entry.email}`);
-        sentCount++;
-      }
-    } else {
-      // Update database with failure
-      const { error: updateError } = await supabaseAdmin
-        .from('waitlist')
-        .update({
-          sent_status: 'failed',
-          error_message: result.error || 'Unknown error',
-        })
-        .eq('id', entry.id);
-
-      if (updateError) {
-        console.error(`${progress} ❌ Failed to send to ${entry.email} and failed to update database:`, updateError);
-      } else {
-        console.error(`${progress} ❌ Failed to send to ${entry.email}: ${result.error}`);
-      }
-      failedCount++;
-    }
-
-    // Rate limiting - delay between sends (except for last email)
-    if (i < emailsToSend.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY_MS));
-    }
-  }
-
-  // Summary
-  console.log('\n========================');
-  console.log('📊 Summary');
-  console.log('========================');
-  console.log(`Total processed: ${actualCount}`);
-  console.log(`✅ Sent: ${sentCount}`);
-  console.log(`❌ Failed: ${failedCount}`);
-  if (isDryRun) {
-    console.log(`🔍 Skipped (dry run): ${skippedCount}`);
-  }
-  if (limit && totalEmails > limit) {
-    console.log(`\n⚠️  Note: ${totalEmails - limit} more email(s) remain to be sent`);
-    console.log(`   Run again without --limit to send remaining emails`);
-  }
-  if (failedCount > 0 && !resendFailed) {
-    console.log(`\n💡 Tip: Run with --resend-failed to retry failed emails`);
   }
 }
 

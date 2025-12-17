@@ -54,7 +54,8 @@
     "scrape:workatastartup": "tsx yc_companies/scrape_workatastartup.ts",
     "scrape:workatastartup:python": "python yc_companies/scrape_workatastartup_directory.py",
     "clean": "powershell -ExecutionPolicy Bypass -File scripts/clean.ps1",
-    "send-waitlist": "tsx scripts/send-waitlist-emails.ts"
+    "send-waitlist": "tsx scripts/send-waitlist-emails.ts",
+    "test-email": "tsx scripts/test-email.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
