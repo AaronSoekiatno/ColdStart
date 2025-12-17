@@ -1,0 +1,104 @@
+Job URL: https://www.workatastartup.com/jobs/87011
+Job Title: Summer 2026 Robotics Software Intern at Yondu (W24)
+Description Length: 4055 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Summer 2026 Robotics Software Intern at Yondu (W24)
+$4K - $10K / monthly
+Robots to Automate Fulfillment
+Gardena, CA, US / Los Angeles, CA, US
+Internship
+US citizen/visa only
+Apply now
+About Yondu
+Yondu is creating the robotic workforce of the future starting with logistics automation. We're deploying humanoid robots in the first flexible, drop-in picking automation solution designed for 3PLs.
+Our approach is building robot foundation models to enable off the shelf robots to do these tasks autonomously. To train these models, we're building our own teleoperation system in house. Finally, there's a whole stack of classical robotics and integration work to make our systems work in the real world .
+Learning constantly and keeping up with SOTA research is one of the pillars of our company's culture.
+The company was founded by MIT students and has raised seed funding after graduating from the YC W24 batch. Join us in shaping the way the world works.
+About the role
+Skills:
+C++, Python, Docker, Microcontrollers, Sensor integration
+We’re looking for an intern to work hands-on with our robots. We deploy these robots autonomously in warehouses so there is a lot on the stack of things to get them working flawless. If you’re interested in autonomous navigation, motion planning, or control systems, please feel free to apply.
+What you’ll do:
+Contribute directly to our production codebase in C++ and Python.
+Contribute fresh ideas and implementations.
+Tackle projects that will directly help our team implement a new or improved feature
+Build and test software for real robots!
+Qualifications/Requirements
+Currently pursuing a degree or recent grad in Computer Science, Robotics, Electrical Engineering, or a related field.
+Strong grasp of C++ and Python.
+Linux experience, comfortable working in a command-line environment (you know your way around Ubuntu).
+You have an interest in how software interacts with physical hardware (sensors, motors, or embedded boards like Raspberry Pi/Jetson).
+Experience with Git contributions and Git best practices in a team environment
+Nice To Haves
+Experience with ROS2
+Experience using Docker
+Past projects in computer vision, autonomous navigation, motion planning, or other robotics-related domains
+What makes you an ideal fit
+Contribute ideas and work with autonomy when on projects
+Tenacity and desire to tackle problems others may see as ‘too difficult’
+Creative problem solving
+Passion for engineering
+Technology
+Our approach is building robot foundation models to enable off the shelf robots to do these tasks autonomously. To train these models, we're building our own teleoperation system in house. Finally, there's a whole stack of classical robotics and integration work to make our systems work in the real world .
+Learning constantly and keeping up with SOTA research is one of the pillars of our company's culture.
+Interview Process
+There’ll be 2-3 interviews discussing your skills and past projects. The final interview will consist of administrative and logistics details around hiring.
+Apply now
+Other jobs at Yondu
+Summer 2026 Robotics Software Intern
+intern
+Gardena, CA, US / Los Angeles, CA, US
+Robotics
+$4K - $10K / monthly
+Freshman and above
+Apply
+Winter/Spring 2026 Robotics Software Intern
+intern
+Gardena, CA, US / Los Angeles, CA, US
+Robotics
+$4K - $10K / monthly
+Freshman and above
+Apply
+Summer 2026 Robotics Hardware Intern
+intern
+Gardena, CA, US
+Hardware
+$4K - $10K / monthly
+Sophomore and above
+Apply
+Business Development Representative, Robotics
+contract
+Los Angeles, CA, US / Remote (US)
+$100K - $150K
+0.10% - 1.00%
+3+ years
+Apply
+Quarter 1 2026 Robotics Hardware Intern
+intern
+Gardena, CA, US
+Hardware
+$4K - $10K / monthly
+Sophomore and above
+Apply
+Senior Robotics Engineer
+fulltime
+Gardena, CA, US / Los Angeles, CA, US
+Robotics
+$120 - $200
+0.50% - 1.60%
+3+ years
+Apply
+Founding Robotics Researcher
+fulltime
+Gardena, CA, US / Los Angeles, CA, US
+Robotics
+$120K - $200K
+0.50% - 1.60%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

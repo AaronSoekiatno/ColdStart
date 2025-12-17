@@ -32,7 +32,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
-  const [selectedRoleType, setSelectedRoleType] = useState<RoleType | null>(null);
+  const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -94,11 +94,19 @@ export default function OnboardingPage() {
   };
 
   const handleRoleTypeSelect = (roleType: RoleType) => {
-    setSelectedRoleType(roleType);
+    setSelectedRoleTypes(prev => {
+      if (prev.includes(roleType)) {
+        // Remove if already selected
+        return prev.filter(r => r !== roleType);
+      } else {
+        // Add if not selected
+        return [...prev, roleType];
+      }
+    });
   };
 
   const handleSubmit = async () => {
-    if (!selectedJobType || !selectedRoleType) return;
+    if (!selectedJobType || selectedRoleTypes.length === 0) return;
 
     setIsSubmitting(true);
     try {
@@ -110,7 +118,7 @@ export default function OnboardingPage() {
         credentials: 'include',
         body: JSON.stringify({ 
           jobType: selectedJobType,
-          roleType: selectedRoleType,
+          roleTypes: selectedRoleTypes,
         }),
       });
 
@@ -286,7 +294,7 @@ export default function OnboardingPage() {
                   key={role.value}
                   onClick={() => handleRoleTypeSelect(role.value)}
                   className={`p-5 rounded-xl border-2 transition-all text-left shadow-sm ${
-                    selectedRoleType === role.value
+                    selectedRoleTypes.includes(role.value)
                       ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
                       : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
                   }`}
@@ -313,7 +321,7 @@ export default function OnboardingPage() {
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!selectedRoleType || isSubmitting}
+                disabled={selectedRoleTypes.length === 0 || isSubmitting}
                 className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
               >
                 {isSubmitting ? 'Saving...' : 'Complete Setup'}

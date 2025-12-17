@@ -72,7 +72,7 @@ export interface CandidateRow {
   past_internships?: string; // Comma-separated string
   technical_projects?: string; // Comma-separated string
   job_type?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
-  role_type?: string; // Preferred role type (PM, SWE, SDE, ML, AI, etc.)
+  role_type?: string[]; // Preferred role types (array) (PM, SWE, SDE, ML, AI, etc.)
   resume_path?: string; // Path to resume file in Supabase Storage (DEPRECATED - use resumes table)
   resume_full_text?: string; // Full extracted text content from resume (DEPRECATED - use resumes table)
   resume_latex?: string; // LaTeX source code generated from resume
