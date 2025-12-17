@@ -104,6 +104,7 @@ CRITICAL REQUIREMENTS:
 - Each suggestion MUST include the exact JSONPath to the field being modified
 - Each suggestion MUST include the exact original value from the structured data
 - Each suggestion MUST include the new improved value
+- The "reason" field MUST be exactly ONE sentence (max 15 words) summarizing what needs improvement - keep it brief and actionable
 - Use JSONPath notation: "experience[0].description[1]" for arrays, "personal.name" for objects
 - For array items, use bracket notation: "skills[2]", "experience[0].description[0]"
 - For object properties, use dot notation: "personal.email", "summary"
@@ -127,7 +128,7 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
       "path": "experience[0].description[1]",
       "oldValue": "exact original text/value from the structured data",
       "newValue": "improved version with stronger verbs and metrics",
-      "reason": "brief explanation of why this helps (e.g., 'adds quantifiable metrics and stronger action verb')",
+      "reason": "ONE concise sentence (max 15 words) summarizing what needs improvement (e.g., 'Add quantifiable metrics to showcase impact' or 'Use stronger action verb to emphasize leadership'). Keep it brief and actionable.",
       "section": "Experience"
     }
   ]
@@ -186,7 +187,6 @@ Focus on the most impactful changes that would make the biggest difference to th
 
     // Parse response
     const responseText = result.response.text();
-    console.log('Gemini response:', responseText);
 
     // Clean markdown code blocks if present
     let cleanedResponse = responseText.trim();

@@ -138,7 +138,7 @@ export function BugReportModal({ open, onOpenChange, bouncedEmail, startupId }: 
               required
               disabled={isSubmitting}
               rows={5}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-black placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none"
             />
           </div>
           <Button
