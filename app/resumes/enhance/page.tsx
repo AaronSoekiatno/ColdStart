@@ -44,10 +44,24 @@ function EnhanceResumePageContent() {
   const [showFinishButton, setShowFinishButton] = useState(false);
   const [atsScore, setAtsScore] = useState<{
     score: number;
-    category: 'Excellent' | 'Good' | 'Needs Work';
+    category: 'Excellent' | 'Okay';
     suggestions: string[];
   } | null>(null);
   const [isLoadingScore, setIsLoadingScore] = useState(false);
+
+  // Auto-resize textarea when suggestion changes
+  useEffect(() => {
+    if (selectedSuggestionId) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        const textarea = document.getElementById(`suggestion-textarea-${selectedSuggestionId}`) as HTMLTextAreaElement;
+        if (textarea) {
+          textarea.style.height = 'auto';
+          textarea.style.height = Math.max(textarea.scrollHeight + 4, 40) + 'px';
+        }
+      }, 0);
+    }
+  }, [selectedSuggestionId, resumeSuggestions]);
   const { toast } = useToast();
 
   // Helper function to apply suggestions to structured resume data
@@ -268,6 +282,12 @@ function EnhanceResumePageContent() {
 
         const data = await response.json();
 
+        console.log('[DEBUG] Resume data received:', {
+          hasResumeText: !!data.resumeText,
+          resumeTextLength: data.resumeText?.length,
+          hasStructuredData: !!data.structuredResumeData,
+        });
+
         if (data.resumeText) {
           setResumeText(data.resumeText);
         }
@@ -276,7 +296,43 @@ function EnhanceResumePageContent() {
           setStructuredResumeData(data.structuredResumeData);
           setOriginalStructuredResumeData(data.structuredResumeData);
 
-          // Automatically load suggestions after resume data is loaded
+          // Fetch ATS score first, then load suggestions
+          // Use structured data if available (preferred), otherwise fall back to resumeText
+          if (data.structuredResumeData || data.resumeText) {
+            console.log('[ATS Score] Fetching score for resumeId:', resumeId);
+            setIsLoadingScore(true);
+            try {
+              const scoreResponse = await fetch('/api/resume-ats-score', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  resumeText: data.resumeText,
+                  structuredData: data.structuredResumeData,
+                  resumeId,
+                }),
+              });
+
+              if (scoreResponse.ok) {
+                const scoreData = await scoreResponse.json();
+                console.log('[ATS Score] Received score data:', scoreData);
+                setAtsScore({
+                  score: scoreData.score,
+                  category: scoreData.category,
+                  suggestions: scoreData.suggestions || [],
+                });
+              } else {
+                const errorText = await scoreResponse.text();
+                console.error('[ATS Score] Failed to fetch:', scoreResponse.status, errorText);
+              }
+            } catch (error) {
+              console.error('[ATS Score] Error fetching:', error);
+            } finally {
+              setIsLoadingScore(false);
+            }
+          }
+
+          // Now load suggestions after ATS score
           // Pass the structured data directly to avoid race condition with state updates
           handleLoadSuggestions(data.structuredResumeData);
         } else if (resumeId) {
@@ -293,13 +349,6 @@ function EnhanceResumePageContent() {
       }
     });
   }, [resumeId]);
-
-  // Fetch ATS score when resume text is available
-  useEffect(() => {
-    if (resumeText && resumeId) {
-      fetchATSScore();
-    }
-  }, [resumeText, resumeId]);
 
   const handleSuggestionClick = (suggestionId: string) => {
     setSelectedSuggestionId(suggestionId);
@@ -397,6 +446,39 @@ function EnhanceResumePageContent() {
           console.error('Failed to mark resume as enhanced from Finish button:', error);
         }
       }
+
+      // Recalculate ATS score with updated structured data
+      if (structuredResumeData && resumeId) {
+        setIsLoadingScore(true);
+        try {
+          const scoreResponse = await fetch('/api/resume-ats-score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              structuredData: structuredResumeData,
+              resumeId: `${resumeId}-enhanced`, // Use different cache key for enhanced version
+            }),
+          });
+
+          if (scoreResponse.ok) {
+            const scoreData = await scoreResponse.json();
+            console.log('[ATS Score] Updated score after enhancements:', scoreData);
+            setAtsScore({
+              score: scoreData.score,
+              category: scoreData.category,
+              suggestions: scoreData.suggestions || [],
+            });
+          } else {
+            const errorText = await scoreResponse.text();
+            console.error('[ATS Score] Failed to fetch updated score:', scoreResponse.status, errorText);
+          }
+        } catch (error) {
+          console.error('[ATS Score] Error fetching updated score:', error);
+        } finally {
+          setIsLoadingScore(false);
+        }
+      }
     }
   };
 
@@ -409,60 +491,33 @@ function EnhanceResumePageContent() {
       <Header initialUser={user} />
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
         <div className="h-full w-full flex flex-col px-4 sm:px-6 lg:px-8 max-w-full mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6 flex-shrink-0">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/resumes')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
-              </button>
-              <div>
+          {/* Header and Content Row - Aligned */}
+          <div className="flex-1 min-h-0 flex gap-6">
+            {/* Left side: Header + Resume Preview */}
+            <div className="flex-1 min-h-0 flex flex-col">
+              {/* Header */}
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <button
+                  onClick={() => router.push('/resumes')}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-5 h-5 text-gray-700" />
+                </button>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-bold text-gray-900">Enhance Your Resume</h1>
                   {/* ATS Score Badge - next to title */}
                   <ATSScoreBadge
                     score={atsScore?.score ?? 0}
-                    category={atsScore?.category ?? 'Needs Work'}
+                    category={atsScore?.category ?? 'Okay'}
                     suggestions={atsScore?.suggestions ?? []}
                     isLoading={isLoadingScore}
                   />
                 </div>
-                <p className="text-sm text-gray-600">Click on highlights to view suggestions</p>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {resumeSuggestions.length > 0 && isDoneEnhancing && (
-                <>
-                  {acceptHistory.length > 0 && (
-                    <button
-                      onClick={handleUndoLastChange}
-                      className="inline-flex items-center gap-1 px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
-                    >
-                      <Undo className="w-3 h-3" />
-                      <span>Undo</span>
-                    </button>
-                  )}
-                  <span className="text-sm text-gray-700 font-medium">
-                    {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
-                  </span>
-                  <Button
-                    onClick={handleDownloadPDF}
-                    className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6 cursor-pointer"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download PDF
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* Two-column layout: Resume Preview (left) + Suggestions Sidebar (right) */}
-          <div className="flex-1 min-h-0 flex gap-6">
-            {/* Resume Preview - Left Column (2/3 width) */}
-            <div className="flex-1 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+
+              {/* Resume Preview - Always visible */}
+              <div className="flex-1 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm p-3">
               {!resumeText && !structuredResumeData ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-300 mb-4" />
@@ -503,19 +558,44 @@ function EnhanceResumePageContent() {
                   )}
                 </div>
               )}
+              </div>
             </div>
 
-            {/* Suggestions Sidebar - Right Column (1/3 width) */}
-            {(resumeSuggestions.length > 0 || isLoadingSuggestions) && (
-              <div className="w-96 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col">
-                <div className="p-4 border-b border-gray-200 flex items-center justify-between gap-3">
+            {/* Suggestions Sidebar - Right Column (1/3 width) - Aligned with header - Always visible */}
+            <div className="w-96 min-h-0 overflow-hidden flex flex-col mt-6">
+              {/* Right side actions (when done enhancing) */}
+              {resumeSuggestions.length > 0 && isDoneEnhancing && (
+                <div className="flex items-center gap-3 mb-4 flex-shrink-0">
+                  {acceptHistory.length > 0 && (
+                    <button
+                      onClick={handleUndoLastChange}
+                      className="inline-flex items-center gap-1 px-3 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                    >
+                      <Undo className="w-3 h-3" />
+                      <span>Undo</span>
+                    </button>
+                  )}
+                  <span className="text-sm text-gray-700 font-medium">
+                    {Object.values(suggestionStatuses).filter(s => s === 'accepted').length} of {resumeSuggestions.length} accepted
+                  </span>
+                  <Button
+                    onClick={handleDownloadPDF}
+                    className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6 cursor-pointer"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
+                </div>
+              )}
+              <div className="flex-1 min-h-0 overflow-hidden bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col">
+                <div className="p-3 border-b border-gray-200 flex items-center justify-between gap-3 flex-shrink-0">
                   <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Suggestions</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Suggestions</h2>
                     <p className="text-xs text-gray-600 mt-1">
                       {isLoadingSuggestions ? 'Generating suggestions...' : 'Click on a highlight to view details'}
                     </p>
                   </div>
-                  {!isLoadingSuggestions && (
+                  {!isLoadingSuggestions && resumeSuggestions.length > 0 && (
                     <button
                       type="button"
                       onClick={handleDoneEnhancing}
@@ -525,44 +605,69 @@ function EnhanceResumePageContent() {
                     </button>
                   )}
                 </div>
-                <div className="flex-1 overflow-y-auto p-4">
-                  {isLoadingSuggestions ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-blue-300 mb-4" />
-                      <p className="text-sm text-gray-600">Analyzing your resume...</p>
-                    </div>
-                  ) : selectedSuggestionId ? (
-                    <div className="space-y-4">
-                      {(() => {
-                        const suggestion = resumeSuggestions.find(s => s.id === selectedSuggestionId);
-                        if (!suggestion) return null;
-                        const status = suggestionStatuses[selectedSuggestionId];
+              <div className="flex-1 min-h-0 flex flex-col">
+                {isLoadingSuggestions ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-300 mb-4" />
+                    <p className="text-sm text-gray-600">Analyzing your resume...</p>
+                  </div>
+                ) : selectedSuggestionId ? (
+                    <>
+                      <div className="flex-1 p-2 space-y-2">
+                        {(() => {
+                          const suggestion = resumeSuggestions.find(s => s.id === selectedSuggestionId);
+                          if (!suggestion) return null;
+                          const status = suggestionStatuses[selectedSuggestionId];
 
-                        return (
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Original</h3>
-                              <p className="text-sm text-gray-700 bg-red-50 p-3 rounded border border-red-200">{suggestion.original}</p>
-                            </div>
-
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
-                                <h3 className="text-sm font-semibold text-gray-900">Enhanced</h3>
-                                <Pencil className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                          return (
+                            <>
+                              <div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-1">Original</h3>
+                                <p className="text-sm text-gray-700 bg-red-50 p-2.5 rounded border border-red-200">{suggestion.original}</p>
                               </div>
-                              <textarea
-                                value={suggestion.suggested}
-                                onChange={(e) => handleSuggestionEdit(selectedSuggestionId, e.target.value)}
-                                className="w-full text-sm text-gray-900 bg-green-50 p-3 rounded border border-green-200 focus:outline-none focus:ring-2 focus:ring-blue-300 min-h-[140px] resize-vertical"
-                              />
-                            </div>
 
-                            <div>
-                              <h3 className="text-sm font-semibold text-gray-900 mb-2">Reasoning</h3>
-                              <p className="text-sm text-gray-600">{suggestion.reason}</p>
-                            </div>
+                              <div>
+                                <div className="flex items-center gap-2 mb-1 mt-4">
+                                  <h3 className="text-sm font-semibold text-gray-900">Enhanced</h3>
+                                  <Pencil className="w-4 h-4 text-gray-500" aria-hidden="true" />
+                                </div>
+                                <textarea
+                                  id={`suggestion-textarea-${selectedSuggestionId}`}
+                                  key={selectedSuggestionId}
+                                  value={suggestion.suggested}
+                                  onChange={(e) => {
+                                    handleSuggestionEdit(selectedSuggestionId, e.target.value);
+                                    // Auto-resize textarea with buffer to prevent scrollbar
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = Math.max(e.target.scrollHeight + 4, 40) + 'px';
+                                  }}
+                                  onFocus={(e) => {
+                                    // Auto-resize on focus with buffer to prevent scrollbar
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = Math.max(e.target.scrollHeight + 4, 40) + 'px';
+                                  }}
+                                  className="w-full text-sm text-gray-900 bg-green-50 p-2.5 rounded border border-green-200 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none overflow-hidden"
+                                />
+                              </div>
 
-                            <div className="flex gap-2 pt-2">
+                              <div className="mt-4">
+                                <h3 className="text-sm font-semibold text-gray-900 mb-1">Feedback</h3>
+                                <p className="text-sm text-gray-600">{suggestion.reason}</p>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      
+                      {/* Sticky buttons at bottom */}
+                      <div className="pt-0 pb-3 px-3 bg-white flex-shrink-0">
+                        {(() => {
+                          const suggestion = resumeSuggestions.find(s => s.id === selectedSuggestionId);
+                          if (!suggestion) return null;
+                          const status = suggestionStatuses[selectedSuggestionId];
+
+                          return (
+                            <div className="flex gap-2">
                               {status === 'pending' && (
                                 <>
                                   <Button
@@ -591,22 +696,22 @@ function EnhanceResumePageContent() {
                                 </div>
                               )}
                             </div>
-                          </div>
-                        );
-                      })()}
-                    </div>
+                          );
+                        })()}
+                      </div>
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-center py-8">
                       <p className="text-sm text-gray-600">
                         {isDoneEnhancing
                           ? "Ready to Download"
-                          : "Select a highlighted section in your resume to view the suggestion"}
+                          : "No bullet points selected yet"}
                       </p>
                     </div>
                   )}
-                </div>
               </div>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

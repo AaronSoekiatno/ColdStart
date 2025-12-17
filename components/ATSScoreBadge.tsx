@@ -11,38 +11,39 @@ import { Info } from 'lucide-react';
 
 interface ATSScoreBadgeProps {
   score: number;
-  category: 'Excellent' | 'Good' | 'Needs Work';
+  category: 'Excellent' | 'Okay';
   suggestions: string[];
   isLoading?: boolean;
 }
 
 const SCORE_MESSAGES = {
-  'Excellent': 'Excellent - Will most likely pass ATS screening',
-  'Good': 'Good - Strong chance of passing ATS screening',
-  'Needs Work': 'Needs Work - Consider enhancing for ATS',
+  'Excellent!': 'Excellent! Will most likely pass ATS screening',
+  'Okay': 'Okay - Might pass ATS screening',
 };
 
 const SCORE_COLORS = {
-  'Excellent': {
+  'Excellent!': {
     ring: 'stroke-green-500',
     text: 'text-green-600',
     bg: 'bg-green-50',
   },
-  'Good': {
+  'Okay': {
     ring: 'stroke-yellow-500',
     text: 'text-yellow-600',
     bg: 'bg-yellow-50',
   },
-  'Needs Work': {
-    ring: 'stroke-red-500',
-    text: 'text-red-600',
-    bg: 'bg-red-50',
-  },
 };
+
+// Map API category to display category
+function getDisplayCategory(category: 'Excellent' | 'Okay'): 'Excellent!' | 'Okay' {
+  return category === 'Excellent' ? 'Excellent!' : category;
+}
 
 export function ATSScoreBadge({ score, category, suggestions, isLoading }: ATSScoreBadgeProps) {
   const [displayScore, setDisplayScore] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  
+  const displayCategory = getDisplayCategory(category);
 
   // Animate score counting from 0 to final value
   useEffect(() => {
@@ -72,15 +73,15 @@ export function ATSScoreBadge({ score, category, suggestions, isLoading }: ATSSc
     return () => clearInterval(timer);
   }, [score, isLoading]);
 
-  const colors = SCORE_COLORS[category];
-  const radius = 28; // Increased from 22
+  const colors = SCORE_COLORS[displayCategory];
+  const radius = 32; // Increased for better visibility
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (displayScore / 100) * circumference;
 
   if (isLoading) {
     return (
       <div className="flex items-center gap-2">
-        <div className="relative w-20 h-20">
+        <div className="relative w-28 h-28">
           {/* Loading skeleton */}
           <svg className="w-full h-full transform -rotate-90">
             <circle
@@ -106,9 +107,9 @@ export function ATSScoreBadge({ score, category, suggestions, isLoading }: ATSSc
     <TooltipProvider>
       <Tooltip delayDuration={100}>
         <TooltipTrigger asChild>
-          <div className="flex items-center gap-2.5 cursor-help">
+          <div className="flex items-center cursor-pointer">
             {/* Circular progress indicator */}
-            <div className="relative w-20 h-20">
+            <div className="relative w-28 h-28">
               {/* Background circle */}
               <svg className="w-full h-full transform -rotate-90">
                 <circle
@@ -137,7 +138,7 @@ export function ATSScoreBadge({ score, category, suggestions, isLoading }: ATSSc
 
               {/* Score text in center */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-2xl font-bold ${colors.text}`}>
+                <span className={`text-xl font-bold ${colors.text} leading-tight`}>
                   {displayScore}%
                 </span>
               </div>
@@ -151,35 +152,19 @@ export function ATSScoreBadge({ score, category, suggestions, isLoading }: ATSSc
         <TooltipContent
           side="right"
           align="center"
-          className="max-w-md p-4"
-          sideOffset={8}
+          className="max-w-xs p-2.5"
+          sideOffset={4}
         >
-          <div className="flex gap-6">
-            {/* Category and message on left */}
-            <div className="flex-shrink-0">
-              <div className="font-semibold text-sm mb-1">{category}</div>
-              <div className="text-xs text-gray-600">
-                {SCORE_MESSAGES[category]}
-              </div>
+          {suggestions && suggestions.length > 0 ? (
+            <div className="text-xs text-gray-700">
+              <div className="font-semibold">{SCORE_MESSAGES[displayCategory]}</div>
+              <div className="mt-1">{suggestions[0]}</div>
             </div>
-
-            {/* Suggestions on right */}
-            {suggestions && suggestions.length > 0 && (
-              <div className="flex-1 border-l border-gray-200 pl-6">
-                <div className="font-semibold text-xs mb-1.5">
-                  Areas for Improvement:
-                </div>
-                <ul className="space-y-1">
-                  {suggestions.map((suggestion, index) => (
-                    <li key={index} className="text-xs text-gray-600 flex items-start gap-1.5">
-                      <span className="text-gray-400 mt-0.5">•</span>
-                      <span>{suggestion}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
+          ) : (
+            <div className="text-xs text-gray-600">
+              {SCORE_MESSAGES[displayCategory]}
+            </div>
+          )}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

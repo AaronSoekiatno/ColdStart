@@ -14,26 +14,26 @@ const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
 interface ATSScoreResult {
   score: number;
-  category: 'Excellent' | 'Good' | 'Needs Work';
+  category: 'Excellent' | 'Okay';
   breakdown: {
     keywords: number;
     structure: number;
     content: number;
     formatting: number;
   };
-  suggestions: string[];
+  suggestions: string[]; // Keep for backward compatibility, but will contain single summary
+  summary?: string; // New field for single sentence summary
 }
 
 interface ATSScoreRequest {
-  resumeText: string;
+  resumeText?: string;
   structuredData?: any;
   resumeId?: string;
 }
 
-function getScoreCategory(score: number): 'Excellent' | 'Good' | 'Needs Work' {
-  if (score >= 92) return 'Excellent';
-  if (score >= 80) return 'Good';
-  return 'Needs Work';
+function getScoreCategory(score: number): 'Excellent' | 'Okay' {
+  if (score >= 90) return 'Excellent';
+  return 'Okay';
 }
 
 function calculateWeightedScore(breakdown: {
@@ -58,9 +58,9 @@ export async function POST(request: NextRequest) {
     const body: ATSScoreRequest = await request.json();
     const { resumeText, structuredData, resumeId } = body;
 
-    if (!resumeText) {
+    if (!resumeText && !structuredData) {
       return NextResponse.json(
-        { error: 'Resume text is required' },
+        { error: 'Either resume text or structured data is required' },
         { status: 400 }
       );
     }
@@ -81,8 +81,23 @@ export async function POST(request: NextRequest) {
       model: 'gemini-2.0-flash-exp',
     });
 
+    // Build structured data context if available
+    const structuredDataContext = structuredData
+      ? `\n\nSTRUCTURED RESUME DATA (use this for accurate analysis):
+${JSON.stringify(structuredData, null, 2)}
+
+IMPORTANT: Use the structured data to analyze the resume content. This provides a complete view of the resume's structure, content, and formatting.`
+      : '';
+
+    // Build resume text context (fallback if no structured data)
+    const resumeTextContext = resumeText
+      ? `\n\nRESUME TEXT:\n${resumeText}`
+      : '';
+
     // Create the prompt for ATS scoring
     const prompt = `You are an expert ATS (Applicant Tracking System) resume analyzer. Analyze this resume for ATS compatibility and score it across 4 categories.
+
+${structuredDataContext}${resumeTextContext}
 
 Score each category from 0-100 based on these criteria:
 
@@ -97,11 +112,11 @@ Score each category from 0-100 based on these criteria:
 - Score <50: Minimal action verbs, generic language, no metrics
 
 **2. Structure (25% weight)**:
-- Clear section headers (Experience, Education, Skills, Summary)
+- Clear section headers (Experience, Education, Skills)
 - Consistent formatting throughout
 - Appropriate resume length (1-2 pages)
 - Complete contact information
-- Professional summary/objective present
+- Note: This is a technical resume - professional summaries/objectives are NOT required or expected at the top
 - Score 90-100: Perfect structure, all sections present, excellent organization
 - Score 70-89: Good structure, minor inconsistencies
 - Score 50-69: Acceptable structure, missing some sections
@@ -129,14 +144,12 @@ Score each category from 0-100 based on these criteria:
 - Score 50-69: Acceptable, some ATS-unfriendly elements
 - Score <50: Poor compatibility, many parsing issues
 
-**Resume to analyze:**
-${resumeText}
-
 **Instructions:**
 1. Analyze the resume carefully against all criteria above
 2. Provide a score (0-100) for each of the 4 categories
-3. Generate 2-3 specific, actionable suggestions for improvement
-4. Focus suggestions on the lowest-scoring areas
+3. Generate ONE short sentence (max 15 words) that summarizes the most important area needing improvement
+4. Focus on the lowest-scoring area and make it concise and actionable
+5. IMPORTANT: This is a technical resume - DO NOT suggest adding a professional summary or objective statement at the top. Technical resumes typically start with contact information and go straight to Experience/Skills sections.
 
 Return ONLY a valid JSON object in this exact format (no markdown, no code blocks):
 {
@@ -144,11 +157,7 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
   "structure": <score 0-100>,
   "content": <score 0-100>,
   "formatting": <score 0-100>,
-  "suggestions": [
-    "Specific suggestion 1",
-    "Specific suggestion 2",
-    "Specific suggestion 3"
-  ]
+  "summary": "One short sentence (max 15 words) summarizing what your resume needs improvement on"
 }`;
 
     // Call Gemini API
@@ -181,7 +190,7 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
       typeof parsedResponse.structure !== 'number' ||
       typeof parsedResponse.content !== 'number' ||
       typeof parsedResponse.formatting !== 'number' ||
-      !Array.isArray(parsedResponse.suggestions)
+      (typeof parsedResponse.summary !== 'string' && !Array.isArray(parsedResponse.suggestions))
     ) {
       console.error('[ATS Score] Invalid response structure:', parsedResponse);
       return NextResponse.json(
@@ -198,14 +207,22 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
       formatting: Math.min(100, Math.max(0, parsedResponse.formatting)),
     };
 
-    const finalScore = calculateWeightedScore(breakdown);
+    let finalScore = calculateWeightedScore(breakdown);
+    // Cap minimum score at 70 and maximum score at 97
+    finalScore = Math.max(70, Math.min(97, finalScore));
     const category = getScoreCategory(finalScore);
+
+    // Extract summary - prefer new 'summary' field, fallback to first suggestion for backward compatibility
+    const summary = parsedResponse.summary || (Array.isArray(parsedResponse.suggestions) && parsedResponse.suggestions.length > 0 
+      ? parsedResponse.suggestions[0] 
+      : 'Add more quantifiable metrics and action verbs');
 
     const scoreResult: ATSScoreResult = {
       score: finalScore,
       category,
       breakdown,
-      suggestions: parsedResponse.suggestions.slice(0, 3), // Top 3 suggestions
+      suggestions: [summary], // Single sentence summary in array for backward compatibility
+      summary, // New field
     };
 
     // Cache the result if resumeId is provided
