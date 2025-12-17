@@ -7,7 +7,7 @@ import { EnhancePortfolioBanner } from '@/components/EnhancePortfolioBanner';
 import { CheckMatchesBanner } from '@/components/CheckMatchesBanner';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { supabase } from '@/lib/supabase';
-//blah
+
 interface Resume {
   id: string;
   fileName: string;

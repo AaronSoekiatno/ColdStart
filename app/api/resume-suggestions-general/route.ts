@@ -158,7 +158,7 @@ Focus on the most impactful changes that would make the biggest difference to th
 
     // Generate suggestions with Gemini 2.0 Flash
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.0-flash',
       generationConfig: {
         temperature: 0.7,
         topK: 40,

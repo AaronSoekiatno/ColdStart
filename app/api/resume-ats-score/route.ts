@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     // Initialize Gemini model
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.0-flash',
     });
 
     // Build structured data context if available
