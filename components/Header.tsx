@@ -154,6 +154,12 @@ export const Header = ({ initialUser }: HeaderProps) => {
               >
                 Email Tracker
               </Link>
+              <button
+                onClick={handlePremiumClick}
+                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors cursor-pointer"
+              >
+                Premium
+              </button>
               <Link
                 href="/resumes"
                 className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
