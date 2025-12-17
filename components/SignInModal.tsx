@@ -55,10 +55,13 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
 
       // Render the Google Sign-In button
       if (googleButtonRef.current) {
+        // Use a fixed width to ensure consistent button appearance
+        // regardless of whether the user has a saved Google session
+        const buttonWidth = 400;
         window.google.accounts.id.renderButton(googleButtonRef.current, {
           theme: 'outline',
           size: 'large',
-          width: googleButtonRef.current.offsetWidth || 400,
+          width: buttonWidth,
           text: 'continue_with',
           shape: 'rectangular',
         });
