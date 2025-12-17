@@ -214,7 +214,7 @@ Focus on the most impactful changes that would make the biggest difference to th
       // Return both patch and legacy format for backward compatibility
       return {
         id,
-        section: patch.section,
+        section: patch.section || 'General',
         original: typeof patch.oldValue === 'string' ? patch.oldValue : JSON.stringify(patch.oldValue),
         suggested: typeof patch.newValue === 'string' ? patch.newValue : JSON.stringify(patch.newValue),
         reason: patch.reason,
