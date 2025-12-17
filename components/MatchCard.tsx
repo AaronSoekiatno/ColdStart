@@ -515,7 +515,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                 <div className="bg-gray-50 border border-gray-200 rounded-2xl sm:rounded-3xl px-2 py-1 sm:px-3 sm:py-2 shadow-sm w-fit sm:min-w-[120px] flex items-center justify-center flex-shrink-0">
                   <p className="text-xs sm:text-base md:text-lg font-bold text-blue-300 whitespace-nowrap">
                     {Math.min((match.score * 100) + 40, 97).toFixed(0)}%{" "}
-                    <span className="text-[10px] sm:text-sm font-normal text-gray-600 align-top inline-block ml-0.5">
+                    <span className="text-[10px] sm:text-sm font-normal text-gray-600 align-top inline-block ml-1 mt-1">
                       match
                     </span>
                   </p>

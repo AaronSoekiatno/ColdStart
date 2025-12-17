@@ -154,7 +154,19 @@ export default function MatchesPage() {
           fetchPromises.push(
             fetch(`/api/matches?page=${page}&limit=20`, {
               credentials: 'include',
-            }).then(res => res.json())
+            })
+              .then(async (res) => {
+                if (!res.ok) {
+                  const errorData = await res.json().catch(() => ({ error: 'Failed to fetch matches' }));
+                  throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+              })
+              .catch((error) => {
+                console.error(`[Matches] Error fetching page ${page}:`, error);
+                // Return empty result for this page so Promise.all doesn't fail
+                return { matches: [], pagination: { hasMore: false } };
+              })
           );
         }
 
