@@ -79,9 +79,17 @@ export async function GET(request: NextRequest) {
     // Check for redirect parameter
     const redirectTo = requestUrl.searchParams.get('redirect');
     
-    // For OAuth sign-in, default to /matches instead of home
-    // This can be overridden by the redirect parameter
-    let redirectPath = redirectTo || '/matches';
+    // For OAuth sign-in, determine redirect path
+    let redirectPath: string;
+    if (redirectTo) {
+      redirectPath = redirectTo;
+    } else if (isNewSignUp) {
+      // New sign-up - redirect to home with uploadResume flag
+      redirectPath = '/?uploadResume=true';
+    } else {
+      // Existing user - redirect to matches
+      redirectPath = '/matches';
+    }
     
     // Ensure redirect path is relative (starts with /)
     if (!redirectPath.startsWith('/')) {

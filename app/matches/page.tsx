@@ -115,7 +115,8 @@ export default function MatchesPage() {
 
         if (!response.ok) {
           if (response.status === 404) {
-            router.push('/?error=no_resume');
+            // No resume - redirect to home with uploadResume flag
+            router.push('/?uploadResume=true');
             return;
           }
           throw new Error('Failed to load matches');
