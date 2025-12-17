@@ -17,23 +17,27 @@ export default function Home() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          // User is authenticated, redirect to matches
-          router.push('/matches');
+        // Use getSession for more reliable auth checking
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          // User is authenticated, redirect to matches immediately
+          console.log('[Auth Check] User authenticated, redirecting to matches');
+          window.location.href = '/matches';
+          return; // Exit early to prevent showing loading state
         } else {
           // User is not authenticated, show landing page
+          console.log('[Auth Check] User not authenticated, showing landing page');
           setIsCheckingAuth(false);
         }
       } catch (error) {
-        console.error('Error checking authentication:', error);
-        // On error, show landing page
+        console.error('[Auth Check] Error checking authentication:', error);
+        // On error, show landing page as fallback
         setIsCheckingAuth(false);
       }
     };
 
     checkAuth();
-  }, [router]);
+  }, []); // Remove router dependency since we're using window.location
 
   // Show loading state while checking authentication
   if (isCheckingAuth) {
