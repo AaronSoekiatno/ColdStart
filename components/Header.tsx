@@ -290,7 +290,6 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 >
                   Resumes
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-gray-200 my-0" />
                 <DropdownMenuItem
                   className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
                   onSelect={() => {
@@ -300,6 +299,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 >
                   Premium Plan
                 </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-gray-200 my-0" />
                 {isPremium && (
                   <DropdownMenuItem
                     className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
