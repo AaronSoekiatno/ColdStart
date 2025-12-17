@@ -262,6 +262,12 @@ export function NewLandingPage() {
                 >
                   Resumes
                 </Link>
+                <button
+                  onClick={handlePremiumClick}
+                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md cursor-pointer"
+                >
+                  Premium
+                </button>
               </>
             ) : null}
           </nav>
@@ -413,8 +419,6 @@ export function NewLandingPage() {
               >
                 Resumes
               </Link>
-              <div className="border-t border-gray-200 my-2"></div>
-              <div className="px-3 py-2 text-xs text-gray-500 truncate">{user.email}</div>
               <button
                 onClick={() => {
                   handlePremiumClick();
@@ -422,8 +426,10 @@ export function NewLandingPage() {
                 }}
                 className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                Premium Plan
+                Premium
               </button>
+              <div className="border-t border-gray-200 my-2"></div>
+              <div className="px-3 py-2 text-xs text-gray-500 truncate">{user.email}</div>
               {isPremium && (
                 <button
                   onClick={async () => {
