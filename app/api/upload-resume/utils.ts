@@ -119,23 +119,59 @@ export async function extractDocxText(buffer: Buffer): Promise<string> {
 }
 
 /**
- * Cleans JSON response from Gemini by removing markdown code blocks
+ * Cleans JSON response from Gemini by removing markdown code blocks and fixing common issues
  */
 export function cleanJsonResponse(response: string): string {
   let cleaned = response.trim();
 
-  // Remove markdown code block markers
+  // Remove markdown code block markers (handle both ```json and ```)
   if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.slice(7);
+    cleaned = cleaned.replace(/^```json\n?/i, '').replace(/\n?```$/i, '');
   } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.slice(3);
+    cleaned = cleaned.replace(/^```\n?/, '').replace(/\n?```$/, '');
   }
 
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.slice(0, -3);
+  // Try to extract JSON object if it's embedded in text
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    cleaned = jsonMatch[0];
   }
+
+  // Clean up common JSON issues
+  cleaned = cleaned
+    .trim()
+    // Remove trailing commas before closing braces/brackets
+    .replace(/,(\s*[}\]])/g, '$1')
+    // Remove single-line comments
+    .replace(/\/\/.*$/gm, '')
+    // Remove multi-line comments
+    .replace(/\/\*[\s\S]*?\*\//g, '');
 
   return cleaned.trim();
+}
+
+/**
+ * Safely parses JSON with better error messages
+ */
+export function parseJsonSafely<T = any>(jsonString: string, context = 'JSON'): T {
+  try {
+    return JSON.parse(jsonString) as T;
+  } catch (parseError) {
+    const errorMessage = parseError instanceof Error ? parseError.message : String(parseError);
+    const position = parseError instanceof SyntaxError ? (parseError as any).position : undefined;
+    
+    console.error(`Failed to parse ${context}:`, {
+      error: errorMessage,
+      position,
+      responseLength: jsonString.length,
+      responsePreview: jsonString.substring(0, 500),
+    });
+    
+    throw new Error(
+      `Failed to parse ${context}: ${errorMessage}. ` +
+      `Response preview: ${jsonString.substring(0, 200)}...`
+    );
+  }
 }
 
 /**

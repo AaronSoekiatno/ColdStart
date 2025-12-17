@@ -4,6 +4,7 @@ import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { getCandidate } from '@/lib/supabase';
+import { cleanJsonResponse, parseJsonSafely } from '../upload-resume/utils';
 import type { ResumePatch } from '@/types/resume-patch';
 import type { StructuredResumeData } from '@/types/resume';
 
@@ -187,16 +188,8 @@ Focus on the most impactful changes that would make the biggest difference to th
 
     // Parse response
     const responseText = result.response.text();
-
-    // Clean markdown code blocks if present
-    let cleanedResponse = responseText.trim();
-    if (cleanedResponse.startsWith('```json')) {
-      cleanedResponse = cleanedResponse.replace(/^```json\n/, '').replace(/\n```$/, '');
-    } else if (cleanedResponse.startsWith('```')) {
-      cleanedResponse = cleanedResponse.replace(/^```\n/, '').replace(/\n```$/, '');
-    }
-
-    const parsed = JSON.parse(cleanedResponse);
+    const cleanedResponse = cleanJsonResponse(responseText);
+    const parsed = parseJsonSafely<{ suggestions: any[] }>(cleanedResponse, 'AI response');
 
     if (!parsed.suggestions || !Array.isArray(parsed.suggestions)) {
       throw new Error('Invalid response format: missing suggestions array');

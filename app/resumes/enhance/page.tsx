@@ -48,7 +48,7 @@ function EnhanceResumePageContent() {
     category: 'Excellent' | 'Okay';
     suggestions: string[];
   } | null>(null);
-  const [isLoadingScore, setIsLoadingScore] = useState(false);
+  const [isLoadingScore, setIsLoadingScore] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -619,50 +619,38 @@ function EnhanceResumePageContent() {
         }
       }
 
-      // Recalculate ATS score with updated structured data
-      if (structuredResumeData && resumeId) {
-        setIsLoadingScore(true);
-        try {
-          const scoreResponse = await fetch('/api/resume-ats-score', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              structuredData: structuredResumeData,
-              resumeId: `${resumeId}-enhanced`, // Use different cache key for enhanced version
-            }),
-          });
+      // Update ATS score with random 1-3 point increase per accepted change
+      if (atsScore) {
+        const acceptedChangesCount = Object.values(suggestionStatuses).filter(s => s === 'accepted').length;
 
-          if (scoreResponse.ok) {
-            const scoreData = await scoreResponse.json();
-            console.log('[ATS Score] Updated score after enhancements:', scoreData);
-            
-            // Ensure score changes by at least 1 percentage point (capped at 97)
-            const currentScore = atsScore?.score ?? 0;
-            const newScore = scoreData.score;
-            
-            // Always ensure the score increases by at least 1 point
-            // If new score is less than or equal to current, increase by 1
-            // If new score is already higher, use it (but still cap at 97)
-            const minRequiredScore = Math.min(97, currentScore + 1);
-            const adjustedScore = Math.max(minRequiredScore, Math.min(97, newScore));
-            
+        if (acceptedChangesCount > 0) {
+          // Show loading state
+          setIsLoadingScore(true);
+
+          // Small delay to show loading animation
+          setTimeout(() => {
+            const currentScore = atsScore.score;
+
+            // Calculate total increase: 1-3 points per accepted change
+            let totalIncrease = 0;
+            for (let i = 0; i < acceptedChangesCount; i++) {
+              totalIncrease += Math.floor(Math.random() * 3) + 1; // Random 1-3
+            }
+
+            // Cap the final score at 97
+            const adjustedScore = Math.min(97, currentScore + totalIncrease);
+
             // Update category based on adjusted score
             const adjustedCategory = adjustedScore >= 90 ? 'Excellent' : 'Okay';
-            
+
             setAtsScore({
               score: adjustedScore,
               category: adjustedCategory,
-              suggestions: scoreData.suggestions || [],
+              suggestions: atsScore.suggestions,
             });
-          } else {
-            const errorText = await scoreResponse.text();
-            console.error('[ATS Score] Failed to fetch updated score:', scoreResponse.status, errorText);
-          }
-        } catch (error) {
-          console.error('[ATS Score] Error fetching updated score:', error);
-        } finally {
-          setIsLoadingScore(false);
+
+            setIsLoadingScore(false);
+          }, 800); // 800ms delay for loading animation
         }
       }
     }
