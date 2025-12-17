@@ -43,8 +43,7 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8FAFC' }}>
         <Loader2 className="h-12 w-12 animate-spin text-blue-300" />
       </div>
-    }>
-      <HomeClient />
-    </Suspense>
-  );
-}
+    );
+  }
+  // Render landing page if not authenticated
+  return <NewLandingPage />; }
