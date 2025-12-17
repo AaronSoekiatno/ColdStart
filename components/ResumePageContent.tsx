@@ -5,6 +5,8 @@ import { ResumeList } from '@/components/ResumeList';
 import { ResumeUploadModal } from '@/components/ResumeUploadModal';
 import { EnhancePortfolioBanner } from '@/components/EnhancePortfolioBanner';
 import { CheckMatchesBanner } from '@/components/CheckMatchesBanner';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { supabase } from '@/lib/supabase';
 
 interface Resume {
   id: string;
@@ -24,6 +26,27 @@ interface ResumePageContentProps {
 
 export function ResumePageContent({ resumes, isPremium, isNewUser = false, primaryResumeId }: ResumePageContentProps) {
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [userEmail, setUserEmail] = useState<string>('');
+
+  useEffect(() => {
+    // Get user email for upgrade modal
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+    });
+  }, []);
+
+  const handleUploadClick = () => {
+    // Free users can only have 1 resume
+    // If they already have 1 or more, show upgrade modal
+    if (!isPremium && resumes.length >= 1) {
+      setShowUpgradeModal(true);
+    } else {
+      setShowUploadModal(true);
+    }
+  };
 
   const handleUploadSuccess = () => {
     // Reload the page after successful upload to show the new resume
@@ -60,13 +83,21 @@ export function ResumePageContent({ resumes, isPremium, isNewUser = false, prima
       <ResumeList 
         resumes={resumes}
         isPremium={isPremium}
-        onUploadClick={() => setShowUploadModal(true)}
+        onUploadClick={handleUploadClick}
       />
 
       <ResumeUploadModal
         open={showUploadModal}
         onOpenChange={setShowUploadModal}
         onUploadSuccess={handleUploadSuccess}
+      />
+
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        email={userEmail}
+        isPremium={isPremium}
+        customTitle="Upgrade to Upload Multiple Resumes"
       />
     </>
   );
