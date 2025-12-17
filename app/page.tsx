@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { NewLandingPage } from "@/components/NewLandingPage";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
@@ -12,7 +12,6 @@ function NewLandingPageWrapper() {
 
 export default function Home() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
