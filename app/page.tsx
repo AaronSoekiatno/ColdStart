@@ -3,6 +3,8 @@
 import { Suspense } from "react";
 import { NewLandingPage } from "@/components/NewLandingPage";
 
+export const dynamic = 'force-dynamic';
+
 function NewLandingPageWrapper() {
   return <NewLandingPage />;
 }
