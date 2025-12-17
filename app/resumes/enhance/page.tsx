@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -9,10 +9,11 @@ import { Header } from "@/components/Header";
 import { JakesResumeTemplate } from "@/components/JakesResumeTemplate";
 import { EditableResumePreview } from "@/components/EditableResumePreview";
 import { ATSScoreBadge } from "@/components/ATSScoreBadge";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import type { StructuredResumeData } from "@/types/resume";
 import type { ResumePatch, ResumePath } from "@/types/resume-patch";
 import { applyPatches } from "@/lib/resume-patch";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 
 interface ResumeSuggestion {
@@ -48,6 +49,11 @@ function EnhanceResumePageContent() {
     suggestions: string[];
   } | null>(null);
   const [isLoadingScore, setIsLoadingScore] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Free users can see 3 suggestions clearly, rest are blurred
+  const FREE_SUGGESTION_LIMIT = 3;
 
   // Auto-resize textarea when suggestion changes
   useEffect(() => {
@@ -63,6 +69,36 @@ function EnhanceResumePageContent() {
     }
   }, [selectedSuggestionId, resumeSuggestions]);
   const { toast } = useToast();
+
+  // Get visible suggestions (all for premium, limited for free)
+  const visibleSuggestions = useMemo(() => {
+    if (isPremium) {
+      return resumeSuggestions;
+    }
+    return resumeSuggestions.slice(0, FREE_SUGGESTION_LIMIT);
+  }, [resumeSuggestions, isPremium, FREE_SUGGESTION_LIMIT]);
+
+  // Get blurred suggestions (for free users beyond limit)
+  const blurredSuggestions = useMemo(() => {
+    if (isPremium) {
+      return [];
+    }
+    return resumeSuggestions.slice(FREE_SUGGESTION_LIMIT);
+  }, [resumeSuggestions, isPremium, FREE_SUGGESTION_LIMIT]);
+
+  // Get blurred field paths (for applying blur to specific bullet points)
+  const blurredFields = useMemo(() => {
+    if (isPremium) {
+      return new Set<ResumePath>();
+    }
+    const blurredPaths = new Set<ResumePath>();
+    blurredSuggestions.forEach(suggestion => {
+      if (suggestion.patch?.path) {
+        blurredPaths.add(suggestion.patch.path);
+      }
+    });
+    return blurredPaths;
+  }, [blurredSuggestions, isPremium]);
 
   // Helper function to apply suggestions to structured resume data
   const applySuggestionsToStructuredData = (
@@ -93,8 +129,12 @@ function EnhanceResumePageContent() {
       originalStructuredResumeData,
       active
     );
-    // Only highlight suggestions that are still pending; accepted and denied lose highlights
-    const highlightPaths = suggestionsList
+    // Only highlight visible suggestions that are still pending; accepted and denied lose highlights
+    const visibleSuggestionsList = isPremium 
+      ? suggestionsList 
+      : suggestionsList.slice(0, FREE_SUGGESTION_LIMIT);
+    
+    const highlightPaths = visibleSuggestionsList
       .filter(s => statuses[s.id] === 'pending' && s.patch)
       .map(s => s.patch!.path);
 
@@ -269,6 +309,20 @@ function EnhanceResumePageContent() {
         return;
       }
 
+      // Check premium status
+      try {
+        const candidateResponse = await fetch('/api/candidate-info', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (candidateResponse.ok) {
+          const candidateInfo = await candidateResponse.json();
+          setIsPremium(isSubscribed(candidateInfo));
+        }
+      } catch (error) {
+        console.error('Error fetching premium status:', error);
+      }
+
       // Fetch the resume data and structured data
       try {
         const response = await fetch(`/api/resumes/get-resume?resumeId=${resumeId}`, {
@@ -351,6 +405,14 @@ function EnhanceResumePageContent() {
   }, [resumeId]);
 
   const handleSuggestionClick = (suggestionId: string) => {
+    // Check if this is a blurred suggestion for free users
+    if (!isPremium) {
+      const suggestionIndex = resumeSuggestions.findIndex(s => s.id === suggestionId);
+      if (suggestionIndex >= FREE_SUGGESTION_LIMIT) {
+        setShowUpgradeModal(true);
+        return;
+      }
+    }
     setSelectedSuggestionId(suggestionId);
   };
 
@@ -409,6 +471,8 @@ function EnhanceResumePageContent() {
     setAcceptHistory(prev => {
       if (prev.length === 0) return prev;
       const target = prev[prev.length - 1];
+      const willBeAtOriginalState = prev.length === 1; // After this undo, history will be empty
+      
       setSuggestionStatuses(prevStatuses => {
         const newStatuses: Record<string, 'pending' | 'accepted' | 'rejected'> = { ...prevStatuses, [target]: 'pending' };
         
@@ -419,50 +483,40 @@ function EnhanceResumePageContent() {
         setIsDoneEnhancing(false);
         setShowFinishButton(false);
         
-        // Recalculate ATS score with updated data
-        // Get the updated structured data by applying patches
-        if (originalStructuredResumeData) {
-          const activeSuggestions = resumeSuggestions.filter(
-            s => newStatuses[s.id] === 'accepted' || newStatuses[s.id] === 'pending'
-          );
-          const { updatedData } = applySuggestionsToStructuredData(
-            originalStructuredResumeData,
-            activeSuggestions
-          );
-          
-          // Recalculate ATS score
-          if (resumeId && resumeText) {
-            setIsLoadingScore(true);
-            fetch('/api/resume-ats-score', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                resumeText,
-                structuredData: updatedData,
-                resumeId,
-              }),
+        // Only recalculate ATS score if we're returning to the original state
+        // (all suggestions visible, none accepted)
+        if (willBeAtOriginalState && originalStructuredResumeData && resumeId && resumeText) {
+          // Recalculate with original data (no accepted suggestions)
+          setIsLoadingScore(true);
+          fetch('/api/resume-ats-score', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              resumeText,
+              structuredData: originalStructuredResumeData,
+              resumeId,
+            }),
+          })
+            .then(response => {
+              if (response.ok) {
+                return response.json();
+              }
+              throw new Error('Failed to fetch ATS score');
             })
-              .then(response => {
-                if (response.ok) {
-                  return response.json();
-                }
-                throw new Error('Failed to fetch ATS score');
-              })
-              .then(scoreData => {
-                setAtsScore({
-                  score: scoreData.score,
-                  category: scoreData.category,
-                  suggestions: scoreData.suggestions || [],
-                });
-              })
-              .catch(error => {
-                console.error('[ATS Score] Error fetching after undo:', error);
-              })
-              .finally(() => {
-                setIsLoadingScore(false);
+            .then(scoreData => {
+              setAtsScore({
+                score: scoreData.score,
+                category: scoreData.category,
+                suggestions: scoreData.suggestions || [],
               });
-          }
+            })
+            .catch(error => {
+              console.error('[ATS Score] Error fetching after undo to original:', error);
+            })
+            .finally(() => {
+              setIsLoadingScore(false);
+            });
         }
         
         return newStatuses;
@@ -656,26 +710,55 @@ function EnhanceResumePageContent() {
                   <p className="text-gray-600 text-sm">Loading resume...</p>
                 </div>
               ) : (
-                <div className="h-full overflow-y-auto">
+                <div className="h-full overflow-y-auto relative">
                   {structuredResumeData && structuredResumeData.personal ? (
-                    <div className="resume-print-root">
-                      <JakesResumeTemplate
-                        data={structuredResumeData}
-                        highlightedFields={highlightedFields}
-                        pathToSuggestionId={new Map(
-                          resumeSuggestions
-                            .filter(s => s.patch)
-                            .map(s => [s.patch!.path, s.id])
+                    <>
+                      <div className="resume-print-root relative">
+                        <JakesResumeTemplate
+                          data={structuredResumeData}
+                          highlightedFields={highlightedFields}
+                          pathToSuggestionId={new Map(
+                            resumeSuggestions
+                              .filter(s => s.patch)
+                              .map(s => [s.patch!.path, s.id])
+                          )}
+                          pathToSuggestion={new Map(
+                            resumeSuggestions
+                              .filter(s => s.patch)
+                              .map(s => [s.patch!.path, { original: s.original, suggested: s.suggested }])
+                          )}
+                          selectedSuggestionId={selectedSuggestionId}
+                          blurredFields={blurredFields}
+                          onClick={handleSuggestionClick}
+                        />
+                        {/* Blur overlay for free users beyond limit */}
+                        {blurredSuggestions.length > 0 && (
+                          <div className="absolute inset-0 flex flex-col items-end justify-start z-30 pointer-events-none p-4">
+                            <div className="bg-white/90 backdrop-blur-sm rounded-lg border border-blue-200 shadow-lg p-3 max-w-xs text-center pointer-events-auto">
+                              <button
+                                onClick={() => setShowUpgradeModal(true)}
+                                className="w-full bg-blue-300 hover:bg-blue-400 text-white text-xs font-medium py-1.5 px-3 rounded transition-colors"
+                              >
+                                Upgrade
+                              </button>
+                            </div>
+                          </div>
                         )}
-                        pathToSuggestion={new Map(
-                          resumeSuggestions
-                            .filter(s => s.patch)
-                            .map(s => [s.patch!.path, { original: s.original, suggested: s.suggested }])
+                        {/* Text overlay positioned on top of blurred suggestions */}
+                        {blurredSuggestions.length > 0 && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center z-40 pointer-events-none">
+                            <div className="text-center pointer-events-none">
+                              <h3 className="text-sm font-semibold text-gray-900 mb-1 drop-shadow-sm">
+                                Upgrade to Premium
+                              </h3>
+                              <p className="text-xs text-gray-600 drop-shadow-sm">
+                                View {blurredSuggestions.length} more suggestion{blurredSuggestions.length === 1 ? '' : 's'}
+                              </p>
+                            </div>
+                          </div>
                         )}
-                        selectedSuggestionId={selectedSuggestionId}
-                        onClick={handleSuggestionClick}
-                      />
-                    </div>
+                      </div>
+                    </>
                   ) : resumeText ? (
                     <EditableResumePreview
                       originalText={resumeText}
@@ -847,6 +930,18 @@ function EnhanceResumePageContent() {
           </div>
         </div>
       </div>
+
+      {/* Upgrade Modal */}
+      {user?.email && (
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          hiddenMatchCount={blurredSuggestions.length}
+          email={user.email}
+          isPremium={isPremium}
+          customTitle={blurredSuggestions.length > 0 ? `${blurredSuggestions.length} More Suggestion${blurredSuggestions.length === 1 ? '' : 's'} Available` : 'Upgrade to Premium'}
+        />
+      )}
     </div>
   );
 }

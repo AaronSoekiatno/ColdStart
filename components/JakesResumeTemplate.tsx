@@ -9,15 +9,17 @@ interface JakesResumeTemplateProps {
   pathToSuggestionId?: Map<string, string>; // Map field paths to suggestion IDs
   pathToSuggestion?: Map<string, { original: string; suggested: string }>; // Map field paths to suggestion text
   selectedSuggestionId?: string | null;
+  blurredFields?: Set<string>; // Field paths that should be blurred (for free users)
   onHover?: (suggestionId: string, event: React.MouseEvent) => void;
   onClick?: (suggestionId: string) => void;
   onLeave?: () => void;
 }
 
-export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), selectedSuggestionId, onHover, onClick, onLeave }: JakesResumeTemplateProps) {
+export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), selectedSuggestionId, blurredFields = new Set(), onHover, onClick, onLeave }: JakesResumeTemplateProps) {
   const isHighlighted = (fieldPath: string) => highlightedFields.has(fieldPath);
   const getSuggestionId = (fieldPath: string) => pathToSuggestionId.get(fieldPath);
   const getSuggestion = (fieldPath: string) => pathToSuggestion.get(fieldPath);
+  const isBlurred = (fieldPath: string) => blurredFields.has(fieldPath);
   const isActiveSelection = (fieldPath: string) => {
     const suggestionId = getSuggestionId(fieldPath);
     return selectedSuggestionId && suggestionId === selectedSuggestionId;
@@ -91,7 +93,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
           const active = isActiveSelection(fieldPath);
           return (
             <div
-              className={`mb-3 ${highlighted ? 'px-2 py-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
+              className={`mb-3 ${highlighted ? 'px-2 py-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''} ${isBlurred(fieldPath) ? 'filter blur-sm opacity-60' : ''}`}
               onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
               onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
               onMouseLeave={highlighted && onLeave ? onLeave : undefined}
@@ -161,7 +163,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                     return (
                       <li
                         key={bulletIdx}
-                        className={`text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
+                        className={`text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''} ${isBlurred(fieldPath) ? 'filter blur-sm opacity-60' : ''}`}
                         onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
                         onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                         onMouseLeave={highlighted && onLeave ? onLeave : undefined}
@@ -223,7 +225,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                           return (
                             <li
                               key={bulletIdx}
-                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''} ${isBulletActive ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
+                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''} ${isBulletActive ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''} ${isBlurred(bulletPath) ? 'filter blur-sm opacity-60' : ''}`}
                               onMouseEnter={isBulletHighlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
                               onClick={isBulletHighlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                               onMouseLeave={isBulletHighlighted && onLeave ? onLeave : undefined}
@@ -264,7 +266,7 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
             <h2 className="text-base font-bold uppercase mb-2 pb-1 border-b border-gray-800 tracking-wide" style={{ textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Technical Skills
             </h2>
-            <div className={isHighlighted('skills') ? 'px-2 py-1' : ''}>
+            <div className={`${isHighlighted('skills') ? 'px-2 py-1' : ''} ${isBlurred('skills') ? 'filter blur-sm opacity-60' : ''}`}>
               <p className="text-[10px] leading-tight">{data.skills.join(', ')}</p>
             </div>
           </div>
