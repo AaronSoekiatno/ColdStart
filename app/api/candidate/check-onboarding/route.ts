@@ -47,9 +47,10 @@ export async function GET() {
       return NextResponse.json({ needsOnboarding: true });
     }
 
-    // If job_type or role_type is null or empty, they need onboarding
+    // If job_type or role_type is null or empty array, they need onboarding
     return NextResponse.json({
-      needsOnboarding: !candidate.job_type || !candidate.role_type,
+      needsOnboarding: !candidate.job_type || !candidate.role_type || 
+                       (Array.isArray(candidate.role_type) && candidate.role_type.length === 0),
     });
   } catch (error) {
     console.error('Exception checking onboarding status:', error);

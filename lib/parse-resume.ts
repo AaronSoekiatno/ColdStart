@@ -27,7 +27,7 @@ export async function parseResumeToStructured(
 ): Promise<StructuredResumeData> {
   // Use low temperature for deterministic, exact extraction (no creativity, no rewriting)
   const model = genAI.getGenerativeModel({ 
-    model: 'gemini-2.0-flash-exp',
+    model: 'gemini-2.0-flash',
     generationConfig: {
       temperature: 0.1, // Very low temperature for exact extraction, minimal rewriting
       topK: 1, // Most deterministic token selection

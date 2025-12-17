@@ -95,6 +95,7 @@ export function ResumePageContent({ resumes, isPremium, isNewUser = false, prima
       <UpgradeModal
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
+        hiddenMatchCount={0}
         email={userEmail}
         isPremium={isPremium}
         customTitle="Upgrade to Upload Multiple Resumes"

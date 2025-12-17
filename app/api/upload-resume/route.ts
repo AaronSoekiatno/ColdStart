@@ -75,10 +75,10 @@ async function extractResumeDataWithGemini(
   "technical_projects": ["Array of notable technical/personal projects with brief descriptions, or empty array if none found"]
 }`;
 
-  // Use gemini-2.0-flash-exp for fast, cost-effective resume extraction
+  // Use gemini-2.0-flash for fast, cost-effective resume extraction
   // This model is optimized for speed and cost while maintaining quality
   // No fallback loop to avoid excessive API calls
-  const modelName = 'gemini-2.0-flash-exp';
+  const modelName = 'gemini-2.0-flash';
 
   // Extract DOCX text once before processing (only needed for DOCX files)
   if (!isPdfFile(file)) {

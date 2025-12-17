@@ -117,7 +117,7 @@ export function CheckMatchesBanner() {
   const preloadImages = (pfps: FounderPfp[]) => {
     pfps.forEach((founder, index) => {
       if (founder.url && founder.url.trim() !== '') {
-        const img = new Image();
+        const img = new window.Image();
         const imageUrl = `/api/image-proxy?url=${encodeURIComponent(founder.url)}`;
         
         img.onerror = () => {

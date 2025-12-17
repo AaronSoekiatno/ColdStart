@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { jobType, roleType } = await request.json();
+    const { jobType, roleTypes } = await request.json();
 
     if (!jobType || !['full-time', 'part-time', 'internship'].includes(jobType)) {
       return NextResponse.json(
@@ -43,9 +43,18 @@ export async function POST(request: NextRequest) {
       'QA', 'Design', 'Product Design', 'Other'
     ];
 
-    if (!roleType || !validRoleTypes.includes(roleType)) {
+    if (!roleTypes || !Array.isArray(roleTypes) || roleTypes.length === 0) {
       return NextResponse.json(
-        { error: 'Invalid role type' },
+        { error: 'At least one role type must be selected' },
+        { status: 400 }
+      );
+    }
+
+    // Validate all role types
+    const invalidRoleTypes = roleTypes.filter(rt => !validRoleTypes.includes(rt));
+    if (invalidRoleTypes.length > 0) {
+      return NextResponse.json(
+        { error: `Invalid role types: ${invalidRoleTypes.join(', ')}` },
         { status: 400 }
       );
     }
@@ -73,14 +82,14 @@ export async function POST(request: NextRequest) {
         summary: '',
         skills: '',
         job_type: jobType,
-        role_type: roleType,
+        role_type: roleTypes,
       });
       
       console.log('Created new candidate during onboarding:', {
         id: candidate.id,
         email: candidate.email,
         jobType,
-        roleType,
+        roleTypes,
       });
     } else {
       // Update existing candidate's job_type and role_type
@@ -88,7 +97,7 @@ export async function POST(request: NextRequest) {
         .from('candidates')
         .update({ 
           job_type: jobType,
-          role_type: roleType,
+          role_type: roleTypes,
         })
         .eq('email', user.email);
 
@@ -104,7 +113,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       jobType,
-      roleType,
+      roleTypes,
       candidateId: candidate.id,
     });
   } catch (error) {
