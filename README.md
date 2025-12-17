@@ -27,7 +27,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 # Resend (for waitlist emails)
 RESEND_API_KEY=your_resend_api_key
-RESEND_FROM_EMAIL=your_verified_email@yourdomain.com  # Optional, defaults to onboarding@resend.dev
+RESEND_FROM_EMAIL=your_verified_email@yourdomain.com  # Optional, defaults to noreply@joinhermes.co
 
 # App URL (for email links)
 NEXT_PUBLIC_APP_URL=https://yourdomain.com  # Optional, defaults to https://coldstart.ai

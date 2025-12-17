@@ -12,7 +12,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx next lint:*)",
       "Bash(cat:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(dig:*)"
     ],
     "deny": [],
     "ask": []

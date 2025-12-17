@@ -34,8 +34,8 @@ export async function sendWaitlistEmail(
 
   try {
     // Use default from email if not provided
-    // Resend requires verified domain or uses their default domain
-    const from = fromEmail || process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    // Resend requires verified domain - use joinhermes.co for DMARC compliance
+    const from = fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@joinhermes.co';
 
     const { data, error } = await resend.emails.send({
       from,
@@ -43,6 +43,12 @@ export async function sendWaitlistEmail(
       subject,
       html: htmlContent,
       text: textContent || htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML tags for text fallback
+      tags: [
+        {
+          name: 'category',
+          value: 'waitlist',
+        },
+      ],
     });
 
     if (error) {
