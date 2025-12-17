@@ -130,6 +130,18 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        {/* Google tag (gtag.js) */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-M67TTTXFKS"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-M67TTTXFKS');
+            `,
+          }}
+        />
         {process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION && (
           <meta
             name="google-site-verification"
