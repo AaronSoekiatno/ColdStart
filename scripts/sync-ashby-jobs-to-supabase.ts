@@ -256,7 +256,9 @@ async function findAshbySlug(companyName: string): Promise<string | null> {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  // Step 2: Fallback to web search (may be slow but can find additional companies)
+  // Step 2: Fallback to web search (DISABLED - too slow)
+  // Uncomment below to re-enable web search fallback
+  /*
   try {
     const query = `${companyName} careers`;
 
@@ -315,6 +317,12 @@ async function findAshbySlug(companyName: string): Promise<string | null> {
     console.log(`   💡 Web search is unreliable due to bot detection`);
     return null;
   }
+  */
+
+  // No slug found using variations
+  console.log(`   ❌ No Ashby board found using slug variations`);
+  console.log(`   💡 Tip: Try manually checking https://jobs.ashbyhq.com/ or enable web search`);
+  return null;
 }
 
 /**
