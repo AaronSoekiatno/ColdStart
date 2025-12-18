@@ -25,17 +25,16 @@ const limitArg = args.find(arg => arg.startsWith('--limit='));
 const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : undefined;
 
 // Email content - copied from scripts/send-waitlist-emails.ts so the message is identical
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
+const APP_URL = 'https://joinhermes.co';
 const EMAIL_SUBJECT = process.env.WAITLIST_EMAIL_SUBJECT || 'Hermes is Now Live';
 
 // Plain-text waitlist email (no HTML template)
 const EMAIL_TEXT = process.env.WAITLIST_EMAIL_TEXT || `Hey there,
 
-You signed up for the Hermes waitlist a little while ago. I'm Robert, the founder of Hermes,
-and I've been building a simple way for students to reach YC founders directly with smarter,
-more targeted cold emails.
+You signed up for the Hermes waitlist a little while ago. I'm Robert, a founder of Hermes, and I've been building a simple way for students to reach YC founders directly with smarter, more targeted cold emails.
 
 Hermes is now live, and I'd love for you to try it and tell me what feels confusing or missing.
+
 Your early feedback is super valuable.
 
 You can check it out here: ${APP_URL}
@@ -48,9 +47,6 @@ Best,
 Robert
 
 Hermes
-13819 Dearborn St.
-Eastvale, CA 92880
-United States
 
 If you don't want to hear about Hermes anymore, you can unsubscribe here:
 ${APP_URL}/unsubscribe?email={{email}}

@@ -13,28 +13,31 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 import { sendWaitlistEmail } from '../../lib/sendgrid';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
+const APP_URL = 'https://joinhermes.co';
 const EMAIL_SUBJECT =
   process.env.WAITLIST_EMAIL_SUBJECT || 'Quick question about Hermes';
 
 // Plain-text personal message (no HTML template)
 const EMAIL_TEXT = process.env.WAITLIST_EMAIL_TEXT || `Hey there,
 
-I'm Aaron, the founder of Hermes. I'm working on a way for students to reach YC founders directly
-with smarter, more targeted cold emails.
+You signed up for the Hermes waitlist a little while ago. I'm Robert, a founder of Hermes, and I've been building a simple way for students to reach YC founders directly with smarter, more targeted cold emails.
 
-If you're exploring startup internships, would you be open to taking a quick look at Hermes and
-telling me what feels confusing or missing?
+Hermes is now live, and I'd love for you to try it and tell me what feels confusing or missing.
+
+Your early feedback is super valuable.
 
 You can check it out here: ${APP_URL}
 
-Either way, I'd love to hear how you're currently reaching out to founders—just hit reply and
-share 1–2 sentences about what you've tried so far.
+If you have 1–2 minutes, just hit reply and share:
+- What you're looking for in a startup internship
+- How you're currently reaching out to founders (if at all)
 
 Best,
-Aaron
+Robert
 
-If you didn't expect this email, you can unsubscribe here:
+Hermes
+
+If you don't want to hear about Hermes anymore, you can unsubscribe here:
 ${APP_URL}/unsubscribe?email={{email}}
 `;
 

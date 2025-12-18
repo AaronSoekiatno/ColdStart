@@ -66,9 +66,7 @@ Status: 🔄 Propagating (updated today)
 ### Business Address (CAN-SPAM Compliance)
 ```
 Hermes
-13819 Dearborn St.
-Eastvale, CA 92880
-United States
+
 ```
 
 ### Tracking
@@ -287,9 +285,6 @@ Authentication-Results: mx.google.com;
 
 **Business Address**:
 Hermes
-13819 Dearborn St.
-Eastvale, CA 92880
-United States
 
 **Email Addresses**:
 - Sending: `hello@joinhermes.co`

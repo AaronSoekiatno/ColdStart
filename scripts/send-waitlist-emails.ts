@@ -227,9 +227,6 @@ Free to start • Premium features available
 © 2025 Hermes. All rights reserved.
 
 Hermes
-13819 Dearborn St.
-Eastvale, CA 92880
-United States
 
 Privacy Policy: ${APP_URL}/privacy
 Terms of Service: ${APP_URL}/terms
