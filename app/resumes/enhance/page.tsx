@@ -718,33 +718,9 @@ function EnhanceResumePageContent() {
                           selectedSuggestionId={selectedSuggestionId}
                           blurredFields={blurredFields}
                           onClick={handleSuggestionClick}
+                          upgradeCount={blurredSuggestions.length}
+                          onUpgradeClick={() => setShowUpgradeModal(true)}
                         />
-                        {/* Blur overlay for free users beyond limit */}
-                        {blurredSuggestions.length > 0 && (
-                          <div className="absolute inset-0 flex flex-col items-end justify-start z-30 pointer-events-none p-4">
-                            <div className="bg-white/90 backdrop-blur-sm rounded-lg border border-blue-200 shadow-lg p-3 max-w-xs text-center pointer-events-auto">
-                              <button
-                                onClick={() => setShowUpgradeModal(true)}
-                                className="w-full bg-blue-300 hover:bg-blue-400 text-white text-xs font-medium py-1.5 px-3 rounded transition-colors cursor-pointer"
-                              >
-                                Upgrade
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                        {/* Text overlay positioned on top of blurred suggestions */}
-                        {blurredSuggestions.length > 0 && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center z-40 pointer-events-none">
-                            <div className="text-center pointer-events-none">
-                              <h3 className="text-sm font-semibold text-gray-900 mb-1 drop-shadow-sm">
-                                Upgrade to Premium
-                              </h3>
-                              <p className="text-xs text-gray-600 drop-shadow-sm">
-                                View {blurredSuggestions.length} more suggestion{blurredSuggestions.length === 1 ? '' : 's'}
-                              </p>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </>
                   ) : resumeText ? (
