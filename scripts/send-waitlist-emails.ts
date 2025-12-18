@@ -41,17 +41,35 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
       
       <!-- Header with Logo -->
       <div style="background: linear-gradient(135deg, #1a1a2e 0%, #0f0f1a 50%, #1a1a2e 100%); padding: 48px 32px; text-align: center; position: relative;">
-        <div style="position: relative;">
-          <div style="margin: 0 auto 24px; width: 80px; height: 80px; background-color: #0f0f1a; border-radius: 16px; padding: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); border: 1px solid #2a2a4a; display: flex; align-items: center; justify-content: center;">
-            <img src="${APP_URL}/images/hermes.png" alt="Hermes Logo" style="width: 100%; height: 100%; object-fit: contain;" />
-          </div>
-          <h1 style="margin: 0; font-size: 36px; font-weight: 600; color: #f5f5f7; letter-spacing: -0.5px;">
-            Hermes
-          </h1>
-          <p style="margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 4px; color: #d4a853;">
-            Is Now Live
-          </p>
-        </div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td align="center" valign="middle">
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td align="center" valign="middle" style="padding-bottom: 24px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td align="center" valign="middle" style="width: 80px; height: 80px; background-color: #0f0f1a; border-radius: 16px; padding: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); border: 1px solid #2a2a4a;">
+                          <img src="${APP_URL}/images/hermes.png" alt="Hermes Logo" width="64" height="64" style="display: block; border: 0; outline: none; text-decoration: none; max-width: 64px; height: auto;" />
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center">
+                    <h1 style="margin: 0; font-size: 36px; font-weight: 600; color: #f5f5f7; letter-spacing: -0.5px; line-height: 1.2;">
+                      Hermes
+                    </h1>
+                    <p style="margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 4px; color: #d4a853;">
+                      Is Now Live
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
       </div>
 
       <!-- Main Content -->
@@ -70,9 +88,9 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
+                <td style="width: 48px; vertical-align: top;" align="center">
                   <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
-                    <span style="color: #d4a853; font-size: 18px;">⚡</span>
+                    <span style="color: #d4a853; font-size: 22px; line-height: 40px; display: inline-block;">⚡</span>
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
@@ -89,9 +107,9 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
-                  <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px; display: flex; align-items: center; justify-content: center;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Y_Combinator_logo.svg/1200px-Y_Combinator_logo.svg.png" alt="YC Logo" style="width: 24px; height: 24px; object-fit: contain;" />
+                <td style="width: 48px; vertical-align: top;" align="center">
+                  <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Y_Combinator_logo.svg/1200px-Y_Combinator_logo.svg.png" alt="YC Logo" style="width: 26px; height: 26px; object-fit: contain; display: inline-block; vertical-align: middle;" />
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
@@ -108,9 +126,9 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
+                <td style="width: 48px; vertical-align: top;" align="center">
                   <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
-                    <span style="color: #d4a853; font-size: 18px;">🤝</span>
+                    <span style="color: #d4a853; font-size: 22px; line-height: 40px; display: inline-block;">🤝</span>
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
@@ -127,9 +145,9 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
+                <td style="width: 48px; vertical-align: top;" align="center">
                   <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
-                    <span style="color: #d4a853; font-size: 18px;">📧</span>
+                    <span style="color: #d4a853; font-size: 22px; line-height: 40px; display: inline-block;">📧</span>
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
@@ -169,12 +187,6 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
             <a href="${APP_URL}/terms" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Terms of Service</a>
             <a href="${APP_URL}/unsubscribe?email={{email}}" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Unsubscribe</a>
           </div>
-          <p style="margin: 16px 0 0; font-size: 11px; color: rgba(161, 161, 170, 0.6);">
-            Hermes<br/>
-            13819 Dearborn St.<br/>
-            Eastvale, CA 92880<br/>
-            United States
-          </p>
           <p style="margin: 12px 0 0; font-size: 11px; color: rgba(161, 161, 170, 0.6);">
             You're receiving this email because you signed up for Hermes updates.
           </p>

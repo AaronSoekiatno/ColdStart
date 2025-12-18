@@ -45,19 +45,34 @@ export async function sendWaitlistEmail(
     const from = fromEmail || process.env.RESEND_FROM_EMAIL || 'noreply@joinhermes.co';
 
     const resend = getResendClient();
-    const { data, error } = await resend.emails.send({
+
+    // Build payload dynamically so we can support text-only emails (no HTML part)
+    const payload: any = {
       from,
       to: email,
       subject,
-      html: htmlContent,
-      text: textContent || htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML tags for text fallback
       tags: [
         {
           name: 'category',
           value: 'waitlist',
         },
       ],
-    });
+    };
+
+    const hasHtml = !!htmlContent && htmlContent.trim().length > 0;
+
+    if (hasHtml) {
+      payload.html = htmlContent;
+      payload.text =
+        textContent && textContent.trim().length > 0
+          ? textContent
+          : htmlContent.replace(/<[^>]*>/g, ''); // Strip HTML tags for text fallback
+    } else if (textContent && textContent.trim().length > 0) {
+      // Text-only email – no HTML part
+      payload.text = textContent;
+    }
+
+    const { data, error } = await resend.emails.send(payload);
 
     if (error) {
       console.error(`[Resend] Error sending email to ${email}:`, error);

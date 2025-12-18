@@ -145,35 +145,8 @@ export async function POST(request: NextRequest) {
       ? startup.founder_names.split(',')[0].trim()
       : undefined;
 
-    // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
-    const extractLinksFromResume = (resumeText: string): Record<string, string> => {
-      const links: Record<string, string> = {};
-      const patterns = [
-        { key: 'github', regex: /github\.com[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+(?:\/[a-zA-Z0-9\-_.]+)?)/gi },
-        { key: 'portfolio', regex: /(?:portfolio|website|personal site)[\s:]+(https?:\/\/[^\s]+)/gi },
-        { key: 'linkedin', regex: /linkedin\.com\/in[\/\s]*[:/]?[\s]*([a-zA-Z0-9\-_]+)/gi },
-        { key: 'website', regex: /(?:http[s]?:\/\/)?(?:www\.)?([a-zA-Z0-9\-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi },
-      ];
-      for (const pattern of patterns) {
-        const matches = resumeText.match(pattern.regex);
-        if (matches && matches.length > 0) {
-          let link = matches[0].replace(/^(?:github|portfolio|website|personal site|linkedin)[\s:]+/i, '').trim();
-          if (link && !link.startsWith('http')) {
-            if (pattern.key === 'github') {
-              link = `https://github.com/${link.replace(/github\.com\/?/i, '').trim()}`;
-            } else if (pattern.key === 'linkedin') {
-              link = `https://linkedin.com/in/${link.replace(/linkedin\.com\/in\/?/i, '').trim()}`;
-            } else {
-              link = `https://${link}`;
-            }
-          }
-          if (link) links[pattern.key] = link;
-        }
-      }
-      return links;
-    };
-
     // Generate email (but do NOT send it)
+    // Gemini will intelligently extract links from resume text
     const generatedEmail = await generateColdEmail(
       {
         name: candidate.name,
@@ -184,8 +157,6 @@ export async function POST(request: NextRequest) {
           .map((s: string) => s.trim())
           .filter((s: string) => s.length > 0),
         resumeFullText: resume?.resume_full_text || undefined,
-        // Extract links from resume_full_text if available (GitHub, portfolio, etc.)
-        links: resume?.resume_full_text ? extractLinksFromResume(resume.resume_full_text) : undefined,
         // Additional Supabase candidate fields
         location: candidate.location || undefined,
         educationLevel: candidate.education_level || undefined,

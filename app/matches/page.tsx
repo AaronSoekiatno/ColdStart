@@ -13,6 +13,7 @@ interface MatchRecord {
   id: string;
   score: number;
   matched_at: string;
+  has_job_listings?: boolean;
   startup: {
     id?: string;
     name: string;

@@ -2,7 +2,7 @@
 
 import { memo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
-import { DollarSign, ExternalLink, ChevronDown, Sparkles } from "lucide-react";
+import { DollarSign, ExternalLink, ChevronDown, Sparkles, Briefcase } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "./UpgradeModal";
@@ -21,6 +21,7 @@ interface MatchCardProps {
     id: string;
     score: number;
     matched_at: string;
+    has_job_listings?: boolean;
     startup: {
       id?: string;
       name: string;
@@ -72,6 +73,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   const [emailDropdownOpen, setEmailDropdownOpen] = useState(false);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
+  // Track job listing loading state
+  const [isLoadingJobListing, setIsLoadingJobListing] = useState(false);
   
   // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
   const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
@@ -270,9 +273,60 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
         top: offsetPosition,
         behavior: 'smooth'
       });
-      
+
       // Update active tab state
       setActiveTab(tab);
+    }
+  };
+
+  // Handle job listing button click
+  const handleJobListingClick = async () => {
+    if (!match.startup?.id) {
+      toast({
+        title: "Error",
+        description: "Unable to find job listings for this company",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingJobListing(true);
+    try {
+      const response = await fetch(`/api/matches/job-listing?startupId=${match.startup.id}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        toast({
+          title: "No job listings found",
+          description: errorData.error || "This company doesn't have any job listings available yet.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const data = await response.json();
+
+      if (data.job && data.job.job_url) {
+        // Open job listing in new tab
+        window.open(data.job.job_url, '_blank', 'noopener,noreferrer');
+      } else {
+        toast({
+          title: "No job listings found",
+          description: "This company doesn't have any job listings available yet.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching job listing:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load job listing. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingJobListing(false);
     }
   };
 
@@ -526,7 +580,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                   {match.startup.description}
           </p>
         )}
-              {/* Website, YC, and Twitter buttons underneath description */}
+              {/* Website, YC, Job Listing and Twitter buttons underneath description */}
               <div className="flex gap-1.5 sm:gap-2 flex-wrap mt-1 sm:-mt-0.5">
         {match.startup.website && (
           <a
@@ -540,6 +594,17 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                     <ExternalLink className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                     <span>Website</span>
                   </a>
+                )}
+                {/* Job Listing Button - Only show if company has job listings */}
+                {match.has_job_listings && (
+                  <button
+                    onClick={handleJobListingClick}
+                    disabled={isLoadingJobListing}
+                    className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-md sm:rounded-lg bg-blue-50 border border-blue-300 px-1.5 py-0.5 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-[10px] sm:text-sm text-blue-700 font-medium w-fit hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Briefcase className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
+                    <span>{isLoadingJobListing ? 'Loading...' : 'Job Listing'}</span>
+                  </button>
                 )}
                 {match.startup.yc_link && (
                   <a

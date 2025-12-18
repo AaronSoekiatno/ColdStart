@@ -13,9 +13,23 @@ interface JakesResumeTemplateProps {
   onHover?: (suggestionId: string, event: React.MouseEvent) => void;
   onClick?: (suggestionId: string) => void;
   onLeave?: () => void;
+  upgradeCount?: number; // Number of locked/blurred suggestions
+  onUpgradeClick?: () => void; // Open upgrade modal
 }
 
-export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathToSuggestionId = new Map(), pathToSuggestion = new Map(), selectedSuggestionId, blurredFields = new Set(), onHover, onClick, onLeave }: JakesResumeTemplateProps) {
+export function JakesResumeTemplate({
+  data,
+  highlightedFields = new Set(),
+  pathToSuggestionId = new Map(),
+  pathToSuggestion = new Map(),
+  selectedSuggestionId,
+  blurredFields = new Set(),
+  onHover,
+  onClick,
+  onLeave,
+  upgradeCount,
+  onUpgradeClick,
+}: JakesResumeTemplateProps) {
   const isHighlighted = (fieldPath: string) => highlightedFields.has(fieldPath);
   const getSuggestionId = (fieldPath: string) => pathToSuggestionId.get(fieldPath);
   const getSuggestion = (fieldPath: string) => pathToSuggestion.get(fieldPath);
@@ -23,6 +37,18 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
   const isActiveSelection = (fieldPath: string) => {
     const suggestionId = getSuggestionId(fieldPath);
     return selectedSuggestionId && suggestionId === selectedSuggestionId;
+  };
+
+  // Track whether we've already rendered the upgrade CTA in this render pass,
+  // so it only appears over the first blurred field.
+  let hasRenderedUpgradeCTA = false;
+
+  const shouldShowUpgradeCTA = (fieldPath: string) => {
+    if (!onUpgradeClick || !upgradeCount || upgradeCount <= 0) return false;
+    if (!isBlurred(fieldPath)) return false;
+    if (hasRenderedUpgradeCTA) return false;
+    hasRenderedUpgradeCTA = true;
+    return true;
   };
   
   const renderDiffText = (text: string, fieldPath: string) => {
@@ -160,16 +186,43 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                     const suggestionId = getSuggestionId(fieldPath);
                     const highlighted = isHighlighted(fieldPath);
                     const active = isActiveSelection(fieldPath);
+                    const blurred = isBlurred(fieldPath);
                     return (
                       <li
                         key={bulletIdx}
-                        className={`text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''} ${isBlurred(fieldPath) ? 'filter blur-sm opacity-60' : ''}`}
+                        className={`relative text-xs leading-relaxed ${highlighted ? 'px-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
                         onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
                         onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                         onMouseLeave={highlighted && onLeave ? onLeave : undefined}
                       >
-                        <span className="mr-1.5">•</span>
-                        {highlighted ? renderDiffText(bullet, fieldPath) : bullet}
+                        <div className={blurred ? 'filter blur-sm opacity-60' : ''}>
+                          <span className="mr-1.5">•</span>
+                          {highlighted ? renderDiffText(bullet, fieldPath) : bullet}
+                        </div>
+                        {shouldShowUpgradeCTA(fieldPath) && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="bg-white/95 rounded-lg border border-black shadow-lg px-5 py-1 text-xs text-gray-900 max-w-xs pointer-events-auto">
+                              <div className="font-semibold text-gray-900 mb-0.5">
+                                Upgrade to Premium
+                              </div>
+                              {typeof upgradeCount === 'number' && upgradeCount > 0 && (
+                                <div className="text-[11px] text-gray-600">
+                                  View {upgradeCount} more suggestion{upgradeCount === 1 ? '' : 's'}
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onUpgradeClick?.();
+                                }}
+                                className="mt-1 w-full bg-gray-900 hover:bg-black text-white text-xs font-medium py-1 px-4 rounded-md transition-colors cursor-pointer"
+                              >
+                                Upgrade
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </li>
                     );
                   })}
@@ -222,16 +275,43 @@ export function JakesResumeTemplate({ data, highlightedFields = new Set(), pathT
                           const isBulletHighlighted = isHighlighted(bulletPath);
                           const isBulletActive = isActiveSelection(bulletPath);
                           const cleanBullet = typeof bullet === 'string' ? bullet.trim().replace(/^[-•*]\s*/, '') : String(bullet).trim();
+                          const blurred = isBlurred(bulletPath);
                           return (
                             <li
                               key={bulletIdx}
-                              className={`text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''} ${isBulletActive ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''} ${isBlurred(bulletPath) ? 'filter blur-sm opacity-60' : ''}`}
+                              className={`relative text-xs leading-relaxed ${isBulletHighlighted ? 'px-1 cursor-pointer' : ''} ${isBulletActive ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''}`}
                               onMouseEnter={isBulletHighlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
                               onClick={isBulletHighlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
                               onMouseLeave={isBulletHighlighted && onLeave ? onLeave : undefined}
                             >
-                              <span className="mr-1.5">•</span>
-                              {isBulletHighlighted ? renderDiffText(cleanBullet, bulletPath) : cleanBullet}
+                              <div className={blurred ? 'filter blur-sm opacity-60' : ''}>
+                                <span className="mr-1.5">•</span>
+                                {isBulletHighlighted ? renderDiffText(cleanBullet, bulletPath) : cleanBullet}
+                              </div>
+                              {shouldShowUpgradeCTA(bulletPath) && (
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <div className="bg-white/95 rounded-lg border border-blue-200 shadow-lg px-3 py-2 text-xs text-gray-900 max-w-xs pointer-events-auto">
+                                    <div className="font-semibold text-gray-900 mb-0.5">
+                                      Upgrade to Premium
+                                    </div>
+                                    {typeof upgradeCount === 'number' && upgradeCount > 0 && (
+                                      <div className="text-[11px] text-gray-600">
+                                        View {upgradeCount} more suggestion{upgradeCount === 1 ? '' : 's'}
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onUpgradeClick?.();
+                                      }}
+                                      className="mt-1 w-full bg-gray-900 hover:bg-black text-white text-xs font-medium py-1.5 px-4 rounded-md transition-colors cursor-pointer"
+                                    >
+                                      Upgrade
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </li>
                           );
                         })
