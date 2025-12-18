@@ -52,9 +52,9 @@ export async function GET() {
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
+                <td style="width: 48px; vertical-align: top;" align="center">
                   <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
-                    <span style="color: #d4a853; font-size: 18px;">⚡</span>
+                    <span style="color: #d4a853; font-size: 22px; line-height: 40px; display: inline-block;">⚡</span>
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
@@ -71,9 +71,9 @@ export async function GET() {
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
-                  <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px; display: flex; align-items: center; justify-content: center;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Y_Combinator_logo.svg/1200px-Y_Combinator_logo.svg.png" alt="YC Logo" style="width: 24px; height: 24px; object-fit: contain;" />
+                <td style="width: 48px; vertical-align: top;" align="center">
+                  <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Y_Combinator_logo.svg/1200px-Y_Combinator_logo.svg.png" alt="YC Logo" style="width: 26px; height: 26px; object-fit: contain; display: inline-block; vertical-align: middle;" />
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
@@ -90,9 +90,9 @@ export async function GET() {
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
+                <td style="width: 48px; vertical-align: top;" align="center">
                   <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
-                    <span style="color: #d4a853; font-size: 18px;">🤝</span>
+                    <span style="color: #d4a853; font-size: 22px; line-height: 40px; display: inline-block;">🤝</span>
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
@@ -109,9 +109,9 @@ export async function GET() {
           <div style="background-color: rgba(15, 15, 26, 0.4); border: 1px solid #2a2a4a; border-radius: 12px; padding: 20px;">
             <table cellpadding="0" cellspacing="0" border="0" width="100%">
               <tr>
-                <td style="width: 48px; vertical-align: top;">
+                <td style="width: 48px; vertical-align: top;" align="center">
                   <div style="width: 40px; height: 40px; background-color: rgba(212, 168, 83, 0.1); border-radius: 8px; text-align: center; line-height: 40px;">
-                    <span style="color: #d4a853; font-size: 18px;">📧</span>
+                    <span style="color: #d4a853; font-size: 22px; line-height: 40px; display: inline-block;">📧</span>
                   </div>
                 </td>
                 <td style="padding-left: 16px; vertical-align: top;">
