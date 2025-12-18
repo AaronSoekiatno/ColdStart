@@ -92,23 +92,40 @@ export async function GET(request: NextRequest) {
       for (const roleType of roleTypes) {
         const roleLower = roleType.toLowerCase();
 
-        // Map role types to common variations in job titles
+        // Map role types to common variations and related roles
+        // Each role type includes both exact matches and semantically related roles
         const rolePatterns: { [key: string]: string[] } = {
-          'pm': ['product manager', 'pm'],
-          'swe': ['software engineer', 'swe', 'engineer'],
-          'sde': ['software development engineer', 'sde', 'developer'],
-          'ml': ['machine learning', 'ml engineer', 'ml'],
-          'ai': ['ai engineer', 'artificial intelligence', 'ai'],
-          'data science': ['data scientist', 'data science'],
-          'devops': ['devops', 'dev ops', 'infrastructure'],
-          'frontend': ['frontend', 'front-end', 'front end'],
-          'backend': ['backend', 'back-end', 'back end'],
-          'full stack': ['full stack', 'fullstack', 'full-stack'],
-          'mobile': ['mobile', 'ios', 'android'],
-          'security': ['security', 'infosec', 'cybersecurity'],
-          'qa': ['qa', 'quality assurance', 'test', 'sdet'],
-          'design': ['designer', 'design'],
-          'product design': ['product designer', 'product design'],
+          'pm': ['product manager', 'pm', 'product lead', 'product owner'],
+
+          // Engineering roles - these are related and can overlap
+          'swe': ['software engineer', 'swe', 'engineer', 'software developer'],
+          'sde': ['software development engineer', 'sde', 'software engineer', 'developer'],
+          'full stack': ['full stack', 'fullstack', 'full-stack', 'software engineer', 'swe'],
+
+          // Frontend/Backend - related to general software engineering
+          'frontend': ['frontend', 'front-end', 'front end', 'ui engineer', 'software engineer'],
+          'backend': ['backend', 'back-end', 'back end', 'server', 'api', 'software engineer'],
+
+          // Data roles - these are closely related
+          'ml': ['machine learning', 'ml engineer', 'ml', 'ai engineer', 'data scientist'],
+          'ai': ['ai engineer', 'artificial intelligence', 'ai', 'machine learning', 'ml'],
+          'data science': ['data scientist', 'data science', 'data engineer', 'ml engineer', 'analytics'],
+
+          // Infrastructure roles
+          'devops': ['devops', 'dev ops', 'infrastructure', 'site reliability', 'sre', 'platform engineer'],
+
+          // Mobile
+          'mobile': ['mobile', 'ios', 'android', 'react native', 'flutter'],
+
+          // Security
+          'security': ['security', 'infosec', 'cybersecurity', 'appsec', 'security engineer'],
+
+          // QA/Testing
+          'qa': ['qa', 'quality assurance', 'test', 'sdet', 'test engineer', 'quality engineer'],
+
+          // Design roles
+          'design': ['designer', 'design', 'visual designer', 'ui designer', 'ux designer'],
+          'product design': ['product designer', 'product design', 'ux designer', 'ui/ux'],
         };
 
         const patterns = rolePatterns[roleLower] || [roleLower];
@@ -133,10 +150,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // If no matches, return the first job anyway (as requested by user)
+    // If no matches found, return error instead of falling back
     return NextResponse.json({
-      job: jobs[0]
-    });
+      error: 'No jobs matching your role preferences are available at this company'
+    }, { status: 404 });
 
   } catch (error) {
     console.error('Error fetching job listing:', error);
