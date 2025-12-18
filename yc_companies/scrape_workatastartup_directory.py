@@ -45,7 +45,9 @@ from selenium.webdriver.support import expected_conditions as EC  # pyright: ign
 from selenium.webdriver.chrome.options import Options  # pyright: ignore[reportMissingImports]
 from selenium.webdriver.chrome.service import Service  # pyright: ignore[reportMissingImports]
 from webdriver_manager.chrome import ChromeDriverManager  # type: ignore[import-untyped]
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
+import threading
 
 # Initialize Supabase client
 supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL") or os.getenv("SUPABASE_URL")
@@ -221,10 +223,10 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
     
     try:
-        # Navigate to directory page
-        url = "https://www.workatastartup.com/companies?demographic=any&hasEquity=any&hasSalary=any&industry=any&interviewProcess=any&jobType=any&layout=list-compact&sortBy=created_desc&tab=any&usVisaNotRequired=any"
-        print(f"   📄 Navigating to {url}...")
-        driver.get(url)
+        # First, navigate to base page to check login status
+        base_url = "https://www.workatastartup.com/companies"
+        print(f"   📄 Navigating to base page to check login status...")
+        driver.get(base_url)
         time.sleep(3)
         
         # Login if credentials are provided
@@ -234,42 +236,75 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
         if email and password:
             print("   🔐 Attempting to log in...")
             try:
-                # Find and click "Log In" link
-                login_link = driver.find_element(By.XPATH, "//a[contains(@href, 'authenticate') or contains(text(), 'Log In')]")
-                if login_link:
-                    login_link.click()
-                    time.sleep(2)
-                    
-                    # Fill in credentials
-                    email_field = driver.find_element(By.NAME, "username")
-                    password_field = driver.find_element(By.NAME, "password")
-                    email_field.send_keys(email)
-                    password_field.send_keys(password)
-                    
-                    # Submit
-                    submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
-                    submit_button.click()
-                    time.sleep(3)
-                    print("   ✅ Logged in")
+                # Check if already logged in by looking for user profile elements
+                try:
+                    driver.find_element(By.XPATH, "//a[contains(text(), 'My profile') or contains(text(), 'Inbox')]")
+                    print("   ✅ Already logged in")
+                    logged_in = True
+                except:
+                    logged_in = False
+                
+                if not logged_in:
+                    # Find and click "Log In" link
+                    login_link = driver.find_element(By.XPATH, "//a[contains(@href, 'authenticate') or contains(text(), 'Log In')]")
+                    if login_link:
+                        login_link.click()
+                        time.sleep(2)
+                        
+                        # Fill in credentials
+                        email_field = driver.find_element(By.NAME, "username")
+                        password_field = driver.find_element(By.NAME, "password")
+                        email_field.send_keys(email)
+                        password_field.send_keys(password)
+                        
+                        # Submit
+                        submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+                        submit_button.click()
+                        time.sleep(5)  # Wait for redirect after login
+                        print("   ✅ Logged in")
             except Exception as e:
                 print(f"   ⚠️  Login failed or already logged in: {e}")
         
-        # Wait for page to fully load
-        print("   ⏳ Waiting for page to load...")
-        time.sleep(5)
+        # Now navigate to the directory page sorted by "Active companies" (sortBy=most_active)
+        # No filters applied - showing all companies, just sorted by most active
+        # This must be done AFTER login to ensure the sort persists
+        url = "https://www.workatastartup.com/companies?sortBy=most_active&layout=list-compact"
+        print(f"   📄 Navigating to filtered page: {url}...")
+        driver.get(url)
+        time.sleep(5)  # Wait for page to load with filter
         
-        # Scroll to load all content
+        # Verify the URL still has the correct filter
+        current_url = driver.current_url
+        if "sortBy=most_active" not in current_url:
+            print(f"   ⚠️  URL changed after load. Current: {current_url}")
+            print(f"   🔄 Re-navigating to ensure filter is applied...")
+            driver.get(url)
+            time.sleep(5)
+        
+        # Wait for page to fully load
+        print("   ⏳ Waiting for page to fully load...")
+        time.sleep(3)
+        
+        # Scroll to load all content (with progress logging)
         print("   📜 Scrolling to load content...")
         last_height = driver.execute_script("return document.body.scrollHeight")
         scroll_attempts = 0
-        max_scrolls = 10
+        max_scrolls = 20  # Increased for 1259 companies
+        total_scrolls = 0
+        
         while scroll_attempts < max_scrolls:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
+            time.sleep(1.5)  # Reduced from 2s to 1.5s
             new_height = driver.execute_script("return document.body.scrollHeight")
+            total_scrolls += 1
+            
+            if total_scrolls % 5 == 0:
+                print(f"      Scrolled {total_scrolls} times, page height: {new_height}px")
+            
             if new_height == last_height:
                 scroll_attempts += 1
                 if scroll_attempts >= 3:
+                    print(f"   ✅ Finished scrolling after {total_scrolls} attempts (page height stable)")
                     break
             else:
                 scroll_attempts = 0
@@ -1080,82 +1115,6 @@ def parse_with_classification(description: str) -> dict:
                     skills_text = parts[0].rstrip(')').strip()
             sections["skills"] = skills_text
     
-    return sections
-
-
-def parse_with_classification(description: str) -> dict:
-    """
-    Parse description using content-based classification when no explicit headers exist.
-    Splits text into paragraphs and classifies each based on keywords and heuristics.
-    """
-    sections = {
-        "requirements": None,
-        "benefits": None,
-        "interview_process": None,
-        "company_about": None,
-        "skills": None,
-    }
-    
-    if not description:
-        return sections
-    
-    # Split into paragraphs (double newlines or long single lines)
-    paragraphs = []
-    current_para = []
-    
-    lines = description.split('\n')
-    for line in lines:
-        line = line.strip()
-        if not line:
-            if current_para:
-                paragraphs.append('\n'.join(current_para))
-                current_para = []
-            continue
-        
-        current_para.append(line)
-        
-        # If line is very long, it might be a complete paragraph
-        if len(line) > 200:
-            paragraphs.append('\n'.join(current_para))
-            current_para = []
-    
-    if current_para:
-        paragraphs.append('\n'.join(current_para))
-    
-    # Classify each paragraph
-    classified_paragraphs = {
-        "requirements": [],
-        "benefits": [],
-        "interview_process": [],
-        "company_about": [],
-        "skills": [],
-    }
-    
-    for para in paragraphs:
-        if len(para.strip()) < 20:  # Skip very short paragraphs
-            continue
-        
-        section_type = classify_text_section(para)
-        if section_type:
-            classified_paragraphs[section_type].append(para)
-    
-    # Combine paragraphs for each section
-    for section_type, paras in classified_paragraphs.items():
-        if paras:
-            sections[section_type] = '\n\n'.join(paras)
-    
-    # Special handling for skills - try to extract from "Skills:" if present
-    if not sections["skills"]:
-        skills_match = re.search(r'Skills:\s*([^\n]+(?:\n[^\n]+){0,5})', description, re.IGNORECASE)
-        if skills_match:
-            skills_text = skills_match.group(1).strip()
-            # Clean up - remove company description if present
-            if re.search(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, re.IGNORECASE):
-                parts = re.split(r'\)(At\s+[A-Z]|We\'re|We are)', skills_text, flags=re.IGNORECASE, maxsplit=1)
-                if parts:
-                    skills_text = parts[0].rstrip(')').strip()
-            sections["skills"] = skills_text
-    
     # Extract inline benefits if not found in dedicated section
     if not sections["benefits"]:
         inline_benefits = extract_inline_benefits(description)
@@ -1193,18 +1152,18 @@ def company_has_jobs(company_name: str) -> bool:
         return False
 
 
-def find_or_create_startup(company_name: str, batch: Optional[str] = None, description: Optional[str] = None) -> Optional[str]:
+def find_or_create_startup(company_name: str, supabase_client: Client, batch: Optional[str] = None, description: Optional[str] = None) -> Optional[str]:
     """Find existing startup or create new one. Returns startup ID."""
     import uuid
     
     # Try exact match
-    result = supabase.table("startups").select("id").eq("name", company_name).limit(1).execute()
+    result = supabase_client.table("startups").select("id").eq("name", company_name).limit(1).execute()
     
     if result.data and len(result.data) > 0:
         return result.data[0]["id"]
     
     # Try case-insensitive match
-    result = supabase.table("startups").select("id, name").ilike("name", f"%{company_name}%").limit(5).execute()
+    result = supabase_client.table("startups").select("id, name").ilike("name", f"%{company_name}%").limit(5).execute()
     
     if result.data:
         for startup in result.data:
@@ -1215,27 +1174,32 @@ def find_or_create_startup(company_name: str, batch: Optional[str] = None, descr
     new_id = str(uuid.uuid4())
     startup_data = {"id": new_id, "name": company_name, "needs_enrichment": True}
     
-    if batch:
-        startup_data["tags"] = [batch]
     if description:
         startup_data["description"] = description
     
     try:
-        supabase.table("startups").insert(startup_data).execute()
+        supabase_client.table("startups").insert(startup_data).execute()
         return new_id
     except Exception as e:
         print(f"   ⚠️  Error creating startup: {e}")
         return None
 
 
-def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None, driver=None) -> int:
+def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None, driver=None, supabase_client: Optional[Client] = None, scraper_instance: Optional[Scraper] = None) -> int:
     """Scrape jobs for a company and save to database.
     
     Args:
         company_info: Dict with company_url, company_name, batch
         limit: Optional limit on number of jobs to scrape
         driver: Optional Selenium driver for full description extraction (if None, creates one)
+        supabase_client: Optional Supabase client (if None, uses global)
+        scraper_instance: Optional Scraper instance (if None, uses global)
     """
+    # Use provided clients or fall back to globals
+    if supabase_client is None:
+        supabase_client = supabase
+    if scraper_instance is None:
+        scraper_instance = scraper
     company_url = company_info["company_url"]
     company_name = company_info["company_name"]
     batch = company_info.get("batch")
@@ -1297,7 +1261,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
     try:
         # Scrape company data using ycombinator-scraper library
         print(f"   🔍 Scraping company data from library...")
-        company_data = scraper.scrape_company_data(company_url)
+        company_data = scraper_instance.scrape_company_data(company_url)
         
         if not company_data:
             print(f"   ⚠️  No data found")
@@ -1335,7 +1299,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     break
         
         # Find or create startup
-        startup_id = find_or_create_startup(company_name, batch, company_description)
+        startup_id = find_or_create_startup(company_name, supabase_client, batch, company_description)
         
         # Get jobs - the library uses these exact field names:
         # - job_data: List[JobData] (full job objects)
@@ -1385,7 +1349,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     else:
                         print(f"   📄 [{idx}/{len(job_links)}] Scraping job: {job_url}")
                     
-                    job_data = scraper.scrape_job_data(job_url)
+                    job_data = scraper_instance.scrape_job_data(job_url)
                     if job_data:
                         # Get description from library
                         library_description = None
@@ -1682,7 +1646,6 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     "job_type": job_type,  # Extracted from tags (e.g., "Full-time", "Internship")
                     "location": location,  # Extracted from tags (e.g., "Munich, BY, DE")
                     "job_url": job_url,
-                    "company_batch": batch,
                     "company_tagline": company_description,
                     "company_about": company_about,  # Extracted from description "About [Company]" section
                     "salary_range": salary_range,
@@ -1701,16 +1664,16 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 db_job = {k: v for k, v in db_job.items() if v is not None}
 
                 # Check if exists - use company_name, job_title, and job_url for uniqueness
-                check = supabase.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).limit(1).execute()
+                check = supabase_client.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).limit(1).execute()
 
                 # Also check by URL if available
                 if db_job.get("job_url"):
-                    check_by_url = supabase.table("jobs").select("id").eq("job_url", db_job["job_url"]).limit(1).execute()
+                    check_by_url = supabase_client.table("jobs").select("id").eq("job_url", db_job["job_url"]).limit(1).execute()
                     if check_by_url.data:
                         check = check_by_url
 
                 if not check.data:
-                    supabase.table("jobs").insert(db_job).execute()
+                    supabase_client.table("jobs").insert(db_job).execute()
                     saved_count += 1
                     print(f"   ✅ Saved: {db_job['job_title']}")
                 else:
@@ -1728,6 +1691,55 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
         import traceback
         traceback.print_exc()
         return 0
+    finally:
+        # Clean up driver if we created it (not passed in from parallel wrapper)
+        if should_close_driver and driver:
+            try:
+                driver.quit()
+            except:
+                pass
+
+
+def process_company_parallel(company_info: dict) -> tuple:
+    """Wrapper function to process a company with thread-local resources.
+    
+    Returns:
+        tuple: (company_name, jobs_saved, error_message)
+    """
+    company_name = company_info["company_name"]
+    
+    # Create thread-local Supabase client
+    thread_supabase = create_client(supabase_url, supabase_key)
+    
+    # Create thread-local scraper instance
+    thread_scraper = Scraper()
+    
+    # Create thread-local Selenium driver
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+    
+    thread_driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    
+    try:
+        jobs_saved = scrape_and_save_company_jobs(
+            company_info, 
+            driver=thread_driver, 
+            supabase_client=thread_supabase,
+            scraper_instance=thread_scraper
+        )
+        return (company_name, jobs_saved, None)
+    except Exception as e:
+        error_msg = str(e)
+        import traceback
+        traceback.print_exc()
+        return (company_name, 0, error_msg)
+    finally:
+        thread_driver.quit()
 
 
 def main():
@@ -1757,6 +1769,7 @@ Examples:
     parser.add_argument("--batch-size", type=int, default=5, help="Number of companies to process per batch (default: 5)")
     parser.add_argument("--skip-existing", action="store_true", default=True, help="Skip companies that already have jobs (default: True)")
     parser.add_argument("--no-skip-existing", dest="skip_existing", action="store_false", help="Process all companies even if they already have jobs (overrides --skip-existing)")
+    parser.add_argument("--workers", type=int, default=8, help="Number of parallel workers (default: 8)")
     
     args = parser.parse_args()
     
@@ -1764,15 +1777,18 @@ Examples:
     if args.test:
         limit = 1
         batch_size = 1
+        num_workers = 1  # Test mode: sequential
     else:
         limit = args.limit
         batch_size = args.batch_size
+        num_workers = args.workers
     
     print("🚀 Starting workatastartup.com scraper...")
     if args.test:
         print("🧪 Test mode: processing 1 company")
     else:
         print(f"📦 Batch processing: {batch_size} companies per batch")
+        print(f"⚡ Parallel processing: {num_workers} workers")
         if args.skip_existing:
             print("⏭️  Skipping companies that already have jobs")
     
@@ -1819,18 +1835,49 @@ Examples:
         print(f"{'='*80}")
         
         batch_jobs = 0
-        for idx, company in enumerate(batch_companies, 1):
-            print(f"\n[{batch_num}-{idx}/{len(batch_companies)}] Processing: {company['company_name']}")
-            try:
-                jobs_saved = scrape_and_save_company_jobs(company)
-                batch_jobs += jobs_saved
-                total_jobs += jobs_saved
-                total_companies_processed += 1
-            except Exception as e:
-                print(f"   ❌ Error processing {company['company_name']}: {e}")
-                import traceback
-                traceback.print_exc()
-                continue
+        
+        # Process companies in parallel (or sequentially in test mode)
+        if num_workers == 1:
+            # Sequential processing (test mode)
+            for idx, company in enumerate(batch_companies, 1):
+                print(f"\n[{batch_num}-{idx}/{len(batch_companies)}] Processing: {company['company_name']}")
+                company_name, jobs_saved, error = process_company_parallel(company)
+                if error:
+                    print(f"   ❌ Error processing {company_name}: {error}")
+                else:
+                    batch_jobs += jobs_saved
+                    total_jobs += jobs_saved
+                    total_companies_processed += 1
+        else:
+            # Parallel processing
+            print(f"⚡ Processing {len(batch_companies)} companies with {num_workers} workers...")
+            with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                # Submit all companies to the executor
+                future_to_company = {executor.submit(process_company_parallel, company): company 
+                                   for company in batch_companies}
+                
+                # Process completed tasks as they finish
+                completed = 0
+                for future in as_completed(future_to_company):
+                    company = future_to_company[future]
+                    completed += 1
+                    try:
+                        # Timeout of 10 minutes per company (600 seconds)
+                        # This prevents the script from hanging indefinitely if a worker thread gets stuck
+                        company_name, jobs_saved, error = future.result(timeout=600)
+                        if error:
+                            print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ❌ {company_name}: {error}")
+                        else:
+                            print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ✅ {company_name}: {jobs_saved} jobs saved")
+                            batch_jobs += jobs_saved
+                            total_jobs += jobs_saved
+                            total_companies_processed += 1
+                    except TimeoutError:
+                        print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ⏱️  {company['company_name']}: Timed out after 10 minutes")
+                    except Exception as e:
+                        print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ❌ {company['company_name']}: Unexpected error: {e}")
+                        import traceback
+                        traceback.print_exc()
         
         print(f"\n✅ Batch {batch_num} complete: {batch_jobs} jobs from {len(batch_companies)} companies")
         

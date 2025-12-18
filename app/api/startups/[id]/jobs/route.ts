@@ -16,10 +16,10 @@ import { getStartup } from '@/lib/supabase';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const startupId = params.id;
+    const { id: startupId } = await context.params;
     const searchParams = request.nextUrl.searchParams;
     const providedSlug = searchParams.get('slug') || undefined;
 
