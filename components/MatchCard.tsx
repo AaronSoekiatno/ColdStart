@@ -2,19 +2,11 @@
 
 import { memo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
-import { DollarSign, ExternalLink, ChevronDown, Sparkles, Briefcase } from "lucide-react";
+import { DollarSign, ExternalLink, Sparkles, Briefcase } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "./UpgradeModal";
 import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface MatchCardProps {
   match: {
@@ -70,30 +62,10 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
   const [showFullYcDescription, setShowFullYcDescription] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [emailDropdownOpen, setEmailDropdownOpen] = useState(false);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   // Track job listing loading state
   const [isLoadingJobListing, setIsLoadingJobListing] = useState(false);
-  
-  // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
-  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('emailPersona');
-      if (stored === 'genuine-fan' || stored === 'direct-ask' || stored === 'value-first') {
-        return stored as 'direct-ask' | 'genuine-fan' | 'value-first';
-      }
-    }
-    return 'direct-ask';
-  });
-
-  // Sync emailPersona to sessionStorage whenever it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('emailPersona', emailPersona);
-      console.log(`[MatchCard] emailPersona changed to: ${emailPersona}, isPremium: ${isPremium}, saved to sessionStorage`);
-    }
-  }, [emailPersona, isPremium]);
 
   if (!match.startup) {
     return null;
@@ -365,7 +337,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     <article className="relative rounded-xl sm:rounded-2xl md:rounded-3xl bg-white px-2.5 pt-2 pb-3 sm:px-4 sm:pb-6 md:px-6 md:pb-8 lg:px-8 lg:pb-12 shadow-md w-full max-w-full">
       {/* Sticky Header Container - Desktop Only */}
       <div className="lg:sticky lg:top-[64px] lg:z-40 bg-white -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8 px-3 pt-2.5 sm:px-4 md:px-6 lg:px-8 lg:rounded-t-2xl lg:rounded-t-3xl">
-        {/* Top Header with Tabs and Generate Email Button */}
+        {/* Top Header with Tabs and Contact Founder Button */}
         <div className="mb-4 flex items-center justify-between gap-4">
           {/* Tabs on left */}
           <div className="flex gap-1 sm:gap-3">
@@ -390,146 +362,37 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
               Founders
             </button>
           </div>
-          {/* Generate Email Dropdown - Right aligned */}
+          {/* Contact Founder Button - Right aligned */}
           {match.startup.id && (
             <div className="flex-shrink-0">
-              <DropdownMenu open={emailDropdownOpen} onOpenChange={setEmailDropdownOpen}>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Generate Email</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="end" 
-                  className="w-72 !bg-white !border-gray-200 !shadow-lg !text-gray-900 !backdrop-blur-none"
-                  style={{ backgroundColor: 'white', borderColor: '#e5e7eb' }}
-                >
-                  <DropdownMenuLabel className="!text-gray-900 px-3 py-2 font-semibold">Choose Email Style</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="!bg-gray-200" />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      // Check if founder selection is required but no founder is selected
-                      if (founderNames.length > 0 && selectedFounderIndex === null) {
-                        setEmailDropdownOpen(false);
-                        toast({
-                          title: "Select a founder",
-                          description: "Please select a founder first before generating an email.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setEmailPersona('direct-ask');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'direct-ask');
-                      }
-                      setEmailDropdownOpen(false);
-                      // Navigate to email generation page
-                      if (match.startup?.id) {
-                        const params = new URLSearchParams();
-                        params.append('startupId', match.startup.id);
-                        params.append('matchScore', match.score.toString());
-                        params.append('persona', 'direct-ask');
-                        if (selectedFounderEmail) {
-                          params.append('founderEmail', selectedFounderEmail);
-                        }
-                        router.push(`/generate-email?${params.toString()}`);
-                      }
-                    }}
-                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
-                  >
-                    <div className="w-full">
-                      <div className="font-semibold mb-1">Direct Ask</div>
-                      <div className="text-xs text-gray-600">Get straight to the point. Respectful and efficient.</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      // Premium check - show upgrade modal if not premium
-                      if (!isPremium) {
-                        setShowUpgradeModal(true);
-                        setEmailDropdownOpen(false);
-                        return;
-                      }
-                      // Check if founder selection is required but no founder is selected
-                      if (founderNames.length > 0 && selectedFounderIndex === null) {
-                        setEmailDropdownOpen(false);
-                        toast({
-                          title: "Select a founder",
-                          description: "Please select a founder first before generating an email.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setEmailPersona('genuine-fan');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'genuine-fan');
-                      }
-                      setEmailDropdownOpen(false);
-                      // Navigate to email generation page
-                      if (match.startup?.id) {
-                        const params = new URLSearchParams();
-                        params.append('startupId', match.startup.id);
-                        params.append('matchScore', match.score.toString());
-                        params.append('persona', 'genuine-fan');
-                        if (selectedFounderEmail) {
-                          params.append('founderEmail', selectedFounderEmail);
-                        }
-                        router.push(`/generate-email?${params.toString()}`);
-                      }
-                    }}
-                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
-                  >
-                    <div className="w-full">
-                      <div className="font-semibold mb-1">Genuine Fan</div>
-                      <div className="text-xs text-gray-600">Show authentic interest and personal connection.</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      // Premium check - show upgrade modal if not premium
-                      if (!isPremium) {
-                        setShowUpgradeModal(true);
-                        setEmailDropdownOpen(false);
-                        return;
-                      }
-                      // Check if founder selection is required but no founder is selected
-                      if (founderNames.length > 0 && selectedFounderIndex === null) {
-                        setEmailDropdownOpen(false);
-                        toast({
-                          title: "Select a founder",
-                          description: "Please select a founder first before generating an email.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setEmailPersona('value-first');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'value-first');
-                      }
-                      setEmailDropdownOpen(false);
-                      // Navigate to email generation page
-                      if (match.startup?.id) {
-                        const params = new URLSearchParams();
-                        params.append('startupId', match.startup.id);
-                        params.append('matchScore', match.score.toString());
-                        params.append('persona', 'value-first');
-                        if (selectedFounderEmail) {
-                          params.append('founderEmail', selectedFounderEmail);
-                        }
-                        router.push(`/generate-email?${params.toString()}`);
-                      }
-                    }}
-                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
-                  >
-                    <div className="w-full">
-                      <div className="font-semibold mb-1">Value-First</div>
-                      <div className="text-xs text-gray-600">Lead with what you can bring to the table.</div>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                onClick={() => {
+                  // Require founder selection if founders exist
+                  if (founderNames.length > 0 && selectedFounderIndex === null) {
+                    toast({
+                      title: "Select a founder",
+                      description: "Please select a founder first before contacting a founder.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  if (match.startup?.id) {
+                    const params = new URLSearchParams();
+                    params.append('startupId', match.startup.id);
+                    params.append('matchScore', match.score.toString());
+                    if (selectedFounderEmail) {
+                      params.append('founderEmail', selectedFounderEmail);
+                    }
+                    router.push(`/generate-email?${params.toString()}`);
+                  }
+                }}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Contact Founder</span>
+              </button>
             </div>
           )}
         </div>

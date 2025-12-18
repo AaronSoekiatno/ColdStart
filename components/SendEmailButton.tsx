@@ -75,7 +75,7 @@ export const SendEmailButton = ({
       ) : (
         <span className="flex items-center gap-2">
           <Sparkles className="h-4 w-4" />
-          Generate Email
+          Contact Founder
         </span>
       )}
     </Button>

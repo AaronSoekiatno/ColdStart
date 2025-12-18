@@ -24,17 +24,20 @@ function GenerateEmailPageContent() {
   
   const [user, setUser] = useState<User | null>(null);
   const [isSending, setIsSending] = useState(false);
-  const [isPreviewLoading, setIsPreviewLoading] = useState(true);
+  // Start with no preview loading until the user chooses an email style
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewBody, setPreviewBody] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  // Initialize emailPersona from URL param if valid, otherwise default to 'direct-ask'
-  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
-    const initialPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first')
-      ? personaParam as 'direct-ask' | 'genuine-fan' | 'value-first'
-      : 'direct-ask';
-    console.log(`[Generate Email Page] Initializing - personaParam from URL: '${personaParam}', initializing emailPersona to: '${initialPersona}'`);
-    return initialPersona;
+  type EmailPersona = 'direct-ask' | 'genuine-fan' | 'value-first';
+  // Initialize emailPersona from URL param if valid, otherwise no selection yet
+  const [emailPersona, setEmailPersona] = useState<EmailPersona | null>(() => {
+    if (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first') {
+      console.log(`[Generate Email Page] Initializing - personaParam from URL: '${personaParam}', pre-selecting emailPersona to: '${personaParam}' (no API call yet)`);
+      return personaParam as EmailPersona;
+    }
+    console.log(`[Generate Email Page] Initializing - no valid personaParam, starting with no persona selected`);
+    return null;
   });
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
@@ -53,6 +56,8 @@ function GenerateEmailPageContent() {
   // Ref to prevent concurrent API calls
   const isLoadingRef = useRef(false);
   const currentRequestRef = useRef<string | null>(null);
+  // Cache for generated emails by persona to avoid redundant API calls
+  const emailCacheRef = useRef<Record<string, { subject: string; body: string }>>({});
 
   // Rotate research messages during loading
   useEffect(() => {
@@ -96,17 +101,35 @@ function GenerateEmailPageContent() {
   }, [router, startupId]);
 
 
-  const loadEmailPreview = async () => {
+  const loadEmailPreview = async (overridePersona?: EmailPersona) => {
     if (!startupId || !user) return;
 
-    // Use personaParam directly from URL as source of truth, fallback to emailPersona state
-    // This prevents race conditions where state hasn't synced yet
-    const currentPersona = (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first')
-      ? personaParam as 'direct-ask' | 'genuine-fan' | 'value-first'
-      : emailPersona;
+    // Determine which persona to use for this request:
+    // 1) Explicit override from the click handler
+    // 2) URL param if valid
+    // 3) Local state
+    const currentPersona: EmailPersona =
+      overridePersona ??
+      ((personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first'
+        ? (personaParam as EmailPersona)
+        : (emailPersona ?? 'direct-ask')));
     
-    // Create a unique request key to deduplicate concurrent requests
+    // Create a unique request key to deduplicate concurrent requests and for caching
     const requestKey = `${startupId}-${currentPersona}-${matchScore}`;
+    
+    // Check cache first
+    const cachedEmail = emailCacheRef.current[requestKey];
+    if (cachedEmail) {
+      console.log('[Email Preview] Loading from cache for:', requestKey);
+      // Show loading animation even when loading from cache (for consistent UX)
+      setIsPreviewLoading(true);
+      // Small delay to show loading animation (300ms feels natural)
+      await new Promise(resolve => setTimeout(resolve, 300));
+      setPreviewSubject(cachedEmail.subject);
+      setPreviewBody(cachedEmail.body);
+      setIsPreviewLoading(false);
+      return;
+    }
     
     // If we're already loading this exact request, skip it
     if (isLoadingRef.current && currentRequestRef.current === requestKey) {
@@ -119,7 +142,7 @@ function GenerateEmailPageContent() {
       console.log('[Email Preview] Another request in progress, waiting...');
       // Wait a bit and retry
       await new Promise(resolve => setTimeout(resolve, 100));
-      return loadEmailPreview();
+      return loadEmailPreview(overridePersona);
     }
 
     // Mark as loading and set current request
@@ -254,6 +277,11 @@ function GenerateEmailPageContent() {
                 // Final result
                 const finalSubject = data.subject || '';
                 const finalBody = data.body || '';
+                // Cache the generated email
+                emailCacheRef.current[requestKey] = {
+                  subject: finalSubject,
+                  body: finalBody,
+                };
                 setPreviewSubject(finalSubject);
                 setPreviewBody(finalBody);
                 setIsPreviewLoading(false);
@@ -317,18 +345,7 @@ function GenerateEmailPageContent() {
     }
   };
 
-  useEffect(() => {
-    // Load email when component mounts or when startupId/user/persona changes
-    // The API route will check Supabase for existing email, or generate new one if not found
-    // Skip if already loading to prevent duplicate calls
-    // Note: We use personaParam in the dependency array to ensure we reload when URL changes
-    if (user && startupId && !isLoadingRef.current) {
-      loadEmailPreview();
-    }
-  }, [startupId, matchScore, user, personaParam]); // Use personaParam instead of emailPersona to avoid race conditions
-
   // Sync persona with query param when it changes, but enforce premium restrictions
-  // This MUST run BEFORE the email loading useEffect to ensure state is synced
   useEffect(() => {
     console.log(`[Generate Email Page] Persona sync effect - personaParam: '${personaParam}', emailPersona: '${emailPersona}', isPremium: ${isPremium}`);
     if (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first') {
@@ -343,14 +360,14 @@ function GenerateEmailPageContent() {
         // Only update if different to prevent unnecessary re-renders
         if (emailPersona !== personaParam) {
           console.log(`[Generate Email Page] Syncing emailPersona from '${emailPersona}' to '${personaParam}'`);
-          setEmailPersona(personaParam as 'direct-ask' | 'genuine-fan' | 'value-first');
+          setEmailPersona(personaParam as EmailPersona);
         }
       }
     } else {
-      // Default to 'direct-ask' if invalid or missing
-      if (emailPersona !== 'direct-ask') {
-        console.log(`[Generate Email Page] Invalid personaParam '${personaParam}', defaulting to 'direct-ask'`);
-        setEmailPersona('direct-ask');
+      // If no valid persona in URL, clear local selection (user must choose)
+      if (emailPersona !== null) {
+        console.log(`[Generate Email Page] Invalid or missing personaParam '${personaParam}', clearing emailPersona selection`);
+        setEmailPersona(null);
       }
     }
   }, [personaParam, isPremium]); // Removed emailPersona from deps to prevent loops
@@ -438,17 +455,16 @@ function GenerateEmailPageContent() {
       <Header initialUser={user} />
       <div className="flex-1 overflow-hidden pt-16 sm:pt-20 md:pt-24">
         <div className="h-full w-full flex flex-col">
-          {(previewSubject || previewBody || isPreviewLoading) ? (
-            <div className="flex-1 flex flex-col min-h-0 w-full h-full">
-              {/* Email Preview */}
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-6 sm:px-8 md:px-12 lg:px-16 py-6 sm:py-8">
+          <div className="flex-1 flex flex-col min-h-0 w-full h-full">
+            {/* Email Preview */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden px-6 sm:px-8 md:px-12 lg:px-16 py-6 sm:py-8">
                   <div className="flex items-center justify-between mb-6 flex-shrink-0">
                     <h3 className="text-3xl sm:text-4xl font-semibold text-gray-900">Review Email</h3>
                     <div className="flex items-center gap-3">
                       <Button
                         onClick={handleSendViaMailto}
-                        disabled={!founderEmail || isPreviewLoading}
+                        disabled={!founderEmail || isPreviewLoading || !previewSubject || !previewBody}
                         className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-md px-4"
                       >
                         <span className="flex items-center gap-2">
@@ -458,7 +474,7 @@ function GenerateEmailPageContent() {
                       </Button>
                       <Button
                         onClick={handleSendEmail}
-                        disabled={isSending || isPreviewLoading}
+                        disabled={isSending || isPreviewLoading || !previewSubject || !previewBody}
                         variant="outline"
                         className="border-gray-300 hover:bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-md px-4"
                       >
@@ -481,23 +497,135 @@ function GenerateEmailPageContent() {
                       </button>
                     </div>
                   </div>
-                  <div className="mb-3 flex-shrink-0">
-                    <div className="rounded-md p-2 flex items-start gap-2">
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-xs text-gray-900">
-                          <span className="font-medium">85% email accuracy:</span> If your email bounces, please{" "}
-                          <button
-                            onClick={() => setShowFeedbackModal(true)}
-                            className="text-blue-600 hover:text-blue-700 underline font-medium"
-                          >
-                            alert us through feedback
-                          </button>
-                          .
-                        </p>
-                      </div>
+                  {/* Persona selection - users must choose a style before an email is generated */}
+                  <div className="mb-4 flex-shrink-0">
+                    <p className="text-[11px] text-gray-900 font-medium mb-1.5">
+                      Choose an email style to generate your draft:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {/* Direct Ask - available to all users */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          // If switching to a different persona, clear previous content to show loading animation
+                          if (emailPersona !== 'direct-ask') {
+                            setPreviewSubject(null);
+                            setPreviewBody(null);
+                          }
+                          // Show loading animation immediately
+                          setIsPreviewLoading(true);
+                          // Update local state immediately for UI
+                          setEmailPersona('direct-ask');
+
+                          // Sync persona into URL so future loads are consistent
+                          const params = new URLSearchParams(Array.from(searchParams.entries()));
+                          params.set('persona', 'direct-ask');
+                          const query = params.toString();
+                          router.replace(`/generate-email?${query}`, { scroll: false });
+
+                          // Trigger preview generation explicitly after selection
+                          await loadEmailPreview('direct-ask');
+                        }}
+                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
+                          emailPersona === 'direct-ask'
+                            ? 'border-blue-500 bg-blue-50 text-gray-900'
+                            : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-semibold mb-0.5">Direct Ask</div>
+                        <div className="text-[10px] text-gray-600">
+                          Get straight to the point. Respectful and efficient.
+                        </div>
+                      </button>
+
+                      {/* Genuine Fan - premium */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!isPremium) {
+                            setShowUpgradeModal(true);
+                            return;
+                          }
+
+                          // If switching to a different persona, clear previous content to show loading animation
+                          if (emailPersona !== 'genuine-fan') {
+                            setPreviewSubject(null);
+                            setPreviewBody(null);
+                          }
+                          // Show loading animation immediately
+                          setIsPreviewLoading(true);
+                          setEmailPersona('genuine-fan');
+                          const params = new URLSearchParams(Array.from(searchParams.entries()));
+                          params.set('persona', 'genuine-fan');
+                          const query = params.toString();
+                          router.replace(`/generate-email?${query}`, { scroll: false });
+
+                          await loadEmailPreview('genuine-fan');
+                        }}
+                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
+                          emailPersona === 'genuine-fan'
+                            ? 'border-blue-500 bg-blue-50 text-gray-900'
+                            : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-semibold mb-0.5 flex items-center gap-1">
+                          <span>Genuine Fan</span>
+                          {!isPremium && (
+                            <span className="text-[9px] font-medium text-blue-500 uppercase">
+                              Premium
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-gray-600">
+                          Show authentic interest and personal connection.
+                        </div>
+                      </button>
+
+                      {/* Value-First - premium */}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!isPremium) {
+                            setShowUpgradeModal(true);
+                            return;
+                          }
+
+                          // If switching to a different persona, clear previous content to show loading animation
+                          if (emailPersona !== 'value-first') {
+                            setPreviewSubject(null);
+                            setPreviewBody(null);
+                          }
+                          // Show loading animation immediately
+                          setIsPreviewLoading(true);
+                          setEmailPersona('value-first');
+                          const params = new URLSearchParams(Array.from(searchParams.entries()));
+                          params.set('persona', 'value-first');
+                          const query = params.toString();
+                          router.replace(`/generate-email?${query}`, { scroll: false });
+
+                          await loadEmailPreview('value-first');
+                        }}
+                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
+                          emailPersona === 'value-first'
+                            ? 'border-blue-500 bg-blue-50 text-gray-900'
+                            : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="font-semibold mb-0.5 flex items-center gap-1">
+                          <span>Value-First</span>
+                          {!isPremium && (
+                            <span className="text-[9px] font-medium text-blue-500 uppercase">
+                              Premium
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-gray-600">
+                          Lead with what you can bring to the table.
+                        </div>
+                      </button>
                     </div>
                   </div>
+
                   <div className="flex-1 flex flex-col space-y-4 min-h-0">
                     {founderEmail && (
                       <div className="space-y-1.5 flex-shrink-0">
@@ -540,7 +668,13 @@ function GenerateEmailPageContent() {
                             // Subject editing is local only - Supabase stores the generated version
                           }}
                           className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-300 pr-10"
-                          placeholder={isPreviewLoading ? "Generating..." : "Email subject"}
+                          placeholder={
+                            isPreviewLoading
+                              ? "Generating subject..."
+                              : previewSubject
+                              ? "Email subject"
+                              : "Choose an email style above to generate your subject"
+                          }
                         />
                         <button
                           onClick={async () => {
@@ -568,11 +702,28 @@ function GenerateEmailPageContent() {
                       </div>
                     </div>
                     <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
-                      <label className="text-xs text-gray-700 block">
-                        Body:
-                        {isPreviewLoading && (
-                          <span className="ml-2 text-blue-300 text-xs">Generating...</span>
-                        )}
+                      <label className="text-xs text-gray-700 flex items-start justify-between gap-3">
+                        <span>
+                          Body:
+                          {isPreviewLoading && (
+                            <span className="ml-2 text-blue-300 text-xs align-middle">Generating...</span>
+                          )}
+                        </span>
+                        <span className="flex items-start gap-3 text-[10px] sm:text-[11px] text-gray-600 text-right max-w-sm">
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                          <span>
+                            <span className="font-medium">85% email accuracy.</span>{" "}
+                            If your email bounces, please{" "}
+                            <button
+                              type="button"
+                              onClick={() => setShowFeedbackModal(true)}
+                              className="text-blue-600 hover:text-blue-700 underline font-medium"
+                            >
+                              alert us
+                            </button>
+                            .
+                          </span>
+                        </span>
                       </label>
                       <div className="relative flex-1 flex flex-col min-h-0">
                         <Textarea
@@ -582,7 +733,13 @@ function GenerateEmailPageContent() {
                             // Body editing is local only - Supabase stores the generated version
                           }}
                           className="flex-1 min-h-0 bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-300 resize-none pr-10 text-base sm:text-lg"
-                          placeholder={isPreviewLoading ? researchMessages[currentResearchMessage] : "Email body"}
+                          placeholder={
+                            isPreviewLoading
+                              ? researchMessages[currentResearchMessage]
+                              : previewBody
+                              ? "Email body"
+                              : "Choose an email style above to generate your email"
+                          }
                           style={isPreviewLoading && !previewBody ? {
                             background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
                             backgroundSize: '200% 100%',
@@ -618,7 +775,6 @@ function GenerateEmailPageContent() {
                 </div>
               </div>
             </div>
-          ) : null}
         </div>
       </div>
       {showUpgradeModal && user && (
