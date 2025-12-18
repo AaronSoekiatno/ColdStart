@@ -62,13 +62,15 @@ export async function GET(request: NextRequest) {
       .select('id', { count: 'exact', head: true })
       .eq('candidate_id', candidate.id);
 
-    // Get paginated matches ordered by score descending
-    const { data: rawMatches, error: matchError } = await supabaseAdmin
+    // Get matches for sorting (limit to first 200 to avoid performance issues)
+    // This ensures page 1 users see matches with jobs, while keeping query fast
+    const fetchLimit = Math.max(200, offset + limit);
+    const { data: allMatches, error: matchError } = await supabaseAdmin
       .from('matches')
       .select('id, score, matched_at, startup_id')
       .eq('candidate_id', candidate.id)
       .order('score', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .limit(fetchLimit);
 
     if (matchError) {
       return NextResponse.json(
@@ -77,7 +79,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!rawMatches || rawMatches.length === 0) {
+    if (!allMatches || allMatches.length === 0) {
       return NextResponse.json({
         matches: [],
         pagination: {
@@ -93,11 +95,45 @@ export async function GET(request: NextRequest) {
     // Get startup IDs
     const startupIds = Array.from(
       new Set(
-        rawMatches
+        allMatches
           .map((m) => m.startup_id)
           .filter((id): id is string => !!id)
       )
     );
+
+    // Check which startups have jobs with job_url
+    const startupsWithJobs = new Set<string>();
+    if (startupIds.length > 0) {
+      const { data: jobsData } = await supabaseAdmin
+        .from('jobs')
+        .select('startup_id')
+        .in('startup_id', startupIds)
+        .not('job_url', 'is', null);
+
+      if (jobsData) {
+        jobsData.forEach(job => {
+          if (job.startup_id) {
+            startupsWithJobs.add(job.startup_id);
+          }
+        });
+      }
+    }
+
+    // Sort matches: prioritize those with job listings
+    const sortedMatches = [...allMatches].sort((a, b) => {
+      const aHasJobs = a.startup_id ? startupsWithJobs.has(a.startup_id) : false;
+      const bHasJobs = b.startup_id ? startupsWithJobs.has(b.startup_id) : false;
+
+      // First sort by job availability
+      if (aHasJobs && !bHasJobs) return -1;
+      if (!aHasJobs && bHasJobs) return 1;
+
+      // Then by score (already sorted from query, but ensure it's maintained)
+      return b.score - a.score;
+    });
+
+    // Apply pagination AFTER sorting
+    const rawMatches = sortedMatches.slice(offset, offset + limit);
 
     // Load startup data
     let startupsById: Record<
@@ -224,12 +260,13 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Join matches with startup data
+    // Join matches with startup data and add has_job_listings flag
     const matches = rawMatches.map((m) => ({
       id: m.id,
       score: m.score,
       matched_at: m.matched_at,
       startup: startupsById[m.startup_id] ?? null,
+      has_job_listings: m.startup_id ? startupsWithJobs.has(m.startup_id) : false,
     }));
 
     const totalPages = Math.ceil((totalCount || 0) / limit);

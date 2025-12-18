@@ -144,11 +144,6 @@ function buildEmailPrompt(
   match: MatchContext
 ): string {
   const rawFounderName = startup.founderName || 'Founder';
-  const linksText = candidate.links
-    ? Object.entries(candidate.links)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ')
-    : 'None';
 
   // Add Novaflow-specific context for testing
   let scrapedIntel = startup.scrapedContext || 'None available';
@@ -215,7 +210,18 @@ That's it. Keep it short and make every sentence count.
 - At least ONE experience that EXPLICITLY connects to the company's work, product, industry, or mission
 - Reference what the company does and explain how your experience is relevant to THAT specifically
 - A concrete ask with a clear next step
-- Professional links (resume, GitHub, portfolio, LinkedIn) at the end after your signature
+- Professional links (GitHub, portfolio, LinkedIn, personal website) at the end after your signature
+  * IMPORTANT: Extract these links ONLY from the resume text provided below
+  * Look for links in the HEADER/TOP section of the resume (first ~500 characters)
+  * Personal website rules:
+    - Must contain the candidate's name (first or last name) in the domain (e.g., johndoe.com, jane-smith.dev)
+    - Must use common personal TLDs: .com, .dev, .io, .me, .net, .co, .tech, .app
+    - Must NOT be institutional (.edu, .gov, .org) or company domains (google.com, facebook.com, etc.)
+    - Must NOT be subdomain URLs (api.example.com, docs.example.com)
+  * GitHub: Look for github.com/[username] patterns
+  * LinkedIn: Look for linkedin.com/in/[username] patterns
+  * Portfolio: Look for explicitly labeled "Portfolio:", "Website:", or "Personal site:" entries
+  * ONLY include links that you can confidently identify from the resume text - do NOT hallucinate or guess links
 
 **What to NEVER include:**
 - GENERIC skill lists without connection to the company (e.g., "I have experience with Python, Pytorch, and NumPy" - this tells them nothing about WHY it matters to THEM)
@@ -225,6 +231,8 @@ That's it. Keep it short and make every sentence count.
 - Explanations of why you're emailing ("I'm reaching out because...")
 - Questions that put work on them ("What roles do you have open?")
 - Long paragraphs - keep it scannable
+- Links that appear in work experience, project descriptions, or are clearly not personal websites
+- Company websites where the candidate worked (e.g., if they worked at Google, do NOT include google.com)
 
 **Tone:**
 - Confident but not arrogant
@@ -258,8 +266,7 @@ That's it. Keep it short and make every sentence count.
 - Summary: ${candidate.summary}
 - Skills: ${candidate.skills.join(', ')}
 - Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
-- Links: ${linksText}
-- Resume Context: ${candidate.resumeFullText || 'Not provided'}
+- Full Resume Text (extract professional links from here): ${candidate.resumeFullText || 'Not provided'}
 
 **STARTUP:**
 - Name: ${startup.name}
@@ -288,11 +295,6 @@ function buildGenuineFanPrompt(
 ): string {
   const rawFounderName = startup.founderName || 'Founder';
   const jobTypeText = getJobTypeText(candidate.jobType);
-  const linksText = candidate.links
-    ? Object.entries(candidate.links)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ')
-    : 'None';
 
   // Add Novaflow-specific context for testing
   let scrapedIntel = startup.scrapedContext || 'None available';
@@ -403,8 +405,15 @@ Before generating: Could this email ONLY be sent to this specific company? If yo
 - Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
 - Past Experience: ${candidate.pastInternships || 'None listed'}
 - Projects: ${candidate.technicalProjects || 'None listed'}
-- Links: ${linksText}
-- Resume Context: ${candidate.resumeFullText || 'Not provided'}
+- Full Resume Text (extract professional links from here if needed): ${candidate.resumeFullText || 'Not provided'}
+
+**IMPORTANT LINK EXTRACTION RULES (if you include links at the end):**
+- Extract links ONLY from the resume text above
+- Personal website: Must contain candidate's name in domain, use personal TLDs (.com, .dev, .io, .me), NOT .edu/.gov/.org or company domains
+- GitHub: github.com/[username] patterns
+- LinkedIn: linkedin.com/in/[username] patterns
+- Do NOT include company websites from work experience or project URLs
+- Do NOT hallucinate or guess links that aren't in the resume
 
 **STARTUP:**
 - Name: ${startup.name}
@@ -449,11 +458,6 @@ function buildValueFirstPrompt(
 ): string {
   const rawFounderName = startup.founderName || 'Founder';
   const jobTypeText = getJobTypeText(candidate.jobType);
-  const linksText = candidate.links
-    ? Object.entries(candidate.links)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ')
-    : 'None';
 
   // Add Novaflow-specific context for testing
   let scrapedIntel = startup.scrapedContext || 'None available';
@@ -579,8 +583,15 @@ The email should be useful to them even if they don't hire you. They should lear
 - Skills: ${candidate.skills.join(', ')}
 - Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
 - Technical Projects: ${candidate.technicalProjects || 'None listed'}
-- Links: ${linksText}
-- Resume Context: ${candidate.resumeFullText || 'Not provided'}
+- Full Resume Text (extract professional links from here if needed): ${candidate.resumeFullText || 'Not provided'}
+
+**IMPORTANT LINK EXTRACTION RULES (if you include links at the end):**
+- Extract links ONLY from the resume text above
+- Personal website: Must contain candidate's name in domain, use personal TLDs (.com, .dev, .io, .me), NOT .edu/.gov/.org or company domains
+- GitHub: github.com/[username] patterns
+- LinkedIn: linkedin.com/in/[username] patterns
+- Do NOT include company websites from work experience or project URLs
+- Do NOT hallucinate or guess links that aren't in the resume
 
 **STARTUP:**
 - Name: ${startup.name}
