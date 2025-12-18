@@ -41,12 +41,14 @@ function extractAshbySlug(url: string): string | null {
 }
 
 /**
- * Search DuckDuckGo HTML (slower but more reliable)
+ * Search using Google Custom Search JSON API (free, no API key needed for basic scraping)
  */
-async function searchDuckDuckGoHTML(query: string): Promise<string[]> {
+async function searchGoogle(query: string): Promise<string[]> {
   return new Promise((resolve, reject) => {
     const encodedQuery = encodeURIComponent(query);
-    const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
+    // Use Google search with site:ashbyhq.com to only get Ashby results
+    const searchQuery = encodeURIComponent(`${query} site:ashbyhq.com`);
+    const url = `https://www.google.com/search?q=${searchQuery}&num=10`;
 
     https
       .get(
@@ -57,8 +59,12 @@ async function searchDuckDuckGoHTML(query: string): Promise<string[]> {
               'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
-            'Accept-Encoding': 'identity',
+            'Accept-Encoding': 'gzip, deflate, br',
             Connection: 'keep-alive',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Upgrade-Insecure-Requests': '1',
           },
         },
         (res) => {
@@ -69,38 +75,27 @@ async function searchDuckDuckGoHTML(query: string): Promise<string[]> {
           });
 
           res.on('end', () => {
-            // Extract URLs from HTML
-            // Look for ashbyhq.com URLs in href attributes
-            const urlMatches = data.match(/href="([^"]*ashbyhq[^"]*)"/g) || [];
+            // Extract URLs from Google search results
+            // Look for ashbyhq.com URLs in the HTML
+            const urlMatches = [
+              ...data.matchAll(/https?:\/\/[^"\s<>]*ashbyhq\.com[^"\s<>]*/g),
+            ];
+
             const urls = urlMatches
               .map((match) => {
-                const urlMatch = match.match(/href="([^"]*)"/);
-                if (!urlMatch) return null;
+                let url = match[0];
 
-                let url = urlMatch[1];
-
-                // Decode HTML entities
+                // Clean up URL
                 url = url
                   .replace(/&amp;/g, '&')
                   .replace(/&#x2F;/g, '/')
                   .replace(/&#x3D;/g, '=')
-                  .replace(/&quot;/g, '"');
-
-                // Handle DuckDuckGo redirect URLs
-                if (url.includes('uddg=')) {
-                  const uddgMatch = url.match(/uddg=([^&]+)/);
-                  if (uddgMatch) {
-                    try {
-                      url = decodeURIComponent(uddgMatch[1]);
-                    } catch {
-                      return null;
-                    }
-                  }
-                }
+                  .replace(/&quot;/g, '"')
+                  .replace(/[<>]/g, ''); // Remove any trailing HTML chars
 
                 return url;
               })
-              .filter((url): url is string => url !== null && url.includes('ashbyhq'));
+              .filter((url) => url.includes('ashbyhq.com') && !url.includes('google.com'));
 
             // Remove duplicates
             const uniqueUrls = [...new Set(urls)];
@@ -115,33 +110,110 @@ async function searchDuckDuckGoHTML(query: string): Promise<string[]> {
 }
 
 /**
- * Search for Ashby job board URL
+ * Search DuckDuckGo Lite (simpler, more bot-friendly)
+ */
+async function searchDuckDuckGoLite(query: string): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const encodedQuery = encodeURIComponent(query + ' site:ashbyhq.com');
+    const url = `https://lite.duckduckgo.com/lite/?q=${encodedQuery}`;
+
+    https
+      .get(
+        url,
+        {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+          },
+        },
+        (res) => {
+          let data = '';
+
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+
+          res.on('end', () => {
+            // Extract URLs from DuckDuckGo Lite results
+            const urlMatches = [
+              ...data.matchAll(/https?:\/\/[^"\s<>]*ashbyhq\.com[^"\s<>]*/g),
+            ];
+
+            const urls = urlMatches
+              .map((match) => {
+                let url = match[0];
+
+                // Clean up URL
+                url = url
+                  .replace(/&amp;/g, '&')
+                  .replace(/&#x2F;/g, '/')
+                  .replace(/&#x3D;/g, '=')
+                  .replace(/&quot;/g, '"')
+                  .replace(/[<>]/g, '');
+
+                return url;
+              })
+              .filter((url) => url.includes('ashbyhq.com'));
+
+            // Remove duplicates
+            const uniqueUrls = [...new Set(urls)];
+            resolve(uniqueUrls);
+          });
+        }
+      )
+      .on('error', (err) => {
+        reject(err);
+      });
+  });
+}
+
+/**
+ * Search for Ashby job board URL using multiple search engines
  */
 async function searchForAshbySlug(companyName: string): Promise<string | null> {
   try {
-    const query = `${companyName} ashbyhq job listing`;
-    console.log(`   🔍 Searching: "${query}"`);
+    const query = `${companyName} careers`;
+    console.log(`   🔍 Searching for: "${companyName}"`);
 
-    const urls = await searchDuckDuckGoHTML(query);
+    // Strategy 1: Try DuckDuckGo Lite first (fastest)
+    console.log(`   📡 Trying DuckDuckGo Lite...`);
+    let urls = await searchDuckDuckGoLite(query);
+
+    // Strategy 2: If DDG fails, try Google
+    if (urls.length === 0) {
+      console.log(`   📡 Trying Google Search...`);
+      urls = await searchGoogle(query);
+    }
 
     if (urls.length === 0) {
       console.log(`   ❌ No ashbyhq URLs found in search results`);
       return null;
     }
 
-    console.log(`   Found ${urls.length} ashbyhq URL(s)`);
+    console.log(`   ✓ Found ${urls.length} ashbyhq URL(s)`);
 
     // Try to extract slug from URLs
     for (const url of urls) {
+      console.log(`   🔗 Checking: ${url.substring(0, 80)}...`);
       const slug = extractAshbySlug(url);
       if (slug) {
-        console.log(`   ✓ Found Ashby URL: ${url}`);
         console.log(`   ✓ Extracted slug: "${slug}"`);
-        return slug;
+
+        // Verify the slug works by trying to fetch jobs
+        console.log(`   🔍 Verifying slug works...`);
+        const testData = await fetchAshbyJobs(slug);
+        if (testData && testData.jobs && testData.jobs.length > 0) {
+          console.log(`   ✅ Slug verified! Found ${testData.jobs.length} jobs`);
+          return slug;
+        } else {
+          console.log(`   ⚠️  Slug "${slug}" found but no jobs returned, trying next URL...`);
+        }
       }
     }
 
-    console.log(`   ❌ Could not extract slug from URLs`);
+    console.log(`   ❌ Could not extract working slug from URLs`);
     return null;
   } catch (error) {
     console.error(`   ❌ Search error:`, error);
@@ -239,16 +311,13 @@ async function main() {
     console.log(`   ✅ Found ${jobs.length} active job postings\n`);
 
     if (jobs.length > 0) {
-      console.log('   📋 Sample Jobs:');
-      jobs.slice(0, 3).forEach((job, index) => {
+      console.log('   📋 Jobs:');
+      jobs.forEach((job, index) => {
         console.log(`   ${index + 1}. ${job.title}`);
         if (job.departmentName) console.log(`      Department: ${job.departmentName}`);
         if (job.locationName) console.log(`      Location: ${job.locationName}`);
         console.log(`      Apply: https://jobs.ashbyhq.com/${slug}/${job.id}`);
       });
-      if (jobs.length > 3) {
-        console.log(`   ... and ${jobs.length - 3} more`);
-      }
     }
 
     console.log('\n   💡 Save this slug:');
