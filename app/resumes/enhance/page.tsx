@@ -405,7 +405,8 @@ function EnhanceResumePageContent() {
   }, [resumeId]);
 
   const handleSuggestionClick = (suggestionId: string) => {
-    // Check if this is a blurred suggestion for free users
+    // Centralized handler for opening a suggestion from either the resume bullets
+    // or the suggestions panel. Applies free/premium gating and syncs highlight state.
     if (!isPremium) {
       const suggestionIndex = resumeSuggestions.findIndex(s => s.id === suggestionId);
       if (suggestionIndex >= FREE_SUGGESTION_LIMIT) {
@@ -413,7 +414,21 @@ function EnhanceResumePageContent() {
         return;
       }
     }
-    setSelectedSuggestionId(suggestionId);
+
+    setSelectedSuggestionId(prev => (prev === suggestionId ? null : suggestionId));
+  };
+
+  const handleSuggestionHeaderClick = (suggestionId: string) => {
+    // Same logic as handleSuggestionClick, but kept separate for clarity
+    if (!isPremium) {
+      const suggestionIndex = resumeSuggestions.findIndex(s => s.id === suggestionId);
+      if (suggestionIndex >= FREE_SUGGESTION_LIMIT) {
+        setShowUpgradeModal(true);
+        return;
+      }
+    }
+
+    setSelectedSuggestionId(prev => (prev === suggestionId ? null : suggestionId));
   };
 
   const handleSuggestionEdit = (suggestionId: string, newText: string) => {
@@ -771,7 +786,9 @@ function EnhanceResumePageContent() {
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">Suggestions</h2>
                     <p className="text-xs text-gray-600 mt-1">
-                      {isLoadingSuggestions ? 'Generating suggestions...' : 'Click on a highlight to view details'}
+                      {isLoadingSuggestions
+                        ? 'Generating suggestions...'
+                        : 'Click a bullet point or suggestion to view details'}
                     </p>
                   </div>
                   {!isLoadingSuggestions && resumeSuggestions.length > 0 && (
@@ -790,104 +807,178 @@ function EnhanceResumePageContent() {
                     <Loader2 className="h-8 w-8 animate-spin text-blue-300 mb-4" />
                     <p className="text-sm text-gray-600">Analyzing your resume...</p>
                   </div>
-                ) : selectedSuggestionId ? (
-                    <>
-                      <div className="flex-1 p-2 space-y-2">
-                        {(() => {
-                          const suggestion = resumeSuggestions.find(s => s.id === selectedSuggestionId);
-                          if (!suggestion) return null;
-                          const status = suggestionStatuses[selectedSuggestionId];
+                ) : resumeSuggestions.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                    <p className="text-sm text-gray-600">
+                      {isDoneEnhancing ? "Ready to Download" : "No suggestions available yet"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    <div className="divide-y divide-gray-100">
+                      {(isPremium ? resumeSuggestions : visibleSuggestions).map((suggestion) => {
+                        const isOpen = selectedSuggestionId === suggestion.id;
+                        const status = suggestionStatuses[suggestion.id];
 
-                          return (
-                            <>
-                              <div>
-                                <h3 className="text-sm font-semibold text-gray-900 mb-1">Original</h3>
-                                <p className="text-sm text-gray-700 bg-red-50 p-2.5 rounded border border-red-200">{suggestion.original}</p>
+                        return (
+                          <div
+                            key={suggestion.id}
+                            className={`px-3 py-2 transition-colors ${
+                              isOpen ? "bg-blue-50/60" : "bg-white"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => handleSuggestionHeaderClick(suggestion.id)}
+                              className="w-full flex items-start justify-between gap-2 text-left cursor-pointer"
+                            >
+                              <div className="flex-1">
+                                {suggestion.section && (
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
+                                    {suggestion.section}
+                                  </p>
+                                )}
+                                <p
+                                  className="text-sm text-gray-900 line-clamp-2"
+                                >
+                                  {suggestion.suggested || suggestion.original}
+                                </p>
                               </div>
-
-                              <div>
-                                <div className="flex items-center gap-2 mb-1 mt-4">
-                                  <h3 className="text-sm font-semibold text-gray-900">Enhanced</h3>
-                                  <Pencil className="w-4 h-4 text-gray-500" aria-hidden="true" />
-                                </div>
-                                <textarea
-                                  id={`suggestion-textarea-${selectedSuggestionId}`}
-                                  key={selectedSuggestionId}
-                                  value={suggestion.suggested}
-                                  onChange={(e) => {
-                                    handleSuggestionEdit(selectedSuggestionId, e.target.value);
-                                    // Auto-resize textarea with buffer to prevent scrollbar
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = Math.max(e.target.scrollHeight + 4, 40) + 'px';
-                                  }}
-                                  onFocus={(e) => {
-                                    // Auto-resize on focus with buffer to prevent scrollbar
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = Math.max(e.target.scrollHeight + 4, 40) + 'px';
-                                  }}
-                                  className="w-full text-sm text-gray-900 bg-green-50 p-2.5 rounded border border-green-200 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none overflow-hidden"
-                                />
+                              <div className="ml-2 flex flex-col items-end gap-1">
+                                {status === "accepted" && (
+                                  <span className="text-[10px] font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                                    Accepted
+                                  </span>
+                                )}
+                                {status === "rejected" && (
+                                  <span className="text-[10px] font-medium text-red-700 bg-red-50 border border-red-200 rounded-full px-2 py-0.5">
+                                    Denied
+                                  </span>
+                                )}
+                                <span
+                                  className={`text-base transition-transform ${
+                                    isOpen ? "rotate-90" : ""
+                                  } text-gray-400`}
+                                >
+                                  ▸
+                                </span>
                               </div>
+                            </button>
 
-                              <div className="mt-4">
-                                <h3 className="text-sm font-semibold text-gray-900 mb-1">Feedback</h3>
-                                <p className="text-sm text-gray-600">{suggestion.reason}</p>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                      
-                      {/* Sticky buttons at bottom */}
-                      <div className="pt-0 pb-3 px-3 bg-white flex-shrink-0">
-                        {(() => {
-                          const suggestion = resumeSuggestions.find(s => s.id === selectedSuggestionId);
-                          if (!suggestion) return null;
-                          const status = suggestionStatuses[selectedSuggestionId];
+                            {isOpen && (
+                              <>
+                                <div className="mt-2 space-y-2">
+                                  <div>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                                      Original
+                                    </h3>
+                                    <p className="text-sm text-gray-700 bg-red-50 p-2.5 rounded border border-red-200">
+                                      {suggestion.original}
+                                    </p>
+                                  </div>
 
-                          return (
-                            <div className="flex gap-2">
-                              {status === 'pending' && (
-                                <>
-                                  <Button
-                                    onClick={() => handleSuggestionAccept(selectedSuggestionId)}
-                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white cursor-pointer"
-                                  >
-                                    Accept
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleSuggestionDeny(selectedSuggestionId)}
-                                    variant="outline"
-                                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50 cursor-pointer"
-                                  >
-                                    Deny
-                                  </Button>
-                                </>
-                              )}
-                              {status === 'accepted' && (
-                                <div className="w-full p-3 bg-green-50 border border-green-200 rounded text-center text-sm text-green-700 font-medium">
-                                  ✓ Accepted
+                                  <div>
+                                    <div className="flex items-center gap-2 mb-1 mt-3">
+                                      <h3 className="text-sm font-semibold text-gray-900">
+                                        Enhanced
+                                      </h3>
+                                      <Pencil
+                                        className="w-4 h-4 text-gray-500"
+                                        aria-hidden="true"
+                                      />
+                                    </div>
+                                    <textarea
+                                      id={`suggestion-textarea-${suggestion.id}`}
+                                      key={suggestion.id}
+                                      value={suggestion.suggested}
+                                      onChange={(e) => {
+                                        handleSuggestionEdit(suggestion.id, e.target.value);
+                                        // Auto-resize textarea with buffer to prevent scrollbar
+                                        e.target.style.height = "auto";
+                                        e.target.style.height =
+                                          Math.max(e.target.scrollHeight + 4, 40) + "px";
+                                      }}
+                                      onFocus={(e) => {
+                                        // Auto-resize on focus with buffer to prevent scrollbar
+                                        e.target.style.height = "auto";
+                                        e.target.style.height =
+                                          Math.max(e.target.scrollHeight + 4, 40) + "px";
+                                      }}
+                                      className="w-full text-sm text-gray-900 bg-green-50 p-2.5 rounded border border-green-200 focus:outline-none focus:ring-2 focus:ring-blue-300 resize-none overflow-hidden"
+                                    />
+                                  </div>
+
+                                  <div className="mt-3">
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                                      Feedback
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                      {suggestion.reason}
+                                    </p>
+                                  </div>
                                 </div>
-                              )}
-                              {status === 'rejected' && (
-                                <div className="w-full p-3 bg-red-50 border border-red-200 rounded text-center text-sm text-red-700 font-medium">
-                                  ✗ Denied
+
+                                <div className="pt-2 pb-1">
+                                  <div className="flex gap-2">
+                                    {status === "pending" && (
+                                      <>
+                                        <Button
+                                          onClick={() =>
+                                            handleSuggestionAccept(suggestion.id)
+                                          }
+                                          className="flex-1 bg-green-600 hover:bg-green-700 text-white cursor-pointer"
+                                        >
+                                          Accept
+                                        </Button>
+                                        <Button
+                                          onClick={() =>
+                                            handleSuggestionDeny(suggestion.id)
+                                          }
+                                          variant="outline"
+                                          className="flex-1 text-red-600 border-red-300 hover:bg-red-50 cursor-pointer"
+                                        >
+                                          Deny
+                                        </Button>
+                                      </>
+                                    )}
+                                    {status === "accepted" && (
+                                      <div className="w-full p-2.5 bg-green-50 border border-green-200 rounded text-center text-sm text-green-700 font-medium">
+                                        ✓ Accepted
+                                      </div>
+                                    )}
+                                    {status === "rejected" && (
+                                      <div className="w-full p-2.5 bg-red-50 border border-red-200 rounded text-center text-sm text-red-700 font-medium">
+                                        ✗ Denied
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center py-8">
-                      <p className="text-sm text-gray-600">
-                        {isDoneEnhancing
-                          ? "Ready to Download"
-                          : "No bullet points selected yet"}
-                      </p>
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {!isPremium && blurredSuggestions.length > 0 && (
+                        <div className="px-3 py-3 bg-gray-50 border-t border-gray-200 flex flex-col gap-1 items-center text-center">
+                          <div className="text-sm font-medium text-gray-900">
+                            See {blurredSuggestions.length} more suggestion
+                            {blurredSuggestions.length === 1 ? "" : "s"}
+                          </div>
+                          <div>
+                            <Button
+                              type="button"
+                              onClick={() => setShowUpgradeModal(true)}
+                              className="mt-2 h-8 px-4 text-xs bg-gray-900 hover:bg-black text-white rounded-md cursor-pointer"
+                            >
+                              Upgrade to view more
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                )}
               </div>
               </div>
             </div>

@@ -201,7 +201,7 @@ export function JakesResumeTemplate({
                         </div>
                         {shouldShowUpgradeCTA(fieldPath) && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <div className="bg-white/95 rounded-lg border border-blue-200 shadow-lg px-5 py-1 text-xs text-gray-900 max-w-xs pointer-events-auto">
+                            <div className="bg-white/95 rounded-lg border border-black shadow-lg px-5 py-1 text-xs text-gray-900 max-w-xs pointer-events-auto">
                               <div className="font-semibold text-gray-900 mb-0.5">
                                 Upgrade to Premium
                               </div>
@@ -216,7 +216,7 @@ export function JakesResumeTemplate({
                                   e.stopPropagation();
                                   onUpgradeClick?.();
                                 }}
-                                className="mt-1 w-full bg-blue-300 hover:bg-blue-400 text-white text-xs font-medium py-1 px-4 rounded transition-colors cursor-pointer"
+                                className="mt-1 w-full bg-gray-900 hover:bg-black text-white text-xs font-medium py-1 px-4 rounded-md transition-colors cursor-pointer"
                               >
                                 Upgrade
                               </button>
@@ -305,7 +305,7 @@ export function JakesResumeTemplate({
                                         e.stopPropagation();
                                         onUpgradeClick?.();
                                       }}
-                                      className="mt-1 w-full bg-blue-300 hover:bg-blue-400 text-white text-xs font-medium py-1.5 px-4 rounded transition-colors cursor-pointer"
+                                      className="mt-1 w-full bg-gray-900 hover:bg-black text-white text-xs font-medium py-1.5 px-4 rounded-md transition-colors cursor-pointer"
                                     >
                                       Upgrade
                                     </button>
