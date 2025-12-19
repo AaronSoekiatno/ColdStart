@@ -73,6 +73,7 @@ export interface CandidateRow {
   technical_projects?: string; // Comma-separated string
   job_type?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
   role_type?: string[]; // Preferred role types (array) (PM, SWE, SDE, ML, AI, etc.)
+  years_of_experience?: string; // Years of experience (e.g., "1-2", "2-5")
   resume_path?: string; // Path to resume file in Supabase Storage (DEPRECATED - use resumes table)
   resume_full_text?: string; // Full extracted text content from resume (DEPRECATED - use resumes table)
   resume_latex?: string; // LaTeX source code generated from resume
@@ -146,6 +147,7 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
     technical_projects: candidate.technical_projects,
     job_type: candidate.job_type,
     role_type: candidate.role_type,
+    years_of_experience: candidate.years_of_experience,
     // resume_path and resume_full_text are deprecated; full text now lives in the resumes table.
     // Keep these fields untouched to prepare for dropping them from the schema.
     resume_latex: candidate.resume_latex,
@@ -810,25 +812,46 @@ export async function getMostRecentResumeForCandidate(candidateId: string) {
  */
 export async function getPrimaryResumeForCandidate(candidateId: string) {
   const client = supabaseAdmin || supabase;
-
+  
   const { data, error } = await client
     .from('resumes')
     .select('*')
     .eq('candidate_id', candidateId)
-    .eq('is_active', true)
     .eq('is_primary', true)
+    .eq('is_active', true)
     .single();
 
   if (error) {
     if (error.code === 'PGRST116') {
-      // No primary resume found, fall back to most recent
-      return getMostRecentResumeForCandidate(candidateId);
+      return null;
     }
     throw new Error(`Failed to get primary resume: ${error.message}`);
   }
 
   return data;
 }
+
+// ==================== JOB FUNCTIONS ====================
+
+export interface JobRow {
+  id?: number; // BigInt primary key
+  startup_id: string; // Foreign key to startups.id
+  company_name: string;
+  job_title: string;
+  job_type: string; // 'fulltime', 'contract', 'internship', etc.
+  location?: string;
+  job_role?: string;
+  posted_date?: string;
+  job_url?: string;
+  company_batch?: string;
+  salary_range?: string;
+  skills?: string;
+  experience_level?: string;
+  full_description?: string;
+  created_at?: string;
+}
+
+
 
 /**
  * Set a resume as the primary (current) resume for a candidate

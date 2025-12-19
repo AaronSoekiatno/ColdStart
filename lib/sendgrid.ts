@@ -1,3 +1,4 @@
+// @ts-ignore
 import sgMail from '@sendgrid/mail';
 
 export interface SendEmailResult {
