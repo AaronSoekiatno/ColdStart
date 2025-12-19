@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get candidate ID
+    // Get candidate ID and role preferences
     const { data: candidate } = await supabaseAdmin
       .from('candidates')
-      .select('id')
+      .select('id, role_type')
       .eq('email', user.email)
       .single();
 
@@ -101,21 +101,39 @@ export async function GET(request: NextRequest) {
       )
     );
 
-    // Check which startups have jobs with job_url
+    // Fetch all jobs for startups in one query
+    const jobsByStartupId: Record<string, Array<{
+      job_title: string;
+      job_url: string;
+      job_type?: string;
+      salary_range?: string;
+      experience_level?: string;
+    }>> = {};
     const startupsWithJobs = new Set<string>();
+    
     if (startupIds.length > 0) {
-      const { data: jobsData } = await supabaseAdmin
+      const { data: allJobs, error: jobsError } = await supabaseAdmin
         .from('jobs')
-        .select('startup_id')
+        .select('startup_id, job_title, job_url, job_type, salary_range, experience_level')
         .in('startup_id', startupIds)
         .not('job_url', 'is', null);
 
-      if (jobsData) {
-        jobsData.forEach(job => {
+      if (!jobsError && allJobs) {
+        for (const job of allJobs) {
           if (job.startup_id) {
+            if (!jobsByStartupId[job.startup_id]) {
+              jobsByStartupId[job.startup_id] = [];
+            }
+            jobsByStartupId[job.startup_id].push({
+              job_title: job.job_title,
+              job_url: job.job_url,
+              job_type: job.job_type || undefined,
+              salary_range: job.salary_range || undefined,
+              experience_level: job.experience_level || undefined,
+            });
             startupsWithJobs.add(job.startup_id);
           }
-        });
+        }
       }
     }
 
@@ -260,14 +278,71 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Join matches with startup data and add has_job_listings flag
-    const matches = rawMatches.map((m) => ({
-      id: m.id,
-      score: m.score,
-      matched_at: m.matched_at,
-      startup: startupsById[m.startup_id] ?? null,
-      has_job_listings: m.startup_id ? startupsWithJobs.has(m.startup_id) : false,
-    }));
+    // Role matching patterns for finding best job match
+    const rolePatterns: { [key: string]: string[] } = {
+      'pm': ['product manager', 'pm', 'product lead', 'product owner', 'product'],
+      'swe': ['software engineer', 'swe', 'engineer', 'software developer', 'developer'],
+      'sde': ['software development engineer', 'sde', 'software engineer', 'developer', 'engineer'],
+      'full stack': ['full stack', 'fullstack', 'full-stack', 'software engineer', 'swe', 'engineer'],
+      'frontend': ['frontend', 'front-end', 'front end', 'ui engineer', 'software engineer', 'engineer', 'react', 'vue', 'angular'],
+      'backend': ['backend', 'back-end', 'back end', 'server', 'api', 'software engineer', 'engineer'],
+      'ml': ['machine learning', 'ml engineer', 'ml', 'ai engineer', 'data scientist', 'deep learning'],
+      'ai': ['ai engineer', 'artificial intelligence', 'ai', 'machine learning', 'ml', 'deep learning'],
+      'data science': ['data scientist', 'data science', 'data engineer', 'ml engineer', 'analytics', 'data analyst'],
+      'devops': ['devops', 'dev ops', 'infrastructure', 'site reliability', 'sre', 'platform engineer', 'cloud engineer'],
+      'mobile': ['mobile', 'ios', 'android', 'react native', 'flutter', 'swift', 'kotlin'],
+      'security': ['security', 'infosec', 'cybersecurity', 'appsec', 'security engineer', 'secops'],
+      'qa': ['qa', 'quality assurance', 'test', 'sdet', 'test engineer', 'quality engineer', 'testing'],
+      'design': ['designer', 'design', 'visual designer', 'ui designer', 'ux designer', 'graphic designer'],
+      'product design': ['product designer', 'product design', 'ux designer', 'ui/ux', 'ux/ui'],
+    };
+
+    // Function to find best matching job based on role preferences
+    const findBestJob = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>) => {
+      if (jobs.length === 0) return null;
+      
+      const roleTypes = candidate.role_type || [];
+      if (roleTypes.length === 0) return jobs[0]; // No preferences, return first job
+
+      for (const job of jobs) {
+        const titleLower = job.job_title.toLowerCase();
+
+        for (const roleType of roleTypes) {
+          const roleLower = roleType.toLowerCase();
+          const patterns = rolePatterns[roleLower] || [roleLower];
+
+          for (const pattern of patterns) {
+            if (titleLower.includes(pattern)) {
+              return job;
+            }
+          }
+        }
+      }
+
+      return jobs[0]; // Fallback to first job if no match found
+    };
+
+    // Join matches with startup data and add job data
+    const matches = rawMatches.map((m) => {
+      const startup = startupsById[m.startup_id] ?? null;
+      const jobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
+      const bestJob = findBestJob(jobs);
+
+      return {
+        id: m.id,
+        score: m.score,
+        matched_at: m.matched_at,
+        startup: startup,
+        has_job_listings: jobs.length > 0,
+        job: bestJob ? {
+          job_title: bestJob.job_title,
+          job_url: bestJob.job_url,
+          job_type: bestJob.job_type,
+          salary_range: bestJob.salary_range,
+          experience_level: bestJob.experience_level,
+        } : null,
+      };
+    });
 
     const totalPages = Math.ceil((totalCount || 0) / limit);
     const hasMore = page < totalPages;

@@ -14,6 +14,11 @@ interface MatchRecord {
   score: number;
   matched_at: string;
   has_job_listings?: boolean;
+  job?: {
+    job_url?: string;
+    job_title?: string;
+    job_type?: string;
+  } | null;
   startup: {
     id?: string;
     name: string;
@@ -199,7 +204,7 @@ export default function MatchesPage() {
     }
   }, [visibleMatches.length, currentMatchIndex]);
 
-  // Preload images for adjacent cards to improve UX
+  // Preload images for current and adjacent cards
   useEffect(() => {
     const preloadImages = (matchIndex: number) => {
       const match = visibleMatches[matchIndex];
@@ -229,22 +234,17 @@ export default function MatchesPage() {
       });
     };
 
-      // Preload current, next, and previous cards
-      if (visibleMatches.length > 0) {
-        // Preload current card
-        preloadImages(currentMatchIndex);
-        
-        // Preload previous card
-        if (currentMatchIndex > 0) {
-          preloadImages(currentMatchIndex - 1);
-        }
-        
-        // Preload next card
-        if (currentMatchIndex < visibleMatches.length - 1) {
-          preloadImages(currentMatchIndex + 1);
-        }
+    // Preload images for current, next, and previous cards
+    if (visibleMatches.length > 0) {
+      preloadImages(currentMatchIndex);
+      if (currentMatchIndex > 0) {
+        preloadImages(currentMatchIndex - 1);
       }
-    }, [currentMatchIndex, visibleMatches]);
+      if (currentMatchIndex < visibleMatches.length - 1) {
+        preloadImages(currentMatchIndex + 1);
+      }
+    }
+  }, [currentMatchIndex, visibleMatches]);
 
   if (isLoading) {
     return (
@@ -307,7 +307,11 @@ export default function MatchesPage() {
               {/* Single match card display */}
               {visibleMatches[currentMatchIndex] && (
                 <div key={visibleMatches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard match={visibleMatches[currentMatchIndex]} isPremium={isPremium} userEmail={user?.email || ''} />
+                  <MatchCard 
+                    match={visibleMatches[currentMatchIndex]} 
+                    isPremium={isPremium} 
+                    userEmail={user?.email || ''}
+                  />
                 </div>
               )}
               {/* Show upgrade prompt if user has reached free limit */}

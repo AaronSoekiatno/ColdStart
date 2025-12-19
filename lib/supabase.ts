@@ -101,17 +101,29 @@ export interface ResumeRow {
 
 /**
  * Check if a candidate has an active premium subscription
- * @param candidate - Candidate data with subscription fields
+ * This function checks the candidates table subscription_tier and subscription_status fields
+ * @param candidate - Candidate data with subscription fields from candidates table
  * @returns true if the candidate has an active premium subscription
  */
 export function isSubscribed(candidate: {
   subscription_tier?: 'free' | 'premium';
   subscription_status?: 'active' | 'inactive' | 'canceled' | 'past_due' | 'trialing';
 }): boolean {
-  return (
+  const isPremium = (
     candidate.subscription_tier === 'premium' &&
     (candidate.subscription_status === 'active' || candidate.subscription_status === 'trialing')
   );
+  
+  // Log for debugging subscription issues
+  if (candidate.subscription_tier === 'premium' && !isPremium) {
+    console.warn(`[isSubscribed] Premium tier detected but status is not active/trialing:`, {
+      subscription_tier: candidate.subscription_tier,
+      subscription_status: candidate.subscription_status,
+      result: isPremium
+    });
+  }
+  
+  return isPremium;
 }
 
 /**
@@ -172,13 +184,14 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
 
 /**
  * Get a candidate by email
+ * Explicitly selects subscription_tier and subscription_status from candidates table
  */
 export async function getCandidate(email: string) {
   const client = supabaseAdmin || supabase;
   
   const { data, error } = await client
     .from('candidates')
-    .select('*')
+    .select('*, subscription_tier, subscription_status')
     .eq('email', email)
     .single();
 

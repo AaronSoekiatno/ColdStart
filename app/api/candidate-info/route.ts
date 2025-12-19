@@ -37,16 +37,42 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get candidate info
+    // Get candidate info from candidates table - explicitly selecting subscription fields
+    // Note: experience_level and salary_range are in the jobs table, not candidates table
     const { data: candidate, error: candidateError } = await supabaseAdmin
       .from('candidates')
-      .select('id, subscription_tier, subscription_status, stripe_customer_id')
+      .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills')
       .eq('email', user.email)
       .single();
 
-    if (candidateError || !candidate) {
+    if (candidateError) {
+      // PGRST116 is "not found" - return 404
+      if (candidateError.code === 'PGRST116') {
+        return NextResponse.json(
+          { 
+            error: 'Candidate not found',
+            message: `No candidate record found for email: ${user.email}. Please complete onboarding first.`
+          },
+          { status: 404 }
+        );
+      }
+      
+      // Other database errors - return 500
       return NextResponse.json(
-        { error: 'Candidate not found' },
+        { 
+          error: 'Database error',
+          message: candidateError.message 
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!candidate) {
+      return NextResponse.json(
+        { 
+          error: 'Candidate not found',
+          message: `No candidate record found for email: ${user.email}`
+        },
         { status: 404 }
       );
     }
