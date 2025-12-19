@@ -465,7 +465,7 @@ function GenerateEmailPageContent() {
                       <Button
                         onClick={handleSendViaMailto}
                         disabled={!founderEmail || isPreviewLoading || !previewSubject || !previewBody}
-                        className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-md px-4"
+                        className="bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-md px-4"
                       >
                         <span className="flex items-center gap-2">
                           <Mail className="h-4 w-4" />
@@ -526,10 +526,10 @@ function GenerateEmailPageContent() {
                           // Trigger preview generation explicitly after selection
                           await loadEmailPreview('direct-ask');
                         }}
-                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
+                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${
                           emailPersona === 'direct-ask'
                             ? 'border-blue-500 bg-blue-50 text-gray-900'
-                            : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
+                            : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
                         }`}
                       >
                         <div className="font-semibold mb-0.5">Direct Ask</div>
@@ -562,12 +562,12 @@ function GenerateEmailPageContent() {
 
                           await loadEmailPreview('genuine-fan');
                         }}
-                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
+                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${
                           !isPremium
-                            ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-pointer'
+                            ? 'border-blue-300 bg-gray-50 text-gray-400'
                             : emailPersona === 'genuine-fan'
                             ? 'border-blue-500 bg-blue-50 text-gray-900'
-                            : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
+                            : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
                         }`}
                       >
                         <div className="font-semibold mb-0.5">
@@ -602,12 +602,12 @@ function GenerateEmailPageContent() {
 
                           await loadEmailPreview('value-first');
                         }}
-                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
+                        className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${
                           !isPremium
-                            ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-pointer'
+                            ? 'border-blue-300 bg-gray-50 text-gray-400'
                             : emailPersona === 'value-first'
                             ? 'border-blue-500 bg-blue-50 text-gray-900'
-                            : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
+                            : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
                         }`}
                       >
                         <div className="font-semibold mb-0.5">
@@ -697,10 +697,10 @@ function GenerateEmailPageContent() {
                     </div>
                     <div className="space-y-1.5 flex-1 flex flex-col min-h-0">
                       <label className="text-xs text-gray-700 flex items-start justify-between gap-3">
-                        <span>
+                        <span className="flex items-center gap-2">
                           Body:
                           {isPreviewLoading && (
-                            <span className="ml-2 text-blue-300 text-xs align-middle">Generating...</span>
+                            <Loader2 className="h-3.5 w-3.5 text-blue-300 animate-spin" />
                           )}
                         </span>
                         <span className="flex items-start gap-3 text-[10px] sm:text-[11px] text-gray-600 text-right max-w-sm">
