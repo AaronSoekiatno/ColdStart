@@ -55,8 +55,8 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
     if (onUploadSuccess) {
       onUploadSuccess();
     } else {
-      // Always redirect to onboarding after resume upload
-      router.push('/onboarding');
+      // Redirect to matches after resume upload (onboarding is now done before upload)
+      router.push('/matches');
     }
   };
 
