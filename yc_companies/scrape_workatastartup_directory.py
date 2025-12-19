@@ -44,6 +44,7 @@ from selenium.webdriver.support.ui import WebDriverWait  # pyright: ignore[repor
 from selenium.webdriver.support import expected_conditions as EC  # pyright: ignore[reportMissingImports]
 from selenium.webdriver.chrome.options import Options  # pyright: ignore[reportMissingImports]
 from selenium.webdriver.chrome.service import Service  # pyright: ignore[reportMissingImports]
+from selenium.common.exceptions import InvalidSessionIdException, WebDriverException  # pyright: ignore[reportMissingImports]
 from webdriver_manager.chrome import ChromeDriverManager  # type: ignore[import-untyped]
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
@@ -204,12 +205,16 @@ def get_or_construct_yc_link(company_name: str, company_url: Optional[str] = Non
         return None
 
 
-def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
+def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client: Optional[Client] = None) -> List[dict]:
     """
-    Scrape the directory page to get all company URLs with "See all X jobs" links.
+    Scrape the directory page to get all company URLs and save them to Supabase incrementally.
     Returns list of dicts with company_url, company_name, batch, and job_count.
+    If supabase_client is provided, companies are saved to the database as they're found.
     """
-    print("🔍 Scraping directory page for company URLs...")
+    if supabase_client is None:
+        supabase_client = supabase
+    
+    print("🔍 Scraping directory page for company URLs (saving to Supabase incrementally)...")
     
     # Setup Selenium
     chrome_options = Options()
@@ -265,19 +270,21 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
             except Exception as e:
                 print(f"   ⚠️  Login failed or already logged in: {e}")
         
-        # Now navigate to the directory page sorted by "Active companies" (sortBy=most_active)
-        # No filters applied - showing all companies, just sorted by most active
-        # This must be done AFTER login to ensure the sort persists
-        url = "https://www.workatastartup.com/companies?sortBy=most_active&layout=list-compact"
-        print(f"   📄 Navigating to filtered page: {url}...")
+        # Navigate to the directory page with filters: seed & small companies (0-50 employees), sorted by created_desc
+        # This must be done AFTER login to ensure the filters persist
+        url = "https://www.workatastartup.com/companies?companySize=seed&companySize=small&demographic=any&hasEquity=any&hasSalary=any&industry=any&interviewProcess=any&layout=list-compact&sortBy=created_desc&tab=any&usVisaNotRequired=any"
+        print(f"   📄 Navigating to filtered page (0-50 employees, seed & small, created_desc): {url}...")
         driver.get(url)
-        time.sleep(5)  # Wait for page to load with filter
+        time.sleep(5)  # Wait for page to load with filters
         
-        # Verify the URL still has the correct filter
+        # Verify the URL still has the correct filters
         current_url = driver.current_url
-        if "sortBy=most_active" not in current_url:
-            print(f"   ⚠️  URL changed after load. Current: {current_url}")
-            print(f"   🔄 Re-navigating to ensure filter is applied...")
+        print(f"   ✅ Final URL: {current_url}")
+        if "companySize=seed" in current_url and "companySize=small" in current_url and "sortBy=created_desc" in current_url:
+            print(f"   ✅ Confirmed: Filters are active (seed & small companies, 0-50 employees, created_desc)")
+        else:
+            print(f"   ⚠️  Warning: Filters may not be active. Expected seed & small & created_desc, got: {current_url}")
+            print(f"   🔄 Re-navigating to ensure filters are applied...")
             driver.get(url)
             time.sleep(5)
         
@@ -285,34 +292,236 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
         print("   ⏳ Waiting for page to fully load...")
         time.sleep(3)
         
-        # Scroll to load all content (with progress logging)
-        print("   📜 Scrolling to load content...")
+        # Extract companies incrementally during scrolling to get all ~1060 startups
+        print("   📜 Scrolling and extracting companies incrementally (saving to Supabase as we go)...")
+        company_links = []
+        seen_urls = set()  # Track unique company URLs to avoid duplicates (normalized)
+        seen_slugs = set()  # Also track by slug as backup deduplication
+        companies_saved_to_db = 0  # Track how many companies we've saved to database
         last_height = driver.execute_script("return document.body.scrollHeight")
         scroll_attempts = 0
-        max_scrolls = 20  # Increased for 1259 companies
+        max_scrolls = 200  # Reasonable limit - should get all companies well before this
         total_scrolls = 0
+        consecutive_no_new_companies = 0
+        max_consecutive_no_change = 5  # Stop after 5 consecutive scrolls with no new companies
         
         while scroll_attempts < max_scrolls:
-            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(1.5)  # Reduced from 2s to 1.5s
-            new_height = driver.execute_script("return document.body.scrollHeight")
-            total_scrolls += 1
-            
-            if total_scrolls % 5 == 0:
-                print(f"      Scrolled {total_scrolls} times, page height: {new_height}px")
-            
-            if new_height == last_height:
-                scroll_attempts += 1
-                if scroll_attempts >= 3:
-                    print(f"   ✅ Finished scrolling after {total_scrolls} attempts (page height stable)")
+            try:
+                # Extract company links from current view
+                if total_scrolls % 5 == 0 or total_scrolls < 5:  # Less verbose logging
+                    print(f"      Extracting companies (scroll {total_scrolls})...")
+                
+                # Find all links to /companies/ URLs
+                try:
+                    all_links = driver.find_elements(By.XPATH, "//a[contains(@href, '/companies/')]")
+                except Exception as e:
+                    print(f"      ⚠️  Error finding links: {e}")
+                    all_links = []
+                
+                new_companies_this_scroll = 0
+                
+                # Process links and extract unique companies
+                # Use a set to deduplicate by normalized URL within this batch
+                batch_seen = set()
+                
+                for link in all_links:
+                    try:
+                        href = link.get_attribute("href")
+                        if not href or '/companies/' not in href:
+                            continue
+                        
+                        # Normalize URL - remove query params, trailing slashes, ensure consistent format
+                        company_url = href.split('?')[0].rstrip('/')
+                        
+                        # Skip if we've already processed this exact URL in this batch (prevents processing same link element twice)
+                        if company_url in batch_seen:
+                            continue
+                        batch_seen.add(company_url)
+                        
+                        # Skip if we've already seen this company URL (global deduplication)
+                        if company_url in seen_urls:
+                            continue
+                        
+                        # Extract company slug from URL - must match pattern /companies/slug
+                        url_match = re.search(r'/companies/([^/?]+)', company_url)
+                        if not url_match:
+                            continue
+                        
+                        slug = url_match.group(1).lower()  # Normalize slug to lowercase
+                        # Skip invalid slugs
+                        if not slug or slug in ['companies', ''] or len(slug) < 2:
+                            continue
+                        
+                        # Double-check deduplication by slug (in case URL normalization failed)
+                        if slug in seen_slugs:
+                            continue
+                        
+                        # Generate company name from slug
+                        company_name = ' '.join(word.capitalize() for word in slug.split('-'))
+                        
+                        # Try to extract batch from link text or nearby text
+                        batch = None
+                        job_count = None
+                        try:
+                            text = link.text or ""
+                            
+                            # Extract batch (e.g., S25, W22)
+                            batch_match = re.search(r'\(([SW]\d{2})\)', text)
+                            if batch_match:
+                                batch = batch_match.group(1)
+                            
+                            # Extract job count
+                            if text:
+                                job_count_match = re.search(r'(\d+)\s*jobs?', text, re.IGNORECASE)
+                                if job_count_match:
+                                    job_count = int(job_count_match.group(1))
+                            
+                            # Try to get batch from parent element if not found in link text
+                            if not batch:
+                                try:
+                                    parent = link.find_element(By.XPATH, "./ancestor::div[1]")
+                                    if parent:
+                                        parent_text = parent.text if parent else ""
+                                        batch_match = re.search(r'\(([SW]\d{2})\)', parent_text)
+                                        if batch_match:
+                                            batch = batch_match.group(1)
+                                except:
+                                    pass
+                        except Exception as e:
+                            pass  # Continue even if batch extraction fails
+                        
+                        # Add to seen URLs and slugs FIRST before adding to list (prevents duplicates)
+                        seen_urls.add(company_url)
+                        seen_slugs.add(slug)
+                        
+                        # Save company to Supabase startups table immediately (incremental save during scrolling)
+                        startup_id = None
+                        if supabase_client:
+                            try:
+                                # Save to database (find or create) - this checks for duplicates in DB
+                                startup_id = find_or_create_startup(company_name, supabase_client, batch, None)
+                                
+                                if startup_id:
+                                    # Count as saved (even if it was already in DB)
+                                    companies_saved_to_db += 1
+                                    
+                                    # Update with company URL (job_listing field) if we have it
+                                    if company_url:
+                                        try:
+                                            supabase_client.table("startups").update({
+                                                "job_listing": company_url
+                                            }).eq("id", startup_id).execute()
+                                            # Log occasionally for progress tracking
+                                            if companies_saved_to_db % 50 == 0:
+                                                print(f"      💾 Saved {companies_saved_to_db} companies to startups table so far...")
+                                        except Exception as e:
+                                            # Log error but continue
+                                            if companies_saved_to_db % 100 == 0:  # Only log occasionally
+                                                print(f"      ⚠️  Error updating job_listing for {company_name}: {e}")
+                            except Exception as e:
+                                # Log error but continue - we'll still add to list
+                                if companies_saved_to_db % 100 == 0:  # Only log occasionally
+                                    print(f"      ⚠️  Error saving company {company_name} to DB: {e}")
+                        
+                        company_links.append({
+                            "company_url": company_url,
+                            "company_name": company_name,
+                            "batch": batch,
+                            "job_count": job_count,
+                            "startup_id": startup_id,  # Include startup_id if available
+                        })
+                        new_companies_this_scroll += 1
+                    except Exception as e:
+                        continue  # Skip individual link errors
+                
+                # Check if we found new companies
+                if new_companies_this_scroll == 0:
+                    consecutive_no_new_companies += 1
+                    if consecutive_no_new_companies >= max_consecutive_no_change:
+                        print(f"   ✅ Stopped scrolling: No new companies found in {max_consecutive_no_change} consecutive scrolls")
+                        print(f"   📊 Total companies found: {len(company_links)}")
+                        break
+                else:
+                    consecutive_no_new_companies = 0  # Reset counter
+                    if total_scrolls % 5 == 0 or total_scrolls < 5:  # Less verbose
+                        print(f"      Found {new_companies_this_scroll} new companies (total: {len(company_links)})")
+                
+                # Progress update every 10 scrolls
+                if total_scrolls > 0 and total_scrolls % 10 == 0:
+                    print(f"      Progress: {total_scrolls} scrolls, {len(company_links)} unique companies found, {companies_saved_to_db} saved to DB...")
+                
+                # Safety check: if we've found way more than expected (~1100 max), something is wrong
+                if len(company_links) > 1100:
+                    print(f"   ⚠️  Warning: Found {len(company_links)} companies, which exceeds expected ~1060. Stopping to prevent infinite loop.")
                     break
+                
+                # Scroll down
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(1.5)  # Wait for new content to load
+                
+                # Check if page height changed
+                try:
+                    new_height = driver.execute_script("return document.body.scrollHeight")
+                    total_scrolls += 1
+                    
+                    if new_height == last_height:
+                        scroll_attempts += 1
+                        if scroll_attempts >= 3:
+                            print(f"   ✅ Finished scrolling after {total_scrolls} attempts (page height stable)")
+                            break
+                    else:
+                        scroll_attempts = 0
+                    last_height = new_height
+                except (InvalidSessionIdException, WebDriverException) as e:
+                    print(f"   ⚠️  Browser session lost during scroll: {e}")
+                    print(f"   ✅ Extracted {len(company_links)} companies before crash")
+                    break
+            except (InvalidSessionIdException, WebDriverException) as e:
+                print(f"   ⚠️  Browser session lost: {e}")
+                print(f"   ✅ Extracted {len(company_links)} companies before crash")
+                break
+            except Exception as e:
+                print(f"   ⚠️  Error during scrolling: {e}")
+                break
+        
+        # Final deduplication by both URL and slug (double-check for any edge cases)
+        original_count = len(company_links)
+        seen_final_urls = set()
+        seen_final_slugs = set()
+        deduplicated_links = []
+        for link_info in company_links:
+            company_url = link_info.get("company_url", "").rstrip('/')
+            if not company_url:
+                continue
+            
+            # Extract slug for deduplication
+            slug_match = re.search(r'/companies/([^/?]+)', company_url)
+            if slug_match:
+                slug = slug_match.group(1).lower()
             else:
-                scroll_attempts = 0
-            last_height = new_height
+                slug = None
+            
+            # Check if we've seen this URL or slug before
+            if company_url in seen_final_urls or (slug and slug in seen_final_slugs):
+                continue
+            
+            # Add to seen sets
+            seen_final_urls.add(company_url)
+            if slug:
+                seen_final_slugs.add(slug)
+            
+            deduplicated_links.append(link_info)
+        
+        company_links = deduplicated_links
+        if len(deduplicated_links) < original_count:
+            print(f"   ✅ Final deduplication: {len(deduplicated_links)} unique companies (removed {original_count - len(deduplicated_links)} duplicates)")
         
         # Scroll back to top
-        driver.execute_script("window.scrollTo(0, 0);")
-        time.sleep(2)
+        try:
+            driver.execute_script("window.scrollTo(0, 0);")
+            time.sleep(2)
+        except:
+            pass
         
         # Debug: Take screenshot and check page content
         try:
@@ -325,175 +534,14 @@ def get_company_urls_from_directory(limit: Optional[int] = None) -> List[dict]:
         print(f"   📄 Page title: {driver.title}")
         print(f"   📄 Current URL: {driver.current_url}")
         
-        # Find all "See all X jobs" links - try multiple strategies
-        print("   🔍 Finding company links...")
-        company_links = []
-        
-        # Strategy 1: Find links with "See all" and "jobs" text
-        try:
-            links = driver.find_elements(By.XPATH, "//a[contains(text(), 'See all') and contains(text(), 'jobs')]")
-            print(f"   ✅ Strategy 1: Found {len(links)} links with 'See all' and 'jobs'")
-        except Exception as e:
-            print(f"   ⚠️  Strategy 1 failed: {e}")
-            links = []
-        
-        # Strategy 2: Find all links containing "jobs" in text
-        if not links:
-            try:
-                links = driver.find_elements(By.XPATH, "//a[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'see all') and contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'job')]")
-                print(f"   ✅ Strategy 2: Found {len(links)} links (case-insensitive)")
-            except Exception as e:
-                print(f"   ⚠️  Strategy 2 failed: {e}")
-        
-        # Strategy 3: Find all links to /companies/ URLs
-        if not links:
-            try:
-                all_links = driver.find_elements(By.TAG_NAME, "a")
-                company_urls = [link for link in all_links if link.get_attribute("href") and "/companies/" in link.get_attribute("href")]
-                print(f"   ✅ Strategy 3: Found {len(company_urls)} links to /companies/")
-                # Filter for ones that might be "See all jobs" links
-                links = [link for link in company_urls if "job" in link.text.lower() or "see" in link.text.lower()]
-                print(f"   ✅ Strategy 3 filtered: {len(links)} links with 'job' or 'see' in text")
-            except Exception as e:
-                print(f"   ⚠️  Strategy 3 failed: {e}")
-        
-        # Strategy 4: Find all company cards/items and extract links
-        if not links:
-            try:
-                # Look for company cards or list items
-                company_elements = driver.find_elements(By.XPATH, "//*[contains(@class, 'company') or contains(@class, 'card') or contains(@class, 'item')]")
-                print(f"   ✅ Strategy 4: Found {len(company_elements)} potential company elements")
-                # Extract links from these elements
-                for elem in company_elements:
-                    try:
-                        link = elem.find_element(By.TAG_NAME, "a")
-                        if link and "/companies/" in link.get_attribute("href", ""):
-                            links.append(link)
-                    except:
-                        continue
-                print(f"   ✅ Strategy 4: Extracted {len(links)} links from company elements")
-            except Exception as e:
-                print(f"   ⚠️  Strategy 4 failed: {e}")
-        
-        # Debug: Print first few link texts
-        if links:
-            print(f"   📋 Sample link texts (first 5):")
-            for i, link in enumerate(links[:5], 1):
-                try:
-                    print(f"      {i}. '{link.text}' -> {link.get_attribute('href')}")
-                except:
-                    print(f"      {i}. (could not get text/href)")
-        else:
-            print("   ⚠️  No links found with any strategy")
-            # Debug: Print all links on page
-            try:
-                all_links = driver.find_elements(By.TAG_NAME, "a")
-                print(f"   🔍 Total links on page: {len(all_links)}")
-                print(f"   📋 Sample links (first 10):")
-                for i, link in enumerate(all_links[:10], 1):
-                    try:
-                        href = link.get_attribute("href")
-                        text = link.text[:50] if link.text else "(no text)"
-                        if href:
-                            print(f"      {i}. '{text}' -> {href[:80]}")
-                    except:
-                        pass
-            except Exception as e:
-                print(f"   ⚠️  Could not list all links: {e}")
-        
-        for link in links:
-            try:
-                href = link.get_attribute("href")
-                if not href:
-                    continue
-                
-                text = link.text or ""
-                
-                # Only process links to company pages
-                if '/companies/' not in href:
-                    continue
-                
-                # Extract company URL from href
-                company_url = href.split('?')[0]  # Remove query params
-                
-                # Extract company slug from URL
-                url_match = re.search(r'/companies/([^/]+)', company_url)
-                if not url_match:
-                    continue
-                
-                slug = url_match.group(1)
-                
-                # PRIMARY: Generate company name from slug (most reliable)
-                # Convert slug to readable name (e.g., "hey-telo" -> "Hey Telo", "yondu" -> "Yondu")
-                company_name = ' '.join(word.capitalize() for word in slug.split('-'))
-                
-                # Try to get batch from parent elements (company name from slug is already set)
-                batch = None
-                try:
-                    # Try multiple parent selectors
-                    parent = None
-                    for xpath in [
-                        "./ancestor::*[contains(@class, 'company')][1]",
-                        "./ancestor::*[contains(@class, 'card')][1]",
-                        "./ancestor::*[contains(@class, 'item')][1]",
-                        "./ancestor::div[1]",
-                        "./ancestor::*[position()<=5]"
-                    ]:
-                        try:
-                            parent = link.find_element(By.XPATH, xpath)
-                            if parent:
-                                break
-                        except:
-                            continue
-                    
-                    if parent:
-                        parent_text = parent.text if parent else ""
-                        
-                        # Extract batch (e.g., S24, W22)
-                        batch_match = re.search(r'\(([SW]\d{2})\)', parent_text)
-                        if batch_match:
-                            batch = batch_match.group(1)
-                        
-                        # Try to improve company name from parent if we find a better match
-                        # Look for company name pattern before "See all" or batch info
-                        improved_name_match = re.search(r'^([A-Z][a-zA-Z0-9\s&.\-]+?)(?:\s+\([SW]\d{2}\)|\s+See\s+all|$)', parent_text, re.MULTILINE)
-                        if improved_name_match:
-                            improved_name = improved_name_match.group(1).strip()
-                            # Only use if it's not "See all" or similar generic text
-                            if improved_name and improved_name.lower() not in ['see all', 'seeall', 'view', 'jobs'] and len(improved_name) > 2:
-                                company_name = improved_name
-                except Exception as e:
-                    # Silently continue - we already have company_name from slug
-                    pass
-                
-                # Extract job count from link text
-                job_count = None
-                if text:
-                    job_count_match = re.search(r'(\d+)\s*jobs?', text, re.IGNORECASE)
-                    if job_count_match:
-                        job_count = int(job_count_match.group(1))
-                
-                # Only add if this looks like a valid company link
-                # Skip if it's just the base companies page
-                if slug and slug not in ['companies', '']:
-                    company_links.append({
-                        "company_url": company_url,
-                        "company_name": company_name or "Unknown",
-                        "batch": batch,
-                        "job_count": job_count,
-                    })
-                    print(f"      ✅ Added: {company_name} ({batch or 'No batch'}) - {company_url}")
-                    
-            except Exception as e:
-                print(f"      ⚠️  Error processing link: {e}")
-                import traceback
-                traceback.print_exc()
-                continue
+        print(f"   ✅ Found {len(company_links)} unique companies")
+        if supabase_client:
+            print(f"   💾 Saved {companies_saved_to_db} companies to Supabase database")
         
         if limit:
             company_links = company_links[:limit]
+            print(f"   📋 Limited to {len(company_links)} companies (limit: {limit})")
         
-        print(f"   ✅ Found {len(company_links)} companies with job listings")
         return company_links
         
     finally:
@@ -1172,10 +1220,18 @@ def find_or_create_startup(company_name: str, supabase_client: Client, batch: Op
     
     # Create new
     new_id = str(uuid.uuid4())
-    startup_data = {"id": new_id, "name": company_name, "needs_enrichment": True}
+    startup_data = {
+        "id": new_id, 
+        "name": company_name, 
+        "needs_enrichment": True,
+        "data_source": "workatastartup"
+    }
     
     if description:
         startup_data["description"] = description
+    
+    if batch:
+        startup_data["batch"] = batch
     
     try:
         supabase_client.table("startups").insert(startup_data).execute()
@@ -1640,12 +1696,15 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
 
             # Save to database
             try:
+                import uuid
+                
                 db_job = {
+                    "id": str(uuid.uuid4()),  # Generate UUID for jobs table
                     "company_name": company_name,
                     "job_title": job_title,
                     "job_type": job_type,  # Extracted from tags (e.g., "Full-time", "Internship")
                     "location": location,  # Extracted from tags (e.g., "Munich, BY, DE")
-                    "job_url": job_url,
+                    # job_url intentionally omitted - leaving as null in database
                     "company_tagline": company_description,
                     "company_about": company_about,  # Extracted from description "About [Company]" section
                     "salary_range": salary_range,
@@ -1657,25 +1716,19 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     "interview_process": interview_process,  # Extracted from description "Interview Process" section
                     "full_description": description,  # Full description kept as-is
                     "startup_id": startup_id,
-                    "yc_link": yc_link,  # Y Combinator company page URL
+                    # Note: yc_link removed - not in database schema
                 }
 
                 # Remove None values
                 db_job = {k: v for k, v in db_job.items() if v is not None}
 
-                # Check if exists - use company_name, job_title, and job_url for uniqueness
+                # Check if exists - use company_name and job_title for uniqueness (job_url not saved)
                 check = supabase_client.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).limit(1).execute()
-
-                # Also check by URL if available
-                if db_job.get("job_url"):
-                    check_by_url = supabase_client.table("jobs").select("id").eq("job_url", db_job["job_url"]).limit(1).execute()
-                    if check_by_url.data:
-                        check = check_by_url
 
                 if not check.data:
                     supabase_client.table("jobs").insert(db_job).execute()
                     saved_count += 1
-                    print(f"   ✅ Saved: {db_job['job_title']}")
+                    print(f"   ✅ Saved job to jobs table: {db_job['job_title']}")
                 else:
                     print(f"   ⏭️  Skipped (exists): {db_job['job_title']}")
             except Exception as e:
@@ -1792,9 +1845,9 @@ Examples:
         if args.skip_existing:
             print("⏭️  Skipping companies that already have jobs")
     
-    # Get company URLs from directory
+    # Get company URLs from directory (saves to Supabase incrementally as we scroll)
     # Get all companies first (or up to limit)
-    companies = get_company_urls_from_directory(limit)
+    companies = get_company_urls_from_directory(limit, supabase_client=supabase)
     
     if not companies:
         print("⚠️  No companies found")

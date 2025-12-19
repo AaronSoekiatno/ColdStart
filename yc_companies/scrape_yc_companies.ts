@@ -1,16 +1,26 @@
-import { resolve } from 'path';
+import { resolve, join } from 'path';
 import { config } from 'dotenv';
 
 // Load .env.local file from project root
-// Try current directory first, then parent directory
+// Try multiple paths to find .env.local
 const currentDir = process.cwd();
-const parentDir = resolve(currentDir, '..');
-const envPath = resolve(currentDir, '.env.local');
-const parentEnvPath = resolve(parentDir, '.env.local');
+const possiblePaths = [
+  join(currentDir, '.env.local'),           // Current directory
+  join(currentDir, '..', '.env.local'),     // Parent directory (if running from yc_companies)
+  join(__dirname, '..', '.env.local'),      // Relative to script location
+  join(__dirname, '..', '..', '.env.local'), // Two levels up from script
+];
 
-// Try parent directory first (if running from yc_companies folder)
-const result = config({ path: parentEnvPath }) || config({ path: envPath });
-if (!result.parsed || Object.keys(result.parsed).length === 0) {
+let envLoaded = false;
+for (const envPath of possiblePaths) {
+  const result = config({ path: envPath });
+  if (result.parsed && Object.keys(result.parsed).length > 0) {
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
   console.warn('⚠️  No environment variables loaded. Make sure .env.local exists in project root.');
 }
 
@@ -62,6 +72,7 @@ interface YCPageData {
   fundingDate?: string; // Funding date (e.g., "Oct 9, 2025", "2025-10-09")
   linkedInCompanyUrl?: string | null; // Constructed LinkedIn URL for future enrichment
   tags?: string[]; // Technology/skill tags (excluding locations)
+  launchDate?: string; // Launch/founded date (e.g., "2024", "Jan 2024", "2024-01-01")
 }
 
 interface EnrichedYCData extends YCCompany {
@@ -79,7 +90,12 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase credentials. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
+  console.error('❌ Missing Supabase credentials!');
+  console.error(`   NEXT_PUBLIC_SUPABASE_URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Found' : '❌ Missing'}`);
+  console.error(`   SUPABASE_URL: ${process.env.SUPABASE_URL ? '✅ Found' : '❌ Missing'}`);
+  console.error(`   SUPABASE_SERVICE_ROLE_KEY: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Found' : '❌ Missing'}`);
+  console.error(`   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Found' : '❌ Missing'}`);
+  throw new Error('Missing Supabase credentials. Set NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY) in .env.local');
 }
 
 const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);
@@ -1907,7 +1923,39 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       }
 
       // ============================================
-      // 8. EXTRACT TAGS (Technology/Skills, excluding locations)
+      // 8. EXTRACT LAUNCH/FOUNDED DATE
+      // ============================================
+      // Look for patterns like "Founded: 2024", "Launched: 2024", "Established: 2024"
+      try {
+        const bodyText = document.body.textContent || '';
+        
+        // Pattern 1: Look for "Founded: YYYY" or "Launched: YYYY"
+        const foundedMatch = bodyText.match(/(?:Founded|Launched|Established):\s*(\d{4})/i);
+        if (foundedMatch) {
+          data.launchDate = foundedMatch[1];
+        } else {
+          // Pattern 2: Look for "Founded YYYY" or "Launched YYYY" (without colon)
+          const foundedMatch2 = bodyText.match(/(?:Founded|Launched|Established)\s+(\d{4})/i);
+          if (foundedMatch2) {
+            data.launchDate = foundedMatch2[1];
+          } else {
+            // Pattern 3: Look for date patterns near "founded" or "launch" keywords
+            const foundedContext = bodyText.match(/(?:founded|launched|established)[^.]{0,50}(\d{4})/i);
+            if (foundedContext) {
+              const year = parseInt(foundedContext[1]);
+              // Only accept reasonable years (2000-2030)
+              if (year >= 2000 && year <= 2030) {
+                data.launchDate = foundedContext[1];
+              }
+            }
+          }
+        }
+      } catch (launchDateError) {
+        // Launch date extraction failed, continue
+      }
+
+      // ============================================
+      // 9. EXTRACT TAGS (Technology/Skills, excluding locations)
       // ============================================
       // YC pages display tags as clickable elements, often in a tags/badges section
       // We need to extract all tags and filter out location tags
@@ -2261,6 +2309,7 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           roundType: undefined,
           fundingDate: undefined,
           tags: [],
+          launchDate: undefined,
         };
       }
       });
@@ -2305,122 +2354,6 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
     // Construct LinkedIn company URL from website domain (stored for future API enrichment)
     pageData.linkedInCompanyUrl = pageData.website ? constructLinkedInCompanyUrl(pageData.website) : null;
 
-    // ============================================
-    // 8. SCRAPE COMPANY-SPECIFIC JOBS PAGE
-    // ============================================
-    // Construct the company-specific jobs URL directly
-    // Format: https://www.ycombinator.com/companies/{company-slug}/jobs
-    const companySlug = extractCompanySlug(ycUrl);
-    const jobsPageUrl = companySlug 
-      ? `https://www.ycombinator.com/companies/${companySlug}/jobs`
-      : null;
-
-    // Always try to scrape the company-specific jobs page if we have a valid slug
-    if (jobsPageUrl) {
-      console.log(`   📋 Found jobs page, scraping: ${jobsPageUrl}`);
-      try {
-        await page.goto(jobsPageUrl, { waitUntil: 'networkidle2', timeout: 30000 });
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const jobsPageData = await page.evaluate(() => {
-          const jobs: Array<{ title: string; description: string; location?: string }> = [];
-          
-          // Look for "Jobs at [Company]" heading or job listings
-          const jobsHeading = Array.from(document.querySelectorAll('h2, h3'))
-            .find(el => el.textContent?.includes('Jobs at'));
-          
-          // Also look for job listings directly - they're often in articles or list items
-          const allJobElements = Array.from(document.querySelectorAll('article, li[class*="job"], div[class*="job"]'));
-          
-          // If we found a heading, look for jobs in that section
-          if (jobsHeading) {
-            const section = jobsHeading.closest('section') || jobsHeading.parentElement;
-            const sectionJobs = section?.querySelectorAll('article, li, div[class*="job"]') || [];
-            
-            sectionJobs.forEach(jobEl => {
-              const fullText = jobEl.textContent?.trim() || '';
-              
-              // Extract job title - usually the first heading or strong text
-              const titleEl = jobEl.querySelector('h3, h4, h5, strong, a[href*="/jobs/"]');
-              const title = titleEl?.textContent?.trim() || '';
-              
-              // Extract location - pattern like "London, England, GB" or "San Francisco, CA"
-              const locationMatch = fullText.match(/([A-Z][a-zA-Z\s]+(?:,\s*[A-Z][a-zA-Z\s]+)*),\s*(GB|US|USA|CA|NY|TX|England|United States)/);
-              const location = locationMatch ? locationMatch[0].trim() : undefined;
-              
-              // Extract salary if present
-              const salaryMatch = fullText.match(/(\$|£|€)[\d.,]+[KMB]?/);
-              
-              // Filter valid job titles
-              if (title && 
-                  title.length > 5 && 
-                  title.length < 100 &&
-                  !title.toLowerCase().includes('view all') &&
-                  !title.toLowerCase().includes('apply now') &&
-                  !title.toLowerCase().includes('jobs at') &&
-                  !title.toLowerCase().includes('why you should')) {
-                
-                // Build description from available info
-                let description = '';
-                const descEl = jobEl.querySelector('p');
-                if (descEl) {
-                  description = descEl.textContent?.trim() || '';
-                }
-                
-                // Add salary to description if found
-                if (salaryMatch && !description.includes(salaryMatch[0])) {
-                  description = salaryMatch[0] + (description ? ' | ' + description : '');
-                }
-                
-                jobs.push({
-                  title: title,
-                  description: description.substring(0, 500),
-                  location: location,
-                });
-              }
-            });
-          }
-          
-          // Also check for standalone job listings if we didn't find many
-          if (jobs.length === 0) {
-            allJobElements.forEach(jobEl => {
-              const titleEl = jobEl.querySelector('h3, h4, h5, strong');
-              const title = titleEl?.textContent?.trim() || '';
-              
-              if (title && title.length > 5 && title.length < 100) {
-                const fullText = jobEl.textContent?.trim() || '';
-                const locationMatch = fullText.match(/([A-Z][a-zA-Z\s]+(?:,\s*[A-Z][a-zA-Z\s]+)*),\s*(GB|US|USA|CA|NY|TX)/);
-                const location = locationMatch ? locationMatch[0].trim() : undefined;
-                
-                const descEl = jobEl.querySelector('p');
-                const description = descEl?.textContent?.trim() || '';
-                
-                jobs.push({
-                  title,
-                  description: description.substring(0, 500),
-                  location,
-                });
-              }
-            });
-          }
-          
-          return jobs;
-        });
-        
-        // Merge jobs from jobs page (avoid duplicates)
-        const existingTitles = new Set(pageData.jobPostings.map(j => j.title.toLowerCase()));
-        jobsPageData.forEach(job => {
-          if (!existingTitles.has(job.title.toLowerCase())) {
-            pageData.jobPostings.push(job);
-          }
-        });
-        
-        console.log(`   ✅ Found ${jobsPageData.length} additional jobs from jobs page`);
-      } catch (error) {
-        console.warn(`   ⚠️  Could not scrape jobs page: ${error instanceof Error ? error.message : String(error)}`);
-      }
-    }
-
     return pageData;
   } catch (error) {
     console.error(`   ❌ Error scraping YC page: ${error instanceof Error ? error.message : String(error)}`);
@@ -2437,9 +2370,8 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
 async function getAlreadyProcessedLinks(): Promise<Set<string>> {
   try {
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('yc_link')
-      .eq('data_source', 'yc')
       .not('yc_link', 'is', null);
 
     if (error) {
@@ -2470,9 +2402,8 @@ async function getCompaniesWithTwitterData(): Promise<Set<string>> {
   try {
     // Fetch all YC companies with their Twitter fields
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('yc_link, company_twitter_url, founder_twitter_urls')
-      .eq('data_source', 'yc')
       .not('yc_link', 'is', null);
 
     if (error) {
@@ -2543,14 +2474,14 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
 
     // Collect founder profile picture URLs and download/store them permanently
     const founderPfpUrls: string[] = [];
-    const founderNames: string[] = [];
+    const founderNamesForPfp: string[] = [];
     
     if (pageData.founders && pageData.founders.length > 0) {
       pageData.founders.forEach(f => {
         if (f.profilePicture && f.profilePicture.trim()) {
           const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();
           founderPfpUrls.push(f.profilePicture.trim());
-          founderNames.push(fullName || 'Unknown');
+          founderNamesForPfp.push(fullName || 'Unknown');
         }
       });
     }
@@ -2564,7 +2495,7 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
           founderPfpUrls,
           supabase,
           normalized.companyName,
-          founderNames,
+          founderNamesForPfp,
           3 // Process 3 images at a time
         );
         console.log(`   ✅ Successfully stored ${permanentPfpUrls.length}/${founderPfpUrls.length} images`);
@@ -2577,37 +2508,97 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     
     const foundersPfp = permanentPfpUrls;
 
-    // Update founder_backgrounds, founders_pfp, and yc_description
+    // Format founder names and LinkedIn
+    const founderNames = pageData.founders
+      .map(f => `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim())
+      .filter(name => name.length > 0)
+      .join(', ');
+
+    const founderLinkedIn = pageData.founders
+      .map(f => f.linkedIn)
+      .filter(linkedin => linkedin && linkedin.trim().length > 0)
+      .join(', ');
+
+    // Format founder Twitter URLs
+    const founderTwitterUrls = pageData.founders
+      .map(f => f.twitterUrl)
+      .filter(twitter => twitter && twitter.trim().length > 0)
+      .join(', ');
+
+    // Update all company data
     const updateData: {
+      founder_names?: string;
+      founder_linkedin?: string;
+      founder_twitter_urls?: string;
+      company_twitter_url?: string;
+      website?: string;
+      team_size?: string;
+      location?: string;
       founder_backgrounds?: string;
       founders_pfp?: string[];
       yc_description?: string;
+      launch_date?: string;
+      founded_date?: string;
     } = {
-      // Founder backgrounds - full descriptions from YC page
+      // Founder information
+      founder_names: founderNames || undefined,
+      founder_linkedin: founderLinkedIn || undefined,
+      founder_twitter_urls: founderTwitterUrls || undefined,
+      
+      // Company information
+      company_twitter_url: pageData.companyTwitterUrl || undefined,
+      website: pageData.website || undefined,
+      team_size: pageData.teamSize || undefined,
+      location: pageData.location || undefined,
+      
+      // Additional YC data
       founder_backgrounds: founderBackgrounds || undefined,
-      // Founder profile pictures array
       founders_pfp: foundersPfp.length > 0 ? foundersPfp : undefined,
-      // YC company description from prose div (before founders section)
       yc_description: pageData.ycDescription || undefined,
+      
+      // Launch/founded date
+      launch_date: pageData.launchDate || undefined,
+      founded_date: pageData.launchDate || undefined, // Alternative column name
     };
     
+    // Log what we're updating
+    if (founderNames) {
+      console.log(`   👤 Found ${pageData.founders.length} founder(s): ${founderNames}`);
+    }
+    if (founderLinkedIn) {
+      console.log(`   🔗 Found ${pageData.founders.filter(f => f.linkedIn).length} founder LinkedIn profile(s)`);
+    }
+    if (founderTwitterUrls) {
+      console.log(`   🐦 Found ${pageData.founders.filter(f => f.twitterUrl).length} founder Twitter profile(s)`);
+    }
+    if (pageData.companyTwitterUrl) {
+      console.log(`   🐦 Company Twitter: ${pageData.companyTwitterUrl}`);
+    }
+    if (pageData.website) {
+      console.log(`   🌐 Website: ${pageData.website}`);
+    }
+    if (pageData.teamSize) {
+      console.log(`   👥 Team size: ${pageData.teamSize}`);
+    }
+    if (pageData.location) {
+      console.log(`   📍 Location: ${pageData.location}`);
+    }
     if (founderBackgrounds) {
       console.log(`   👤 Found ${pageData.founders.filter(f => f.description).length} founder description(s)`);
       console.log(`   💾 Updating founder_backgrounds with descriptions from YC page (${founderBackgrounds.length} characters)`);
-    } else {
-      console.log(`   👤 No founder descriptions found on YC page`);
     }
-    
     if (permanentPfpUrls.length > 0) {
       console.log(`   📸 Found ${founderPfpUrls.length} founder profile picture(s), stored ${permanentPfpUrls.length} permanently`);
     }
-    
     if (pageData.ycDescription) {
       console.log(`   📝 Found YC description (${pageData.ycDescription.length} characters)`);
     }
+    if (pageData.launchDate) {
+      console.log(`   📅 Launch date: ${pageData.launchDate}`);
+    }
     
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update(updateData)
       .eq('yc_link', normalized.ycLink)
       .select()
@@ -2624,17 +2615,8 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     }
 
     if (data) {
-      if (founderBackgrounds) {
-        console.log(`   ✅ Founder backgrounds stored successfully (${founderBackgrounds.length} characters)`);
-      } else {
-        console.log(`   ⚠️  No founder backgrounds to store`);
-      }
-      if (foundersPfp.length > 0) {
-        console.log(`   ✅ Founders profile pictures stored successfully (${foundersPfp.length} pictures)`);
-      }
-      if (pageData.ycDescription) {
-        console.log(`   ✅ YC description stored successfully (${pageData.ycDescription.length} characters)`);
-      }
+      const updatedFields = Object.keys(updateData).filter(key => updateData[key as keyof typeof updateData] !== undefined);
+      console.log(`   ✅ Successfully updated: ${updatedFields.join(', ')}`);
     }
 
     return true;
@@ -2653,10 +2635,12 @@ async function scrapeYCCompanies() {
   // Get command line arguments
   const args = process.argv.slice(2);
   const batchFilter = args.find(arg => arg.startsWith('--batch='))?.split('=')[1];
+  const limitArg = args.find(arg => arg.startsWith('--limit='))?.split('=')[1];
+  const limit = limitArg ? parseInt(limitArg, 10) : undefined;
 
   // Test Supabase connection
   try {
-    const { data, error } = await supabase.from('startups').select('id').limit(1);
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       throw error;
     }
@@ -2667,14 +2651,13 @@ async function scrapeYCCompanies() {
     );
   }
 
-  // Fetch ALL companies from startups table
-  console.log('📂 Fetching all companies from startups table...');
+  // Fetch ALL companies from startups3 table
+  console.log('📂 Fetching all companies from startups3 table...');
   const companyFilter = args.find(arg => arg.startsWith('--company='))?.split('=')[1];
   
   let query = supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, yc_link, batch')
-    .eq('data_source', 'yc')
     .not('yc_link', 'is', null);
   
   // Apply filters if specified
@@ -2702,7 +2685,7 @@ async function scrapeYCCompanies() {
   console.log(`   Found ${allStartups.length} company(ies) to process\n`);
 
   // Convert startups to YCCompany format for compatibility
-  const companiesToUpdate: Array<{ startup: any; company: YCCompany }> = allStartups
+  let companiesToUpdate: Array<{ startup: any; company: YCCompany }> = allStartups
     .filter((startup: any) => startup.yc_link) // Only process if has YC link
     .map((startup: any) => ({
       startup,
@@ -2713,6 +2696,12 @@ async function scrapeYCCompanies() {
         Batch: startup.batch || '',
       } as YCCompany
     }));
+
+  // Apply limit if specified
+  if (limit && limit > 0) {
+    companiesToUpdate = companiesToUpdate.slice(0, limit);
+    console.log(`   ⚠️  Limited to first ${limit} companies for testing\n`);
+  }
 
   console.log(`📋 Companies to process: ${companiesToUpdate.length}\n`);
   
