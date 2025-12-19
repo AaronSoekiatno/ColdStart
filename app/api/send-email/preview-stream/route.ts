@@ -392,7 +392,6 @@ export async function POST(request: NextRequest) {
             {
               name: candidate.name,
               email: candidate.email,
-              summary: candidate.summary,
               skills: candidate.skills
                 .split(', ')
                 .map((s: string) => s.trim())
@@ -403,7 +402,7 @@ export async function POST(request: NextRequest) {
               location: candidate.location || undefined,
               educationLevel: candidate.education_level || undefined,
               university: candidate.university || undefined,
-              pastInternships: candidate.past_internships || undefined,
+              pastInternships: candidate.experience || undefined,
               technicalProjects: candidate.technical_projects || undefined,
               jobType: candidate.job_type || undefined,
             },

@@ -64,12 +64,11 @@ export interface CandidateRow {
   id?: string; // UUID primary key (auto-generated)
   email: string; // Unique email
   name: string;
-  summary: string;
   skills: string; // Comma-separated string
   location?: string;
   education_level?: string;
   university?: string;
-  past_internships?: string; // Comma-separated string
+  experience?: string; // Comma-separated string
   technical_projects?: string; // Comma-separated string
   job_type?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
   role_type?: string[]; // Preferred role types (array) (PM, SWE, SDE, ML, AI, etc.)
@@ -138,12 +137,11 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
   const upsertData = {
     email: candidate.email,
     name: candidate.name,
-    summary: candidate.summary,
     skills: candidate.skills,
     location: candidate.location,
     education_level: candidate.education_level,
     university: candidate.university,
-    past_internships: candidate.past_internships,
+    experience: candidate.experience,
     technical_projects: candidate.technical_projects,
     job_type: candidate.job_type,
     role_type: candidate.role_type,

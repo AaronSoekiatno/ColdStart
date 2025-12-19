@@ -29,12 +29,11 @@ function getIndexName(): string {
 export interface CandidateMetadata {
   name: string;
   email: string;
-  summary: string;
   skills: string; // Comma-separated string
   location: string;
   education_level: string;
   university: string;
-  past_internships: string; // Comma-separated string
+  experience: string; // Comma-separated string
   technical_projects: string; // Comma-separated string
   createdAt: string;
 }

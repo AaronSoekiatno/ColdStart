@@ -181,11 +181,10 @@ export interface ResumeExtractionResult {
   name: string;
   email: string;
   skills: string[];
-  summary: string;
   location: string;
   education_level: string;
   university: string;
-  past_internships: string[];
+  experience: string[];
   technical_projects: string[];
 }
 
@@ -198,11 +197,10 @@ export interface ResumeProcessingResult {
   name: string;
   email: string;
   skills: string[];
-  summary: string;
   location: string;
   education_level: string;
   university: string;
-  past_internships: string[];
+  experience: string[];
   technical_projects: string[];
   embedding: number[];
   savedToDatabase: boolean;

@@ -62,12 +62,11 @@ export async function POST(request: NextRequest) {
       candidate = await saveCandidate({
         email: user.email,
         name: extraction.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        summary: extraction.summary || '',
         skills: extraction.skills?.join(', ') || '',
         location: extraction.location || '',
         education_level: extraction.education_level || '',
         university: extraction.university || '',
-        past_internships: extraction.past_internships?.join(', ') || '',
+        experience: extraction.experience?.join(', ') || '',
         technical_projects: extraction.technical_projects?.join(', ') || '',
       });
     } else {
@@ -75,12 +74,11 @@ export async function POST(request: NextRequest) {
       await saveCandidate({
         email: user.email,
         name: extraction.name || candidate.name,
-        summary: extraction.summary || candidate.summary || '',
         skills: extraction.skills?.join(', ') || candidate.skills || '',
         location: extraction.location || candidate.location || '',
-        education_level: extraction.education_level || candidate.education_level || '',
-        university: extraction.university || candidate.university || '',
-        past_internships: extraction.past_internships?.join(', ') || candidate.past_internships || '',
+        education_level: extraction.education_level || candidate.education_level || null,
+        university: extraction.university || candidate.university || null,
+        experience: extraction.experience?.join(', ') || candidate.experience || '',
         technical_projects: extraction.technical_projects?.join(', ') || candidate.technical_projects || '',
         job_type: candidate.job_type, // Preserve from onboarding
         role_type: candidate.role_type, // Preserve from onboarding
@@ -160,12 +158,11 @@ export async function POST(request: NextRequest) {
           {
             name: extraction.name || candidate.name,
             email: user.email,
-            summary: extraction.summary || '',
             skills: extraction.skills?.join(', ') || '',
             location: extraction.location || '',
             education_level: extraction.education_level || '',
             university: extraction.university || '',
-            past_internships: extraction.past_internships?.join(', ') || '',
+            experience: extraction.experience?.join(', ') || '',
             technical_projects: extraction.technical_projects?.join(', ') || '',
           }
         );

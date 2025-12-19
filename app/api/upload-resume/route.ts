@@ -46,198 +46,11 @@ async function extractFullTextFromPdf(buffer: Buffer): Promise<string> {
   }
 }
 
-/**
- * Extracts name, email, skills, and summary from resume using Gemini
- * Supports both PDF (sent directly as base64) and DOCX (text extracted first)
- * Also extracts full text for storage
- */
-async function extractResumeDataWithGemini(
-  file: File,
-  buffer: Buffer,
-  arrayBuffer: ArrayBuffer
-): Promise<{ extraction: ResumeExtractionResult; fullText: string; latexCode: string }> {
-  const { genAI, fileManager } = getGeminiClients();
-  let uploadedFileUri: string | null = null;
-  let uploadedFileMimeType: string | null = null;
-  let uploadedFileName: string | null = null;
-  let docxFullText: string = ''; // Store DOCX text if we extract it
-
-  const prompt = `Extract the following from this resume and return JSON only in this exact form:
-{
-  "name": "Full name of the candidate",
-  "email": "Email address (or empty string if not found)",
-  "skills": ["Array of 6-12 relevant technical and professional skills"],
-  "summary": "A 2-3 sentence professional overview of the candidate",
-  "location": "Current location or preferred location (city, state/country format, or empty string if not found)",
-  "education_level": "Highest degree (e.g., 'Bachelor's', 'Master's', 'PhD', 'High School', or empty string if not found)",
-  "university": "Name of the university/college for highest degree (or empty string if not found)",
-  "past_internships": ["Array of past internship experiences with company names, or empty array if none found"],
-  "technical_projects": ["Array of notable technical/personal projects with brief descriptions, or empty array if none found"]
-}`;
-
-  // Use gemini-2.0-flash for fast, cost-effective resume extraction
-  // This model is optimized for speed and cost while maintaining quality
-  // No fallback loop to avoid excessive API calls
-  const modelName = 'gemini-2.0-flash';
-
-  // Extract DOCX text once before processing (only needed for DOCX files)
-  if (!isPdfFile(file)) {
-    const docxText = await extractDocxText(buffer);
-    if (docxText && docxText.trim().length > 0) {
-      docxFullText = docxText;
-    }
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({ model: modelName });
-    let result;
-
-    if (isPdfFile(file)) {
-      // For PDFs: Upload to Gemini File API first, then use the file reference
-      // This is the recommended approach for PDFs
-      console.log(`[${modelName}] Uploading PDF to Gemini File API...`);
-      const uploadResult = await fileManager.uploadFile(buffer, {
-        mimeType: 'application/pdf',
-        displayName: file!.name,
-      });
-
-      const uploadedFile = uploadResult.file;
-      uploadedFileName = uploadedFile.name; // Store for cleanup
-      console.log(`[${modelName}] PDF uploaded, state: ${uploadedFile.state}, name: ${uploadedFile.name}`);
-
-      // Wait for the file to be processed with optimized polling
-      let fileMetadata = uploadedFile;
-      let pollCount = 0;
-      const maxPolls = 20; // Max 5 seconds (20 * 250ms)
-      while (fileMetadata.state === 'PROCESSING' && pollCount < maxPolls) {
-        console.log(`[${modelName}] Waiting for PDF processing... (${pollCount + 1}/${maxPolls})`);
-        await new Promise((resolve) => setTimeout(resolve, 250)); // Faster polling: 250ms instead of 1000ms
-        fileMetadata = await fileManager.getFile(uploadedFile.name);
-        pollCount++;
-      }
-
-      if (fileMetadata.state === 'PROCESSING') {
-        console.warn(`[${modelName}] PDF processing timeout after ${maxPolls} polls`);
-      }
-
-      if (fileMetadata.state === 'FAILED') {
-        throw new Error('PDF processing failed');
-      }
-
-      console.log(`[${modelName}] PDF ready, generating content with fileUri: ${fileMetadata.uri}`);
-
-      // Store file URI for full text extraction
-      uploadedFileUri = fileMetadata.uri;
-      uploadedFileMimeType = fileMetadata.mimeType;
-
-      // Now use the uploaded file in the request
-      result = await model.generateContent([
-        { text: prompt },
-        {
-          fileData: {
-            fileUri: fileMetadata.uri,
-            mimeType: fileMetadata.mimeType,
-          },
-        },
-      ]);
-    } else {
-      // For DOCX: Use the text we already extracted
-      if (!docxFullText || docxFullText.trim().length === 0) {
-        throw new Error('Could not extract text from DOCX file. The file may be corrupted or empty.');
-      }
-
-      result = await model.generateContent(`${prompt}\n\nHere is the resume text:\n\n${docxFullText}`);
-    }
-
-    // Process the response
-    const response = result.response;
-    const responseText = response.text();
-    const cleanedResponse = cleanJsonResponse(responseText);
-    const parsed = JSON.parse(cleanedResponse) as ResumeExtractionResult;
-
-    // Validate the response structure
-    if (typeof parsed.name !== 'string') {
-      throw new Error('Invalid response: name must be a string');
-    }
-    if (typeof parsed.email !== 'string') {
-      throw new Error('Invalid response: email must be a string');
-    }
-    if (!Array.isArray(parsed.skills)) {
-      throw new Error('Invalid response: skills must be an array');
-    }
-    if (typeof parsed.summary !== 'string') {
-      throw new Error('Invalid response: summary must be a string');
-    }
-    if (typeof parsed.location !== 'string') {
-      throw new Error('Invalid response: location must be a string');
-    }
-    if (typeof parsed.education_level !== 'string') {
-      throw new Error('Invalid response: education_level must be a string');
-    }
-    if (typeof parsed.university !== 'string') {
-      throw new Error('Invalid response: university must be a string');
-    }
-    if (!Array.isArray(parsed.past_internships)) {
-      throw new Error('Invalid response: past_internships must be an array');
-    }
-    if (!Array.isArray(parsed.technical_projects)) {
-      throw new Error('Invalid response: technical_projects must be an array');
-    }
-
-    // Ensure skills count is between 6-12
-    if (parsed.skills.length < 6) {
-      console.warn(
-        `Gemini returned fewer than 6 skills (${parsed.skills.length})`
-      );
-    }
-    if (parsed.skills.length > 12) {
-      parsed.skills = parsed.skills.slice(0, 12);
-    }
-
-    // Extract full text - for PDFs use pdf-parse, for DOCX we already have it
-    let fullText = '';
-    let latexCode = '';
-
-    if (isPdfFile(file)) {
-      // Extract full text from PDF using pdf-parse (local, fast, free)
-      console.log('Extracting full text from PDF using pdf-parse...');
-      fullText = await extractFullTextFromPdf(buffer);
-      console.log(`Extracted ${fullText.length} characters of full text from PDF`);
-
-      // Clean up: delete the uploaded file from Gemini (no longer needed for text extraction)
-      if (uploadedFileName) {
-        try {
-          await fileManager.deleteFile(uploadedFileName);
-          console.log(`[${modelName}] Deleted uploaded file from Gemini`);
-        } catch (error) {
-          console.warn('Failed to delete uploaded file:', error);
-          // Continue even if deletion fails
-        }
-      }
-
-      // Generate LaTeX from extracted text (local conversion, no API cost)
-      console.log('Generating LaTeX from extracted text...');
-      latexCode = generateLatexFromResumeText(fullText);
-    } else if (!isPdfFile(file) && docxFullText) {
-      // For DOCX, use the text we already extracted
-      fullText = docxFullText;
-      console.log(`Using extracted ${fullText.length} characters of full text from DOCX`);
-
-      // Generate LaTeX from DOCX text (local conversion, no API cost)
-      console.log('Generating LaTeX from DOCX text...');
-      latexCode = generateLatexFromResumeText(fullText);
-    }
-
-    return { extraction: parsed, fullText, latexCode };
-  } catch (error: any) {
-    // Re-throw error with helpful context
-    console.error(`Failed to extract resume data with ${modelName}:`, error);
-    throw new Error(
-      `Failed to process resume: ${error?.message || 'Unknown error'}. ` +
-      `Please ensure the file is a valid PDF or DOCX and try again.`
-    );
-  }
-}
+// NOTE: We previously used Gemini's File API to extract fields directly from the
+// uploaded file. To reduce costs and avoid uploading user files to Gemini, we now:
+// - Extract full text locally using pdf-parse/mammoth
+// - Parse that text into structured data with parseResumeToStructured
+// - Derive high-level fields (name, email, skills, experience, etc.) from the structured data
 
 /**
  * Generates LaTeX source code from resume text using local template-based conversion
@@ -261,7 +74,7 @@ function generateLatexFromResumeText(fullText: string): string {
 
 /**
  * Generates an embedding for the candidate profile using Gemini
- * Combines summary, skills, and additional context for richer matching
+ * Combines skills and additional context for richer matching
  */
 async function generateEmbedding(
   extractionResult: ResumeExtractionResult
@@ -271,11 +84,10 @@ async function generateEmbedding(
 
   // Build a comprehensive text representation for better embedding quality
   const combinedText = `
-Professional Summary: ${extractionResult.summary}
 Technical Skills: ${extractionResult.skills.join(', ')}
 Location: ${extractionResult.location || 'Not specified'}
 Education: ${extractionResult.education_level || 'Not specified'} from ${extractionResult.university || 'Not specified'}
-Past Internships: ${extractionResult.past_internships.length > 0 ? extractionResult.past_internships.join('; ') : 'None listed'}
+Experience: ${extractionResult.experience.length > 0 ? extractionResult.experience.join('; ') : 'None listed'}
 Technical Projects: ${extractionResult.technical_projects.length > 0 ? extractionResult.technical_projects.join('; ') : 'None listed'}
   `.trim();
 
@@ -410,10 +222,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract name, email, skills, and summary using Gemini
-    // Also extract full text and generate LaTeX for storage in database
-    // For PDFs: Gemini processes the file directly (no parsing needed!)
-    // For DOCX: Text is extracted first, then sent to Gemini
+    // Extract full text locally and derive fields from structured parsing
+    // No Gemini File API upload is used here.
     let extractionResult: ResumeExtractionResult;
     let resumeFullText: string = '';
     let resumeLatex: string = '';
@@ -421,12 +231,19 @@ export async function POST(request: NextRequest) {
     let structuredResumeData: any = null;
 
     try {
-      const { extraction, fullText, latexCode } = await extractResumeDataWithGemini(file!, buffer, arrayBuffer);
-      extractionResult = extraction;
-      resumeFullText = fullText;
-      resumeLatex = latexCode;
+      // 1) Get full text locally
+      if (isPdfFile(file!)) {
+        console.log('Extracting full text from PDF using pdf-parse...');
+        resumeFullText = await extractFullTextFromPdf(buffer);
+        console.log(`Extracted ${resumeFullText.length} characters of full text from PDF`);
+      } else {
+        console.log('Extracting full text from DOCX using mammoth...');
+        const docxText = await extractDocxText(buffer);
+        resumeFullText = docxText || '';
+        console.log(`Extracted ${resumeFullText.length} characters of full text from DOCX`);
+      }
 
-      // Parse resume into structured data for template-based editing
+      // 2) Parse into structured data using Gemini (text-only)
       if (resumeFullText && resumeFullText.trim().length > 0) {
         try {
           console.log('Starting structured resume parsing...');
@@ -441,45 +258,53 @@ export async function POST(request: NextRequest) {
         } catch (parseError) {
           console.error('Failed to parse resume into structured format:', parseError);
           console.error('Parse error details:', parseError instanceof Error ? parseError.message : parseError);
-          // Fallback to minimal structured data if parsing fails
-          structuredResumeData = {
-            personal: {
-              name: extractionResult.name || accountName || 'Unknown',
-              email: accountEmail || '',
-              ...(extractionResult.location && { location: extractionResult.location }),
-            },
-            ...(extractionResult.summary && { summary: extractionResult.summary }),
-            experience: [],
-            education: [],
-            projects: [],
-            skills: Array.isArray(extractionResult.skills)
-              ? extractionResult.skills.filter((s): s is string => !!s && s.trim().length > 0)
-              : [],
-            certifications: [],
-          };
+          structuredResumeData = null;
         }
-      } else {
-        console.log('Skipping structured parsing - no resume text available');
-        // Fallback to minimal structured data
-        structuredResumeData = {
-          personal: {
-            name: extractionResult.name || accountName || 'Unknown',
-            email: accountEmail || '',
-            ...(extractionResult.location && { location: extractionResult.location }),
-          },
-          ...(extractionResult.summary && { summary: extractionResult.summary }),
-          experience: [],
-          education: [],
-          projects: [],
-          skills: Array.isArray(extractionResult.skills)
-            ? extractionResult.skills.filter((s): s is string => !!s && s.trim().length > 0)
-            : [],
-          certifications: [],
-        };
       }
 
-      // Extract raw text for response
-      // For PDFs, use the extracted full text; for DOCX, it's already in resumeFullText
+      // 3) Derive high-level extraction fields from structured data, with sensible fallbacks
+      const personal = structuredResumeData?.personal || {};
+      const educationArr = Array.isArray(structuredResumeData?.education) ? structuredResumeData.education : [];
+      const experienceArr = Array.isArray(structuredResumeData?.experience) ? structuredResumeData.experience : [];
+      const projectsArr = Array.isArray(structuredResumeData?.projects) ? structuredResumeData.projects : [];
+      const skillsArr = Array.isArray(structuredResumeData?.skills) ? structuredResumeData.skills : [];
+
+      const primaryEducation = educationArr[0] || {};
+
+      extractionResult = {
+        name: (personal.name as string) || accountName || 'Unknown',
+        email: (personal.email as string) || accountEmail || '',
+        skills: skillsArr.filter((s: string) => !!s && s.trim().length > 0),
+        location: (personal.location as string) || '',
+        education_level: (primaryEducation.degree as string) || '',
+        university: (primaryEducation.school as string) || '',
+        experience: experienceArr.map((exp: any) => {
+          const title = exp.title || '';
+          const company = exp.company || '';
+          const location = exp.location || '';
+          const dateRange = [exp.startDate, exp.endDate].filter(Boolean).join(' - ');
+          const parts = [title, company, location, dateRange].filter((p) => !!p && String(p).trim().length > 0);
+          return parts.join(' | ');
+        }).filter((s: string) => !!s && s.trim().length > 0),
+        technical_projects: projectsArr.map((proj: any) => {
+          const name = proj.name || '';
+          const technologies = Array.isArray(proj.technologies) ? proj.technologies.join(', ') : '';
+          const descArray = Array.isArray(proj.description) ? proj.description : [];
+          const desc = descArray.join(' ');
+          const parts = [name, technologies, desc].filter((p) => !!p && String(p).trim().length > 0);
+          return parts.join(' | ');
+        }).filter((s: string) => !!s && s.trim().length > 0),
+      };
+
+      // 4) Generate LaTeX locally from full text
+      if (resumeFullText && resumeFullText.trim().length > 0) {
+        console.log('Generating LaTeX from extracted text...');
+        resumeLatex = generateLatexFromResumeText(resumeFullText);
+      } else {
+        resumeLatex = '';
+      }
+
+      // Raw text for response
       rawText = resumeFullText || 'Resume text extraction completed';
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -610,22 +435,17 @@ export async function POST(request: NextRequest) {
       }
 
       try {
-        await upsertCandidate(
-          accountEmail,
-          embedding,
-          {
-            // Prioritize resume-extracted name over auth metadata
-            name: extractionResult.name || accountName || 'Unknown',
-            email: accountEmail,
-            summary: extractionResult.summary,
-            skills: extractionResult.skills.join(', '),
-            location: extractionResult.location,
-            education_level: extractionResult.education_level,
-            university: extractionResult.university,
-            past_internships: extractionResult.past_internships.join(', '),
-            technical_projects: extractionResult.technical_projects.join(', '),
-          }
-        );
+        await upsertCandidate(accountEmail, embedding, {
+          // Prioritize resume-extracted name over auth metadata
+          name: extractionResult.name || accountName || 'Unknown',
+          email: accountEmail,
+          skills: extractionResult.skills.join(', '),
+          location: extractionResult.location,
+          education_level: extractionResult.education_level,
+          university: extractionResult.university,
+          experience: extractionResult.experience.join(', '),
+          technical_projects: extractionResult.technical_projects.join(', '),
+        });
         savedToDatabase = true;
         console.log('Successfully saved candidate to Pinecone:', {
           name: extractionResult.name,
@@ -650,12 +470,11 @@ export async function POST(request: NextRequest) {
           email: accountEmail,
           // Prioritize resume-extracted name over auth metadata
           name: extractionResult.name || accountName || 'Unknown',
-          summary: extractionResult.summary,
           skills: extractionResult.skills.join(', '),
           location: extractionResult.location,
           education_level: extractionResult.education_level,
           university: extractionResult.university,
-          past_internships: extractionResult.past_internships.join(', '),
+          experience: extractionResult.experience.join(', '),
           technical_projects: extractionResult.technical_projects.join(', '),
           // Note: resume_path and resume_full_text are deprecated - using resumes table instead
           resume_latex: resumeLatex, // Store LaTeX source for editing
@@ -842,11 +661,10 @@ export async function POST(request: NextRequest) {
       name: extractionResult.name,
       email: extractionResult.email,
       skills: extractionResult.skills,
-      summary: extractionResult.summary,
       location: extractionResult.location,
       education_level: extractionResult.education_level,
       university: extractionResult.university,
-      past_internships: extractionResult.past_internships,
+      experience: extractionResult.experience,
       technical_projects: extractionResult.technical_projects,
       embedding,
       savedToDatabase,

@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
       candidate = await saveCandidate({
         email: user.email,
         name: candidateName,
-        summary: '',
         skills: '',
         job_type: jobType,
         role_type: roleTypes,

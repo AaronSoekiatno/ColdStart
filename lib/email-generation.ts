@@ -19,7 +19,6 @@ const DEFAULT_EMAIL_MODEL = process.env.GEMINI_EMAIL_MODEL || 'gemini-2.5-pro';
 export interface CandidateProfile {
   name: string;
   email: string;
-  summary: string;
   skills: string[]; // normalized list of skills/keywords
   resumeFullText?: string; // Full resume text for additional context (GitHub links, etc.)
   links?: Record<string, string>; // Links like GitHub, portfolio, etc.
@@ -27,7 +26,7 @@ export interface CandidateProfile {
   location?: string;
   educationLevel?: string;
   university?: string;
-  pastInternships?: string; // Comma-separated string
+  pastInternships?: string; // Comma-separated string (renamed from past_internships, kept for backwards-compat)
   technicalProjects?: string; // Comma-separated string
   jobType?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
 }
@@ -263,7 +262,6 @@ That's it. Keep it short and make every sentence count.
 **CANDIDATE:**
 - Name: ${candidate.name}
 - Email: ${candidate.email}
-- Summary: ${candidate.summary}
 - Skills: ${candidate.skills.join(', ')}
 - Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
 - Full Resume Text (extract professional links from here): ${candidate.resumeFullText || 'Not provided'}
@@ -400,7 +398,6 @@ Before generating: Could this email ONLY be sent to this specific company? If yo
 **CANDIDATE:**
 - Name: ${candidate.name}
 - Email: ${candidate.email}
-- Summary: ${candidate.summary}
 - Skills: ${candidate.skills.join(', ')}
 - Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
 - Past Experience: ${candidate.pastInternships || 'None listed'}
@@ -579,7 +576,6 @@ The email should be useful to them even if they don't hire you. They should lear
 **CANDIDATE:**
 - Name: ${candidate.name}
 - Email: ${candidate.email}
-- Summary: ${candidate.summary}
 - Skills: ${candidate.skills.join(', ')}
 - Education: ${candidate.educationLevel || 'Not specified'}${candidate.university ? ` at ${candidate.university}` : ''}
 - Technical Projects: ${candidate.technicalProjects || 'None listed'}
