@@ -354,10 +354,14 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
               // Skip if it's the company name
               if (fullName.toLowerCase() === companyName) continue;
               
-              // Skip common words
-              const skipWords = ['Active', 'Founders', 'Founder', 'Company', 'Location', 
+              // Skip common words and launch post section headers
+              const skipWords = ['Active', 'Founders', 'Founder', 'Company', 'Location',
                                 'Team', 'Size', 'Jobs', 'Status', 'Founded', 'Website', 'Batch',
-                                'San Francisco', 'New York', 'Remote', 'United States'];
+                                'San Francisco', 'New York', 'Remote', 'United States',
+                                'The Problem', 'Our Solution', 'The Solution', 'Our Team',
+                                'Our Mission', 'Our Vision', 'The Challenge', 'The Opportunity',
+                                'Key Features', 'Why Now', 'Market Opportunity', 'The Product',
+                                'Our Approach', 'Why Us', 'Get Started'];
               if (skipWords.some(word => fullName.toLowerCase().includes(word.toLowerCase()))) continue;
               
               // Get description from next line
@@ -901,9 +905,13 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
             // Skip if it's the company name
             if (potentialName.toLowerCase() === companyName) continue;
             
-            // Skip common words/phrases
-            const commonWords = ['Active', 'Founders', 'Founder', 'Company', 'Location', 'Team', 'Size', 
-                                'San Francisco', 'New York', 'Remote', 'United States'];
+            // Skip common words/phrases and launch post section headers
+            const commonWords = ['Active', 'Founders', 'Founder', 'Company', 'Location', 'Team', 'Size',
+                                'San Francisco', 'New York', 'Remote', 'United States',
+                                'The Problem', 'Our Solution', 'The Solution', 'Our Team',
+                                'Our Mission', 'Our Vision', 'The Challenge', 'The Opportunity',
+                                'Key Features', 'Why Now', 'Market Opportunity', 'The Product',
+                                'Our Approach', 'Why Us', 'Get Started'];
             if (commonWords.some(word => potentialName.toLowerCase().includes(word.toLowerCase()))) continue;
             
             // Skip if it's all caps (likely not a name)
@@ -1046,10 +1054,14 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                 // Skip if it's the company name
                 if (potentialName.toLowerCase() === companyName) continue;
                 
-                // Skip common section headings/words
-                const skipWords = ['Active', 'Founders', 'Founder', 'Company', 'Location', 
+                // Skip common section headings/words and launch post section headers
+                const skipWords = ['Active', 'Founders', 'Founder', 'Company', 'Location',
                                   'Team', 'Size', 'Jobs', 'Status', 'Founded', 'Website', 'Batch',
-                                  'San Francisco', 'New York', 'Remote', 'United States'];
+                                  'San Francisco', 'New York', 'Remote', 'United States',
+                                  'The Problem', 'Our Solution', 'The Solution', 'Our Team',
+                                  'Our Mission', 'Our Vision', 'The Challenge', 'The Opportunity',
+                                  'Key Features', 'Why Now', 'Market Opportunity', 'The Product',
+                                  'Our Approach', 'Why Us', 'Get Started'];
                 const shouldSkip = skipWords.some(word => {
                   return potentialName.toLowerCase() === word.toLowerCase() ||
                          potentialName.toLowerCase().startsWith(word.toLowerCase() + ' ') ||
@@ -1199,10 +1211,13 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
                 // Skip if company name
                 if (fullName.toLowerCase() === companyName) continue;
                 
-                // Skip common non-name words
+                // Skip common non-name words and launch post section headers
                 const skipWords = ['Active', 'Founders', 'Founder', 'Company', 'Location', 'Team', 'Size',
                                  'San Francisco', 'New York', 'Remote', 'United States', 'Founded',
-                                 'Website', 'Jobs', 'Batch', 'Status'];
+                                 'Website', 'Jobs', 'Batch', 'Status', 'The Problem', 'Our Solution',
+                                 'The Solution', 'Our Team', 'Our Mission', 'Our Vision', 'The Challenge',
+                                 'The Opportunity', 'Key Features', 'Why Now', 'Market Opportunity',
+                                 'The Product', 'Our Approach', 'Why Us', 'Get Started'];
                 if (skipWords.some(word => fullName.toLowerCase().includes(word.toLowerCase()))) continue;
                 
                 // Extract description from next line if it looks like a bio
@@ -2533,12 +2548,9 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       company_twitter_url?: string;
       website?: string;
       team_size?: string;
-      location?: string;
       founder_backgrounds?: string;
       founders_pfp?: string[];
       yc_description?: string;
-      launch_date?: string;
-      founded_date?: string;
     } = {
       // Founder information
       founder_names: founderNames || undefined,
@@ -2549,16 +2561,11 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       company_twitter_url: pageData.companyTwitterUrl || undefined,
       website: pageData.website || undefined,
       team_size: pageData.teamSize || undefined,
-      location: pageData.location || undefined,
-      
+
       // Additional YC data
       founder_backgrounds: founderBackgrounds || undefined,
       founders_pfp: foundersPfp.length > 0 ? foundersPfp : undefined,
       yc_description: pageData.ycDescription || undefined,
-      
-      // Launch/founded date
-      launch_date: pageData.launchDate || undefined,
-      founded_date: pageData.launchDate || undefined, // Alternative column name
     };
     
     // Log what we're updating
@@ -2580,9 +2587,6 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     if (pageData.teamSize) {
       console.log(`   👥 Team size: ${pageData.teamSize}`);
     }
-    if (pageData.location) {
-      console.log(`   📍 Location: ${pageData.location}`);
-    }
     if (founderBackgrounds) {
       console.log(`   👤 Found ${pageData.founders.filter(f => f.description).length} founder description(s)`);
       console.log(`   💾 Updating founder_backgrounds with descriptions from YC page (${founderBackgrounds.length} characters)`);
@@ -2592,9 +2596,6 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     }
     if (pageData.ycDescription) {
       console.log(`   📝 Found YC description (${pageData.ycDescription.length} characters)`);
-    }
-    if (pageData.launchDate) {
-      console.log(`   📅 Launch date: ${pageData.launchDate}`);
     }
     
     const { data, error } = await supabase
