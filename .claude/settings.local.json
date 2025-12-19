@@ -15,7 +15,8 @@
       "Bash(grep:*)",
       "Bash(dig:*)",
       "Bash(npx tsx:*)",
-      "Bash(npx puppeteer browsers install chrome)"
+      "Bash(npx puppeteer browsers install chrome)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

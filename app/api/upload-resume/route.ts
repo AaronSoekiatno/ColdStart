@@ -271,11 +271,47 @@ export async function POST(request: NextRequest) {
 
       const primaryEducation = educationArr[0] || {};
 
+      // Helper function to check if location is Remote
+      const isRemoteLocation = (location: string): boolean => {
+        if (!location) return false;
+        const locLower = location.toLowerCase().trim();
+        // Check for common remote patterns
+        return locLower === 'remote' || 
+               locLower.startsWith('r emote,') ||
+               (locLower.includes('remote') && locLower.length < 20); // "Remote" or "Remote, US" but not "Remote Office Location"
+      };
+
+      // Helper function to get location with fallbacks (excluding Remote)
+      const getLocationWithFallbacks = (): string => {
+        // 1. Try personal location first
+        const personalLoc = (personal.location as string) || '';
+        if (personalLoc && !isRemoteLocation(personalLoc)) {
+          return personalLoc;
+        }
+        
+        // 2. Try most recent experience location (excluding Remote)
+        // Experience array is usually ordered most recent first
+        for (const exp of experienceArr) {
+          const expLocation = (exp.location as string) || '';
+          if (expLocation && !isRemoteLocation(expLocation)) {
+            return expLocation;
+          }
+        }
+        
+        // 3. Try education location as last resort
+        const eduLocation = (primaryEducation.location as string) || '';
+        if (eduLocation && !isRemoteLocation(eduLocation)) {
+          return eduLocation;
+        }
+        
+        return '';
+      };
+
       extractionResult = {
         name: (personal.name as string) || accountName || 'Unknown',
         email: (personal.email as string) || accountEmail || '',
         skills: skillsArr.filter((s: string) => !!s && s.trim().length > 0),
-        location: (personal.location as string) || '',
+        location: getLocationWithFallbacks(),
         education_level: (primaryEducation.degree as string) || '',
         university: (primaryEducation.school as string) || '',
         experience: experienceArr.map((exp: any) => {

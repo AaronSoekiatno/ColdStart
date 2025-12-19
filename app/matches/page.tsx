@@ -8,6 +8,7 @@ import { Header } from '@/components/Header';
 import { UpgradeModal } from '@/components/UpgradeModal';
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
+import { shuffleByScoreGroups, reorderByIds } from '@/lib/utils';
 
 interface MatchRecord {
   id: string;
@@ -58,6 +59,8 @@ export default function MatchesPage() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isShuffled, setIsShuffled] = useState(false);
+  const [isBackgroundFetchComplete, setIsBackgroundFetchComplete] = useState(false);
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -135,7 +138,7 @@ export default function MatchesPage() {
   useEffect(() => {
     const fetchRemainingMatches = async () => {
       // Only fetch if we have initial matches and pagination info
-      if (!pagination || !pagination.hasMore || matches.length === 0) {
+      if (!pagination || !pagination.hasMore || matches.length === 0 || isBackgroundFetchComplete) {
         return;
       }
 
@@ -143,9 +146,11 @@ export default function MatchesPage() {
 
       try {
         // Fetch all remaining pages
+        // Note: API limits sorting to first 200 matches, so cap pages accordingly
+        const maxPage = Math.min(pagination.totalPages, Math.ceil(200 / 20)); // Max 10 pages (200 matches)
         const fetchPromises = [];
 
-        for (let page = 2; page <= pagination.totalPages; page++) {
+        for (let page = 2; page <= maxPage; page++) {
           fetchPromises.push(
             fetch(`/api/matches?page=${page}&limit=20`, {
               credentials: 'include',
@@ -167,24 +172,86 @@ export default function MatchesPage() {
 
         const results = await Promise.all(fetchPromises);
 
-        // Combine all matches
-        const allNewMatches = results.flatMap(result => result.matches || []);
+        // Combine all matches (filter out empty results from errors)
+        const allNewMatches = results
+          .flatMap(result => result.matches || [])
+          .filter(match => match && match.id); // Ensure valid matches
 
         console.log('[Matches] Background fetch complete. Loaded', allNewMatches.length, 'additional matches');
 
         // Append to existing matches
-        setMatches(prev => [...prev, ...allNewMatches]);
+        if (allNewMatches.length > 0) {
+          setMatches(prev => [...prev, ...allNewMatches]);
+        }
+        setIsBackgroundFetchComplete(true);
       } catch (error) {
         console.error('[Matches] Error fetching remaining matches:', error);
         // Silently fail - user already has first 20 matches
+        setIsBackgroundFetchComplete(true);
       }
     };
 
     // Start background fetch after initial matches are loaded
-    if (matches.length > 0 && pagination?.hasMore) {
+    if (matches.length > 0 && pagination?.hasMore && !isBackgroundFetchComplete) {
       fetchRemainingMatches();
     }
-  }, [matches.length > 0, pagination?.hasMore]); // Only run once when we have initial matches
+  }, [matches.length > 0, pagination?.hasMore, isBackgroundFetchComplete]); // Only run once when we have initial matches
+
+  // Shuffle matches once all are loaded
+  useEffect(() => {
+    if (matches.length === 0 || isShuffled) {
+      return;
+    }
+
+    // Only shuffle after background fetch is complete (or if there's no more to fetch)
+    const shouldShuffle = isBackgroundFetchComplete || !pagination?.hasMore;
+
+    if (!shouldShuffle) {
+      return;
+    }
+
+    // Check sessionStorage for existing shuffle order
+    if (typeof window !== 'undefined') {
+      const storedOrder = sessionStorage.getItem('matchesShuffleOrder');
+      const storedTimestamp = sessionStorage.getItem('matchesShuffleTimestamp');
+
+      // Use stored order if exists and is < 24 hours old
+      if (storedOrder && storedTimestamp) {
+        const timestamp = parseInt(storedTimestamp, 10);
+        const hoursSinceShuffled = (Date.now() - timestamp) / (1000 * 60 * 60);
+
+        if (hoursSinceShuffled < 24) {
+          try {
+            const orderedIds = JSON.parse(storedOrder);
+            const reordered = reorderByIds(matches, orderedIds);
+
+            // Only use stored order if all matches are present
+            if (reordered.length === matches.length) {
+              setMatches(reordered);
+              setIsShuffled(true);
+              console.log('[Matches] Restored shuffle order from session');
+              return;
+            }
+          } catch (error) {
+            console.error('[Matches] Error restoring shuffle order:', error);
+          }
+        }
+      }
+
+      // Create new shuffle (shuffle within score groups to preserve ordering)
+      const shuffled = shuffleByScoreGroups(matches);
+      const shuffledIds = shuffled.map(m => m.id);
+
+      setMatches(shuffled);
+      setIsShuffled(true);
+
+      // Store in sessionStorage
+      sessionStorage.setItem('matchesShuffleOrder', JSON.stringify(shuffledIds));
+      sessionStorage.setItem('matchesShuffleTimestamp', Date.now().toString());
+
+      console.log('[Matches] Created new shuffle order (grouped by score)');
+    }
+  }, [matches.length, pagination?.hasMore, isBackgroundFetchComplete, isShuffled]);
 
   // Reset current match index when matches change
   useEffect(() => {

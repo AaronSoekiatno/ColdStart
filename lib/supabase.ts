@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
+import { normalizeName, normalizeEducationLevel, normalizeUniversityName } from './normalize-candidate-data';
 
 // Supabase configuration
 // These environment variables should be set in .env.local
@@ -134,13 +135,18 @@ export function isSubscribed(candidate: {
 export async function saveCandidate(candidate: CandidateRow): Promise<{ id: string; email: string; [key: string]: any }> {
   const client = supabaseAdmin || supabase;
 
+  // Normalize fields before saving
+  const normalizedName = normalizeName(candidate.name);
+  const normalizedEducationLevel = normalizeEducationLevel(candidate.education_level);
+  const normalizedUniversity = normalizeUniversityName(candidate.university);
+
   const upsertData = {
     email: candidate.email,
-    name: candidate.name,
+    name: normalizedName || candidate.name, // Fallback to original if normalization returns null
     skills: candidate.skills,
     location: candidate.location,
-    education_level: candidate.education_level,
-    university: candidate.university,
+    education_level: normalizedEducationLevel,
+    university: normalizedUniversity,
     experience: candidate.experience,
     technical_projects: candidate.technical_projects,
     job_type: candidate.job_type,
