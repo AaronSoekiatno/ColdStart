@@ -213,10 +213,10 @@ export async function filterJobsOnResumeUpload(
       return null;
     }
 
-    // Get active jobs from database
+    // Get active jobs from database - using full_description for comprehensive matching
     const { data: jobs, error: jobsError } = await supabase
       .from('jobs')
-      .select('id, requirements')
+      .select('id, full_description')
       .eq('is_active', true);
 
     if (jobsError || !jobs || jobs.length === 0) {
@@ -224,12 +224,12 @@ export async function filterJobsOnResumeUpload(
       return null;
     }
 
-    // Filter jobs using ATS API
+    // Filter jobs using ATS API with full job descriptions
     const results = await atsClient.filterJobsBatch(
       candidateId,
       jobs.map((job: any) => ({
         id: job.id,
-        requirements: job.requirements || '',
+        requirements: job.full_description || '', // Using full_description for richer keyword matching
       }))
     );
 
