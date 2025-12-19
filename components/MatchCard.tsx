@@ -1,20 +1,11 @@
 "use client";
 
-import { memo, useRef, useState, useEffect } from "react";
+import { memo, useRef, useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { DollarSign, ExternalLink, ChevronDown, Sparkles, Briefcase } from "lucide-react";
+import { ExternalLink, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "./UpgradeModal";
-import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface MatchCardProps {
   match: {
@@ -22,6 +13,13 @@ interface MatchCardProps {
     score: number;
     matched_at: string;
     has_job_listings?: boolean;
+    job?: {
+      job_url?: string;
+      job_title?: string;
+      job_type?: string;
+      salary_range?: string;
+      experience_level?: string;
+    } | null;
     startup: {
       id?: string;
       name: string;
@@ -62,38 +60,19 @@ interface MatchCardProps {
 
 const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchCardProps) => {
   const router = useRouter();
-  const { toast } = useToast();
   const companySectionRef = useRef<HTMLDivElement>(null);
-  const foundersSectionRef = useRef<HTMLDivElement>(null);
-  // Single founder selection (always single selection for all users)
-  const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<'company' | 'founders'>('company');
+  const applicationSectionRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<'company' | 'apply'>('company');
   const [showFullYcDescription, setShowFullYcDescription] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [emailDropdownOpen, setEmailDropdownOpen] = useState(false);
+  // Single founder selection (always single selection for all users)
+  const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
-  // Track job listing loading state
-  const [isLoadingJobListing, setIsLoadingJobListing] = useState(false);
-  
-  // Initialize emailPersona from sessionStorage to survive Fast Refresh, default to 'direct-ask'
-  const [emailPersona, setEmailPersona] = useState<'direct-ask' | 'genuine-fan' | 'value-first'>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('emailPersona');
-      if (stored === 'genuine-fan' || stored === 'direct-ask' || stored === 'value-first') {
-        return stored as 'direct-ask' | 'genuine-fan' | 'value-first';
-      }
-    }
-    return 'direct-ask';
-  });
-
-  // Sync emailPersona to sessionStorage whenever it changes
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('emailPersona', emailPersona);
-      console.log(`[MatchCard] emailPersona changed to: ${emailPersona}, isPremium: ${isPremium}, saved to sessionStorage`);
-    }
-  }, [emailPersona, isPremium]);
+  // Track loaded images to show them once they're ready
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  // Track manual tab clicks to prevent scroll handler from overriding
+  const manualTabClickRef = useRef<{ tab: 'company' | 'apply'; timestamp: number } | null>(null);
 
   if (!match.startup) {
     return null;
@@ -136,134 +115,132 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     !!truncatedYcDescription &&
     fullYcDescription.trim().length > truncatedYcDescription.length;
 
-  // Use founders from founders table if available, otherwise fall back to CSV columns
-  const foundersFromTable = startup.founders && startup.founders.length > 0
-    ? startup.founders
-    : null;
+  // Memoize founder data parsing to avoid re-parsing on every render
+  // This ensures startup and founder data are processed together efficiently
+  const founderData = useMemo(() => {
+    // Use founders from founders table if available, otherwise fall back to CSV columns
+    const foundersFromTable = startup.founders && startup.founders.length > 0
+      ? startup.founders
+      : null;
 
-  // Parse founder data - prefer founders table, fallback to CSV columns
-  const founderNames = foundersFromTable
-    ? foundersFromTable.map(f => f.name)
-    : splitFounderNames(startup.founder_names);
+    // Parse founder data - prefer founders table, fallback to CSV columns
+    const founderNames = foundersFromTable
+      ? foundersFromTable.map(f => f.name)
+      : splitFounderNames(startup.founder_names);
 
-  const founderLinkedInUrls = foundersFromTable
-    ? foundersFromTable.map(f => f.linkedin_url || '')
-    : (startup.founder_linkedin
-        ? startup.founder_linkedin.split(',').map(url => url.trim())
-        : []);
+    const founderLinkedInUrls = foundersFromTable
+      ? foundersFromTable.map(f => f.linkedin_url || '')
+      : (startup.founder_linkedin
+          ? startup.founder_linkedin.split(',').map(url => url.trim())
+          : []);
 
-  const founderTwitterUrls = foundersFromTable
-    ? foundersFromTable.map(f => f.twitter_url || '')
-    : (startup.founder_twitter_urls
-        ? startup.founder_twitter_urls.split(',').map(url => url.trim())
-        : []);
+    const founderTwitterUrls = foundersFromTable
+      ? foundersFromTable.map(f => f.twitter_url || '')
+      : (startup.founder_twitter_urls
+          ? startup.founder_twitter_urls.split(',').map(url => url.trim())
+          : []);
 
-  const founderEmails = foundersFromTable
-    ? foundersFromTable.map(f => f.email || '')
-    : (startup.founder_emails
-        ? startup.founder_emails.split(',').map(email => email.trim())
-        : []);
+    const founderEmails = foundersFromTable
+      ? foundersFromTable.map(f => f.email || '')
+      : (startup.founder_emails
+          ? startup.founder_emails.split(',').map(email => email.trim())
+          : []);
 
-  // Get profile pictures - prefer from founders table, fallback to founders_pfp array
-  const founderProfilePictures: string[] = [];
-  
-  if (foundersFromTable) {
-    // Use profile_picture from founders table if available
-    for (let i = 0; i < foundersFromTable.length; i++) {
-      const profilePicture = foundersFromTable[i].profile_picture;
-      if (profilePicture) {
-        founderProfilePictures[i] = profilePicture;
-      }
-    }
-  }
-  
-  // Fallback: Use founders_pfp from startup (handles case when founders table doesn't exist)
-  if (startup.founders_pfp) {
-    // Parse founders_pfp - handle both array and string formats
-    let founderProfilePicturesRaw: string[] = [];
+    // Get profile pictures - prefer from founders table, fallback to founders_pfp array
+    const founderProfilePictures: string[] = [];
     
-    if (Array.isArray(startup.founders_pfp)) {
-      // PostgreSQL array comes as array
-      founderProfilePicturesRaw = startup.founders_pfp
-        .map(url => String(url).trim())
-        .filter(url => url && url !== '');
-    } else if (typeof startup.founders_pfp === 'string') {
-      // Comma-separated string
-      founderProfilePicturesRaw = startup.founders_pfp
-        .split(',')
-        .map(url => url.trim())
-        .filter(url => url && url !== '');
-    }
-
-    // Map profile pictures to founders by index
-    // If founders table doesn't exist, use founders_pfp for all founders
-    // If founders table exists, only fill in missing ones
-    for (let i = 0; i < founderNames.length; i++) {
-      // If founders table doesn't exist OR this index doesn't have a picture yet, use founders_pfp
-      if (!foundersFromTable || !founderProfilePictures[i]) {
-        if (founderProfilePicturesRaw[i]) {
-          founderProfilePictures[i] = founderProfilePicturesRaw[i];
+    if (foundersFromTable) {
+      // Use profile_picture from founders table if available
+      for (let i = 0; i < foundersFromTable.length; i++) {
+        const profilePicture = foundersFromTable[i].profile_picture;
+        if (profilePicture) {
+          founderProfilePictures[i] = profilePicture;
         }
       }
     }
-  }
+    
+    // Fallback: Use founders_pfp from startup (handles case when founders table doesn't exist)
+    if (startup.founders_pfp) {
+      // Parse founders_pfp - handle both array and string formats
+      let founderProfilePicturesRaw: string[] = [];
+      
+      if (Array.isArray(startup.founders_pfp)) {
+        // PostgreSQL array comes as array
+        founderProfilePicturesRaw = startup.founders_pfp
+          .map(url => String(url).trim())
+          .filter(url => url && url !== '');
+      } else if (typeof startup.founders_pfp === 'string') {
+        // Comma-separated string
+        founderProfilePicturesRaw = startup.founders_pfp
+          .split(',')
+          .map(url => url.trim())
+          .filter(url => url && url !== '');
+      }
 
-  // Debug: Log founder profile pictures
-  const parsedPfp = startup.founders_pfp 
-    ? (Array.isArray(startup.founders_pfp)
-        ? startup.founders_pfp
-        : startup.founders_pfp.split(',').map(url => url.trim()))
-    : [];
-  
-  console.log('[MatchCard] Profile picture debug:', {
-    startupName: startup.name,
-    foundersFromTable: foundersFromTable?.length || 0,
-    foundersPfpFromStartup: startup.founders_pfp,
-    foundersPfpType: typeof startup.founders_pfp,
-    foundersPfpIsArray: Array.isArray(startup.founders_pfp),
-    parsedPfpArray: parsedPfp,
-    founderNames,
-    founderNamesCount: founderNames.length,
-    founderProfilePictures,
-    founderProfilePicturesLength: founderProfilePictures.length,
-    founderProfilePicturesByIndex: founderProfilePictures.map((url, idx) => ({ index: idx, name: founderNames[idx], url }))
-  });
-
-  // Parse founder backgrounds - use from founders table if available, otherwise parse CSV
-  const founderBackgroundsArray = foundersFromTable
-    ? foundersFromTable.map(f => f.background || '')
-    : founderNames.map((name, idx) => {
-        if (!startup.founder_backgrounds) return '';
-
-        // Create regex to find "FounderName: background text"
-        // Match from "Name:" until the next founder's "Name:" or end of string
-        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const nextFounderName = idx < founderNames.length - 1 ? founderNames[idx + 1] : null;
-
-        let pattern;
-        if (nextFounderName) {
-          const escapedNextName = nextFounderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*?)(?=\\n*${escapedNextName}:|$)`, 'i');
-        } else {
-          // Last founder - match until end of string
-          pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*)$`, 'i');
+      // Map profile pictures to founders by index
+      // If founders table doesn't exist, use founders_pfp for all founders
+      // If founders table exists, only fill in missing ones
+      for (let i = 0; i < founderNames.length; i++) {
+        // If founders table doesn't exist OR this index doesn't have a picture yet, use founders_pfp
+        if (!foundersFromTable || !founderProfilePictures[i]) {
+          if (founderProfilePicturesRaw[i]) {
+            founderProfilePictures[i] = founderProfilePicturesRaw[i];
+          }
         }
+      }
+    }
 
-        const match = startup.founder_backgrounds.match(pattern);
-        if (match && match[1]) {
-          return match[1].trim();
-        }
+    // Parse founder backgrounds - use from founders table if available, otherwise parse CSV
+    const founderBackgroundsArray = foundersFromTable
+      ? foundersFromTable.map(f => f.background || '')
+      : founderNames.map((name, idx) => {
+          if (!startup.founder_backgrounds) return '';
 
-        return '';
-      });
+          // Create regex to find "FounderName: background text"
+          // Match from "Name:" until the next founder's "Name:" or end of string
+          const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const nextFounderName = idx < founderNames.length - 1 ? founderNames[idx + 1] : null;
 
-  // Get selected founder email (single selection only)
-  const selectedFounderEmail = selectedFounderIndex !== null && founderEmails[selectedFounderIndex]
-    ? founderEmails[selectedFounderIndex]
-    : undefined;
+          let pattern;
+          if (nextFounderName) {
+            const escapedNextName = nextFounderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*?)(?=\\n*${escapedNextName}:|$)`, 'i');
+          } else {
+            // Last founder - match until end of string
+            pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*)$`, 'i');
+          }
 
-  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>, tab: 'company' | 'founders') => {
+          const match = startup.founder_backgrounds.match(pattern);
+          if (match && match[1]) {
+            return match[1].trim();
+          }
+
+          return '';
+        });
+
+    return {
+      founderNames,
+      founderLinkedInUrls,
+      founderTwitterUrls,
+      founderEmails,
+      founderProfilePictures,
+      founderBackgroundsArray,
+    };
+  }, [startup.founders, startup.founder_names, startup.founder_linkedin, startup.founder_twitter_urls, startup.founder_emails, startup.founders_pfp, startup.founder_backgrounds]);
+
+  // Destructure memoized founder data
+  const { founderNames, founderLinkedInUrls, founderTwitterUrls, founderEmails, founderProfilePictures, founderBackgroundsArray } = founderData;
+
+  const scrollToSection = (ref: React.RefObject<HTMLDivElement | null>, tab: 'company' | 'apply') => {
+    // Don't scroll to apply section if it doesn't exist
+    if (tab === 'apply' && !match.job?.job_url) {
+      return;
+    }
+    
     if (ref.current) {
+      // Mark this as a manual tab click to prevent scroll handler from overriding
+      manualTabClickRef.current = { tab, timestamp: Date.now() };
+      
       // Calculate offset to account for sticky header (approximately 80px)
       const offset = 80;
       const elementPosition = ref.current.getBoundingClientRect().top + window.pageYOffset;
@@ -274,81 +251,64 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
         behavior: 'smooth'
       });
 
-      // Update active tab state
+      // Update active tab state immediately
       setActiveTab(tab);
     }
   };
 
-  // Handle job listing button click
-  const handleJobListingClick = async () => {
-    if (!match.startup?.id) {
-      toast({
-        title: "Error",
-        description: "Unable to find job listings for this company",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoadingJobListing(true);
-    try {
-      const response = await fetch(`/api/matches/job-listing?startupId=${match.startup.id}`, {
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        toast({
-          title: "No job listings found",
-          description: errorData.error || "This company doesn't have any job listings available yet.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.job && data.job.job_url) {
-        // Open job listing in new tab
-        window.open(data.job.job_url, '_blank', 'noopener,noreferrer');
-      } else {
-        toast({
-          title: "No job listings found",
-          description: "This company doesn't have any job listings available yet.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching job listing:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load job listing. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingJobListing(false);
-    }
-  };
 
   // Update active tab based on scroll position
   useEffect(() => {
     const handleScroll = () => {
-      if (!companySectionRef.current || !foundersSectionRef.current) return;
+      if (!companySectionRef.current) return;
 
-      const companyRect = companySectionRef.current.getBoundingClientRect();
-      const foundersRect = foundersSectionRef.current.getBoundingClientRect();
+      // If a manual tab click happened recently (within 1 second), don't override it
+      if (manualTabClickRef.current) {
+        const timeSinceClick = Date.now() - manualTabClickRef.current.timestamp;
+        if (timeSinceClick < 1000) {
+          // Keep the manually selected tab active
+          setActiveTab(manualTabClickRef.current.tab);
+          return;
+        } else {
+          // Clear the manual click ref after 1 second
+          manualTabClickRef.current = null;
+        }
+      }
+
+      // If no application section, always show company tab
+      if (!match.job?.job_url || !applicationSectionRef.current) {
+        setActiveTab('company');
+        return;
+      }
+
       const offset = 100; // Offset for sticky header
+      const viewportHeight = window.innerHeight;
 
-      // Check which section is more visible in the viewport
-      const companyTop = companyRect.top;
-      const foundersTop = foundersRect.top;
+      // Get positions of both sections
+      const companyRect = companySectionRef.current.getBoundingClientRect();
+      const applicationRect = applicationSectionRef.current.getBoundingClientRect();
 
-      // If founders section is in view and above the offset, switch to founders tab
-      if (foundersTop <= offset && foundersTop > -foundersRect.height / 2) {
-        setActiveTab('founders');
-      } 
-      // If company section is in view and above the offset, switch to company tab
-      else if (companyTop <= offset && companyTop > -companyRect.height / 2) {
+      // Calculate how much of each section is visible in the viewport
+      const companyVisibleTop = Math.max(0, companyRect.top);
+      const companyVisibleBottom = Math.min(viewportHeight, companyRect.bottom);
+      const companyVisibleHeight = Math.max(0, companyVisibleBottom - companyVisibleTop);
+
+      const applicationVisibleTop = Math.max(0, applicationRect.top);
+      const applicationVisibleBottom = Math.min(viewportHeight, applicationRect.bottom);
+      const applicationVisibleHeight = Math.max(0, applicationVisibleBottom - applicationVisibleTop);
+
+      // Determine which section is more prominently in view
+      // Priority: whichever section has more visible area, or is closer to the top
+      if (applicationVisibleHeight > 0 && applicationRect.top <= offset + 50) {
+        // Application section is in view and near/above the offset
+        setActiveTab('apply');
+      } else if (companyVisibleHeight > 0 && companyRect.top <= offset + 50) {
+        // Company section is in view and near/above the offset
+        setActiveTab('company');
+      } else if (applicationRect.top < companyRect.top) {
+        // If neither is clearly in view, use whichever is higher on the page
+        setActiveTab('apply');
+      } else {
         setActiveTab('company');
       }
     };
@@ -359,13 +319,13 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     return () => {
       window.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [match.job?.job_url]);
 
   return (
     <article className="relative rounded-xl sm:rounded-2xl md:rounded-3xl bg-white px-2.5 pt-2 pb-3 sm:px-4 sm:pb-6 md:px-6 md:pb-8 lg:px-8 lg:pb-12 shadow-md w-full max-w-full">
       {/* Sticky Header Container - Desktop Only */}
       <div className="lg:sticky lg:top-[64px] lg:z-40 bg-white -mx-3 sm:-mx-4 md:-mx-6 lg:-mx-8 px-3 pt-2.5 sm:px-4 md:px-6 lg:px-8 lg:rounded-t-2xl lg:rounded-t-3xl">
-        {/* Top Header with Tabs and Generate Email Button */}
+        {/* Top Header with Tabs and Contact Founder Button */}
         <div className="mb-4 flex items-center justify-between gap-4">
           {/* Tabs on left */}
           <div className="flex gap-1 sm:gap-3">
@@ -379,157 +339,41 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
             >
               Company
             </button>
-            <button
-              onClick={() => scrollToSection(foundersSectionRef, 'founders')}
-              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${
-                activeTab === 'founders'
-                  ? 'text-gray-900 border-blue-500'
-                  : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
-              }`}
-            >
-              Founders
-            </button>
+            {match.job?.job_url && (
+              <button
+                onClick={() => scrollToSection(applicationSectionRef, 'apply')}
+                className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${
+                  activeTab === 'apply'
+                    ? 'text-gray-900 border-blue-500'
+                    : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
+                }`}
+              >
+                Apply
+              </button>
+            )}
           </div>
-          {/* Generate Email Dropdown - Right aligned */}
+          {/* Contact Founder Button - Right aligned */}
           {match.startup.id && (
             <div className="flex-shrink-0">
-              <DropdownMenu open={emailDropdownOpen} onOpenChange={setEmailDropdownOpen}>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Generate Email</span>
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent 
-                  align="end" 
-                  className="w-72 !bg-white !border-gray-200 !shadow-lg !text-gray-900 !backdrop-blur-none"
-                  style={{ backgroundColor: 'white', borderColor: '#e5e7eb' }}
-                >
-                  <DropdownMenuLabel className="!text-gray-900 px-3 py-2 font-semibold">Choose Email Style</DropdownMenuLabel>
-                  <DropdownMenuSeparator className="!bg-gray-200" />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      // Check if founder selection is required but no founder is selected
-                      if (founderNames.length > 0 && selectedFounderIndex === null) {
-                        setEmailDropdownOpen(false);
-                        toast({
-                          title: "Select a founder",
-                          description: "Please select a founder first before generating an email.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setEmailPersona('direct-ask');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'direct-ask');
-                      }
-                      setEmailDropdownOpen(false);
-                      // Navigate to email generation page
-                      if (match.startup?.id) {
-                        const params = new URLSearchParams();
-                        params.append('startupId', match.startup.id);
-                        params.append('matchScore', match.score.toString());
-                        params.append('persona', 'direct-ask');
-                        if (selectedFounderEmail) {
-                          params.append('founderEmail', selectedFounderEmail);
-                        }
-                        router.push(`/generate-email?${params.toString()}`);
-                      }
-                    }}
-                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
-                  >
-                    <div className="w-full">
-                      <div className="font-semibold mb-1">Direct Ask</div>
-                      <div className="text-xs text-gray-600">Get straight to the point. Respectful and efficient.</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      // Premium check - show upgrade modal if not premium
-                      if (!isPremium) {
-                        setShowUpgradeModal(true);
-                        setEmailDropdownOpen(false);
-                        return;
-                      }
-                      // Check if founder selection is required but no founder is selected
-                      if (founderNames.length > 0 && selectedFounderIndex === null) {
-                        setEmailDropdownOpen(false);
-                        toast({
-                          title: "Select a founder",
-                          description: "Please select a founder first before generating an email.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setEmailPersona('genuine-fan');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'genuine-fan');
-                      }
-                      setEmailDropdownOpen(false);
-                      // Navigate to email generation page
-                      if (match.startup?.id) {
-                        const params = new URLSearchParams();
-                        params.append('startupId', match.startup.id);
-                        params.append('matchScore', match.score.toString());
-                        params.append('persona', 'genuine-fan');
-                        if (selectedFounderEmail) {
-                          params.append('founderEmail', selectedFounderEmail);
-                        }
-                        router.push(`/generate-email?${params.toString()}`);
-                      }
-                    }}
-                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
-                  >
-                    <div className="w-full">
-                      <div className="font-semibold mb-1">Genuine Fan</div>
-                      <div className="text-xs text-gray-600">Show authentic interest and personal connection.</div>
-                    </div>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      // Premium check - show upgrade modal if not premium
-                      if (!isPremium) {
-                        setShowUpgradeModal(true);
-                        setEmailDropdownOpen(false);
-                        return;
-                      }
-                      // Check if founder selection is required but no founder is selected
-                      if (founderNames.length > 0 && selectedFounderIndex === null) {
-                        setEmailDropdownOpen(false);
-                        toast({
-                          title: "Select a founder",
-                          description: "Please select a founder first before generating an email.",
-                          variant: "destructive",
-                        });
-                        return;
-                      }
-                      setEmailPersona('value-first');
-                      if (typeof window !== 'undefined') {
-                        sessionStorage.setItem('emailPersona', 'value-first');
-                      }
-                      setEmailDropdownOpen(false);
-                      // Navigate to email generation page
-                      if (match.startup?.id) {
-                        const params = new URLSearchParams();
-                        params.append('startupId', match.startup.id);
-                        params.append('matchScore', match.score.toString());
-                        params.append('persona', 'value-first');
-                        if (selectedFounderEmail) {
-                          params.append('founderEmail', selectedFounderEmail);
-                        }
-                        router.push(`/generate-email?${params.toString()}`);
-                      }
-                    }}
-                    className="!text-gray-900 cursor-pointer hover:!bg-gray-100 focus:!bg-gray-100 py-3 px-3"
-                  >
-                    <div className="w-full">
-                      <div className="font-semibold mb-1">Value-First</div>
-                      <div className="text-xs text-gray-600">Lead with what you can bring to the table.</div>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                onClick={() => {
+                  if (match.startup?.id) {
+                    const params = new URLSearchParams();
+                    params.append('startupId', match.startup.id);
+                    params.append('matchScore', match.score.toString());
+                    // Use first founder email if available, otherwise leave it empty
+                    if (founderEmails.length > 0 && founderEmails[0]) {
+                      params.append('founderEmail', founderEmails[0]);
+                    }
+                    router.push(`/generate-email?${params.toString()}`);
+                  }
+                }}
+              >
+                <Mail className="w-4 h-4" />
+                <span>Contact Founder</span>
+              </button>
             </div>
           )}
         </div>
@@ -542,24 +386,26 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
       <div ref={companySectionRef} className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
         <div className="flex-1 w-full">
           <div className="flex flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-            {/* Logo */}
-            <div className="flex-shrink-0 flex items-start">
-              {match.startup.company_logo ? (
-                <Image
-                  src={match.startup.company_logo}
-                  alt={`${match.startup.name} logo`}
-                  width={112}
-                  height={112}
-                  className="object-contain w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
-                  unoptimized
-                  loading="eager"
-                />
-              ) : (
-                <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-lg bg-gray-100 border border-gray-300"></div>
-                </div>
-              )}
-            </div>
+             {/* Logo */}
+             <div className="flex-shrink-0 flex items-start">
+               {match.startup.company_logo ? (
+                 <Image
+                   src={match.startup.company_logo}
+                   alt={`${match.startup.name} logo`}
+                   width={112}
+                   height={112}
+                   className="object-contain w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
+                   unoptimized
+                   loading="eager"
+                 />
+               ) : (
+                 <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-gray-200 flex items-center justify-center">
+                   <span className="text-gray-600 text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold">
+                     {match.startup.name.charAt(0).toUpperCase()}
+                   </span>
+                 </div>
+               )}
+             </div>
             {/* Name, match score, description, and links - aligned with logo */}
             <div className="flex-1 min-w-0 flex flex-col">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3 mb-1 sm:mb-1.5">
@@ -580,7 +426,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                   {match.startup.description}
           </p>
         )}
-              {/* Website, YC, Job Listing and Twitter buttons underneath description */}
+              {/* Website, YC, and Twitter buttons underneath description */}
               <div className="flex gap-1.5 sm:gap-2 flex-wrap mt-1 sm:-mt-0.5">
         {match.startup.website && (
           <a
@@ -594,17 +440,6 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                     <ExternalLink className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
                     <span>Website</span>
                   </a>
-                )}
-                {/* Job Listing Button - Only show if company has job listings */}
-                {match.has_job_listings && (
-                  <button
-                    onClick={handleJobListingClick}
-                    disabled={isLoadingJobListing}
-                    className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-md sm:rounded-lg bg-blue-50 border border-blue-300 px-1.5 py-0.5 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-[10px] sm:text-sm text-blue-700 font-medium w-fit hover:bg-blue-100 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Briefcase className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
-                    <span>{isLoadingJobListing ? 'Loading...' : 'Job Listing'}</span>
-                  </button>
                 )}
                 {match.startup.yc_link && (
                   <a
@@ -723,7 +558,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
 
       {/* Founders Section */}
       {founderNames.length > 0 && (
-        <div ref={foundersSectionRef} className="mt-4 sm:mt-6 md:mt-8">
+        <div className="mt-4 sm:mt-6 md:mt-8">
           <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
             <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
             <p className="text-xs sm:text-base text-gray-600">
@@ -765,21 +600,39 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                 >
                   <div className="flex flex-row items-start gap-2.5 sm:gap-3 md:gap-4">
                     {/* Founder Photo */}
-                    <div className="flex-shrink-0 w-12 h-12 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-lg sm:rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+                    <div className="flex-shrink-0 w-12 h-12 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-lg sm:rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden relative">
                       {founderProfilePictures[index] && founderProfilePictures[index].trim() !== '' && !failedImages.has(index) ? (
-                        <Image
-                          src={`/api/image-proxy?url=${encodeURIComponent(founderProfilePictures[index])}`}
-                          alt={`${founderName} profile picture`}
-                          width={80}
-                          height={80}
-                          className="w-full h-full object-cover"
-                          unoptimized
-                          loading="eager"
-                          onError={() => {
-                            console.log(`[MatchCard] Image failed to load for founder ${founderName} at index ${index}:`, founderProfilePictures[index]);
-                            setFailedImages(prev => new Set(prev).add(index));
-                          }}
-                        />
+                        <>
+                          {/* Show initial letter first */}
+                          {!loadedImages.has(index) && (
+                            <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center z-10">
+                              <span className="text-gray-400 text-lg sm:text-2xl md:text-3xl font-semibold">
+                                {initial.toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          {/* Image that loads on top */}
+                          <Image
+                            src={`/api/image-proxy?url=${encodeURIComponent(founderProfilePictures[index])}`}
+                            alt={`${founderName} profile picture`}
+                            width={80}
+                            height={80}
+                            className={`w-full h-full object-cover transition-opacity duration-300 ${loadedImages.has(index) ? 'opacity-100' : 'opacity-0'}`}
+                            unoptimized
+                            loading="eager"
+                            onLoad={() => {
+                              setLoadedImages(prev => new Set(prev).add(index));
+                            }}
+                            onError={() => {
+                              setFailedImages(prev => new Set(prev).add(index));
+                              setLoadedImages(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(index);
+                                return newSet;
+                              });
+                            }}
+                          />
+                        </>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
                           <span className="text-gray-400 text-lg sm:text-2xl md:text-3xl font-semibold">
@@ -812,8 +665,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                               height={16}
                               className="w-3 h-3 sm:w-4 sm:h-4"
                             />
-          </a>
-        )}
+                          </a>
+                        )}
                         {/* Twitter Icon */}
                         {founderTwitterUrls[index] && (
                           <a
@@ -840,8 +693,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                         <div className="text-[11px] sm:text-sm md:text-base text-gray-700 leading-relaxed whitespace-pre-line line-clamp-3 sm:line-clamp-none">
                           {founderBackgroundsArray[index]}
                         </div>
-        )}
-      </div>
+                      )}
+                    </div>
                     {/* Selection Control - Radio button for single selection */}
                     <div className="flex-shrink-0 flex items-center self-center">
                       <input
@@ -860,6 +713,62 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
           </div>
         </div>
       )}
+
+      {/* Application Section - only shown if job has application URL */}
+      {match.job?.job_url && (
+        <div ref={applicationSectionRef} className="mt-4 sm:mt-6 md:mt-8">
+          <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left mb-2 sm:mb-3 md:mb-4">
+            Application
+          </h3>
+          <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              {/* Left side: Job Title and Job Details */}
+              <div className="flex-1">
+                <div>
+                  <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-1">
+                    {match.job.job_title || 'Job Title Not Available'}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                    {match.job.job_type && (
+                      <>
+                        <span className="capitalize">{match.job.job_type}</span>
+                        {(match.job.salary_range || match.job.experience_level) && (
+                          <span className="text-gray-400">•</span>
+                        )}
+                      </>
+                    )}
+                    {match.job.salary_range && (
+                      <>
+                        <span>{match.job.salary_range}</span>
+                        {match.job.experience_level && (
+                          <span className="text-gray-400">•</span>
+                        )}
+                      </>
+                    )}
+                    {match.job.experience_level && (
+                      <span>{match.job.experience_level} preferred</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Right side: Application Link Button */}
+              <div className="flex-shrink-0">
+                <a
+                  href={match.job.job_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Apply Now</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Upgrade Modal */}
       {userEmail && (
         <UpgradeModal
@@ -875,5 +784,11 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   );
 };
 
-export const MatchCard = memo(MatchCardComponent);
+// Use a custom comparison function to ensure re-renders when match changes
+export const MatchCard = memo(MatchCardComponent, (prevProps, nextProps) => {
+  // Only prevent re-render if match ID is the same
+  return prevProps.match.id === nextProps.match.id && 
+         prevProps.isPremium === nextProps.isPremium &&
+         prevProps.userEmail === nextProps.userEmail;
+});
 

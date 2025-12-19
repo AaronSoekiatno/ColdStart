@@ -138,20 +138,20 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
-        
+
         // If upgrade is required, trigger the upgrade modal instead of showing error
         if (errorData.upgradeRequired && onUpgradeRequired) {
           onUpgradeRequired();
           setIsUploading(false);
           return;
         }
-        
+
         throw new Error(errorData.error || 'Upload failed');
       }
 
       const data = await response.json();
       setUploadStatus('success');
-      
+
       // If user is not authenticated, store resume data in sessionStorage for later use
       // Check if data was saved to database
       if (!data.savedToDatabase && !isAuthenticated && file) {
@@ -194,7 +194,7 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
             fileSize: file.file.size,
             fileBase64: fileBase64,
           };
-          
+
           try {
             sessionStorage.setItem('pendingResumeData', JSON.stringify(resumeData));
             console.log('Stored resume data in sessionStorage for later use');
@@ -205,7 +205,7 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
           console.error('Failed to convert file to base64:', error);
         });
       }
-      
+
       setFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -313,11 +313,11 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
           </div>
 
           {/* Warning about upload time */}
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/30 rounded-xl p-4">
+          <div className="bg-black border border-gray-800 rounded-xl p-4 shadow-lg">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-800 dark:text-amber-300">
-                <span className="font-semibold">Note:</span> Resume upload and processing may take up to 30 seconds. Please do not close this window during upload.
+              <AlertCircle className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-white">
+                <span className="font-bold">Note:</span> Resume upload and processing may take up to 30 seconds. Please do not close this window during upload.
               </p>
             </div>
           </div>

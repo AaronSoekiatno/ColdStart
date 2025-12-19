@@ -11,7 +11,7 @@ import {
   type ResumeProcessingResult,
 } from './utils';
 import { upsertCandidate, findMatchingStartups } from '@/lib/pinecone';
-import { saveCandidate, saveMatches, saveStartup, isSubscribed, findStartupIdByName, findStartupIdsByNames, getCandidate, getResumeCountForCandidate, createResume } from '@/lib/supabase';
+import { saveCandidate, saveMatches, saveStartup, findStartupIdByName, findStartupIdsByNames, getCandidate, getResumeCountForCandidate, createResume } from '@/lib/supabase';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
@@ -380,25 +380,8 @@ export async function POST(request: NextRequest) {
     // Get optional resume name from form data
     const resumeName = formData.get('resumeName') as string | null;
 
-    // Check resume upload limits for free users
-    if (isAuthenticated && accountEmail) {
-      const existingCandidate = await getCandidate(accountEmail);
-      if (existingCandidate) {
-        const isPremium = isSubscribed(existingCandidate);
-        // Free users can only have 1 resume - check count in resumes table
-        const resumeCount = await getResumeCountForCandidate(existingCandidate.id);
-        if (!isPremium && resumeCount >= 1) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: 'Free plan allows only one uploaded resume. Upgrade to Premium for unlimited resumes.',
-              upgradeRequired: true,
-            },
-            { status: 403 }
-          );
-        }
-      }
-    }
+    // Resume upload limits temporarily removed - all users can upload multiple resumes
+    // TODO: Re-implement premium-based resume limits if needed in the future
 
     const file = formData.get('resume') as File | null;
 

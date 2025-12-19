@@ -86,10 +86,10 @@ export function DemoMatchCard() {
             </button>
           </div>
 
-          {/* Generate Email Button */}
+          {/* Contact Founder Button */}
           <button className="inline-flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium shadow-sm hover:from-blue-400 hover:to-indigo-400 transition">
             <Sparkles className="w-3 h-3" />
-            Generate Email
+            Contact Founder
           </button>
         </div>
 

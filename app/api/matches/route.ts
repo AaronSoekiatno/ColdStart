@@ -42,10 +42,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get candidate ID
+    // Get candidate ID and role preferences
     const { data: candidate } = await supabaseAdmin
       .from('candidates')
-      .select('id')
+      .select('id, role_type')
       .eq('email', user.email)
       .single();
 
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    const { count: totalCount } = await supabaseAdmin
+    let { count: totalCount } = await supabaseAdmin
       .from('matches')
       .select('id', { count: 'exact', head: true })
       .eq('candidate_id', candidate.id);
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     // Get matches for sorting (limit to first 200 to avoid performance issues)
     // This ensures page 1 users see matches with jobs, while keeping query fast
     const fetchLimit = Math.max(200, offset + limit);
-    const { data: allMatches, error: matchError } = await supabaseAdmin
+    let { data: allMatches, error: matchError } = await supabaseAdmin
       .from('matches')
       .select('id, score, matched_at, startup_id')
       .eq('candidate_id', candidate.id)
@@ -77,6 +77,18 @@ export async function GET(request: NextRequest) {
         { error: `Failed to load matches: ${matchError.message}` },
         { status: 500 }
       );
+    }
+
+    // If no matches found, try to find instant matches based on onboarding data
+    if (!allMatches || allMatches.length === 0) {
+      console.log('No pre-computed matches found. Attempting instant matching...');
+      const instantMatches = await findInstantMatches(candidate, limit);
+      
+      if (instantMatches.length > 0) {
+        // Use instant matches
+        allMatches = instantMatches;
+        totalCount = instantMatches.length;
+      }
     }
 
     if (!allMatches || allMatches.length === 0) {
@@ -101,21 +113,39 @@ export async function GET(request: NextRequest) {
       )
     );
 
-    // Check which startups have jobs with job_url
+    // Fetch all jobs for startups in one query
+    const jobsByStartupId: Record<string, Array<{
+      job_title: string;
+      job_url: string;
+      job_type?: string;
+      salary_range?: string;
+      experience_level?: string;
+    }>> = {};
     const startupsWithJobs = new Set<string>();
+    
     if (startupIds.length > 0) {
-      const { data: jobsData } = await supabaseAdmin
+      const { data: allJobs, error: jobsError } = await supabaseAdmin
         .from('jobs')
-        .select('startup_id')
+        .select('startup_id, job_title, job_url, job_type, salary_range, experience_level')
         .in('startup_id', startupIds)
         .not('job_url', 'is', null);
 
-      if (jobsData) {
-        jobsData.forEach(job => {
+      if (!jobsError && allJobs) {
+        for (const job of allJobs) {
           if (job.startup_id) {
+            if (!jobsByStartupId[job.startup_id]) {
+              jobsByStartupId[job.startup_id] = [];
+            }
+            jobsByStartupId[job.startup_id].push({
+              job_title: job.job_title,
+              job_url: job.job_url,
+              job_type: job.job_type || undefined,
+              salary_range: job.salary_range || undefined,
+              experience_level: job.experience_level || undefined,
+            });
             startupsWithJobs.add(job.startup_id);
           }
-        });
+        }
       }
     }
 
@@ -260,14 +290,71 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Join matches with startup data and add has_job_listings flag
-    const matches = rawMatches.map((m) => ({
-      id: m.id,
-      score: m.score,
-      matched_at: m.matched_at,
-      startup: startupsById[m.startup_id] ?? null,
-      has_job_listings: m.startup_id ? startupsWithJobs.has(m.startup_id) : false,
-    }));
+    // Role matching patterns for finding best job match
+    const rolePatterns: { [key: string]: string[] } = {
+      'pm': ['product manager', 'pm', 'product lead', 'product owner', 'product'],
+      'swe': ['software engineer', 'swe', 'engineer', 'software developer', 'developer'],
+      'sde': ['software development engineer', 'sde', 'software engineer', 'developer', 'engineer'],
+      'full stack': ['full stack', 'fullstack', 'full-stack', 'software engineer', 'swe', 'engineer'],
+      'frontend': ['frontend', 'front-end', 'front end', 'ui engineer', 'software engineer', 'engineer', 'react', 'vue', 'angular'],
+      'backend': ['backend', 'back-end', 'back end', 'server', 'api', 'software engineer', 'engineer'],
+      'ml': ['machine learning', 'ml engineer', 'ml', 'ai engineer', 'data scientist', 'deep learning'],
+      'ai': ['ai engineer', 'artificial intelligence', 'ai', 'machine learning', 'ml', 'deep learning'],
+      'data science': ['data scientist', 'data science', 'data engineer', 'ml engineer', 'analytics', 'data analyst'],
+      'devops': ['devops', 'dev ops', 'infrastructure', 'site reliability', 'sre', 'platform engineer', 'cloud engineer'],
+      'mobile': ['mobile', 'ios', 'android', 'react native', 'flutter', 'swift', 'kotlin'],
+      'security': ['security', 'infosec', 'cybersecurity', 'appsec', 'security engineer', 'secops'],
+      'qa': ['qa', 'quality assurance', 'test', 'sdet', 'test engineer', 'quality engineer', 'testing'],
+      'design': ['designer', 'design', 'visual designer', 'ui designer', 'ux designer', 'graphic designer'],
+      'product design': ['product designer', 'product design', 'ux designer', 'ui/ux', 'ux/ui'],
+    };
+
+    // Function to find best matching job based on role preferences
+    const findBestJob = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>) => {
+      if (jobs.length === 0) return null;
+      
+      const roleTypes = candidate.role_type || [];
+      if (roleTypes.length === 0) return jobs[0]; // No preferences, return first job
+
+      for (const job of jobs) {
+        const titleLower = job.job_title.toLowerCase();
+
+        for (const roleType of roleTypes) {
+          const roleLower = roleType.toLowerCase();
+          const patterns = rolePatterns[roleLower] || [roleLower];
+
+          for (const pattern of patterns) {
+            if (titleLower.includes(pattern)) {
+              return job;
+            }
+          }
+        }
+      }
+
+      return jobs[0]; // Fallback to first job if no match found
+    };
+
+    // Join matches with startup data and add job data
+    const matches = rawMatches.map((m) => {
+      const startup = startupsById[m.startup_id] ?? null;
+      const jobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
+      const bestJob = findBestJob(jobs);
+
+      return {
+        id: m.id,
+        score: m.score,
+        matched_at: m.matched_at,
+        startup: startup,
+        has_job_listings: jobs.length > 0,
+        job: bestJob ? {
+          job_title: bestJob.job_title,
+          job_url: bestJob.job_url,
+          job_type: bestJob.job_type,
+          salary_range: bestJob.salary_range,
+          experience_level: bestJob.experience_level,
+        } : null,
+      };
+    });
 
     const totalPages = Math.ceil((totalCount || 0) / limit);
     const hasMore = page < totalPages;
@@ -288,6 +375,147 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch matches' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Find instant matches for a candidate based on their onboarding preferences
+ * This queries the jobs table directly to find relevant roles
+ */
+async function findInstantMatches(candidate: any, limit: number): Promise<any[]> {
+  try {
+    if (!supabaseAdmin) return [];
+
+    const jobType = candidate.job_type;
+    const roleTypes = candidate.role_type || [];
+    const yearsOfExperience = candidate.years_of_experience;
+    
+    if (!roleTypes.length) return [];
+
+    console.log('Finding instant matches for:', { jobType, roleTypes, yearsOfExperience });
+
+    // Build query for jobs
+    let query = supabaseAdmin
+      .from('jobs')
+      .select('startup_id, job_title, job_type')
+      .not('startup_id', 'is', null);
+
+    // Filter by job type if specified
+    if (jobType) {
+      // Map 'full-time'/etc to 'fulltime' if needed, or query both
+      // The jobs table seems to use 'fulltime' based on scraper
+      // Candidate table uses 'full-time'
+      // Map 'full-time'/etc to database values
+      // DB has 'Full-time' and 'Contract' (title case)
+      // Frontend sends 'full-time', 'part-time', 'internship'
+      
+      if (jobType === 'full-time') {
+         query = query.ilike('job_type', '%Full-time%');
+      } else if (jobType === 'part-time') {
+         query = query.ilike('job_type', '%Part-time%');
+      } else if (jobType === 'internship') {
+         // Database currently doesn't seem to have explicit 'Internship' type in checked sample
+         // but logic should search for it or look in title as fallback
+         query = query.or(`job_type.ilike.%Intern%,job_title.ilike.%Intern%`);
+      } else {
+         const normalizedJobType = jobType.replace('-', ' '); 
+         query = query.ilike('job_type', `%${normalizedJobType}%`);
+      }
+    }
+
+    // Filter by roles (OR condition)
+    if (roleTypes.length > 0) {
+      // Create an OR filter for job_role or job_title
+      // e.g. job_role.ilike.%SWE%,job_role.ilike.%Backend%
+      const roleConditions = roleTypes.map((role: string) => {
+        // Map common roles to search terms
+        const term = role === 'SWE' ? 'Software Engineer' :
+                     role === 'SDE' ? 'Software Developer' :
+                     role === 'PM' ? 'Product Manager' :
+                     role;
+        return `job_title.ilike.%${term}%`;
+      }).join(',');
+      
+      query = query.or(roleConditions);
+    }
+
+    // Filter by Years of Experience / Seniority
+    if (yearsOfExperience) {
+      if (yearsOfExperience === '5-10' || yearsOfExperience === '10-plus') {
+        // Prefer Senior roles
+        // We can't easily do a "prefer" sort with basic Supabase query without RPC, 
+        // but we can try to filter OR just let title match handle it if we add "Senior" to search terms.
+        // For now, let's try to query for Senior titles explicitly if possible, or just log it.
+        // Better strategy: Exclude "Intern" or "Junior" unless they want that.
+        query = query.not('job_title', 'ilike', '%Intern%');
+        query = query.not('job_title', 'ilike', '%Junior%');
+      } else if (yearsOfExperience === 'no-experience' || yearsOfExperience === 'less-than-1' || yearsOfExperience === '1-2') {
+        // Exclude Senior/Lead/Staff roles
+        // Use a filter on job_title
+        query = query.not('job_title', 'ilike', '%Senior%');
+        query = query.not('job_title', 'ilike', '%Sr.%');
+        query = query.not('job_title', 'ilike', '%Lead%');
+        query = query.not('job_title', 'ilike', '%Staff%');
+        query = query.not('job_title', 'ilike', '%Principal%');
+      }
+    }
+
+    // Get jobs (limit to 50 significant matches)
+    const { data: jobs, error } = await query.limit(50);
+
+    if (error) {
+      console.error('Error querying jobs for instant match:', error);
+      return [];
+    }
+
+    if (!jobs || jobs.length === 0) {
+      return [];
+    }
+
+    // Group by startup and create unique matches
+    const startupIds = new Set<string>();
+    const matchesToInsert: any[] = [];
+
+    for (const job of jobs) {
+      if (job.startup_id && !startupIds.has(job.startup_id)) {
+        startupIds.add(job.startup_id);
+        
+        matchesToInsert.push({
+          candidate_id: candidate.id,
+          startup_id: job.startup_id,
+          score: 0.85, // High default score for exact role match
+          matched_at: new Date().toISOString()
+        });
+
+        if (matchesToInsert.length >= limit * 2) break; // Stop when we have enough
+      }
+    }
+
+    if (matchesToInsert.length === 0) return [];
+
+    console.log(`Persisting ${matchesToInsert.length} instant matches to DB...`);
+
+    // Persist matches to database
+    // validation: ensure candidate.id is present
+    if (!candidate.id) {
+       console.error('No candidate ID provided for instant matches');
+       return [];
+    }
+
+    const { data: insertedMatches, error: insertError } = await supabaseAdmin
+      .from('matches')
+      .upsert(matchesToInsert, { onConflict: 'candidate_id,startup_id' })
+      .select();
+
+    if (insertError) {
+      console.error('Error persisting instant matches:', insertError);
+      return [];
+    }
+
+    return insertedMatches || [];
+  } catch (error) {
+    console.error('Exception in findInstantMatches:', error);
+    return [];
   }
 }
 

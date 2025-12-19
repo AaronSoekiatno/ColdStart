@@ -39,13 +39,9 @@ export function ResumePageContent({ resumes, isPremium, isNewUser = false, prima
   }, []);
 
   const handleUploadClick = () => {
-    // Free users can only have 1 resume
-    // If they already have 1 or more, show upgrade modal
-    if (!isPremium && resumes.length >= 1) {
-      setShowUpgradeModal(true);
-    } else {
-      setShowUploadModal(true);
-    }
+    // Resume upload limits temporarily removed - all users can upload multiple resumes
+    // TODO: Re-implement premium-based resume limits if needed in the future
+    setShowUploadModal(true);
   };
 
   const handleUploadSuccess = () => {

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { jobType, roleTypes } = await request.json();
+    const { jobType, roleTypes, yearsOfExperience } = await request.json();
 
     if (!jobType || !['full-time', 'part-time', 'internship'].includes(jobType)) {
       return NextResponse.json(
@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         skills: '',
         job_type: jobType,
         role_type: roleTypes,
+        years_of_experience: yearsOfExperience,
       });
       
       console.log('Created new candidate during onboarding:', {
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
         .update({ 
           job_type: jobType,
           role_type: roleTypes,
+          years_of_experience: yearsOfExperience,
         })
         .eq('email', user.email);
 

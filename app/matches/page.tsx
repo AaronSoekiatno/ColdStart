@@ -14,6 +14,11 @@ interface MatchRecord {
   score: number;
   matched_at: string;
   has_job_listings?: boolean;
+  job?: {
+    job_url?: string;
+    job_title?: string;
+    job_type?: string;
+  } | null;
   startup: {
     id?: string;
     name: string;
@@ -199,7 +204,14 @@ export default function MatchesPage() {
     }
   }, [visibleMatches.length, currentMatchIndex]);
 
-  // Preload images for adjacent cards to improve UX
+  // Open upgrade modal when free user reaches the limit
+  useEffect(() => {
+    if (!isPremium && currentMatchIndex === FREE_MATCH_LIMIT - 1 && hiddenMatchCount > 0) {
+      setShowUpgradeModal(true);
+    }
+  }, [currentMatchIndex, isPremium, hiddenMatchCount]);
+
+  // Preload images for current and adjacent cards
   useEffect(() => {
     const preloadImages = (matchIndex: number) => {
       const match = visibleMatches[matchIndex];
@@ -229,22 +241,17 @@ export default function MatchesPage() {
       });
     };
 
-      // Preload current, next, and previous cards
-      if (visibleMatches.length > 0) {
-        // Preload current card
-        preloadImages(currentMatchIndex);
-        
-        // Preload previous card
-        if (currentMatchIndex > 0) {
-          preloadImages(currentMatchIndex - 1);
-        }
-        
-        // Preload next card
-        if (currentMatchIndex < visibleMatches.length - 1) {
-          preloadImages(currentMatchIndex + 1);
-        }
+    // Preload images for current, next, and previous cards
+    if (visibleMatches.length > 0) {
+      preloadImages(currentMatchIndex);
+      if (currentMatchIndex > 0) {
+        preloadImages(currentMatchIndex - 1);
       }
-    }, [currentMatchIndex, visibleMatches]);
+      if (currentMatchIndex < visibleMatches.length - 1) {
+        preloadImages(currentMatchIndex + 1);
+      }
+    }
+  }, [currentMatchIndex, visibleMatches]);
 
   if (isLoading) {
     return (
@@ -307,15 +314,11 @@ export default function MatchesPage() {
               {/* Single match card display */}
               {visibleMatches[currentMatchIndex] && (
                 <div key={visibleMatches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard match={visibleMatches[currentMatchIndex]} isPremium={isPremium} userEmail={user?.email || ''} />
-                </div>
-              )}
-              {/* Show upgrade prompt if user has reached free limit */}
-              {!isPremium && hiddenMatchCount > 0 && currentMatchIndex === FREE_MATCH_LIMIT - 1 && (
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-gray-600 mb-2">
-                    You've viewed {FREE_MATCH_LIMIT} matches. Upgrade to see {hiddenMatchCount} more!
-                  </p>
+                  <MatchCard 
+                    match={visibleMatches[currentMatchIndex]} 
+                    isPremium={isPremium} 
+                    userEmail={user?.email || ''}
+                  />
                 </div>
               )}
             </div>
