@@ -73,10 +73,11 @@ export async function sendWaitlistEmail(
       customArgs: {
         category: 'waitlist',
       },
+      // Disable click tracking so links are not rewritten to SendGrid tracking URLs
       trackingSettings: {
         clickTracking: {
-          enable: true,
-          enableText: true,
+          enable: false,
+          enableText: false,
         },
         // Keep open tracking off by default to mirror your Resend strategy
         openTracking: {
