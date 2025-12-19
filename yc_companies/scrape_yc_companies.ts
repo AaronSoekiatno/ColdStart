@@ -73,6 +73,7 @@ interface YCPageData {
   linkedInCompanyUrl?: string | null; // Constructed LinkedIn URL for future enrichment
   tags?: string[]; // Technology/skill tags (excluding locations)
   launchDate?: string; // Launch/founded date (e.g., "2024", "Jan 2024", "2024-01-01")
+  companyLogo?: string; // Company logo URL from YC page
 }
 
 interface EnrichedYCData extends YCCompany {
@@ -305,6 +306,53 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
         location: '',
         oneLineSummary: '',
       };
+
+      // ============================================
+      // 0. EXTRACT COMPANY LOGO
+      // ============================================
+      // YC company pages have logos near the company name/header
+      // Try multiple approaches to find the logo
+      const logoSelectors = [
+        'img[alt*="logo" i]',
+        'img[src*="logo"]',
+        'img[src*="small_logos"]',
+        'header img',
+        '.company-logo img',
+        '[class*="logo"] img',
+        'img[class*="logo"]',
+      ];
+
+      for (const selector of logoSelectors) {
+        const logoImg = document.querySelector(selector);
+        if (logoImg instanceof HTMLImageElement) {
+          const src = logoImg.src || logoImg.getAttribute('data-src') || '';
+
+          // Validate it's actually a logo (not an icon or other image)
+          if (src &&
+              !src.includes('icon') &&
+              !src.includes('favicon') &&
+              (src.includes('logo') || src.includes('small_logos'))) {
+            data.companyLogo = src;
+            break;
+          }
+        }
+      }
+
+      // If no logo found with specific selectors, try finding first image near h1
+      if (!data.companyLogo) {
+        const h1 = document.querySelector('h1');
+        if (h1) {
+          // Look for image before or after h1, or in the same parent container
+          const parent = h1.parentElement;
+          const nearbyImg = parent?.querySelector('img');
+          if (nearbyImg instanceof HTMLImageElement) {
+            const src = nearbyImg.src || nearbyImg.getAttribute('data-src') || '';
+            if (src && !src.includes('icon') && !src.includes('favicon')) {
+              data.companyLogo = src;
+            }
+          }
+        }
+      }
 
       // ============================================
       // 1. EXTRACT FOUNDERS WITH DESCRIPTIONS
@@ -2380,6 +2428,147 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
 }
 
 /**
+ * Search YC directory to find company URL from company name
+ * Returns the full YC URL and slug if found
+ */
+async function findYCCompanyUrl(
+  page: Page,
+  companyName: string
+): Promise<{ ycUrl: string; slug: string; logo?: string } | null> {
+  try {
+    console.log(`   🔍 Searching YC directory for: ${companyName}`);
+
+    // Navigate to YC companies directory with search
+    const searchUrl = `https://www.ycombinator.com/companies?query=${encodeURIComponent(companyName)}`;
+    await page.goto(searchUrl, {
+      waitUntil: 'networkidle2',
+      timeout: 30000
+    });
+
+    // Wait for search results to load
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Extract company results from the search page
+    const searchResults = await page.evaluate((searchName) => {
+      const results: Array<{ name: string; slug: string; url: string; logo?: string }> = [];
+
+      // YC uses different selectors - try multiple approaches
+
+      // Approach 1: Look for company card/link elements
+      const companyLinks = Array.from(document.querySelectorAll('a[href*="/companies/"]'));
+
+      for (const link of companyLinks) {
+        const href = link.getAttribute('href');
+        if (!href || !href.includes('/companies/')) continue;
+
+        // Extract slug from URL
+        const match = href.match(/\/companies\/([^/?#]+)/);
+        if (!match) continue;
+
+        const slug = match[1];
+
+        // Get company name from the link or nearby text
+        const nameElement = link.querySelector('[class*="name"]') ||
+                           link.querySelector('h3') ||
+                           link.querySelector('strong') ||
+                           link;
+        const name = nameElement?.textContent?.trim() || '';
+
+        // Try to find logo image
+        const logoImg = link.querySelector('img');
+        const logo = logoImg?.src || logoImg?.getAttribute('data-src') || undefined;
+
+        if (name) {
+          results.push({
+            name,
+            slug,
+            url: `https://www.ycombinator.com/companies/${slug}`,
+            logo
+          });
+        }
+      }
+
+      // Approach 2: If no results, try finding company data from the page structure
+      if (results.length === 0) {
+        // YC might have the data in a different structure
+        const allLinks = Array.from(document.querySelectorAll('a'));
+        for (const link of allLinks) {
+          const href = link.getAttribute('href');
+          if (href?.includes('/companies/')) {
+            const match = href.match(/\/companies\/([^/?#]+)/);
+            if (match) {
+              const slug = match[1];
+              const name = link.textContent?.trim() || '';
+
+              // Find associated logo
+              const parent = link.closest('div');
+              const logoImg = parent?.querySelector('img');
+              const logo = logoImg?.src || logoImg?.getAttribute('data-src') || undefined;
+
+              results.push({
+                name,
+                slug,
+                url: `https://www.ycombinator.com/companies/${slug}`,
+                logo
+              });
+            }
+          }
+        }
+      }
+
+      return results;
+    }, companyName);
+
+    if (searchResults.length === 0) {
+      console.log(`   ❌ No results found for: ${companyName}`);
+      return null;
+    }
+
+    console.log(`   Found ${searchResults.length} result(s)`);
+
+    // Find the best match (exact match or first result)
+    const normalizedSearch = companyName.toLowerCase().trim();
+    let bestMatch = searchResults.find(r =>
+      r.name.toLowerCase().trim() === normalizedSearch
+    );
+
+    // If no exact match, try fuzzy matching (remove common suffixes/prefixes)
+    if (!bestMatch) {
+      const cleanSearch = normalizedSearch
+        .replace(/\s+(inc|llc|ltd|corp|corporation)\.?$/i, '')
+        .trim();
+
+      bestMatch = searchResults.find(r => {
+        const cleanName = r.name.toLowerCase().trim()
+          .replace(/\s+(inc|llc|ltd|corp|corporation)\.?$/i, '')
+          .trim();
+        return cleanName === cleanSearch ||
+               cleanName.includes(cleanSearch) ||
+               cleanSearch.includes(cleanName);
+      });
+    }
+
+    // If still no match, use the first result
+    if (!bestMatch) {
+      console.log(`   ⚠️  No exact match, using first result: ${searchResults[0].name}`);
+      bestMatch = searchResults[0];
+    } else {
+      console.log(`   ✓ Found match: ${bestMatch.name}`);
+    }
+
+    return {
+      ycUrl: bestMatch.url,
+      slug: bestMatch.slug,
+      logo: bestMatch.logo
+    };
+
+  } catch (error) {
+    console.error(`   ❌ Error searching for ${companyName}: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
+}
+
+/**
  * Get already processed company links from Supabase
  */
 async function getAlreadyProcessedLinks(): Promise<Set<string>> {
@@ -2551,16 +2740,18 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       founder_backgrounds?: string;
       founders_pfp?: string[];
       yc_description?: string;
+      company_logo?: string;
     } = {
       // Founder information
       founder_names: founderNames || undefined,
       founder_linkedin: founderLinkedIn || undefined,
       founder_twitter_urls: founderTwitterUrls || undefined,
-      
+
       // Company information
       company_twitter_url: pageData.companyTwitterUrl || undefined,
       website: pageData.website || undefined,
       team_size: pageData.teamSize || undefined,
+      company_logo: pageData.companyLogo || undefined,
 
       // Additional YC data
       founder_backgrounds: founderBackgrounds || undefined,
@@ -2597,7 +2788,10 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     if (pageData.ycDescription) {
       console.log(`   📝 Found YC description (${pageData.ycDescription.length} characters)`);
     }
-    
+    if (pageData.companyLogo) {
+      console.log(`   🖼️  Found company logo: ${pageData.companyLogo}`);
+    }
+
     const { data, error } = await supabase
       .from('startups3')
       .update(updateData)
@@ -2623,6 +2817,261 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
     return true;
   } catch (error) {
     console.error(`  ❌ Error updating Twitter data in Supabase: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+/**
+ * Store YC company data in Supabase when enriching from name (no existing yc_link)
+ * Updates by company name instead of yc_link
+ */
+async function storeYCCompanyByName(
+  companyName: string,
+  company: YCCompany,
+  pageData: YCPageData
+): Promise<boolean> {
+  try {
+    const normalized = normalizeCompanyData(company);
+
+    const slug = extractCompanySlug(normalized.ycLink);
+    if (!slug) {
+      console.warn('  ⚠️  Could not extract slug from YC link');
+      return false;
+    }
+
+    // Format founder data
+    const founderNames = pageData.founders
+      .map(f => `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim())
+      .filter(name => name && name.length > 0)
+      .join(', ');
+
+    const founderLinkedIn = pageData.founders
+      .map(f => f.linkedIn)
+      .filter(linkedin => linkedin && linkedin.trim().length > 0)
+      .join(', ');
+
+    const founderTwitterUrls = pageData.founders
+      .map(f => f.twitterUrl)
+      .filter(twitter => twitter && twitter.trim().length > 0)
+      .join(', ');
+
+    // Format founder descriptions
+    let founderBackgrounds = '';
+    if (pageData.founders && pageData.founders.length > 0) {
+      const descriptions = pageData.founders
+        .filter(f => f.description && f.description.trim().length > 0)
+        .map(f => {
+          if (!f.description) return '';
+          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();
+          if (fullName) {
+            return `${fullName}: ${f.description.trim()}`;
+          }
+          return f.description.trim();
+        })
+        .filter(desc => desc.length > 0);
+
+      if (descriptions.length > 0) {
+        founderBackgrounds = descriptions.join('\n\n');
+      }
+    }
+
+    // Collect and store founder profile pictures
+    const founderPfpUrls: string[] = [];
+    const founderNamesForPfp: string[] = [];
+
+    if (pageData.founders && pageData.founders.length > 0) {
+      pageData.founders.forEach(f => {
+        if (f.profilePicture && f.profilePicture.trim()) {
+          const fullName = `${f.firstName}${f.lastName ? ' ' + f.lastName : ''}`.trim();
+          founderPfpUrls.push(f.profilePicture.trim());
+          founderNamesForPfp.push(fullName || 'Unknown');
+        }
+      });
+    }
+
+    let permanentPfpUrls: string[] = [];
+    if (founderPfpUrls.length > 0) {
+      console.log(`   📥 Downloading and storing ${founderPfpUrls.length} founder profile picture(s)...`);
+      try {
+        permanentPfpUrls = await processImagesInParallel(
+          founderPfpUrls,
+          supabase,
+          slug,
+          founderNamesForPfp
+        );
+        console.log(`   ✅ Successfully stored ${permanentPfpUrls.length}/${founderPfpUrls.length} images`);
+      } catch (imgError) {
+        console.warn(`   ⚠️  Error storing profile pictures: ${imgError instanceof Error ? imgError.message : String(imgError)}`);
+      }
+    }
+
+    const foundersPfp = permanentPfpUrls.length > 0 ? permanentPfpUrls : undefined;
+
+    // Build update data including yc_link
+    const updateData: {
+      yc_link?: string;
+      founder_names?: string;
+      founder_linkedin?: string;
+      founder_twitter_urls?: string;
+      company_twitter_url?: string;
+      website?: string;
+      team_size?: string;
+      founder_backgrounds?: string;
+      founders_pfp?: string[];
+      yc_description?: string;
+      company_logo?: string;
+    } = {
+      // Add the yc_link that was missing!
+      yc_link: normalized.ycLink,
+
+      // Founder information
+      founder_names: founderNames || undefined,
+      founder_linkedin: founderLinkedIn || undefined,
+      founder_twitter_urls: founderTwitterUrls || undefined,
+
+      // Company information
+      company_twitter_url: pageData.companyTwitterUrl || undefined,
+      website: pageData.website || undefined,
+      team_size: pageData.teamSize || undefined,
+      company_logo: pageData.companyLogo || undefined,
+
+      // Additional YC data
+      founder_backgrounds: founderBackgrounds || undefined,
+      founders_pfp: foundersPfp,
+      yc_description: pageData.ycDescription || undefined,
+    };
+
+    // Log what we're updating
+    if (founderNames) {
+      console.log(`   👤 Found ${pageData.founders.length} founder(s): ${founderNames}`);
+    }
+    if (founderLinkedIn) {
+      console.log(`   🔗 Found ${pageData.founders.filter(f => f.linkedIn).length} founder LinkedIn profile(s)`);
+    }
+    if (founderTwitterUrls) {
+      console.log(`   🐦 Found ${pageData.founders.filter(f => f.twitterUrl).length} founder Twitter profile(s)`);
+    }
+    if (pageData.companyTwitterUrl) {
+      console.log(`   🐦 Company Twitter: ${pageData.companyTwitterUrl}`);
+    }
+    if (pageData.website) {
+      console.log(`   🌐 Website: ${pageData.website}`);
+    }
+    if (pageData.teamSize) {
+      console.log(`   👥 Team size: ${pageData.teamSize}`);
+    }
+    if (founderBackgrounds) {
+      console.log(`   👤 Found ${pageData.founders.filter(f => f.description).length} founder description(s)`);
+      console.log(`   💾 Updating founder_backgrounds with descriptions from YC page (${founderBackgrounds.length} characters)`);
+    }
+    if (permanentPfpUrls.length > 0) {
+      console.log(`   📸 Found ${founderPfpUrls.length} founder profile picture(s), stored ${permanentPfpUrls.length} permanently`);
+    }
+    if (pageData.companyLogo) {
+      console.log(`   🖼️  Found company logo: ${pageData.companyLogo}`);
+    }
+
+    // Update by name instead of yc_link (since yc_link doesn't exist yet)
+    const { data, error } = await supabase
+      .from('startups3')
+      .update(updateData)
+      .eq('name', companyName)
+      .is('yc_link', null)  // Only update if yc_link is still null
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        console.log('  ⚠️  Company not found in database, skipping...');
+        return false;
+      }
+      console.error(`  ❌ Supabase update error: ${error.message}`);
+      throw error;
+    }
+
+    if (data) {
+      const updatedFields = Object.keys(updateData).filter(key => updateData[key as keyof typeof updateData] !== undefined);
+      console.log(`   ✅ Successfully updated: ${updatedFields.join(', ')}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`  ❌ Error updating data in Supabase: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+/**
+ * Enrich company data from just a company name
+ * This is the main enrichment pipeline: Name → YC URL → Full Scrape
+ */
+async function enrichCompanyFromName(
+  page: Page,
+  companyName: string,
+  batch?: string
+): Promise<boolean> {
+  try {
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`📦 ENRICHING: ${companyName}`);
+    console.log(`${'='.repeat(80)}`);
+
+    // Step 1: Search YC directory to find the company URL
+    console.log('\n🔍 Step 1: Searching YC directory...');
+    const searchResult = await findYCCompanyUrl(page, companyName);
+
+    if (!searchResult) {
+      console.log(`❌ Could not find ${companyName} in YC directory`);
+      return false;
+    }
+
+    console.log(`✅ Found YC company: ${searchResult.ycUrl}`);
+    if (searchResult.logo) {
+      console.log(`   Logo: ${searchResult.logo}`);
+    }
+
+    // Step 2: Scrape the YC company page
+    console.log('\n📄 Step 2: Scraping YC company page...');
+    const pageData = await scrapeYCCompanyPage(page, searchResult.ycUrl);
+
+    if (!pageData) {
+      console.log(`❌ Failed to scrape data from ${searchResult.ycUrl}`);
+      return false;
+    }
+
+    // If no logo was found during search, use the one from page scraping
+    if (!searchResult.logo && pageData.companyLogo) {
+      searchResult.logo = pageData.companyLogo;
+    } else if (searchResult.logo && !pageData.companyLogo) {
+      pageData.companyLogo = searchResult.logo;
+    }
+
+    console.log(`✅ Successfully scraped company data`);
+
+    // Step 3: Store in Supabase
+    console.log('\n💾 Step 3: Storing in Supabase...');
+
+    // Create a YCCompany object for storage
+    const company: YCCompany = {
+      Company_Name: companyName,
+      YC_Link: searchResult.ycUrl,
+      company_description: pageData.oneLineSummary,
+      Batch: batch || '',
+      location: pageData.location,
+    };
+
+    // Use the new function that updates by name (not yc_link)
+    const success = await storeYCCompanyByName(companyName, company, pageData);
+
+    if (success) {
+      console.log(`✅ Successfully enriched and stored: ${companyName}`);
+    } else {
+      console.log(`⚠️  Data scraped but not stored (company may not exist in DB)`);
+    }
+
+    return success;
+
+  } catch (error) {
+    console.error(`❌ Error enriching ${companyName}: ${error instanceof Error ? error.message : String(error)}`);
     return false;
   }
 }
@@ -2879,17 +3328,140 @@ async function scrapeYCCompanies() {
   console.log('='.repeat(60));
 }
 
-// Run the scraper
-if (require.main === module) {
-  scrapeYCCompanies()
-    .then(() => {
-      console.log('\n✅ Process completed successfully!');
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('\n❌ Process failed:', error);
-      process.exit(1);
-    });
+/**
+ * Enrich multiple companies from just their names
+ * Usage: npm run enrich-names -- --names="Company1,Company2,Company3"
+ */
+async function enrichCompaniesFromNames() {
+  console.log('🚀 Starting Name-Based Company Enrichment...\n');
+
+  // Get command line arguments
+  const args = process.argv.slice(2);
+  const namesArg = args.find(arg => arg.startsWith('--names='))?.split('=')[1];
+
+  if (!namesArg) {
+    console.error('❌ Missing --names argument!');
+    console.log('\nUsage: npm run enrich-names -- --names="Company1,Company2,Company3"');
+    console.log('Example: npm run enrich-names -- --names="OpenAI,Stripe,Airbnb"');
+    process.exit(1);
+  }
+
+  // Parse company names (comma-separated)
+  const companyNames = namesArg.split(',').map(name => name.trim()).filter(name => name);
+
+  if (companyNames.length === 0) {
+    console.error('❌ No company names provided!');
+    process.exit(1);
+  }
+
+  console.log(`📋 Companies to enrich: ${companyNames.length}`);
+  companyNames.forEach((name, i) => console.log(`   ${i + 1}. ${name}`));
+  console.log('');
+
+  // Test Supabase connection
+  try {
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    console.log('✓ Connected to Supabase\n');
+  } catch (error) {
+    throw new Error(
+      `Cannot connect to Supabase: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  // Launch Puppeteer browser
+  console.log('🌐 Launching browser...');
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1920, height: 1080 });
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+  console.log('✓ Browser ready\n');
+
+  // Track results
+  const results = {
+    success: 0,
+    failed: 0,
+    notFound: 0,
+  };
+
+  // Enrich each company
+  for (let i = 0; i < companyNames.length; i++) {
+    const companyName = companyNames[i];
+    console.log(`\n[${ i + 1}/${companyNames.length}] Processing: ${companyName}`);
+
+    try {
+      const success = await enrichCompanyFromName(page, companyName);
+      if (success) {
+        results.success++;
+      } else {
+        results.notFound++;
+      }
+    } catch (error) {
+      console.error(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
+      results.failed++;
+    }
+
+    // Add delay between companies to avoid rate limiting
+    if (i < companyNames.length - 1) {
+      console.log('\n⏳ Waiting 3 seconds before next company...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+
+  // Close browser
+  await browser.close();
+
+  // Print summary
+  console.log('\n' + '='.repeat(80));
+  console.log('📊 ENRICHMENT SUMMARY');
+  console.log('='.repeat(80));
+  console.log(`Total companies: ${companyNames.length}`);
+  console.log(`✅ Successfully enriched: ${results.success}`);
+  console.log(`❌ Failed: ${results.failed}`);
+  console.log(`🔍 Not found in YC: ${results.notFound}`);
+  console.log('='.repeat(80));
 }
 
-export { scrapeYCCompanies, extractCompanySlug, scrapeYCCompanyPage };
+// Run the appropriate function based on script name or arguments
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const isEnrichNames = args.some(arg => arg.startsWith('--names='));
+
+  if (isEnrichNames) {
+    enrichCompaniesFromNames()
+      .then(() => {
+        console.log('\n✅ Name-based enrichment completed successfully!');
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('\n❌ Name-based enrichment failed:', error);
+        process.exit(1);
+      });
+  } else {
+    scrapeYCCompanies()
+      .then(() => {
+        console.log('\n✅ Process completed successfully!');
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('\n❌ Process failed:', error);
+        process.exit(1);
+      });
+  }
+}
+
+export {
+  scrapeYCCompanies,
+  extractCompanySlug,
+  scrapeYCCompanyPage,
+  enrichCompanyFromName,
+  enrichCompaniesFromNames,
+  findYCCompanyUrl
+};
