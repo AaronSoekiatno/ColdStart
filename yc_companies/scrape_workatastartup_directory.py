@@ -356,14 +356,38 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
                         if slug in seen_slugs:
                             continue
                         
-                        # Generate company name from slug
-                        company_name = ' '.join(word.capitalize() for word in slug.split('-'))
-                        
-                        # Try to extract batch from link text or nearby text
+                        # Extract company name from link text or parent element (preferred method)
+                        company_name = None
                         batch = None
                         job_count = None
+                        
                         try:
+                            # First, try to get company name from link text
                             text = link.text or ""
+                            
+                            # Clean up the text - remove common suffixes like "See all X jobs"
+                            # Look for the company name before "See all" or job count
+                            name_match = re.search(r'^([^\(]+?)(?:\s*\([SW]\d{2}\)|\s*See\s+all|\s*\d+\s*jobs?|$)', text, re.IGNORECASE)
+                            if name_match:
+                                potential_name = name_match.group(1).strip()
+                                # Only use if it looks like a real company name (not too short, not generic)
+                                if potential_name and len(potential_name) > 2 and potential_name.lower() not in ['see', 'all', 'jobs', 'job']:
+                                    company_name = potential_name
+                            
+                            # If we didn't find a good name in link text, try parent element
+                            if not company_name:
+                                try:
+                                    parent = link.find_element(By.XPATH, "./ancestor::div[1]")
+                                    if parent:
+                                        parent_text = parent.text if parent else ""
+                                        # Extract company name from parent (before batch or "See all")
+                                        parent_name_match = re.search(r'^([^\(]+?)(?:\s*\([SW]\d{2}\)|\s*See\s+all|\s*\d+\s*jobs?|$)', parent_text, re.IGNORECASE | re.MULTILINE)
+                                        if parent_name_match:
+                                            potential_name = parent_name_match.group(1).strip()
+                                            if potential_name and len(potential_name) > 2 and potential_name.lower() not in ['see', 'all', 'jobs', 'job']:
+                                                company_name = potential_name
+                                except:
+                                    pass
                             
                             # Extract batch (e.g., S25, W22)
                             batch_match = re.search(r'\(([SW]\d{2})\)', text)
@@ -388,13 +412,22 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
                                 except:
                                     pass
                         except Exception as e:
-                            pass  # Continue even if batch extraction fails
+                            pass  # Continue even if extraction fails
+                        
+                        # Fallback: Generate company name from slug if we couldn't extract it from text
+                        if not company_name:
+                            # Clean up slug-based name - remove numbers at the end that might be duplicates
+                            slug_parts = slug.split('-')
+                            # Remove trailing numbers (like "almond-2" -> "almond")
+                            if len(slug_parts) > 1 and slug_parts[-1].isdigit():
+                                slug_parts = slug_parts[:-1]
+                            company_name = ' '.join(word.capitalize() for word in slug_parts)
                         
                         # Add to seen URLs and slugs FIRST before adding to list (prevents duplicates)
                         seen_urls.add(company_url)
                         seen_slugs.add(slug)
                         
-                        # Save company to Supabase startups table immediately (incremental save during scrolling)
+                        # Save company to Supabase startups3 table immediately (incremental save during scrolling)
                         startup_id = None
                         if supabase_client:
                             try:
@@ -536,7 +569,7 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
         
         print(f"   ✅ Found {len(company_links)} unique companies")
         if supabase_client:
-            print(f"   💾 Saved {companies_saved_to_db} companies to Supabase database")
+            print(f"   💾 Saved {companies_saved_to_db} companies to startups3 table")
         
         if limit:
             company_links = company_links[:limit]
@@ -1201,7 +1234,7 @@ def company_has_jobs(company_name: str) -> bool:
 
 
 def find_or_create_startup(company_name: str, supabase_client: Client, batch: Optional[str] = None, description: Optional[str] = None) -> Optional[str]:
-    """Find existing startup or create new one. Returns startup ID."""
+    """Find existing startup or create new one in startups3 table. Returns startup ID."""
     import uuid
     
     # Try exact match
@@ -1223,8 +1256,7 @@ def find_or_create_startup(company_name: str, supabase_client: Client, batch: Op
     startup_data = {
         "id": new_id, 
         "name": company_name, 
-        "needs_enrichment": True,
-        "data_source": "workatastartup"
+        "needs_enrichment": True
     }
     
     if description:
@@ -1316,8 +1348,15 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
     
     try:
         # Scrape company data using ycombinator-scraper library
-        print(f"   🔍 Scraping company data from library...")
-        company_data = scraper_instance.scrape_company_data(company_url)
+        print(f"   🔍 Scraping company data from library for {company_name}...")
+        print(f"   📍 URL: {company_url}")
+        try:
+            company_data = scraper_instance.scrape_company_data(company_url)
+        except Exception as scrape_error:
+            print(f"   ❌ Error scraping company data: {scrape_error}")
+            import traceback
+            traceback.print_exc()
+            return 0
         
         if not company_data:
             print(f"   ⚠️  No data found")
@@ -1343,9 +1382,12 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
         # company_name, company_description, company_job_links, job_data
         company_description = company_data.company_description if hasattr(company_data, 'company_description') else None
 
-        # Get company name
-        if hasattr(company_data, 'company_name') and company_data.company_name:
-            company_name = company_data.company_name
+        # Get company name - prioritize the one from company_info (what we saved to DB)
+        # Only use scraper's company_name if we don't have one from company_info
+        if not company_name or company_name == "Unknown":
+            if hasattr(company_data, 'company_name') and company_data.company_name:
+                company_name = company_data.company_name
+                print(f"   📝 Using company name from scraper: {company_name}")
         
         # Extract batch from tags if available
         if hasattr(company_data, 'company_tags') and company_data.company_tags:
@@ -1405,7 +1447,11 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     else:
                         print(f"   📄 [{idx}/{len(job_links)}] Scraping job: {job_url}")
                     
-                    job_data = scraper_instance.scrape_job_data(job_url)
+                    try:
+                        job_data = scraper_instance.scrape_job_data(job_url)
+                    except Exception as job_error:
+                        print(f"      ❌ Error scraping job {job_url}: {job_error}")
+                        continue
                     if job_data:
                         # Get description from library
                         library_description = None
@@ -1482,6 +1528,15 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
         
         if limit and jobs:
             jobs = jobs[:limit]
+        
+        # Debug: Check if we have any jobs to save
+        if not jobs or len(jobs) == 0:
+            print(f"   ⚠️  WARNING: No jobs found for {company_name}!")
+            print(f"   📊 Jobs list length: {len(jobs) if jobs else 0}")
+            print(f"   📊 Job links length: {len(job_links) if job_links else 0}")
+            return 0  # Return 0 if no jobs found
+        
+        print(f"   📋 Processing {len(jobs)} jobs for {company_name}...")
         
         saved_count = 0
         for idx, job in enumerate(jobs, 1):
@@ -1715,7 +1770,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     "benefits": benefits,  # Extracted from description "Benefits" or "What we offer" section
                     "interview_process": interview_process,  # Extracted from description "Interview Process" section
                     "full_description": description,  # Full description kept as-is
-                    "startup_id": startup_id,
+                    # Note: startup_id removed - jobs table references 'startups' but we're using 'startups3'
                     # Note: yc_link removed - not in database schema
                 }
 
@@ -1726,17 +1781,29 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 check = supabase_client.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).limit(1).execute()
 
                 if not check.data:
-                    supabase_client.table("jobs").insert(db_job).execute()
-                    saved_count += 1
-                    print(f"   ✅ Saved job to jobs table: {db_job['job_title']}")
+                    try:
+                        result = supabase_client.table("jobs").insert(db_job).execute()
+                        saved_count += 1
+                        print(f"   ✅ Saved job #{saved_count} to jobs table: {db_job['job_title']}")
+                        if result.data:
+                            print(f"      📝 Inserted job ID: {result.data[0].get('id', 'N/A')}")
+                    except Exception as insert_error:
+                        print(f"   ❌ ERROR inserting job into database: {insert_error}")
+                        print(f"      Job data: {list(db_job.keys())}")
+                        import traceback
+                        traceback.print_exc()
+                        # Continue to next job instead of breaking
                 else:
                     print(f"   ⏭️  Skipped (exists): {db_job['job_title']}")
             except Exception as e:
-                print(f"   ❌ Error saving job: {e}")
+                print(f"   ❌ Error processing job {idx}: {e}")
                 import traceback
                 traceback.print_exc()
+                # Continue to next job
         
-        print(f"   ✅ Total: {saved_count} new jobs saved from {len(jobs)} jobs found")
+        print(f"   ✅ Total: {saved_count} new jobs saved to jobs table from {len(jobs)} jobs found")
+        if saved_count == 0 and len(jobs) > 0:
+            print(f"   ⚠️  WARNING: Found {len(jobs)} jobs but saved 0! All may have been duplicates or errors occurred.")
         return saved_count
         
     except Exception as e:
@@ -1823,6 +1890,7 @@ Examples:
     parser.add_argument("--skip-existing", action="store_true", default=True, help="Skip companies that already have jobs (default: True)")
     parser.add_argument("--no-skip-existing", dest="skip_existing", action="store_false", help="Process all companies even if they already have jobs (overrides --skip-existing)")
     parser.add_argument("--workers", type=int, default=8, help="Number of parallel workers (default: 8)")
+    parser.add_argument("--skip-directory", action="store_true", help="Skip directory scraping and get companies from startups3 table instead")
     
     args = parser.parse_args()
     
@@ -1845,15 +1913,55 @@ Examples:
         if args.skip_existing:
             print("⏭️  Skipping companies that already have jobs")
     
-    # Get company URLs from directory (saves to Supabase incrementally as we scroll)
-    # Get all companies first (or up to limit)
-    companies = get_company_urls_from_directory(limit, supabase_client=supabase)
-    
-    if not companies:
-        print("⚠️  No companies found")
-        return
-    
-    print(f"\n📊 Found {len(companies)} companies to process")
+    # Get companies - either from directory scraping or from database
+    if args.skip_directory:
+        print("📋 Getting companies from startups3 table (skipping directory scraping)...")
+        try:
+            # Get all companies from startups3 table
+            result = supabase.table("startups3").select("id, name, batch").execute()
+            if not result.data:
+                print("⚠️  No companies found in startups3 table")
+                return
+            
+            companies = []
+            for startup in result.data:
+                company_name = startup.get("name", "")
+                if not company_name:
+                    continue
+                
+                # Convert company name to slug format (basic conversion)
+                import re
+                slug = re.sub(r'[^\w\s-]', '', company_name.lower())
+                slug = re.sub(r'[-\s]+', '-', slug).strip('-')
+                company_url = f"https://www.workatastartup.com/companies/{slug}"
+                
+                companies.append({
+                    "company_url": company_url,
+                    "company_name": company_name,
+                    "batch": startup.get("batch"),
+                    "job_count": None,
+                    "startup_id": startup.get("id")
+                })
+            
+            if limit:
+                companies = companies[:limit]
+            
+            print(f"✅ Found {len(companies)} companies in startups3 table")
+        except Exception as e:
+            print(f"❌ Error getting companies from database: {e}")
+            import traceback
+            traceback.print_exc()
+            return
+    else:
+        # Get company URLs from directory (saves to Supabase incrementally as we scroll)
+        # Get all companies first (or up to limit)
+        companies = get_company_urls_from_directory(limit, supabase_client=supabase)
+        
+        if not companies:
+            print("⚠️  No companies found")
+            return
+        
+        print(f"\n📊 Found {len(companies)} companies to process")
     
     # Filter out companies that already have jobs if skip_existing is enabled
     if args.skip_existing:
