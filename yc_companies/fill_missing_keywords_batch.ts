@@ -287,7 +287,7 @@ async function fillMissingData(dryRun: boolean = false) {
           const errorMsg = error instanceof Error ? error.message : String(error);
           const errorStack = error instanceof Error ? error.stack : undefined;
           console.error(`   [${startup.name}] ❌ Error: ${errorMsg}`);
-          if (errorStack && errorMsg.includes('timeout') || errorMsg.includes('Navigation')) {
+          if (errorStack && (errorMsg.includes('timeout') || errorMsg.includes('Navigation'))) {
             console.error(`   [${startup.name}]    Stack: ${errorStack.split('\n').slice(0, 3).join('\n')}`);
           }
           return { success: false, startup: startup.name, error: errorMsg };

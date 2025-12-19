@@ -44,12 +44,12 @@ async function deleteAllStartupEmbeddings() {
     const stats = await index.describeIndexStats();
     const namespaceStats = stats.namespaces?.['startups'];
     
-    if (!namespaceStats || namespaceStats.vectorCount === 0) {
+    if (!namespaceStats || namespaceStats.recordCount === 0) {
       console.log('✅ Namespace is already empty');
       return;
     }
 
-    console.log(`   Found ${namespaceStats.vectorCount} vectors to delete`);
+    console.log(`   Found ${namespaceStats.recordCount} vectors to delete`);
     console.log('   ⚠️  Note: Pinecone doesn\'t provide a direct way to list all IDs.');
     console.log('   ⚠️  To delete all vectors, you can:');
     console.log('   1. Use Pinecone dashboard: Go to your index → Namespaces → startups → Delete');

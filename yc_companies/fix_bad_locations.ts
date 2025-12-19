@@ -220,7 +220,7 @@ async function fixBadLocations(dryRun: boolean = false) {
       // Valid locations usually have commas: "City, State" or "City, Country"
       // If there's no comma and multiple capitalized words, it might be a name
       const parts = loc.split(/\s+/);
-      const capitalizedParts = parts.filter(p => /^[A-Z][a-z]+$/.test(p));
+      const capitalizedParts = parts.filter((p: string) => /^[A-Z][a-z]+$/.test(p));
       if (capitalizedParts.length > 2 && !loc.includes(',')) {
         // More than 2 capitalized words without comma = likely has names
         return true;
