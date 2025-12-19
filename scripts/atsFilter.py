@@ -78,6 +78,37 @@ class ATSFilter:
             print(f"Error fetching resume full text: {str(e)}")
             return None
 
+    def get_candidate_role_types(self, candidate_id: str) -> Optional[List[str]]:
+        """
+        Fetch the role_type array for a candidate from Supabase
+
+        Args:
+            candidate_id: UUID of the candidate
+
+        Returns:
+            List of role types or None if not found
+        """
+        try:
+            response = self.supabase.table("candidates") \
+                .select("role_type") \
+                .eq("id", candidate_id) \
+                .single() \
+                .execute()
+
+            if response.data and response.data.get("role_type"):
+                role_types = response.data.get("role_type")
+                # Ensure it's a list
+                if isinstance(role_types, list):
+                    return role_types
+                elif isinstance(role_types, str):
+                    return [role_types]
+            
+            return None
+
+        except Exception as e:
+            print(f"Error fetching candidate role types: {str(e)}")
+            return None
+
     def extract_keywords(self, text: str) -> Set[str]:
         """
         Extract keywords from text using spaCy NLP pipeline:
@@ -126,6 +157,35 @@ class ATSFilter:
 
         return keywords
 
+    def calculate_job_title_similarity(self, job_title: str, role_types: List[str]) -> float:
+        """
+        Calculate semantic similarity between job title and candidate role types
+        Uses spaCy's word vectors for semantic matching
+
+        Args:
+            job_title: Job title from the job posting
+            role_types: List of role types from candidate profile
+
+        Returns:
+            Similarity score as percentage (0-100)
+        """
+        if not job_title or not role_types:
+            return 0.0
+
+        # Process job title with spaCy
+        job_doc = self.nlp(job_title.lower())
+
+        # Find maximum similarity across all role types
+        max_similarity = 0.0
+        for role in role_types:
+            role_doc = self.nlp(role.lower())
+            # spaCy's similarity returns 0.0 to 1.0
+            similarity = job_doc.similarity(role_doc)
+            max_similarity = max(max_similarity, similarity)
+
+        # Convert to percentage
+        return round(max_similarity * 100, 2)
+
     def match_keywords(self, resume_keywords: Set[str], job_keywords: Set[str]) -> Dict[str, any]:
         """
         Match keywords between resume and job requirements
@@ -155,16 +215,17 @@ class ATSFilter:
             "missing_keywords": sorted(list(job_keywords - resume_keywords))
         }
 
-    def filter_job_by_resume(self, candidate_id: str, job_requirements: str) -> Dict[str, any]:
+    def filter_job_by_resume(self, candidate_id: str, job_requirements: str, job_title: str = None) -> Dict[str, any]:
         """
-        Filter a job based on keyword matching with candidate's resume
+        Filter a job based on keyword matching and job title similarity with candidate's resume
 
         Args:
             candidate_id: UUID of the candidate
-            job_requirements: Job requirements text from jobs table
+            job_requirements: Job requirements text from jobs table (full_description)
+            job_title: Job title for semantic matching (optional)
 
         Returns:
-            Dictionary containing match results
+            Dictionary containing match results with weighted scoring
         """
         # Get resume text
         resume_text = self.get_resume_full_text(candidate_id)
@@ -180,12 +241,27 @@ class ATSFilter:
         job_keywords = self.extract_keywords(job_requirements)
 
         # Match keywords
-        match_results = self.match_keywords(resume_keywords, job_keywords)
+        keyword_match_results = self.match_keywords(resume_keywords, job_keywords)
+
+        # Calculate job title similarity if job_title is provided
+        job_title_similarity = 0.0
+        if job_title:
+            role_types = self.get_candidate_role_types(candidate_id)
+            if role_types:
+                job_title_similarity = self.calculate_job_title_similarity(job_title, role_types)
+
+        # Calculate weighted combined score
+        # Keywords: 70% weight, Job Title: 30% weight
+        keyword_percentage = keyword_match_results["match_percentage"]
+        combined_score = round((keyword_percentage * 0.7) + (job_title_similarity * 0.3), 2)
 
         return {
             "success": True,
             "candidate_id": candidate_id,
-            **match_results
+            "keyword_match_percentage": keyword_percentage,
+            "job_title_similarity": job_title_similarity,
+            "combined_score": combined_score,
+            **{k: v for k, v in keyword_match_results.items() if k != "match_percentage"}
         }
 
 

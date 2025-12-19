@@ -67,6 +67,7 @@ class FilterJobRequest(BaseModel):
     """Request model for filtering a single job"""
     candidate_id: str = Field(..., description="UUID of the candidate")
     job_requirements: str = Field(..., description="Job requirements text to match against")
+    job_title: Optional[str] = Field(None, description="Job title for semantic matching")
 
 
 class BatchFilterRequest(BaseModel):
@@ -79,11 +80,13 @@ class KeywordMatchResult(BaseModel):
     """Response model for keyword matching results"""
     success: bool
     candidate_id: str
+    keyword_match_percentage: float
+    job_title_similarity: float
+    combined_score: float
     matching_keywords: List[str]
     matching_count: int
     total_job_keywords: int
     total_resume_keywords: int
-    match_percentage: float
     missing_keywords: List[str]
 
 
@@ -155,7 +158,8 @@ async def filter_job(request: FilterJobRequest):
     try:
         result = ats_filter.filter_job_by_resume(
             request.candidate_id,
-            request.job_requirements
+            request.job_requirements,
+            request.job_title
         )
 
         if not result.get("success"):
@@ -204,11 +208,15 @@ async def filter_jobs_batch(request: BatchFilterRequest):
         # Extract resume keywords once
         resume_keywords = ats_filter.extract_keywords(resume_text)
 
+        # Fetch candidate role types once for job title matching
+        role_types = ats_filter.get_candidate_role_types(request.candidate_id)
+
         # Process all jobs
         results = []
         for job in request.jobs:
             job_id = job.get("id", "")
             job_requirements = job.get("requirements", "")
+            job_title = job.get("job_title", None)
 
             if not job_requirements:
                 continue
@@ -217,15 +225,27 @@ async def filter_jobs_batch(request: BatchFilterRequest):
             job_keywords = ats_filter.extract_keywords(job_requirements)
 
             # Match keywords
-            match_result = ats_filter.match_keywords(resume_keywords, job_keywords)
+            keyword_match_result = ats_filter.match_keywords(resume_keywords, job_keywords)
+
+            # Calculate job title similarity
+            job_title_similarity = 0.0
+            if job_title and role_types:
+                job_title_similarity = ats_filter.calculate_job_title_similarity(job_title, role_types)
+
+            # Calculate weighted combined score (70% keywords, 30% title)
+            keyword_percentage = keyword_match_result["match_percentage"]
+            combined_score = round((keyword_percentage * 0.7) + (job_title_similarity * 0.3), 2)
 
             results.append({
                 "job_id": job_id,
-                **match_result
+                "keyword_match_percentage": keyword_percentage,
+                "job_title_similarity": job_title_similarity,
+                "combined_score": combined_score,
+                **{k: v for k, v in keyword_match_result.items() if k != "match_percentage"}
             })
 
-        # Sort by match percentage (highest first)
-        results.sort(key=lambda x: x["match_percentage"], reverse=True)
+        # Sort by combined score (highest first)
+        results.sort(key=lambda x: x["combined_score"], reverse=True)
 
         return {
             "success": True,

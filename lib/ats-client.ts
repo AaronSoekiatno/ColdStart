@@ -8,6 +8,7 @@ const ATS_API_URL = process.env.ATS_API_URL || 'http://localhost:8000';
 export interface FilterJobRequest {
   candidate_id: string;
   job_requirements: string;
+  job_title?: string;
 }
 
 export interface BatchFilterRequest {
@@ -15,17 +16,20 @@ export interface BatchFilterRequest {
   jobs: Array<{
     id: string;
     requirements: string;
+    job_title?: string;
   }>;
 }
 
 export interface KeywordMatchResult {
   success: boolean;
   candidate_id: string;
+  keyword_match_percentage: number;
+  job_title_similarity: number;
+  combined_score: number;
   matching_keywords: string[];
   matching_count: number;
   total_job_keywords: number;
   total_resume_keywords: number;
-  match_percentage: number;
   missing_keywords: string[];
 }
 
@@ -34,11 +38,13 @@ export interface BatchFilterResult {
   candidate_id: string;
   results: Array<{
     job_id: string;
+    keyword_match_percentage: number;
+    job_title_similarity: number;
+    combined_score: number;
     matching_keywords: string[];
     matching_count: number;
     total_job_keywords: number;
     total_resume_keywords: number;
-    match_percentage: number;
     missing_keywords: string[];
   }>;
 }
@@ -216,7 +222,7 @@ export async function filterJobsOnResumeUpload(
     // Get active jobs from database - using full_description for comprehensive matching
     const { data: jobs, error: jobsError } = await supabase
       .from('jobs')
-      .select('id, full_description')
+      .select('id, full_description, job_title')
       .eq('is_active', true);
 
     if (jobsError || !jobs || jobs.length === 0) {
@@ -230,6 +236,7 @@ export async function filterJobsOnResumeUpload(
       jobs.map((job: any) => ({
         id: job.id,
         requirements: job.full_description || '', // Using full_description for richer keyword matching
+        job_title: job.job_title || '', // Include job title for semantic matching
       }))
     );
 
@@ -239,7 +246,7 @@ export async function filterJobsOnResumeUpload(
 
     // Filter by minimum match percentage and limit results
     const topMatches = results.results
-      .filter((match) => match.match_percentage >= minMatchPercentage)
+      .filter((match) => match.combined_score >= minMatchPercentage)
       .slice(0, maxResults);
 
     // Save matches to database if requested
@@ -247,7 +254,7 @@ export async function filterJobsOnResumeUpload(
       const matchRecords = topMatches.map((match) => ({
         candidate_id: candidateId,
         job_id: match.job_id,
-        match_percentage: match.match_percentage,
+        match_percentage: match.combined_score, // Use combined score for match percentage
         matching_keywords: match.matching_keywords,
         matching_count: match.matching_count,
         total_job_keywords: match.total_job_keywords,
