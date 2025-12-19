@@ -499,7 +499,7 @@ function GenerateEmailPageContent() {
                   </div>
                   {/* Persona selection - users must choose a style before an email is generated */}
                   <div className="mb-4 flex-shrink-0">
-                    <p className="text-[11px] text-gray-900 font-medium mb-1.5">
+                    <p className="text-[15px] text-gray-900 font-medium mb-1.5">
                       Choose an email style to generate your draft:
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -563,20 +563,17 @@ function GenerateEmailPageContent() {
                           await loadEmailPreview('genuine-fan');
                         }}
                         className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
-                          emailPersona === 'genuine-fan'
+                          !isPremium
+                            ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-pointer'
+                            : emailPersona === 'genuine-fan'
                             ? 'border-blue-500 bg-blue-50 text-gray-900'
                             : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className="font-semibold mb-0.5 flex items-center gap-1">
-                          <span>Genuine Fan</span>
-                          {!isPremium && (
-                            <span className="text-[9px] font-medium text-blue-500 uppercase">
-                              Premium
-                            </span>
-                          )}
+                        <div className="font-semibold mb-0.5">
+                          Genuine Fan
                         </div>
-                        <div className="text-[10px] text-gray-600">
+                        <div className={`text-[10px] ${!isPremium ? 'text-gray-400' : 'text-gray-600'}`}>
                           Show authentic interest and personal connection.
                         </div>
                       </button>
@@ -606,20 +603,17 @@ function GenerateEmailPageContent() {
                           await loadEmailPreview('value-first');
                         }}
                         className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs ${
-                          emailPersona === 'value-first'
+                          !isPremium
+                            ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-pointer'
+                            : emailPersona === 'value-first'
                             ? 'border-blue-500 bg-blue-50 text-gray-900'
                             : 'border-gray-200 bg-white text-gray-800 hover:border-blue-300 hover:bg-gray-50'
                         }`}
                       >
-                        <div className="font-semibold mb-0.5 flex items-center gap-1">
-                          <span>Value-First</span>
-                          {!isPremium && (
-                            <span className="text-[9px] font-medium text-blue-500 uppercase">
-                              Premium
-                            </span>
-                          )}
+                        <div className="font-semibold mb-0.5">
+                          Value-First
                         </div>
-                        <div className="text-[10px] text-gray-600">
+                        <div className={`text-[10px] ${!isPremium ? 'text-gray-400' : 'text-gray-600'}`}>
                           Lead with what you can bring to the table.
                         </div>
                       </button>

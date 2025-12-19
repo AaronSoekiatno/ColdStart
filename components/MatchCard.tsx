@@ -2,7 +2,7 @@
 
 import { memo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
-import { DollarSign, ExternalLink, Sparkles, Briefcase } from "lucide-react";
+import { DollarSign, ExternalLink, Sparkles, Briefcase, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "./UpgradeModal";
@@ -66,6 +66,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   // Track job listing loading state
   const [isLoadingJobListing, setIsLoadingJobListing] = useState(false);
+  // Track if user tried to contact without selecting a founder
+  const [showFounderSelectionError, setShowFounderSelectionError] = useState(false);
 
   if (!match.startup) {
     return null;
@@ -371,13 +373,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                 onClick={() => {
                   // Require founder selection if founders exist
                   if (founderNames.length > 0 && selectedFounderIndex === null) {
-                    toast({
-                      title: "Select a founder",
-                      description: "Please select a founder first before contacting a founder.",
-                      variant: "destructive",
-                    });
+                    setShowFounderSelectionError(true);
                     return;
                   }
+
+                  // Clear error state if founder is selected
+                  setShowFounderSelectionError(false);
 
                   if (match.startup?.id) {
                     const params = new URLSearchParams();
@@ -589,9 +590,16 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
         <div ref={foundersSectionRef} className="mt-4 sm:mt-6 md:mt-8">
           <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
             <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
-            <p className="text-xs sm:text-base text-gray-600">
-              Select a founder
-            </p>
+            {showFounderSelectionError ? (
+              <p className="text-xs sm:text-base text-red-600 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>Please select a founder first</span>
+              </p>
+            ) : (
+              <p className="text-xs sm:text-base text-gray-600">
+                Select a founder
+              </p>
+            )}
           </div>
           <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
             {/* Founder Cards - one for each founder */}
@@ -608,7 +616,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                   e.stopPropagation();
                 }
                 // Single selection only - toggle if clicking same, select if different
-                setSelectedFounderIndex(prev => prev === index ? null : index);
+                const newIndex = selectedFounderIndex === index ? null : index;
+                setSelectedFounderIndex(newIndex);
+                // Clear error state when a founder is selected
+                if (newIndex !== null) {
+                  setShowFounderSelectionError(false);
+                }
               };
               
               const handleCardClick = (e: React.MouseEvent) => {
