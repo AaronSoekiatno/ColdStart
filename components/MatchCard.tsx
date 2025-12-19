@@ -69,6 +69,10 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
+  // Track loaded images to show them once they're ready
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  // Track manual tab clicks to prevent scroll handler from overriding
+  const manualTabClickRef = useRef<{ tab: 'company' | 'apply'; timestamp: number } | null>(null);
 
   if (!match.startup) {
     return null;
@@ -234,6 +238,9 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     }
     
     if (ref.current) {
+      // Mark this as a manual tab click to prevent scroll handler from overriding
+      manualTabClickRef.current = { tab, timestamp: Date.now() };
+      
       // Calculate offset to account for sticky header (approximately 80px)
       const offset = 80;
       const elementPosition = ref.current.getBoundingClientRect().top + window.pageYOffset;
@@ -244,7 +251,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
         behavior: 'smooth'
       });
 
-      // Update active tab state
+      // Update active tab state immediately
       setActiveTab(tab);
     }
   };
@@ -254,6 +261,19 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   useEffect(() => {
     const handleScroll = () => {
       if (!companySectionRef.current) return;
+
+      // If a manual tab click happened recently (within 1 second), don't override it
+      if (manualTabClickRef.current) {
+        const timeSinceClick = Date.now() - manualTabClickRef.current.timestamp;
+        if (timeSinceClick < 1000) {
+          // Keep the manually selected tab active
+          setActiveTab(manualTabClickRef.current.tab);
+          return;
+        } else {
+          // Clear the manual click ref after 1 second
+          manualTabClickRef.current = null;
+        }
+      }
 
       // If no application section, always show company tab
       if (!match.job?.job_url || !applicationSectionRef.current) {
@@ -366,24 +386,26 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
       <div ref={companySectionRef} className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
         <div className="flex-1 w-full">
           <div className="flex flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-            {/* Logo */}
-            <div className="flex-shrink-0 flex items-start">
-              {match.startup.company_logo ? (
-                <Image
-                  src={match.startup.company_logo}
-                  alt={`${match.startup.name} logo`}
-                  width={112}
-                  height={112}
-                  className="object-contain w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
-                  unoptimized
-                  loading="eager"
-                />
-              ) : (
-                <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
-                  <div className="w-8 h-8 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-lg bg-gray-100 border border-gray-300"></div>
-                </div>
-              )}
-            </div>
+             {/* Logo */}
+             <div className="flex-shrink-0 flex items-start">
+               {match.startup.company_logo ? (
+                 <Image
+                   src={match.startup.company_logo}
+                   alt={`${match.startup.name} logo`}
+                   width={112}
+                   height={112}
+                   className="object-contain w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
+                   unoptimized
+                   loading="eager"
+                 />
+               ) : (
+                 <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-gray-200 flex items-center justify-center">
+                   <span className="text-gray-600 text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold">
+                     {match.startup.name.charAt(0).toUpperCase()}
+                   </span>
+                 </div>
+               )}
+             </div>
             {/* Name, match score, description, and links - aligned with logo */}
             <div className="flex-1 min-w-0 flex flex-col">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3 mb-1 sm:mb-1.5">
@@ -578,20 +600,39 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                 >
                   <div className="flex flex-row items-start gap-2.5 sm:gap-3 md:gap-4">
                     {/* Founder Photo */}
-                    <div className="flex-shrink-0 w-12 h-12 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-lg sm:rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+                    <div className="flex-shrink-0 w-12 h-12 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-lg sm:rounded-xl md:rounded-2xl bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden relative">
                       {founderProfilePictures[index] && founderProfilePictures[index].trim() !== '' && !failedImages.has(index) ? (
-                        <Image
-                          src={`/api/image-proxy?url=${encodeURIComponent(founderProfilePictures[index])}`}
-                          alt={`${founderName} profile picture`}
-                          width={80}
-                          height={80}
-                          className="w-full h-full object-cover"
-                          unoptimized
-                          loading="eager"
-                          onError={() => {
-                            setFailedImages(prev => new Set(prev).add(index));
-                          }}
-                        />
+                        <>
+                          {/* Show initial letter first */}
+                          {!loadedImages.has(index) && (
+                            <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center z-10">
+                              <span className="text-gray-400 text-lg sm:text-2xl md:text-3xl font-semibold">
+                                {initial.toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          {/* Image that loads on top */}
+                          <Image
+                            src={`/api/image-proxy?url=${encodeURIComponent(founderProfilePictures[index])}`}
+                            alt={`${founderName} profile picture`}
+                            width={80}
+                            height={80}
+                            className={`w-full h-full object-cover transition-opacity duration-300 ${loadedImages.has(index) ? 'opacity-100' : 'opacity-0'}`}
+                            unoptimized
+                            loading="eager"
+                            onLoad={() => {
+                              setLoadedImages(prev => new Set(prev).add(index));
+                            }}
+                            onError={() => {
+                              setFailedImages(prev => new Set(prev).add(index));
+                              setLoadedImages(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(index);
+                                return newSet;
+                              });
+                            }}
+                          />
+                        </>
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
                           <span className="text-gray-400 text-lg sm:text-2xl md:text-3xl font-semibold">

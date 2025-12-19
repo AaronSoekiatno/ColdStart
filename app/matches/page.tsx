@@ -204,6 +204,13 @@ export default function MatchesPage() {
     }
   }, [visibleMatches.length, currentMatchIndex]);
 
+  // Open upgrade modal when free user reaches the limit
+  useEffect(() => {
+    if (!isPremium && currentMatchIndex === FREE_MATCH_LIMIT - 1 && hiddenMatchCount > 0) {
+      setShowUpgradeModal(true);
+    }
+  }, [currentMatchIndex, isPremium, hiddenMatchCount]);
+
   // Preload images for current and adjacent cards
   useEffect(() => {
     const preloadImages = (matchIndex: number) => {
@@ -312,14 +319,6 @@ export default function MatchesPage() {
                     isPremium={isPremium} 
                     userEmail={user?.email || ''}
                   />
-                </div>
-              )}
-              {/* Show upgrade prompt if user has reached free limit */}
-              {!isPremium && hiddenMatchCount > 0 && currentMatchIndex === FREE_MATCH_LIMIT - 1 && (
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-gray-600 mb-2">
-                    You've viewed {FREE_MATCH_LIMIT} matches. Upgrade to see {hiddenMatchCount} more!
-                  </p>
                 </div>
               )}
             </div>
