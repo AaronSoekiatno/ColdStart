@@ -430,7 +430,7 @@ export async function POST(request: NextRequest) {
     //         );
     //         const { startupId } = await request.json();
     //         await supabaseAdmin
-    //           .from('startups')
+    //           .from('startups3')
     //           .update({ founder_emails: null })
     //           .eq('id', startupId);
     //       }

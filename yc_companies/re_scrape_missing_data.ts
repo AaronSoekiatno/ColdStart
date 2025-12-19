@@ -112,7 +112,7 @@ async function getStartupsMissingData(
 
   // Build query
   let query = supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, yc_link, website, founder_names, founder_first_name, founder_emails, founder_linkedin, location, data_source')
     .eq('data_source', 'yc')
     .not('yc_link', 'is', null);
@@ -272,7 +272,7 @@ async function updateStartupWithScrapedData(
 
     // Update the startup
     const { data, error: updateError } = await supabase
-      .from('startups')
+      .from('startups3')
       .update(updates)
       .eq('id', startupId)
       .select(); // Select to verify update
@@ -318,7 +318,7 @@ async function reScrapeMissingData() {
 
   // Test Supabase connection
   try {
-    const { error } = await supabase.from('startups').select('id').limit(1);
+    const { error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       throw error;
     }

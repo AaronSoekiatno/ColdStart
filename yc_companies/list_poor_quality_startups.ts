@@ -33,7 +33,7 @@ interface StartupRecord {
 async function listPoorQualityStartups(limit: number = 20) {
   // Find startups with poor or failed quality
   const { data, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, description, enrichment_status, enrichment_quality_score, enrichment_quality_status, founder_names, website, data_source')
     .in('enrichment_quality_status', ['poor', 'failed'])
     .order('enrichment_quality_score', { ascending: true }) // Worst quality first

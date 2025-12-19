@@ -20,7 +20,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function listStartupsNeedingEnrichment(limit: number = 10, showAll: boolean = false) {
   let query = supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, description, needs_enrichment, enrichment_status, enrichment_quality_score, enrichment_quality_status, data_source, founder_names, website')
     .limit(limit);
 

@@ -139,7 +139,7 @@ async function enrichFounderBackgrounds(startup: StartupRecord): Promise<boolean
     
     // Update only founder_backgrounds field
     const { error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({ 
         founder_backgrounds: backgrounds.trim()
       })
@@ -162,7 +162,7 @@ async function enrichFounderBackgrounds(startup: StartupRecord): Promise<boolean
  */
 async function getStartupsMissingBackgrounds(limit?: number): Promise<StartupRecord[]> {
   let query = supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, founder_backgrounds, founder_names')
     .or('founder_backgrounds.is.null,founder_backgrounds.eq.')
     .order('created_at', { ascending: true }); // Process oldest first
@@ -258,7 +258,7 @@ async function enrichFounderBackgroundsBatch(limit?: number) {
  */
 async function enrichFounderBackgroundsById(startupId: string) {
   const { data, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, founder_backgrounds, founder_names')
     .eq('id', startupId)
     .single();

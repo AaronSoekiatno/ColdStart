@@ -1187,7 +1187,7 @@ export async function saveJobsAndEnrichStartups(jobs: JobListing[]): Promise<{ s
 
       // Try exact name match first
       const { data: exactMatch } = await supabase
-        .from('startups')
+        .from('startups3')
         .select('id')
         .ilike('name', job.companyName)
         .limit(1)
@@ -1199,7 +1199,7 @@ export async function saveJobsAndEnrichStartups(jobs: JobListing[]): Promise<{ s
       } else {
         // Try partial match (company name contains or is contained in startup name)
         const { data: partialMatches } = await supabase
-          .from('startups')
+          .from('startups3')
           .select('id, name')
           .or(`name.ilike.%${job.companyName}%,name.ilike.${job.companyName}%`);
 
@@ -1219,7 +1219,7 @@ export async function saveJobsAndEnrichStartups(jobs: JobListing[]): Promise<{ s
         console.log(`   📝 Generated startup ID: ${startupIdGenerated} for ${job.companyName}`);
         
         const { data: newStartup, error: startupError } = await supabase
-          .from('startups')
+          .from('startups3')
           .insert({
             id: startupIdGenerated,
             name: job.companyName,

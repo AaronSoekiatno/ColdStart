@@ -20,6 +20,7 @@
     "scrape-techcrunch-supabase": "tsx yc_companies/scrape_techcrunch_supabase_pinecone.ts",
     "ingest-pinecone": "tsx scripts/ingest-startups-to-pinecone.ts",
     "rematch-all": "tsx scripts/rematch-all-candidates.ts",
+    "re-embed-all": "tsx scripts/re-embed-all-candidates.ts",
     "test-techcrunch": "tsx yc_companies/test_techcrunch_quick.ts",
     "enrich-startups": "tsx yc_companies/enrich_startup_data.ts",
     "enrich-startup": "tsx yc_companies/enrich_startup_data.ts",

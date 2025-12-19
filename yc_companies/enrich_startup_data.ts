@@ -417,7 +417,7 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
     
     // Update status to in_progress
     await supabase
-      .from('startups')
+      .from('startups3')
       .update({ enrichment_status: 'in_progress' })
       .eq('id', startup.id);
     
@@ -494,7 +494,7 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
       // Update startup in Supabase
       // Note: updated_at is automatically handled by database trigger
       const { error } = await supabase
-        .from('startups')
+        .from('startups3')
         .update(finalUpdates)
         .eq('id', startup.id);
       
@@ -515,7 +515,7 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
           }
           
           const { error: retryError } = await supabase
-            .from('startups')
+            .from('startups3')
             .update({
               ...basicUpdates,
               enrichment_status: enrichmentStatus,
@@ -551,14 +551,14 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
       };
       
       const { error } = await supabase
-        .from('startups')
+        .from('startups3')
         .update(qualityUpdates)
         .eq('id', startup.id);
       
       if (error && !error.message?.includes('enrichment_quality')) {
         // If quality columns don't exist, just update status
         await supabase
-          .from('startups')
+          .from('startups3')
           .update({
             enrichment_status: enrichmentStatus,
             needs_enrichment: enrichmentStatus !== 'completed',
@@ -588,7 +588,7 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
       console.log(`  📊 Quality before failure: ${getQualitySummary(quality)}`);
       
       await supabase
-        .from('startups')
+        .from('startups3')
         .update({
           enrichment_status: 'failed',
           enrichment_quality_score: quality.overallScore,
@@ -598,7 +598,7 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
     } catch (updateError) {
       // If quality columns don't exist or calculation fails, just update status
       await supabase
-        .from('startups')
+        .from('startups3')
         .update({ enrichment_status: 'failed' })
         .eq('id', startup.id);
     }
@@ -612,7 +612,7 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
  */
 async function getStartupsNeedingEnrichment(limit?: number): Promise<StartupRecord[]> {
   let query = supabase
-    .from('startups')
+    .from('startups3')
     .select('*')
     .eq('needs_enrichment', true)
     .in('enrichment_status', ['pending', 'failed', 'needs_review'])
@@ -698,7 +698,7 @@ async function enrichStartups(limit?: number) {
   // Show remaining count if we processed a limited batch
   if (limit && startups.length >= limit) {
     const { data: remaining } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('id', { count: 'exact', head: true })
       .eq('needs_enrichment', true)
       .in('enrichment_status', ['pending', 'failed', 'needs_review']);
@@ -715,7 +715,7 @@ async function enrichStartups(limit?: number) {
  */
 async function enrichStartupById(startupId: string) {
   const { data, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('*')
     .eq('id', startupId)
     .single();

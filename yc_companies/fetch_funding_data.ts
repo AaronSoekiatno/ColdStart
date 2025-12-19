@@ -250,7 +250,7 @@ async function fetchFundingDataWebSearch(companyName: string): Promise<FundingDa
 async function getStartupsNeedingFundingData(): Promise<any[]> {
   try {
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('*')
       .eq('data_source', 'yc')
       .is('funding_amount', null)
@@ -278,7 +278,7 @@ async function updateStartupFundingData(
 ): Promise<boolean> {
   try {
     const { error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({
         funding_amount: fundingData.funding_amount,
         round_type: fundingData.funding_stage,
@@ -308,7 +308,7 @@ async function fetchAllFundingData() {
 
   // Test Supabase connection
   try {
-    const { data, error } = await supabase.from('startups').select('id').limit(1);
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       throw error;
     }

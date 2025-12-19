@@ -224,7 +224,7 @@ async function processCompany(
 
     // Update database
     const { error: updateError } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({ founders_pfp: permanentUrls })
       .eq('id', startup.id);
 
@@ -252,7 +252,7 @@ async function scrapePfpsOnly() {
 
   // Get all companies with YC links
   const { data: startups, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, yc_link')
     .not('yc_link', 'is', null);
 

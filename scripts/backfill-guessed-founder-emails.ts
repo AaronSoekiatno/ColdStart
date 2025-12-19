@@ -33,7 +33,7 @@ async function main() {
   console.log('Fetching startups with empty founder_emails...');
 
   const { data, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, website, founder_first_name, founder_emails');
 
   if (error) {
@@ -64,7 +64,7 @@ async function main() {
     console.log(`Setting guessed founder email for ${startup.name}: ${email}`);
 
     const { error: updateError } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({ founder_emails: email })
       .eq('id', startup.id);
 

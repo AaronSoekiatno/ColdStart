@@ -248,7 +248,7 @@ export async function saveStartup(startup: StartupRow) {
   
   // FIRST: Check if startup already exists in Supabase
   const { data: existing, error: fetchError } = await client
-    .from('startups')
+    .from('startups3')
     .select('*')
     .eq('id', startup.id)
     .single();
@@ -319,7 +319,7 @@ export async function saveStartup(startup: StartupRow) {
   // Use upsert with onConflict to ensure only one row per startup ID
   // This prevents duplicates and updates existing rows
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .upsert(dataToInsert, {
       onConflict: 'id',
     })
@@ -347,7 +347,7 @@ export async function getStartup(id: string) {
   const client = supabaseAdmin || supabase;
   
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .select('*')
     .eq('id', id)
     .single();
@@ -370,7 +370,7 @@ export async function getStartupByName(name: string) {
   
   // Use case-insensitive search
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .select('*')
     .ilike('name', name)
     .limit(1)
@@ -401,7 +401,7 @@ export async function findStartupIdByName(name: string): Promise<string | null> 
 
   // Case-insensitive search for existing startup
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .select('id')
     .ilike('name', name.trim())
     .limit(1)

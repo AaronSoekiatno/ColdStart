@@ -408,7 +408,7 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
                                     # Update with company URL (job_listing field) if we have it
                                     if company_url:
                                         try:
-                                            supabase_client.table("startups").update({
+                                            supabase_client.table("startups3").update({
                                                 "job_listing": company_url
                                             }).eq("id", startup_id).execute()
                                             # Log occasionally for progress tracking
@@ -1205,13 +1205,13 @@ def find_or_create_startup(company_name: str, supabase_client: Client, batch: Op
     import uuid
     
     # Try exact match
-    result = supabase_client.table("startups").select("id").eq("name", company_name).limit(1).execute()
+    result = supabase_client.table("startups3").select("id").eq("name", company_name).limit(1).execute()
     
     if result.data and len(result.data) > 0:
         return result.data[0]["id"]
     
     # Try case-insensitive match
-    result = supabase_client.table("startups").select("id, name").ilike("name", f"%{company_name}%").limit(5).execute()
+    result = supabase_client.table("startups3").select("id, name").ilike("name", f"%{company_name}%").limit(5).execute()
     
     if result.data:
         for startup in result.data:
@@ -1234,7 +1234,7 @@ def find_or_create_startup(company_name: str, supabase_client: Client, batch: Op
         startup_data["batch"] = batch
     
     try:
-        supabase_client.table("startups").insert(startup_data).execute()
+        supabase_client.table("startups3").insert(startup_data).execute()
         return new_id
     except Exception as e:
         print(f"   ⚠️  Error creating startup: {e}")

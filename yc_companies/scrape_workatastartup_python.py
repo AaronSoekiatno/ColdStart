@@ -50,7 +50,7 @@ def find_or_create_startup(company_name: str, batch: Optional[str] = None, descr
     Returns the startup ID (as string since our table uses TEXT).
     """
     # Try to find existing startup by exact name match
-    result = supabase.table("startups").select("id").eq("name", company_name).limit(1).execute()
+    result = supabase.table("startups3").select("id").eq("name", company_name).limit(1).execute()
     
     if result.data and len(result.data) > 0:
         startup_id = result.data[0]["id"]
@@ -58,7 +58,7 @@ def find_or_create_startup(company_name: str, batch: Optional[str] = None, descr
         return startup_id
     
     # Try partial match (case-insensitive)
-    result = supabase.table("startups").select("id, name").ilike("name", f"%{company_name}%").limit(5).execute()
+    result = supabase.table("startups3").select("id, name").ilike("name", f"%{company_name}%").limit(5).execute()
     
     if result.data and len(result.data) > 0:
         # Check for best match
@@ -83,7 +83,7 @@ def find_or_create_startup(company_name: str, batch: Optional[str] = None, descr
         startup_data["description"] = description
     
     try:
-        supabase.table("startups").insert(startup_data).execute()
+        supabase.table("startups3").insert(startup_data).execute()
         print(f"   ✅ Created new startup: {company_name} (ID: {new_startup_id})")
         return new_startup_id
     except Exception as e:

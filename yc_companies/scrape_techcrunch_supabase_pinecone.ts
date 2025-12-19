@@ -853,7 +853,7 @@ async function hasMorePages(page: Page): Promise<boolean> {
 async function getAlreadyScrapedArticleLinks(): Promise<Set<string>> {
   try {
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('techcrunch_article_link')
       .not('techcrunch_article_link', 'is', null);
     
@@ -1108,7 +1108,7 @@ async function scrapeAndIngestTechCrunch() {
 
   // Test Supabase connection
   try {
-    const { data, error } = await supabase.from('startups').select('id').limit(1);
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') { // PGRST116 is "relation does not exist" - table might not be created yet
       throw error;
     }
@@ -1365,7 +1365,7 @@ async function scrapeAndIngestTechCrunch() {
       };
 
       const { data: startupData, error: startupError } = await supabase
-        .from('startups')
+        .from('startups3')
         .insert({
           id: startupId, // Explicitly set UUID to avoid null constraint violation
           name: startup.Company_Name,

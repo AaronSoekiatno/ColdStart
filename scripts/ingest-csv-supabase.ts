@@ -194,7 +194,7 @@ async function ingestCSV() {
 
   // Test Supabase connection
   try {
-    const { data, error } = await supabase.from('startups').select('id').limit(1);
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       throw error;
     }
@@ -316,7 +316,7 @@ async function ingestCSV() {
       
       // Try inserting with all columns first
       let { data: startupData, error: startupError } = await supabase
-        .from('startups')
+        .from('startups3')
         .insert(finalInsertData)
         .select()
         .single();
@@ -357,7 +357,7 @@ async function ingestCSV() {
         });
         
         const retryResult = await supabase
-          .from('startups')
+          .from('startups3')
           .insert(minimalData)
           .select()
           .single();

@@ -652,7 +652,7 @@ async function scrapeTwitterData(page: Page, ycUrl: string): Promise<{ companyTw
 async function getAlreadyProcessedLinks(): Promise<Set<string>> {
   try {
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('yc_link')
       .eq('data_source', 'yc')
       .not('yc_link', 'is', null);
@@ -683,7 +683,7 @@ async function getAlreadyProcessedLinks(): Promise<Set<string>> {
 async function getCompaniesWithTwitterData(): Promise<Set<string>> {
   try {
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('yc_link, company_twitter_url, founder_twitter_urls')
       .eq('data_source', 'yc')
       .not('yc_link', 'is', null);
@@ -752,7 +752,7 @@ async function storeTwitterData(company: YCCompany, twitterData: { companyTwitte
     console.log(`      Founder Twitter: ${updateData.founder_twitter_urls}`);
     
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update(updateData)
       .eq('yc_link', normalized.ycLink)
       .select()
@@ -801,7 +801,7 @@ async function scrapeTwitterDataForCompanies() {
 
   // Test Supabase connection
   try {
-    const { data, error } = await supabase.from('startups').select('id').limit(1);
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       throw error;
     }

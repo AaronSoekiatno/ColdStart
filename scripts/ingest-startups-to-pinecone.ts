@@ -161,7 +161,7 @@ async function main() {
   try {
     // Fetch startups from Supabase
     const { data: startups, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('*')
       .limit(limit);
 

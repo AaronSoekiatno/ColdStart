@@ -135,7 +135,7 @@ async function findStartupByName(
 
   // Try to find by matching normalized names
   const { data: startups, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name')
     .limit(1000);
 
@@ -187,7 +187,7 @@ async function findStartupByName(
 async function ensureFoundersPfpColumn() {
   // Check if column exists by trying to query it
   const { error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('founders_pfp')
     .limit(1);
 
@@ -279,7 +279,7 @@ async function populateFoundersPfp() {
 
       // Check current founders_pfp value
       const { data: currentData } = await supabase
-        .from('startups')
+        .from('startups3')
         .select('founders_pfp')
         .eq('id', startup.id)
         .single();
@@ -306,7 +306,7 @@ async function populateFoundersPfp() {
 
       // Update database
       const { error: updateError } = await supabase
-        .from('startups')
+        .from('startups3')
         .update({ founders_pfp: publicUrls })
         .eq('id', startup.id);
 

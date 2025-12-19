@@ -54,7 +54,7 @@ interface StartupRecord {
  */
 async function getStartupsNeedingEmailEnrichment(limit?: number): Promise<StartupRecord[]> {
   const query = supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, website, founder_names, founder_linkedin, founder_emails, data_source')
     .or('founder_emails.is.null,founder_emails.eq.')
     .not('founder_names', 'is', null)
@@ -146,7 +146,7 @@ async function updateStartupWithEmails(
     const emailsString = founderEmails.filter(email => email && email.trim()).join(', ');
     
     const { error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({
         founder_emails: emailsString || null,
       })
@@ -204,7 +204,7 @@ async function enrichFounderEmails() {
 
   // Test Supabase connection
   try {
-    const { error } = await supabase.from('startups').select('id').limit(1);
+    const { error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       throw error;
     }

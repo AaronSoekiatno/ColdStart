@@ -171,7 +171,7 @@ async function analyzePlaceholders(): Promise<{
   
   // Get all startups
   const { data: startups, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('*');
   
   if (error) {
@@ -305,7 +305,7 @@ async function normalizePlaceholders() {
     });
     
     const { error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update(updates)
       .eq('id', id);
     

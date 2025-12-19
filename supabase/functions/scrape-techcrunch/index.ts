@@ -110,7 +110,7 @@ serve(async (req) => {
       const pineconeId = `startup-${startup.Company_Name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
       
       const { data: startupData, error: startupError } = await supabase
-        .from('startups')
+        .from('startups3')
         .insert({
           name: startup.Company_Name,
           industry: startup.industry || null,

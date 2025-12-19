@@ -40,7 +40,7 @@ async function getTestCompanies(limit: number = 10): Promise<any[]> {
   console.log(`📊 Fetching ${limit} test companies from database...\n`);
 
   const { data, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, website, founder_names, data_source, created_at')
     .eq('data_source', 'techcrunch')
     .not('founder_names', 'is', null)

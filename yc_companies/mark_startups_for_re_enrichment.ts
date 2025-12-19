@@ -143,7 +143,7 @@ async function markStartupsForReEnrichment() {
   
   // Get all startups
   const { data: startups, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('*');
   
   if (error) {
@@ -227,7 +227,7 @@ async function markStartupsForReEnrichment() {
     const batch = idsToUpdate.slice(i, i + batchSize);
     
     const { error: updateError } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({
         needs_enrichment: true,
         enrichment_status: 'pending'
