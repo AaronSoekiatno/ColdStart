@@ -4,7 +4,7 @@ Uses spaCy for NLP-based keyword extraction and matching
 """
 
 import os
-from typing import Dict, Set, Optional
+from typing import Dict, Set, Optional, List
 from dotenv import load_dotenv
 from supabase import create_client, Client
 import spacy
