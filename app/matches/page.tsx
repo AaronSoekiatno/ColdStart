@@ -58,32 +58,21 @@ export default function MatchesPage() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  
-  // Free users can only see 10 matches
-  const FREE_MATCH_LIMIT = 10;
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
   
-  // Limit matches for free users
+  // All users can see all matches
   const visibleMatches = useMemo(() => {
-    if (isPremium) {
-      return matches;
-    }
-    return matches.slice(0, FREE_MATCH_LIMIT);
-  }, [matches, isPremium, FREE_MATCH_LIMIT]);
+    return matches;
+  }, [matches]);
   
   const hiddenMatchCount = useMemo(() => {
-    if (isPremium) return 0;
-    return Math.max(0, matches.length - FREE_MATCH_LIMIT);
-  }, [matches.length, isPremium, FREE_MATCH_LIMIT]);
+    return 0;
+  }, []);
   
-  // Handle navigation with premium check
+  // Handle navigation
   const handleNextMatch = () => {
-    if (!isPremium && currentMatchIndex >= FREE_MATCH_LIMIT - 1) {
-      setShowUpgradeModal(true);
-      return;
-    }
     setCurrentMatchIndex((prev) => Math.min(visibleMatches.length - 1, prev + 1));
   };
   
@@ -204,13 +193,6 @@ export default function MatchesPage() {
     }
   }, [visibleMatches.length, currentMatchIndex]);
 
-  // Open upgrade modal when free user reaches the limit
-  useEffect(() => {
-    if (!isPremium && currentMatchIndex === FREE_MATCH_LIMIT - 1 && hiddenMatchCount > 0) {
-      setShowUpgradeModal(true);
-    }
-  }, [currentMatchIndex, isPremium, hiddenMatchCount]);
-
   // Preload images for current and adjacent cards
   useEffect(() => {
     const preloadImages = (matchIndex: number) => {
@@ -299,7 +281,7 @@ export default function MatchesPage() {
             {/* Right arrow button */}
             <button
               onClick={handleNextMatch}
-              disabled={isPremium && currentMatchIndex >= visibleMatches.length - 1}
+              disabled={currentMatchIndex >= visibleMatches.length - 1}
               className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[180px] sm:top-[220px] md:top-[280px] lg:top-[350px] z-50 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
               aria-label="Next match"
             >

@@ -1,4 +1,5 @@
 import { Pinecone } from '@pinecone-database/pinecone';
+import { normalizeName, normalizeEducationLevel, normalizeUniversityName } from './normalize-candidate-data';
 
 // Lazy-load Pinecone client to allow env vars to be loaded first
 let pc: Pinecone | null = null;
@@ -29,12 +30,11 @@ function getIndexName(): string {
 export interface CandidateMetadata {
   name: string;
   email: string;
-  summary: string;
   skills: string; // Comma-separated string
   location: string;
   education_level: string;
   university: string;
-  past_internships: string; // Comma-separated string
+  experience: string; // Comma-separated string
   technical_projects: string; // Comma-separated string
   createdAt: string;
 }
@@ -70,14 +70,20 @@ export async function upsertCandidate(
 ) {
   const index = getPineconeClient().index(getIndexName());
 
+  // Normalize fields before saving to Pinecone
+  const normalizedMetadata = {
+    ...metadata,
+    name: normalizeName(metadata.name) || metadata.name,
+    education_level: normalizeEducationLevel(metadata.education_level) || metadata.education_level,
+    university: normalizeUniversityName(metadata.university) || metadata.university,
+    createdAt: new Date().toISOString(),
+  };
+
   await index.namespace('candidates').upsert([
     {
       id,
       values: embedding,
-      metadata: {
-        ...metadata,
-        createdAt: new Date().toISOString(),
-      },
+      metadata: normalizedMetadata,
     },
   ]);
 

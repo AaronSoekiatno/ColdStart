@@ -169,14 +169,11 @@ function calculateTeamGrowthScore(teamSize: string | null): number {
 /**
  * Calculate job postings score (0-5 points)
  */
-function calculateJobPostingsScore(jobOpenings: string | null, hiringRoles: string | null): number {
-  if (!jobOpenings && !hiringRoles) return 0;
+function calculateJobPostingsScore(hiringRoles: string | null): number {
+  if (!hiringRoles) return 0;
 
-  // Count number of jobs
-  let jobCount = 0;
-  if (jobOpenings) {
-    jobCount = jobOpenings.split(',').filter(j => j.trim().length > 0).length;
-  }
+  // Count number of jobs from hiring_roles
+  const jobCount = hiringRoles.split(',').filter(j => j.trim().length > 0).length;
 
   // Active hiring indicates growth
   // 0 jobs: 0 points
@@ -199,7 +196,6 @@ function calculateHotnessScore(
   fundingDate: string | null,
   fundingStage: string | null,
   teamSize: string | null,
-  jobOpenings: string | null,
   hiringRoles: string | null
 ): HotnessScore {
   const factors = {
@@ -207,7 +203,7 @@ function calculateHotnessScore(
     fundingRecency: calculateFundingRecencyScore(fundingDate),
     fundingStage: calculateFundingStageScore(fundingStage),
     teamGrowth: calculateTeamGrowthScore(teamSize),
-    jobPostings: calculateJobPostingsScore(jobOpenings, hiringRoles),
+    jobPostings: calculateJobPostingsScore(hiringRoles),
   };
 
   const score = Object.values(factors).reduce((sum, val) => sum + val, 0);
@@ -254,7 +250,7 @@ async function fetchFundingDataWebSearch(companyName: string): Promise<FundingDa
 async function getStartupsNeedingFundingData(): Promise<any[]> {
   try {
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('*')
       .eq('data_source', 'yc')
       .is('funding_amount', null)
@@ -282,7 +278,7 @@ async function updateStartupFundingData(
 ): Promise<boolean> {
   try {
     const { error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({
         funding_amount: fundingData.funding_amount,
         round_type: fundingData.funding_stage,
@@ -312,7 +308,7 @@ async function fetchAllFundingData() {
 
   // Test Supabase connection
   try {
-    const { data, error } = await supabase.from('startups').select('id').limit(1);
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
     if (error && error.code !== 'PGRST116') {
       throw error;
     }
@@ -363,7 +359,6 @@ async function fetchAllFundingData() {
         fundingData.funding_date,
         fundingData.funding_stage,
         startup.team_size,
-        startup.job_openings,
         startup.hiring_roles
       );
 

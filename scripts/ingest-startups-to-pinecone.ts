@@ -101,7 +101,7 @@ async function processStartup(startup: any, index: number, total: number): Promi
         team_size: startup.team_size || null,
         founder_backgrounds: startup.founder_backgrounds || null,
         website_keywords: startup.website_keywords || null,
-        hiring_roles: startup.job_openings || null,
+        hiring_roles: startup.hiring_roles || null,
       }
     );
 
@@ -161,7 +161,7 @@ async function main() {
   try {
     // Fetch startups from Supabase
     const { data: startups, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('*')
       .limit(limit);
 

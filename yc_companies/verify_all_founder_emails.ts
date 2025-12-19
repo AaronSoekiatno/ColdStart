@@ -203,7 +203,7 @@ async function main() {
   console.log('📥 Fetching startups from database...\n');
 
   let query = supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, website, founder_names, founder_emails')
     .not('founder_emails', 'is', null);
 

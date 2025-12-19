@@ -116,7 +116,7 @@ async function extractLogoFromYCPage(page: Page, ycUrl: string): Promise<string 
 async function getStartupsMissingLogos(): Promise<Array<{ id: string; name: string; yc_link: string | null }>> {
   try {
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('id, name, yc_link, company_logo')
       .or('company_logo.is.null,company_logo.eq.')
       .not('yc_link', 'is', null);
@@ -139,7 +139,7 @@ async function getStartupsMissingLogos(): Promise<Array<{ id: string; name: stri
 async function updateStartupLogo(startupId: string, logoUrl: string): Promise<boolean> {
   try {
     const { error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({ company_logo: logoUrl })
       .eq('id', startupId);
     

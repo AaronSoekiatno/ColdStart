@@ -179,11 +179,10 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
               name: data.name,
               email: data.email,
               skills: data.skills,
-              summary: data.summary,
               location: data.location,
               education_level: data.education_level,
               university: data.university,
-              past_internships: data.past_internships,
+                experience: data.experience,
               technical_projects: data.technical_projects,
             },
             rawText: data.rawText,
@@ -321,16 +320,6 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
               </p>
             </div>
           </div>
-
-          {file.file.type === 'application/pdf' && file.preview && (
-            <div className="border border-foreground/10 rounded-2xl overflow-hidden bg-background/20">
-              <iframe
-                src={file.preview}
-                className="w-full h-96"
-                title="PDF Preview"
-              />
-            </div>
-          )}
 
           {file.file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && (
             <div className="border border-foreground/10 rounded-2xl p-12 text-center bg-background/20">

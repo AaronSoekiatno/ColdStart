@@ -438,9 +438,19 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
                                     # Count as saved (even if it was already in DB)
                                     companies_saved_to_db += 1
                                     
-                                    # Log occasionally for progress tracking
-                                    if companies_saved_to_db % 50 == 0:
-                                        print(f"      💾 Saved {companies_saved_to_db} companies to startups3 table so far...")
+                                    # Update with company URL (job_listing field) if we have it
+                                    if company_url:
+                                        try:
+                                            supabase_client.table("startups3").update({
+                                                "job_listing": company_url
+                                            }).eq("id", startup_id).execute()
+                                            # Log occasionally for progress tracking
+                                            if companies_saved_to_db % 50 == 0:
+                                                print(f"      💾 Saved {companies_saved_to_db} companies to startups table so far...")
+                                        except Exception as e:
+                                            # Log error but continue
+                                            if companies_saved_to_db % 100 == 0:  # Only log occasionally
+                                                print(f"      ⚠️  Error updating job_listing for {company_name}: {e}")
                             except Exception as e:
                                 # Log error but continue - we'll still add to list
                                 if companies_saved_to_db % 100 == 0:  # Only log occasionally

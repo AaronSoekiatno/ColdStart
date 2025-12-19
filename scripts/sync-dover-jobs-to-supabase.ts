@@ -229,7 +229,7 @@ async function syncStartupDoverURL(
   } else {
     // Update Supabase startups table
     const { error } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({
         job_listing: doverUrl,
       })
@@ -264,7 +264,7 @@ async function main() {
   // Fetch all startups from Supabase
   console.log('\n📥 Fetching startups from Supabase...');
 
-  let query = supabase.from('startups').select('id, name, job_listing');
+  let query = supabase.from('startups3').select('id, name, job_listing');
 
   const { data, error } = await query;
 

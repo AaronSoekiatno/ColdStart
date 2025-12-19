@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
+import { normalizeName, normalizeEducationLevel, normalizeUniversityName } from './normalize-candidate-data';
 
 // Supabase configuration
 // These environment variables should be set in .env.local
@@ -64,12 +65,11 @@ export interface CandidateRow {
   id?: string; // UUID primary key (auto-generated)
   email: string; // Unique email
   name: string;
-  summary: string;
   skills: string; // Comma-separated string
   location?: string;
   education_level?: string;
   university?: string;
-  past_internships?: string; // Comma-separated string
+  experience?: string; // Comma-separated string
   technical_projects?: string; // Comma-separated string
   job_type?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
   role_type?: string[]; // Preferred role types (array) (PM, SWE, SDE, ML, AI, etc.)
@@ -135,15 +135,19 @@ export function isSubscribed(candidate: {
 export async function saveCandidate(candidate: CandidateRow): Promise<{ id: string; email: string; [key: string]: any }> {
   const client = supabaseAdmin || supabase;
 
+  // Normalize fields before saving
+  const normalizedName = normalizeName(candidate.name);
+  const normalizedEducationLevel = normalizeEducationLevel(candidate.education_level);
+  const normalizedUniversity = normalizeUniversityName(candidate.university);
+
   const upsertData = {
     email: candidate.email,
-    name: candidate.name,
-    summary: candidate.summary,
+    name: normalizedName || candidate.name, // Fallback to original if normalization returns null
     skills: candidate.skills,
     location: candidate.location,
-    education_level: candidate.education_level,
-    university: candidate.university,
-    past_internships: candidate.past_internships,
+    education_level: normalizedEducationLevel,
+    university: normalizedUniversity,
+    experience: candidate.experience,
     technical_projects: candidate.technical_projects,
     job_type: candidate.job_type,
     role_type: candidate.role_type,
@@ -223,7 +227,6 @@ export interface StartupRow {
   founder_names?: string;
   founder_linkedin?: string;
   batch?: string;
-  job_openings?: string;
   date_raised?: string;
   created_at?: string;
   // Additional YC-specific fields
@@ -245,7 +248,7 @@ export async function saveStartup(startup: StartupRow) {
   
   // FIRST: Check if startup already exists in Supabase
   const { data: existing, error: fetchError } = await client
-    .from('startups')
+    .from('startups3')
     .select('*')
     .eq('id', startup.id)
     .single();
@@ -305,14 +308,6 @@ export async function saveStartup(startup: StartupRow) {
     dataToInsert.batch = null;
   }
   
-  if (startup.job_openings !== undefined) {
-    dataToInsert.job_openings = startup.job_openings || null;
-  } else if (existing?.job_openings) {
-    dataToInsert.job_openings = existing.job_openings;
-  } else {
-    dataToInsert.job_openings = null;
-  }
-  
   if (startup.date_raised !== undefined) {
     dataToInsert.date_raised = startup.date_raised || null;
   } else if (existing?.date_raised) {
@@ -324,7 +319,7 @@ export async function saveStartup(startup: StartupRow) {
   // Use upsert with onConflict to ensure only one row per startup ID
   // This prevents duplicates and updates existing rows
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .upsert(dataToInsert, {
       onConflict: 'id',
     })
@@ -352,7 +347,7 @@ export async function getStartup(id: string) {
   const client = supabaseAdmin || supabase;
   
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .select('*')
     .eq('id', id)
     .single();
@@ -375,7 +370,7 @@ export async function getStartupByName(name: string) {
   
   // Use case-insensitive search
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .select('*')
     .ilike('name', name)
     .limit(1)
@@ -406,7 +401,7 @@ export async function findStartupIdByName(name: string): Promise<string | null> 
 
   // Case-insensitive search for existing startup
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .select('id')
     .ilike('name', name.trim())
     .limit(1)

@@ -155,7 +155,7 @@ async function migrateFounders() {
   console.log('📊 Fetching startups with founder data...\n');
 
   const { data: startups, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, website, founder_names, founder_emails, founder_linkedin')
     .not('founder_names', 'is', null)
     .not('founder_names', 'eq', '')

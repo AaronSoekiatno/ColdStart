@@ -110,7 +110,7 @@ async function scrapeFounderPfps(ycLink: string): Promise<{ urls: string[]; foun
 async function testSingleCompany() {
   // Get a single company from the database
   const { data: startup, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, yc_link, founders_pfp')
     .not('yc_link', 'is', null)
     .limit(1)
@@ -160,7 +160,7 @@ async function testSingleCompany() {
     // Update database
     console.log('\n💾 Updating database...');
     const { error: updateError } = await supabase
-      .from('startups')
+      .from('startups3')
       .update({ founders_pfp: permanentUrls })
       .eq('id', startup.id);
 

@@ -54,7 +54,7 @@ async function testSingleUpdate() {
 
   // Fetch startup
   let query = supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, yc_link, website, founder_names, founder_first_name, founder_emails, founder_linkedin, location, data_source')
     .eq('data_source', 'yc')
     .limit(1);
@@ -141,7 +141,7 @@ async function testSingleUpdate() {
       // Verify the update
       console.log('\n🔍 Verifying update in database...');
       const { data: updatedStartup, error: verifyError } = await supabase
-        .from('startups')
+        .from('startups3')
         .select('website, founder_names, founder_first_name, founder_emails, founder_linkedin')
         .eq('id', startup.id)
         .single();

@@ -49,7 +49,7 @@ async function testTechCrunchScraper() {
   console.log('\n2️⃣ Testing Supabase connection...');
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase.from('startups').select('id').limit(1);
+    const { data, error } = await supabase.from('startups3').select('id').limit(1);
     
     if (error && error.code !== 'PGRST116') {
       console.error(`   ❌ Supabase connection failed: ${error.message}`);
@@ -100,7 +100,7 @@ async function testTechCrunchScraper() {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const { data, error } = await supabase
-      .from('startups')
+      .from('startups3')
       .select('id, name, techcrunch_article_link')
       .eq('data_source', 'techcrunch')
       .limit(5);

@@ -40,7 +40,7 @@ async function rescrapeAllPfps() {
 
   // Get all companies that have founder profile pictures
   const { data: startups, error } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id, name, founders_pfp, founder_names, yc_link')
     .not('founders_pfp', 'is', null);
 
@@ -120,7 +120,7 @@ async function rescrapeAllPfps() {
 
         // Update database with permanent URLs
         const { error: updateError } = await supabase
-          .from('startups')
+          .from('startups3')
           .update({ founders_pfp: permanentUrls })
           .eq('id', startup.id);
 

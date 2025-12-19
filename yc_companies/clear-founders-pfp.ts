@@ -37,7 +37,7 @@ async function clearFoundersPfp() {
 
   // Get count first
   const { count } = await supabase
-    .from('startups')
+    .from('startups3')
     .select('id', { count: 'exact', head: true })
     .not('founders_pfp', 'is', null);
 
@@ -50,7 +50,7 @@ async function clearFoundersPfp() {
 
   // Clear all founders_pfp fields
   const { error } = await supabase
-    .from('startups')
+    .from('startups3')
     .update({ founders_pfp: null })
     .not('founders_pfp', 'is', null);
 

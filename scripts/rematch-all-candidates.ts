@@ -52,7 +52,7 @@ async function findStartupIdsByNames(names: string[]): Promise<Map<string, strin
   const lookupPromises = validNames.map(async (name) => {
     try {
       const { data, error } = await supabase
-        .from('startups')
+        .from('startups3')
         .select('id')
         .ilike('name', name.trim())
         .limit(1)
@@ -94,7 +94,7 @@ async function saveStartup(startup: {
   keywords?: string;
 }): Promise<void> {
   const { error } = await supabase
-    .from('startups')
+    .from('startups3')
     .upsert({
       id: startup.id,
       name: startup.name,

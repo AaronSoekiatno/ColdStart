@@ -95,7 +95,7 @@ interface Step {
 interface StartupLogo {
   id: string;
   name: string;
-  company_logo: string;
+  company_logo?: string;
 }
 
 export function NewHowItWorks() {
@@ -358,18 +358,31 @@ export function NewHowItWorks() {
                                 key={startup.id}
                                 className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-md sm:rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-purple-500/20 hover:border-purple-500/50 cursor-pointer"
                               >
-                                <Image
-                                  src={startup.company_logo}
-                                  alt={startup.name}
-                                  width={64}
-                                  height={64}
-                                  className="w-full h-full object-cover"
-                                  unoptimized
-                                  title={startup.name}
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = "none";
-                                  }}
-                                />
+                                {startup.company_logo ? (
+                                  <Image
+                                    src={startup.company_logo}
+                                    alt={startup.name}
+                                    width={64}
+                                    height={64}
+                                    className="w-full h-full object-cover"
+                                    unoptimized
+                                    title={startup.name}
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                      const parent = target.parentElement;
+                                      if (parent) {
+                                        const fallback = parent.querySelector('.logo-fallback') as HTMLElement;
+                                        if (fallback) fallback.style.display = "flex";
+                                      }
+                                    }}
+                                  />
+                                ) : null}
+                                <div className="logo-fallback w-full h-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center" style={{ display: startup.company_logo ? 'none' : 'flex' }}>
+                                  <span className="text-gray-700 text-xs sm:text-sm font-semibold">
+                                    {startup.name.split(' ')[0].charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
                               </div>
                             ))
                           ) : (

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch logos for the specified startups
     const { data: startups, error } = await supabaseAdmin
-      .from('startups')
+      .from('startups3')
       .select('name, company_logo')
       .in('name', startupNames);
 

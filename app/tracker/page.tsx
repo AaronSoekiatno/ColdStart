@@ -100,7 +100,7 @@ export default async function TrackerPage() {
 
   if (startupIds.length > 0) {
     const { data: startupRows, error: startupsError } = await supabaseAdmin
-      .from('startups')
+      .from('startups3')
       .select('id, name, industry, location, website, founder_names, founders_pfp')
       .in('id', startupIds);
 
