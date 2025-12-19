@@ -9,7 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ResumeUploadModal } from "@/components/ResumeUploadModal";
+import ResumeUpload from "@/app/components/ResumeUpload";
+// import { ResumeUploadModal } from "@/components/ResumeUploadModal";
 
 type ObjectiveType = 'internship' | 'startup' | 'network' | 'improve-application' | 'sf-scene';
 type JobType = 'full-time' | 'part-time' | 'internship';
@@ -59,7 +60,7 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
   const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>([]);
@@ -67,7 +68,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showStatistic, setShowStatistic] = useState(false);
-  const [showResumeUpload, setShowResumeUpload] = useState(false);
+  // const [showResumeUpload, setShowResumeUpload] = useState(false);
 
   const handleObjectiveSelect = (objective: ObjectiveType) => {
     setSelectedObjectives(prev => {
@@ -196,9 +197,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
     }
   };
 
-  const handleUploadResume = () => {
-    setShowResumeUpload(true);
-  };
+  // const handleUploadResume = () => {
+  //   setShowResumeUpload(true);
+  // };
 
   return (
     <>
@@ -220,9 +221,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                     }`} />
                   <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 6 ? 'bg-[#498EDC]' : 'bg-gray-200'
                     }`} />
+                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 7 ? 'bg-[#498EDC]' : 'bg-gray-200'
+                    }`} />
                 </div>
                 <p className="text-center text-gray-500 text-sm">
-                  Step {step} of 6
+                  Step {step} of 7
                 </p>
               </div>
             </DialogHeader>
@@ -512,7 +515,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                 </div>
               </div>
 
-              {/* Step 6: Choose Your Path */}
+              {/* Step 6: Mandatory Resume Upload */}
               <div
                 className={`space-y-6 transition-all duration-500 ease-in-out ${step === 6 && !isTransitioning
                   ? 'opacity-100 translate-x-0'
@@ -521,43 +524,27 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
               >
                 <div className="text-center mb-8">
                   <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                    Where would you like to start?
+                    Upload your resume
                   </DialogTitle>
+                  <DialogDescription className="text-gray-600 mt-2 text-lg">
+                    To generate the best matches for you, we need to analyze your resume.
+                  </DialogDescription>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                  {/* View Matches Option */}
-                  <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">View your current matches</h3>
-                      <p className="text-gray-600 text-sm">
-                        Based on your onboarding we generated some startup matches made just for you.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleViewMatches}
-                      className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      View Matches
-                    </Button>
-                  </div>
-
-                  {/* Upload Resume Option */}
-                  <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Upload and Optimize Resume</h3>
-                      <p className="text-gray-600 text-sm">
-                        Enhance your resume for job applications and get even better matches!
-                      </p>
-                    </div>
-                    <Button
-                      onClick={handleUploadResume}
-                      variant="outline"
-                      className="w-full border-2 border-[#498EDC] text-[#498EDC] hover:bg-[#498EDC] hover:text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      Upload Resume
-                    </Button>
-                  </div>
+                <div className="max-w-md mx-auto mt-8">
+                  {/* Embedded Resume Upload Component */}
+                  <ResumeUpload
+                    onSuccess={() => {
+                      // Advance to Step 7 (Choice Screen)
+                      setIsTransitioning(true);
+                      setTimeout(() => {
+                        setStep(7);
+                        setIsTransitioning(false);
+                      }, 300);
+                    }}
+                  // Note: onUpgradeRequired handled by ResumeUpload locally or we can add handler if needed
+                  // For onboarding, we typically expect users to be allowed to upload.
+                  />
                 </div>
 
                 <div className="mt-6">
@@ -576,22 +563,78 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </Button>
                 </div>
               </div>
+
+              {/* Step 7: Choice Screen (Matches vs Enhance) */}
+              <div
+                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 7 && !isTransitioning
+                  ? 'opacity-100 translate-x-0'
+                  : 'opacity-0 translate-x-4 pointer-events-none absolute inset-0'
+                  }`}
+              >
+                <div className="text-center mb-8">
+                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                    You're all set!
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 mt-2 text-lg">
+                    Your resume has been uploaded successfully.
+                  </DialogDescription>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                  {/* View Matches Option */}
+                  <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
+                    <div className="mb-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">View your matches</h3>
+                      <p className="text-gray-600 text-sm">
+                        See the startups we've matched you with based on your profile.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleViewMatches}
+                      className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                    >
+                      View Matches
+                    </Button>
+                  </div>
+
+                  {/* Enhance Resume Option */}
+                  <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
+                    <div className="mb-6">
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">Enhance Resume</h3>
+                      <p className="text-gray-600 text-sm">
+                        Get AI-powered suggestions to improve your resume for better matches.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={() => {
+                        window.location.href = "/resumes";
+                      }}
+                      variant="outline"
+                      className="w-full border-2 border-[#498EDC] text-[#498EDC] hover:bg-[#498EDC] hover:text-white font-medium shadow-md hover:shadow-lg transition-all"
+                    >
+                      Enhance Resume
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      <ResumeUploadModal
+      {/* <ResumeUploadModal
         open={showResumeUpload}
         onOpenChange={setShowResumeUpload}
         onUploadSuccess={() => {
           setShowResumeUpload(false);
-          onOpenChange(false);
-          if (onComplete) {
-            onComplete();
-          }
+          // Advance to Step 7 (Choice Screen) instead of completing
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setStep(7);
+            setIsTransitioning(false);
+          }, 300);
         }}
-      />
+      /> */}
     </>
   );
 }
