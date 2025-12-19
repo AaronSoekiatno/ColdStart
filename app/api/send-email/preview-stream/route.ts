@@ -422,7 +422,6 @@ export async function POST(request: NextRequest) {
               scrapedContext: undefined, // Can be added later if scraped intel is stored in database
               // Additional Supabase startup fields
               batch: startup.batch || undefined,
-              jobOpenings: startup.job_openings || undefined,
               founderEmails: startup.founder_emails || undefined,
               founderLinkedIn: startup.founder_linkedin || undefined,
             },

@@ -227,7 +227,6 @@ export interface StartupRow {
   founder_names?: string;
   founder_linkedin?: string;
   batch?: string;
-  job_openings?: string;
   date_raised?: string;
   created_at?: string;
   // Additional YC-specific fields
@@ -307,14 +306,6 @@ export async function saveStartup(startup: StartupRow) {
     dataToInsert.batch = existing.batch;
   } else {
     dataToInsert.batch = null;
-  }
-  
-  if (startup.job_openings !== undefined) {
-    dataToInsert.job_openings = startup.job_openings || null;
-  } else if (existing?.job_openings) {
-    dataToInsert.job_openings = existing.job_openings;
-  } else {
-    dataToInsert.job_openings = null;
   }
   
   if (startup.date_raised !== undefined) {

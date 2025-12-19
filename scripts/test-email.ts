@@ -207,7 +207,7 @@ Upload your resume and get matched with startups that align with your skills, in
 Track your outreach progress and manage all your startup communications in one place.
 
 GET STARTED: https://joinhermes.co
-
+   
 Free to start • Premium features available
 
 © 2025 Hermes. All rights reserved.

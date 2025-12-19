@@ -44,7 +44,6 @@ export interface StartupInfo {
   scrapedContext?: string; // Scraped intel/news about the startup
   // Additional Supabase fields
   batch?: string; // YC batch (e.g., "Summer 2025")
-  jobOpenings?: string; // Available job openings
   founderEmails?: string; // Comma-separated founder emails
   founderLinkedIn?: string; // Comma-separated LinkedIn URLs
 }

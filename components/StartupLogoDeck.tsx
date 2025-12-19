@@ -7,7 +7,7 @@ import { ScrollAnimate } from "@/components/ScrollAnimate";
 interface StartupLogo {
   id: string;
   name: string;
-  company_logo: string;
+  company_logo?: string;
 }
 
 export function StartupLogoDeck() {
@@ -129,23 +129,36 @@ export function StartupLogoDeck() {
                     animationDelay: `${index * 0.03}s`,
                       }}
                     >
-                      <Image
-                        src={startup.company_logo}
-                        alt={startup.name}
-                    width={100}
-                    height={100}
-                    className="w-full h-full"
-                    style={{ 
-                      width: '100%', 
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
-                        unoptimized
-                        title={startup.name}
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = "none";
-                        }}
-                      />
+                      {startup.company_logo ? (
+                        <Image
+                          src={startup.company_logo}
+                          alt={startup.name}
+                          width={100}
+                          height={100}
+                          className="w-full h-full"
+                          style={{ 
+                            width: '100%', 
+                            height: '100%',
+                            objectFit: 'cover'
+                          }}
+                          unoptimized
+                          title={startup.name}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const fallback = parent.querySelector('.logo-fallback') as HTMLElement;
+                              if (fallback) fallback.style.display = "flex";
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <div className="logo-fallback w-full h-full bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center" style={{ display: startup.company_logo ? 'none' : 'flex' }}>
+                        <span className="text-gray-600 text-xs sm:text-sm font-semibold">
+                          {startup.name.split(' ')[0].charAt(0).toUpperCase()}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

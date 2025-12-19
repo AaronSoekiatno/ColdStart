@@ -401,7 +401,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                ) : (
                  <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-gray-200 flex items-center justify-center">
                    <span className="text-gray-600 text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold">
-                     {match.startup.name.charAt(0).toUpperCase()}
+                     {match.startup.name.split(' ')[0].charAt(0).toUpperCase()}
                    </span>
                  </div>
                )}

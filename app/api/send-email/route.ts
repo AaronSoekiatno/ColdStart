@@ -193,7 +193,6 @@ export async function POST(request: NextRequest) {
           founderName: founderName,
           // Additional Supabase startup fields
           batch: startup.batch || undefined,
-          jobOpenings: startup.job_openings || undefined,
           founderEmails: startup.founder_emails || undefined,
           founderLinkedIn: startup.founder_linkedin || undefined,
         },
