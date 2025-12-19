@@ -1569,118 +1569,31 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       // ============================================
       // 1.6. EXTRACT YC COMPANY DESCRIPTION
       // ============================================
-      // Extract the main company description from the prose div BEFORE founders section
-      // This is the div.prose.max-w-full.whitespace-pre-line that appears before "Active Founders"
+      // Extract the main company description from: <div class="prose max-w-full whitespace-pre-line">
+      // Find the first div with these classes that's NOT in a founder card (founder cards have images)
       try {
-        // First, find where the "Active Founders" section starts
-        const allElements = Array.from(document.querySelectorAll('*'));
-        const foundersHeading = allElements.find(el => {
-          const text = el.textContent?.trim() || '';
-          return text.toLowerCase() === 'active founders' ||
-                 text.toLowerCase().includes('active founders') ||
-                 text.toLowerCase() === 'founders';
-        });
+        // Find all divs with the exact classes
+        const proseDivs = Array.from(document.querySelectorAll('div.prose.max-w-full.whitespace-pre-line')) as HTMLElement[];
         
-        // Find the company link/header to locate description nearby
-        const companyLink = document.querySelector('a[href*="/companies/"]') as HTMLElement;
-        
-        // Find ALL divs with the exact classes: prose max-w-full whitespace-pre-line
-        // Try multiple approaches since React might render classes differently
-        // Define selectors inline since proseSelectors was not defined
-        const proseSelectors = [
-          'div.prose.max-w-full.whitespace-pre-line',
-          'div.prose.whitespace-pre-line',
-          'div[class*="prose"][class*="whitespace-pre-line"]',
-        ];
-        let proseDivs: HTMLElement[] = [];
-        for (const selector of proseSelectors) {
-          try {
-            const found = Array.from(document.querySelectorAll(selector)) as HTMLElement[];
-            if (found.length > 0) {
-              proseDivs = found;
-              break;
-            }
-          } catch (e) {
-            // Continue to next selector
-          }
-        }
-        
-        if (proseDivs.length > 0) {
-          // If we found a founders heading, only get prose divs that appear BEFORE it
-          let targetProseDiv: HTMLElement | null = null;
+        // Find the one that's NOT in a founder card (founder cards have bookface images)
+        for (const proseDiv of proseDivs) {
+          const container = proseDiv.closest('div, section') || proseDiv.parentElement;
+          const hasFounderImages = container?.querySelector('img[src*="bookface-images"]');
           
-          if (foundersHeading) {
-            // Get all elements in document order
-            const allDocElements = Array.from(document.querySelectorAll('*'));
-            const foundersHeadingIndex = allDocElements.indexOf(foundersHeading);
+          // If it doesn't have founder images nearby, it's likely the company description
+          if (!hasFounderImages) {
+            // Extract text - use innerText first (preserves line breaks)
+            let descriptionText = proseDiv.innerText?.trim() || proseDiv.textContent?.trim() || '';
             
-            // Find the first prose div that appears before the founders heading
-            for (const proseDiv of proseDivs) {
-              const proseDivIndex = allDocElements.indexOf(proseDiv);
-              
-              // Only consider prose divs that come before the founders section
-              if (proseDivIndex < foundersHeadingIndex) {
-                // Check that this prose div is not within a founder card
-                // (founder cards also have prose divs for descriptions)
-                const closestContainer = proseDiv.closest('div, section, article');
-                const isInFounderCard = closestContainer?.querySelector('.text-xl.font-bold, div[class*="text-xl"][class*="font-bold"], h2, h3, h4');
-                
-                // Also check if it's near founder images
-                const hasFounderImages = closestContainer?.querySelector('img[src*="bookface-images"]');
-                
-                // If it's not in a founder card area and doesn't have founder images nearby, it's likely the company description
-                if (!isInFounderCard && !hasFounderImages) {
-                  targetProseDiv = proseDiv;
-                  break; // Use the first valid one
-                }
-              }
-            }
-          } else {
-            // No founders heading found, use the first prose div that's not in a founder context
-            for (const proseDiv of proseDivs) {
-              // Check that this prose div is not within a founder card
-              const closestContainer = proseDiv.closest('div, section, article');
-              const isInFounderCard = closestContainer?.querySelector('.text-xl.font-bold, div[class*="text-xl"][class*="font-bold"], h2, h3, h4');
-              const hasFounderImages = closestContainer?.querySelector('img[src*="bookface-images"]');
-              
-              if (!isInFounderCard && !hasFounderImages) {
-                targetProseDiv = proseDiv;
-                break;
-              }
-            }
-          }
-          
-          if (targetProseDiv) {
-            // Extract text directly from the div
-            let descriptionText = targetProseDiv.textContent?.trim() || targetProseDiv.innerText?.trim() || '';
-            
-            // Clean up whitespace (normalize multiple spaces to single space)
-            descriptionText = descriptionText.replace(/\s+/g, ' ').trim();
-            
-            // Validate it's a reasonable company description (at least 100 chars, not too long)
-            if (descriptionText && descriptionText.length >= 100 && descriptionText.length <= 2000) {
-              // Make sure it doesn't contain founder-specific keywords that might indicate bleeding
-              const lowerText = descriptionText.toLowerCase();
-              const hasFounderKeywords = (lowerText.includes('prior to') || lowerText.includes('before')) && 
-                                        (lowerText.includes('co-founded') || lowerText.includes('founded') || lowerText.includes('worked at') || lowerText.includes('was at'));
-              
-              // Exclude navigation/footer text patterns
-              const isNavigationText = lowerText.includes('startup directory') ||
-                                      lowerText.includes('founder directory') ||
-                                      lowerText.includes('launch yc') ||
-                                      (lowerText.includes('companies') && descriptionText.length < 200) ||
-                                      lowerText.split(/\s+/).length < 10;
-              
-              // If it doesn't have founder keywords and isn't navigation text, it's likely the company description
-              if (!hasFounderKeywords && !isNavigationText) {
-                data.ycDescription = descriptionText;
-              }
+            // Basic validation - just make sure it's not empty
+            if (descriptionText && descriptionText.length > 0) {
+              data.ycDescription = descriptionText;
+              break; // Use the first valid one
             }
           }
         }
       } catch (descError) {
         // Ignore errors in description extraction
-        // Don't log warnings as it's expected that some pages might not have this
       }
 
       // ============================================
@@ -1836,22 +1749,109 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
       // ============================================
       // 5. EXTRACT LOCATION
       // ============================================
-      const locationPatterns = [
-        /location[:\s]+([A-Za-z\s,]+(?:,\s*[A-Za-z]+)?)/i,
-        /based\s+in[:\s]+([A-Za-z\s,]+(?:,\s*[A-Za-z]+)?)/i,
-        /headquarters[:\s]+([A-Za-z\s,]+(?:,\s*[A-Za-z]+)?)/i,
-      ];
-      
-      for (const pattern of locationPatterns) {
-        const match = bodyText.match(pattern);
-        if (match && match[1]) {
-          const loc = match[1].trim();
-          // Filter out obviously wrong matches
-          if (loc.length > 3 && loc.length < 100 && !loc.includes('http')) {
-            data.location = loc;
-            break;
+      // Extract location from main content area, avoiding footer/navigation
+      try {
+        // First, try to find location in a structured way (avoid footer)
+        // Look for location in the main content area, not in footer/nav
+        const mainContent = document.querySelector('main, [role="main"], article, .main-content') || 
+                          document.body;
+        
+        // Exclude footer and navigation elements
+        const footerNav = mainContent.querySelectorAll('footer, nav, header');
+        const footerNavText = Array.from(footerNav).map(el => el.textContent || '').join(' ');
+        
+        // Get text from main content, excluding footer/nav
+        let mainText = mainContent.textContent || '';
+        // Remove footer/nav text from consideration
+        footerNavText.split(/\s+/).forEach(word => {
+          if (word.length > 3) {
+            mainText = mainText.replace(new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '');
+          }
+        });
+        
+        const locationPatterns = [
+          /location[:\s]+([A-Z][A-Za-z\s,]+(?:,\s*[A-Z]{2})?)/i,
+          /based\s+in[:\s]+([A-Z][A-Za-z\s,]+(?:,\s*[A-Z]{2})?)/i,
+          /headquarters[:\s]+([A-Z][A-Za-z\s,]+(?:,\s*[A-Z]{2})?)/i,
+        ];
+        
+        for (const pattern of locationPatterns) {
+          const match = mainText.match(pattern);
+          if (match && match[1]) {
+            let loc = match[1].trim();
+            
+            // Stop at common footer/navigation patterns
+            // Stop at common footer/navigation patterns and content patterns
+            const stopPatterns = [
+              /Footer/i,
+              /Y Combinator/i,
+              /Programs/i,
+              /YC Program/i,
+              /Startup School/i,
+              /Work at a Startup/i,
+              /Primary Partner/i,
+              /\s+Founders/i,
+              /\s+Founder/i,
+              /Co$/i,
+              /Company$/i,
+              // Stop at capitalized words that look like names/roles (after location)
+              /\s+[A-Z][a-z]+\s+[A-Z][a-z]+/i, // Pattern like "San Francisco John Doe"
+            ];
+            
+            for (const pattern of stopPatterns) {
+              const match = loc.match(pattern);
+              if (match && match.index !== undefined && match.index > 0) {
+                // Take only the part before the stop pattern
+                loc = loc.substring(0, match.index).trim();
+                break;
+              }
+            }
+            
+            // Clean up: remove extra whitespace
+            loc = loc.replace(/\s{2,}/g, ' ').trim();
+            
+            // Stop at common navigation/content words
+            const stopWords = [
+              'Footer', 'Y Combinator', 'Programs', 'YC Program', 'Startup School', 
+              'Work at a Startup', 'Primary Partner', 'Primary', 'Partner',
+              'Founders', 'Founder'
+            ];
+            for (const stopWord of stopWords) {
+              const stopIndex = loc.indexOf(stopWord);
+              if (stopIndex > 0) {
+                loc = loc.substring(0, stopIndex).trim();
+                break;
+              }
+            }
+            
+            // Additional cleanup: if location contains a pattern like "CityWord" (no space), 
+            // try to split at capital letters
+            // This handles cases like "San FranciscoPrimary" -> "San Francisco"
+            if (loc.match(/[a-z][A-Z]/)) {
+              // Split at capital letters that look like role words
+              loc = loc.replace(/([a-z])([A-Z][a-z]+)/g, (match, p1, p2) => {
+                // If p2 looks like a name/role word, stop before it
+                const roleWords = ['Primary', 'Partner', 'Founder', 'Founders', 'Programs'];
+                if (roleWords.some(word => p2.includes(word))) {
+                  return p1;
+                }
+                return match;
+              });
+            }
+            
+            // Validate location format: should be like "City, State" or "City, Country"
+            // Should start with capital letter, contain letters and commas, max 100 chars
+            if (loc.length > 3 && loc.length < 100 && 
+                !loc.includes('http') && 
+                /^[A-Z][A-Za-z\s,]+/.test(loc) &&
+                !loc.match(/^(Footer|Y Combinator|Programs|YC Program)/i)) {
+              data.location = loc;
+              break;
+            }
           }
         }
+      } catch (locationError) {
+        // Ignore location extraction errors
       }
 
       // ============================================
@@ -2741,6 +2741,10 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       founders_pfp?: string[];
       yc_description?: string;
       company_logo?: string;
+      location?: string;
+      description?: string;
+      industry?: string;
+      keywords?: string;
     } = {
       // Founder information
       founder_names: founderNames || undefined,
@@ -2757,6 +2761,12 @@ async function storeYCCompanyInSupabase(company: YCCompany, pageData: YCPageData
       founder_backgrounds: founderBackgrounds || undefined,
       founders_pfp: foundersPfp.length > 0 ? foundersPfp : undefined,
       yc_description: pageData.ycDescription || undefined,
+      
+      // Location, description, industry, and keywords
+      location: pageData.location || undefined,
+      description: pageData.oneLineSummary || pageData.ycDescription || undefined,
+      industry: pageData.tags && pageData.tags.length > 0 ? pageData.tags[0] : undefined, // Use first tag as industry
+      keywords: pageData.tags && pageData.tags.length > 0 ? pageData.tags.join(', ') : undefined,
     };
     
     // Log what we're updating
@@ -2920,6 +2930,10 @@ async function storeYCCompanyByName(
       founders_pfp?: string[];
       yc_description?: string;
       company_logo?: string;
+      location?: string;
+      description?: string;
+      industry?: string;
+      keywords?: string;
     } = {
       // Add the yc_link that was missing!
       yc_link: normalized.ycLink,
@@ -2939,6 +2953,12 @@ async function storeYCCompanyByName(
       founder_backgrounds: founderBackgrounds || undefined,
       founders_pfp: foundersPfp,
       yc_description: pageData.ycDescription || undefined,
+      
+      // Location, description, industry, and keywords
+      location: pageData.location || undefined,
+      description: pageData.oneLineSummary || pageData.ycDescription || undefined,
+      industry: pageData.tags && pageData.tags.length > 0 ? pageData.tags[0] : undefined, // Use first tag as industry
+      keywords: pageData.tags && pageData.tags.length > 0 ? pageData.tags.join(', ') : undefined,
     };
 
     // Log what we're updating
