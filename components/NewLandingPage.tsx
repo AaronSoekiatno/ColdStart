@@ -19,6 +19,7 @@ import { SignInModal } from "@/components/SignInModal";
 import { SignUpModal } from "@/components/SignUpModal";
 import { ResumeUploadModal } from "@/components/ResumeUploadModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { OnboardingModal } from "@/components/OnboardingModal";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import {
@@ -40,6 +41,7 @@ export function NewLandingPage() {
   const [showSignUp, setShowSignUp] = useState(false);
   const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -51,22 +53,31 @@ export function NewLandingPage() {
   const userEmail = useMemo(() => user?.email, [user?.email]);
 
   useEffect(() => {
-    // Helper to open resume upload modal after successful authentication
-    const maybeOpenPendingUpload = (session: { user: User | null } | null, isNewSignIn: boolean = false) => {
+    // Helper to check if user needs onboarding and open appropriate modal
+    const checkOnboardingStatus = async (session: { user: User | null } | null, isNewSignIn: boolean = false) => {
       if (!session?.user) return;
       if (typeof window === "undefined") return;
 
-      const hasPendingUpload =
-        window.sessionStorage.getItem("pendingResumeUpload") === "true";
+      // Check if user has completed onboarding
+      try {
+        const response = await fetch('/api/candidate/check-onboarding', {
+          credentials: 'include',
+        });
+        const data = await response.json();
 
-      if (hasPendingUpload) {
-        window.sessionStorage.removeItem("pendingResumeUpload");
+        if (data.needsOnboarding) {
+          // User needs to complete onboarding first
+          setShowSignIn(false);
+          setShowOnboarding(true);
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+      }
+
+      // If user just signed in and onboarding is complete, redirect to matches
+      if (isNewSignIn) {
         setShowSignIn(false);
-        setShowResumeUpload(true);
-      } else if (isNewSignIn) {
-        // If user just signed in and there's no pending upload, redirect to matches
-        setShowSignIn(false);
-        // Use window.location for more reliable redirect
         window.location.href = "/matches";
       }
     };
@@ -79,19 +90,6 @@ export function NewLandingPage() {
       previousUser = session?.user ?? null;
       setUser(previousUser);
       initialLoadComplete = true;
-      
-      // Check if we should open upload modal from query parameter
-      if (typeof window !== 'undefined' && session?.user) {
-        const uploadResume = searchParams.get('uploadResume');
-        if (uploadResume === 'true') {
-          // Remove query parameter from URL
-          const url = new URL(window.location.href);
-          url.searchParams.delete('uploadResume');
-          window.history.replaceState({}, '', url.toString());
-          // Open upload modal
-          setShowResumeUpload(true);
-        }
-      }
     });
 
     // Listen for auth changes (handles in-app email/password sign-in)
@@ -117,8 +115,8 @@ export function NewLandingPage() {
         }
       }
       
-      maybeOpenPendingUpload(session, isNewSignIn);
-      
+      checkOnboardingStatus(session, isNewSignIn);
+
       previousUser = currentUser;
     });
 
@@ -174,17 +172,14 @@ export function NewLandingPage() {
   }, []);
 
   const handleGetStarted = () => {
-    // If not authenticated, prompt sign-in first and remember intent to upload.
+    // If not authenticated, prompt sign-in (onboarding will happen after sign-in)
     if (!user) {
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem("pendingResumeUpload", "true");
-      }
       setShowSignIn(true);
       return;
     }
 
-    // Already authenticated – open resume upload modal immediately.
-    setShowResumeUpload(true);
+    // Already authenticated – redirect to matches page
+    router.push('/matches');
   };
 
   const handleSignOut = async () => {
@@ -285,14 +280,14 @@ export function NewLandingPage() {
                 >
                   Sign In
                 </Button>
-                {/* Upload Resume Button - Always visible when not scrolled */}
+                {/* Continue Button - Always visible when not scrolled */}
                 <Button
                   onClick={handleGetStarted}
                   className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 ${
                     isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100 bg-white/10 hover:bg-white/20 border border-white/30'
                   }`}
                 >
-                  Upload Resume
+                  Continue
                 </Button>
               </>
             ) : (
@@ -361,14 +356,14 @@ export function NewLandingPage() {
                   </DropdownMenu>
                 </div>
 
-                {/* Upload Resume Button - Only visible when scrolled */}
+                {/* View Matches Button - Only visible when scrolled */}
                 <Button
                   onClick={handleGetStarted}
                   className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 transform ${
                     isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none hidden'
                   }`}
                 >
-                  Upload Resume
+                  View Matches
                 </Button>
               </>
             )}
@@ -614,6 +609,15 @@ export function NewLandingPage() {
       <Footer />
 
       {/* Modals */}
+      <OnboardingModal
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+        onComplete={() => {
+          setShowOnboarding(false);
+          // After onboarding, redirect to matches
+          window.location.href = "/matches";
+        }}
+      />
       <SignInModal
         open={showSignIn}
         onOpenChange={setShowSignIn}
