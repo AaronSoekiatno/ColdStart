@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 import spacy
 from spacy.tokens import Doc
+from cache_manager import CacheManager
 
 # Load environment variables
 load_dotenv()
@@ -17,7 +18,7 @@ class ATSFilter:
     """ATS Filter for keyword-based resume to job matching"""
 
     def __init__(self):
-        """Initialize Supabase client and spaCy model"""
+        """Initialize Supabase client, spaCy model, and cache"""
         supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
@@ -36,6 +37,14 @@ class ATSFilter:
             print("Downloading spaCy English model...")
             os.system("python -m spacy download en_core_web_sm")
             self.nlp = spacy.load("en_core_web_sm")
+        
+        # Initialize cache manager (gracefully handles missing Redis)
+        try:
+            self.cache = CacheManager()
+        except Exception as e:
+            print(f"⚠️  Cache initialization failed: {e}")
+            print("   Continuing without cache...")
+            self.cache = None
 
     def get_resume_full_text(self, candidate_id: str) -> Optional[str]:
         """
@@ -156,6 +165,44 @@ class ATSFilter:
                 keywords.add(lemma)
 
         return keywords
+    
+    def get_resume_keywords_cached(self, candidate_id: str) -> Set[str]:
+        """
+        Get resume keywords with caching
+        
+        Flow:
+        1. Try to get from cache
+        2. If cache miss, fetch from database and extract keywords
+        3. Store in cache for next time
+        
+        Args:
+            candidate_id: UUID of the candidate
+            
+        Returns:
+            Set of keywords from resume
+        """
+        # Try cache first
+        if self.cache and self.cache.cache_enabled:
+            cached_keywords = self.cache.get_resume_keywords(candidate_id)
+            if cached_keywords is not None:
+                print(f"  ✓ Cache HIT for candidate {candidate_id}")
+                return cached_keywords
+            print(f"  ⚠️  Cache MISS for candidate {candidate_id}")
+        
+        # Cache miss or cache disabled - fetch and process
+        resume_text = self.get_resume_full_text(candidate_id)
+        if not resume_text:
+            return set()
+        
+        keywords = self.extract_keywords(resume_text)
+        
+        # Store in cache for next time
+        if self.cache and self.cache.cache_enabled and keywords:
+            self.cache.set_resume_keywords(candidate_id, keywords)
+            print(f"  ✓ Cached keywords for candidate {candidate_id}")
+        
+        return keywords
+
 
     def calculate_job_title_similarity(self, job_title: str, role_types: List[str]) -> float:
         """
@@ -236,8 +283,8 @@ class ATSFilter:
                 "error": "No resume found for candidate"
             }
 
-        # Extract keywords from both resume and job requirements
-        resume_keywords = self.extract_keywords(resume_text)
+        # Extract keywords from resume (with caching) and job requirements
+        resume_keywords = self.get_resume_keywords_cached(candidate_id)
         job_keywords = self.extract_keywords(job_requirements)
 
         # Match keywords

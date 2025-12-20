@@ -335,6 +335,116 @@ async def get_resume_keywords(candidate_id: str):
         )
 
 
+@app.post("/api/warm-cache/{candidate_id}", tags=["cache"])
+async def warm_cache(candidate_id: str):
+    """
+    Pre-warm the cache for a specific candidate
+    Call this after resume upload/update to pre-compute keywords
+    
+    Args:
+        candidate_id: UUID of the candidate
+        
+    Returns:
+        Cache warming status
+    """
+    if ats_filter is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ATS Filter not initialized"
+        )
+    
+    try:
+        # This will fetch, extract, and cache keywords
+        keywords = ats_filter.get_resume_keywords_cached(candidate_id)
+        
+        return {
+            "success": True,
+            "candidate_id": candidate_id,
+            "keywords_count": len(keywords),
+            "cached": ats_filter.cache and ats_filter.cache.cache_enabled
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error warming cache: {str(e)}"
+        )
+
+
+@app.delete("/api/invalidate-cache/{candidate_id}", tags=["cache"])
+async def invalidate_cache(candidate_id: str):
+    """
+    Invalidate cached keywords for a specific candidate
+    Call this when resume is updated or deleted
+    
+    Args:
+        candidate_id: UUID of the candidate
+        
+    Returns:
+        Cache invalidation status
+    """
+    if ats_filter is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ATS Filter not initialized"
+        )
+    
+    try:
+        if ats_filter.cache and ats_filter.cache.cache_enabled:
+            success = ats_filter.cache.invalidate_resume_keywords(candidate_id)
+            return {
+                "success": success,
+                "candidate_id": candidate_id,
+                "message": "Cache invalidated" if success else "Cache not enabled"
+            }
+        else:
+            return {
+                "success": False,
+                "candidate_id": candidate_id,
+                "message": "Cache not enabled"
+            }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error invalidating cache: {str(e)}"
+        )
+
+
+@app.get("/api/cache-stats", tags=["cache"])
+async def get_cache_stats():
+    """
+    Get cache statistics (hits, misses, etc.)
+    
+    Returns:
+        Cache statistics
+    """
+    if ats_filter is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ATS Filter not initialized"
+        )
+    
+    try:
+        if ats_filter.cache:
+            stats = ats_filter.cache.get_cache_stats()
+            return {
+                "success": True,
+                "stats": stats
+            }
+        else:
+            return {
+                "success": False,
+                "stats": {
+                    "enabled": False,
+                    "message": "Cache not initialized"
+                }
+            }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching cache stats: {str(e)}"
+        )
+
+
 # Run the server
 if __name__ == "__main__":
     # Get port from environment or use default
