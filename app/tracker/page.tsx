@@ -2,8 +2,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
-import { Header } from '@/components/Header';
-import { EmailTrackerClient } from '@/components/EmailTrackerClient';
+import { Header } from '@/components/layout/Header';
+import { EmailTrackerClient } from '@/components/features/email/EmailTrackerClient';
 
 interface SentEmailRecord {
   id: string;
@@ -40,7 +40,7 @@ export default async function TrackerPage() {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll() {},
+      setAll() { },
     },
   });
 
