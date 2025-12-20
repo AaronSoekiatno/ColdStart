@@ -20,6 +20,13 @@ interface MatchCardProps {
       salary_range?: string;
       experience_level?: string;
     } | null;
+    jobs?: Array<{
+      job_url?: string;
+      job_title?: string;
+      job_type?: string;
+      salary_range?: string;
+      experience_level?: string;
+    }>;
     startup: {
       id?: string;
       name: string;
@@ -276,7 +283,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
       }
 
       // If no application section, always show company tab
-      if (!match.job?.job_url || !applicationSectionRef.current) {
+      const hasJobs = (match.jobs && match.jobs.length > 0) || match.job?.job_url;
+      if (!hasJobs || !applicationSectionRef.current) {
         setActiveTab('company');
         return;
       }
@@ -714,57 +722,112 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
         </div>
       )}
 
-      {/* Application Section - only shown if job has application URL */}
-      {match.job?.job_url && (
+      {/* Application Section - show all jobs ordered by role preference */}
+      {((match.jobs && match.jobs.length > 0) || match.job?.job_url) && (
         <div ref={applicationSectionRef} className="mt-4 sm:mt-6 md:mt-8">
           <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left mb-2 sm:mb-3 md:mb-4">
-            Application
+            Application{((match.jobs && match.jobs.length > 1) || (match.jobs && match.jobs.length === 0 && match.job)) ? 's' : ''}
           </h3>
-          <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              {/* Left side: Job Title and Job Details */}
-              <div className="flex-1">
-                <div>
-                  <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-1">
-                    {match.job.job_title || 'Job Title Not Available'}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
-                    {match.job.job_type && (
-                      <>
-                        <span className="capitalize">{match.job.job_type}</span>
-                        {(match.job.salary_range || match.job.experience_level) && (
-                          <span className="text-gray-400">•</span>
+          <div className="space-y-3 sm:space-y-4">
+            {/* Use jobs array if available, otherwise fall back to single job for backward compatibility */}
+            {match.jobs && match.jobs.length > 0 ? (
+              match.jobs.map((job, index) => (
+                <div key={index} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                    {/* Left side: Job Title and Job Details */}
+                    <div className="flex-1">
+                      <div>
+                        <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-1">
+                          {job.job_title || 'Job Title Not Available'}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                          {job.job_type && (
+                            <>
+                              <span className="capitalize">{job.job_type}</span>
+                              {(job.salary_range || job.experience_level) && (
+                                <span className="text-gray-400">•</span>
+                              )}
+                            </>
+                          )}
+                          {job.salary_range && (
+                            <>
+                              <span>{job.salary_range}</span>
+                              {job.experience_level && (
+                                <span className="text-gray-400">•</span>
+                              )}
+                            </>
+                          )}
+                          {job.experience_level && (
+                            <span>{job.experience_level} preferred</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Right side: Application Link Button */}
+                    <div className="flex-shrink-0">
+                      <a
+                        href={job.job_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        <span>Apply Now</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : match.job?.job_url ? (
+              // Fallback to single job for backward compatibility
+              <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                  {/* Left side: Job Title and Job Details */}
+                  <div className="flex-1">
+                    <div>
+                      <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-1">
+                        {match.job.job_title || 'Job Title Not Available'}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                        {match.job.job_type && (
+                          <>
+                            <span className="capitalize">{match.job.job_type}</span>
+                            {(match.job.salary_range || match.job.experience_level) && (
+                              <span className="text-gray-400">•</span>
+                            )}
+                          </>
                         )}
-                      </>
-                    )}
-                    {match.job.salary_range && (
-                      <>
-                        <span>{match.job.salary_range}</span>
+                        {match.job.salary_range && (
+                          <>
+                            <span>{match.job.salary_range}</span>
+                            {match.job.experience_level && (
+                              <span className="text-gray-400">•</span>
+                            )}
+                          </>
+                        )}
                         {match.job.experience_level && (
-                          <span className="text-gray-400">•</span>
+                          <span>{match.job.experience_level} preferred</span>
                         )}
-                      </>
-                    )}
-                    {match.job.experience_level && (
-                      <span>{match.job.experience_level} preferred</span>
-                    )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Right side: Application Link Button */}
+                  <div className="flex-shrink-0">
+                    <a
+                      href={match.job.job_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      <span>Apply Now</span>
+                    </a>
                   </div>
                 </div>
               </div>
-              
-              {/* Right side: Application Link Button */}
-              <div className="flex-shrink-0">
-                <a
-                  href={match.job.job_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  <span>Apply Now</span>
-                </a>
-              </div>
-            </div>
+            ) : null}
           </div>
         </div>
       )}

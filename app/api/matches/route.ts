@@ -161,6 +161,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all jobs for startups in one query
+    // First, get jobs that have startup_id set
     const jobsByStartupId: Record<string, Array<{
       job_title: string;
       job_url: string;
@@ -169,11 +170,14 @@ export async function GET(request: NextRequest) {
       experience_level?: string;
     }>> = {};
     const startupsWithJobs = new Set<string>();
+    // Track which startups have jobs with startup_id set (vs linked by company name)
+    const startupsWithDirectJobLinks = new Set<string>();
     
     if (startupIds.length > 0) {
+      // Fetch jobs with startup_id
       const { data: allJobs, error: jobsError } = await supabaseAdmin
         .from('jobs')
-        .select('startup_id, job_title, job_url, job_type, salary_range, experience_level')
+        .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level')
         .in('startup_id', startupIds)
         .not('job_url', 'is', null);
 
@@ -209,26 +213,14 @@ export async function GET(request: NextRequest) {
               experience_level: job.experience_level || undefined,
             });
             startupsWithJobs.add(job.startup_id);
+            startupsWithDirectJobLinks.add(job.startup_id); // Track direct links
           }
         }
       }
+
+      // Also fetch jobs without startup_id and link them by company_name
+      // We'll need startup names for this, so we'll do it after loading startup data
     }
-
-    // Sort matches: prioritize those with job listings
-    const sortedMatches = [...allMatches].sort((a, b) => {
-      const aHasJobs = a.startup_id ? startupsWithJobs.has(a.startup_id) : false;
-      const bHasJobs = b.startup_id ? startupsWithJobs.has(b.startup_id) : false;
-
-      // First sort by job availability
-      if (aHasJobs && !bHasJobs) return -1;
-      if (!aHasJobs && bHasJobs) return 1;
-
-      // Then by score (already sorted from query, but ensure it's maintained)
-      return b.score - a.score;
-    });
-
-    // Apply pagination AFTER sorting
-    const rawMatches = sortedMatches.slice(offset, offset + limit);
 
     // Load startup data
     let startupsById: Record<
@@ -379,7 +371,98 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Role matching patterns for finding best job match
+    // Link jobs without startup_id by matching company_name to startup name
+    // We'll fetch unlinked jobs and match them in code for case-insensitive matching
+    if (startupIds.length > 0 && Object.keys(startupsById).length > 0) {
+      // Create a map of startup name (lowercase) to startup ID for quick lookup
+      const startupNameToId = new Map<string, string>();
+      Object.values(startupsById).forEach(startup => {
+        startupNameToId.set(startup.name.toLowerCase().trim(), startup.id);
+      });
+
+      // Fetch a reasonable number of unlinked jobs (limit to avoid performance issues)
+      // We'll filter in code for case-insensitive matching
+      const { data: unlinkedJobs, error: unlinkedJobsError } = await supabaseAdmin
+        .from('jobs')
+        .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
+        .is('startup_id', null)
+        .not('job_url', 'is', null)
+        .limit(1000); // Reasonable limit to avoid performance issues
+
+      if (!unlinkedJobsError && unlinkedJobs) {
+        for (const job of unlinkedJobs) {
+          // Find matching startup by case-insensitive name match
+          const jobCompanyNameLower = job.company_name?.toLowerCase().trim();
+          if (!jobCompanyNameLower) continue;
+
+          const matchingStartupId = startupNameToId.get(jobCompanyNameLower);
+          
+          // Also try partial matches (e.g., "Company Inc" matches "Company")
+          if (!matchingStartupId) {
+            for (const [startupNameLower, startupId] of startupNameToId.entries()) {
+              if (jobCompanyNameLower === startupNameLower || 
+                  jobCompanyNameLower.includes(startupNameLower) ||
+                  startupNameLower.includes(jobCompanyNameLower)) {
+                const partialMatchStartupId = startupId;
+                if (partialMatchStartupId) {
+                  if (!jobsByStartupId[partialMatchStartupId]) {
+                    jobsByStartupId[partialMatchStartupId] = [];
+                  }
+                  jobsByStartupId[partialMatchStartupId].push({
+                    job_title: job.job_title,
+                    job_url: job.job_url,
+                    job_type: job.job_type || undefined,
+                    salary_range: job.salary_range || undefined,
+                    experience_level: job.experience_level || undefined,
+                  });
+                  startupsWithJobs.add(partialMatchStartupId);
+                }
+                break;
+              }
+            }
+          } else {
+            // Exact match found
+            if (!jobsByStartupId[matchingStartupId]) {
+              jobsByStartupId[matchingStartupId] = [];
+            }
+            jobsByStartupId[matchingStartupId].push({
+              job_title: job.job_title,
+              job_url: job.job_url,
+              job_type: job.job_type || undefined,
+              salary_range: job.salary_range || undefined,
+              experience_level: job.experience_level || undefined,
+            });
+            startupsWithJobs.add(matchingStartupId);
+          }
+        }
+      }
+    }
+
+    // NOW sort matches: prioritize those with job listings
+    // Do this AFTER all job linking is complete (both direct and by company name)
+    // Prioritize startups with direct job links (startup_id) over those linked by company name
+    const sortedMatches = [...allMatches].sort((a, b) => {
+      const aHasDirectJobs = a.startup_id ? startupsWithDirectJobLinks.has(a.startup_id) : false;
+      const bHasDirectJobs = b.startup_id ? startupsWithDirectJobLinks.has(b.startup_id) : false;
+      const aHasJobs = a.startup_id ? startupsWithJobs.has(a.startup_id) : false;
+      const bHasJobs = b.startup_id ? startupsWithJobs.has(b.startup_id) : false;
+
+      // First priority: startups with direct job links (startup_id set)
+      if (aHasDirectJobs && !bHasDirectJobs) return -1;
+      if (!aHasDirectJobs && bHasDirectJobs) return 1;
+
+      // Second priority: startups with jobs (either direct or linked by company name)
+      if (aHasJobs && !bHasJobs) return -1;
+      if (!aHasJobs && bHasJobs) return 1;
+
+      // Then by score (already sorted from query, but ensure it's maintained)
+      return b.score - a.score;
+    });
+
+    // Apply pagination AFTER sorting
+    const rawMatches = sortedMatches.slice(offset, offset + limit);
+
+    // Role matching patterns for ordering jobs by role preferences
     const rolePatterns: { [key: string]: string[] } = {
       'pm': ['product manager', 'pm', 'product lead', 'product owner', 'product'],
       'swe': ['software engineer', 'swe', 'engineer', 'software developer', 'developer'],
@@ -398,50 +481,82 @@ export async function GET(request: NextRequest) {
       'product design': ['product designer', 'product design', 'ux designer', 'ui/ux', 'ux/ui'],
     };
 
-    // Function to find best matching job based on role preferences
-    const findBestJob = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>) => {
-      if (jobs.length === 0) return null;
-      
+    // Function to calculate job relevance score based on role preferences
+    // Higher score = better match
+    const calculateJobScore = (job: { job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }): number => {
       const roleTypes = candidate.role_type || [];
-      if (roleTypes.length === 0) return jobs[0]; // No preferences, return first job
+      if (roleTypes.length === 0) return 0; // No preferences, all jobs equal
 
-      for (const job of jobs) {
-        const titleLower = job.job_title.toLowerCase();
+      const titleLower = job.job_title.toLowerCase();
+      let maxScore = 0;
 
-        for (const roleType of roleTypes) {
-          const roleLower = roleType.toLowerCase();
-          const patterns = rolePatterns[roleLower] || [roleLower];
+      for (const roleType of roleTypes) {
+        const roleLower = roleType.toLowerCase();
+        const patterns = rolePatterns[roleLower] || [roleLower];
 
-          for (const pattern of patterns) {
-            if (titleLower.includes(pattern)) {
-              return job;
-            }
+        for (const pattern of patterns) {
+          if (titleLower.includes(pattern)) {
+            // Exact match gets higher score, partial match gets lower
+            const score = titleLower === pattern ? 100 : 
+                         titleLower.startsWith(pattern) ? 80 :
+                         titleLower.includes(pattern) ? 60 : 0;
+            maxScore = Math.max(maxScore, score);
           }
         }
       }
 
-      return jobs[0]; // Fallback to first job if no match found
+      return maxScore;
+    };
+
+    // Function to order jobs by role preferences (highest score first)
+    const orderJobsByPreference = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }> => {
+      if (jobs.length === 0) return [];
+      
+      // Calculate score for each job and sort
+      const jobsWithScores = jobs.map(job => ({
+        job,
+        score: calculateJobScore(job),
+      }));
+
+      // Sort by score (descending), then alphabetically by title for ties
+      jobsWithScores.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.job.job_title.localeCompare(b.job.job_title);
+      });
+
+      return jobsWithScores.map(item => item.job);
     };
 
     // Join matches with startup data and add job data
     // Filter out matches where startup data is missing (these won't display properly)
     const matchesWithStartups = rawMatches.map((m) => {
       const startup = startupsById[m.startup_id] ?? null;
-      const jobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
-      const bestJob = findBestJob(jobs);
+      const allJobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
+      // Order jobs by role preference
+      const orderedJobs = orderJobsByPreference(allJobs);
 
       return {
         id: m.id,
         score: m.score,
         matched_at: m.matched_at,
         startup: startup,
-        has_job_listings: jobs.length > 0,
-        job: bestJob ? {
-          job_title: bestJob.job_title,
-          job_url: bestJob.job_url,
-          job_type: bestJob.job_type,
-          salary_range: bestJob.salary_range,
-          experience_level: bestJob.experience_level,
+        has_job_listings: orderedJobs.length > 0,
+        jobs: orderedJobs.map(job => ({
+          job_title: job.job_title,
+          job_url: job.job_url,
+          job_type: job.job_type,
+          salary_range: job.salary_range,
+          experience_level: job.experience_level,
+        })),
+        // Keep 'job' for backward compatibility (first job in ordered list)
+        job: orderedJobs.length > 0 ? {
+          job_title: orderedJobs[0].job_title,
+          job_url: orderedJobs[0].job_url,
+          job_type: orderedJobs[0].job_type,
+          salary_range: orderedJobs[0].salary_range,
+          experience_level: orderedJobs[0].experience_level,
         } : null,
       };
     });
