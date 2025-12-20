@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { ScrollAnimate } from "@/components/ScrollAnimate";
+import { ScrollAnimate } from "@/components/shared/ScrollAnimate";
 
 interface StartupLogo {
   id: string;

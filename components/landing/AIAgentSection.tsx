@@ -1,6 +1,6 @@
 "use client";
 
-import { ScrollAnimate } from "@/components/ScrollAnimate";
+import { ScrollAnimate } from "@/components/shared/ScrollAnimate";
 
 export function AIAgentSection() {
   return (

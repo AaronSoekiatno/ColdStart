@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { UpgradeButton } from "@/components/UpgradeButton";
+import { UpgradeButton } from "@/components/buttons/UpgradeButton";
 import { Button } from "@/components/ui/button";
 import { isSubscribed } from "@/lib/supabase";
 

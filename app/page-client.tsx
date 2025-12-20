@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from "react";
-import { NewLandingPage } from "@/components/NewLandingPage";
+import { NewLandingPage } from "@/components/landing/NewLandingPage";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
 

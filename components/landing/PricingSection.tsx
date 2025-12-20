@@ -2,7 +2,7 @@
 
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UpgradeButton } from "@/components/UpgradeButton";
+import { UpgradeButton } from "@/components/buttons/UpgradeButton";
 
 interface PricingSectionProps {
   userEmail?: string;

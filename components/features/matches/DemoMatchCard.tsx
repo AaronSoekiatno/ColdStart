@@ -1,7 +1,7 @@
 "use client";
 
 import { ExternalLink, Sparkles } from "lucide-react";
-import { ScrollAnimate } from "@/components/ScrollAnimate";
+import { ScrollAnimate } from "@/components/shared/ScrollAnimate";
 
 export function DemoMatchCard() {
   // Demo data for three startups - matching real UI structure

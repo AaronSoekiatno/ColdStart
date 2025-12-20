@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles, Bot, Zap } from "lucide-react";
-import { ScrollAnimate } from "@/components/ScrollAnimate";
+import { ScrollAnimate } from "@/components/shared/ScrollAnimate";
 
 export function NewFeatures() {
   const features = [

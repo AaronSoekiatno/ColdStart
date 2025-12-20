@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ResumeList } from '@/components/features/resumes/ResumeList';
 import { ResumeUploadModal } from '@/components/modals/ResumeUploadModal';
-import { EnhancePortfolioBanner } from '@/components/EnhancePortfolioBanner';
+import { EnhancePortfolioBanner } from '@/components/shared/EnhancePortfolioBanner';
 import { CheckMatchesBanner } from '@/components/features/matches/CheckMatchesBanner';
 import { UpgradeModal } from '@/components/modals/UpgradeModal';
 import { supabase } from '@/lib/supabase';
