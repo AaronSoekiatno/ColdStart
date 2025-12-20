@@ -3,9 +3,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isSubscribed } from '@/lib/supabase';
-import { MatchCard } from '@/components/MatchCard';
-import { Header } from '@/components/Header';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { MatchCard } from '@/components/features/matches/MatchCard';
+import { Header } from '@/components/layout/Header';
+import { UpgradeModal } from '@/components/modals/UpgradeModal';
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -58,13 +58,13 @@ export default function MatchesPage() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  
+
   // Free users can only see 10 matches
   const FREE_MATCH_LIMIT = 10;
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
-  
+
   // Limit matches for free users
   const visibleMatches = useMemo(() => {
     if (isPremium) {
@@ -72,12 +72,12 @@ export default function MatchesPage() {
     }
     return matches.slice(0, FREE_MATCH_LIMIT);
   }, [matches, isPremium, FREE_MATCH_LIMIT]);
-  
+
   const hiddenMatchCount = useMemo(() => {
     if (isPremium) return 0;
     return Math.max(0, matches.length - FREE_MATCH_LIMIT);
   }, [matches.length, isPremium, FREE_MATCH_LIMIT]);
-  
+
   // Handle navigation with premium check
   const handleNextMatch = () => {
     if (!isPremium && currentMatchIndex >= FREE_MATCH_LIMIT - 1) {
@@ -86,7 +86,7 @@ export default function MatchesPage() {
     }
     setCurrentMatchIndex((prev) => Math.min(visibleMatches.length - 1, prev + 1));
   };
-  
+
   const handlePreviousMatch = () => {
     setCurrentMatchIndex((prev) => Math.max(0, prev - 1));
   };
@@ -218,7 +218,7 @@ export default function MatchesPage() {
       if (!match?.startup?.founders_pfp) return;
 
       const foundersPfp = match.startup.founders_pfp;
-      
+
       // Parse founders_pfp - handle both array and string formats
       let urls: string[] = [];
       if (Array.isArray(foundersPfp)) {
@@ -314,9 +314,9 @@ export default function MatchesPage() {
               {/* Single match card display */}
               {visibleMatches[currentMatchIndex] && (
                 <div key={visibleMatches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard 
-                    match={visibleMatches[currentMatchIndex]} 
-                    isPremium={isPremium} 
+                  <MatchCard
+                    match={visibleMatches[currentMatchIndex]}
+                    isPremium={isPremium}
                     userEmail={user?.email || ''}
                   />
                 </div>
@@ -329,7 +329,7 @@ export default function MatchesPage() {
           )}
         </div>
       </section>
-      
+
       {/* Upgrade Modal */}
       {user?.email && (
         <UpgradeModal

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ExternalLink, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
-import { UpgradeModal } from "./UpgradeModal";
+import { UpgradeModal } from "@/components/modals/UpgradeModal";
 
 interface MatchCardProps {
   match: {
@@ -131,24 +131,24 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     const founderLinkedInUrls = foundersFromTable
       ? foundersFromTable.map(f => f.linkedin_url || '')
       : (startup.founder_linkedin
-          ? startup.founder_linkedin.split(',').map(url => url.trim())
-          : []);
+        ? startup.founder_linkedin.split(',').map(url => url.trim())
+        : []);
 
     const founderTwitterUrls = foundersFromTable
       ? foundersFromTable.map(f => f.twitter_url || '')
       : (startup.founder_twitter_urls
-          ? startup.founder_twitter_urls.split(',').map(url => url.trim())
-          : []);
+        ? startup.founder_twitter_urls.split(',').map(url => url.trim())
+        : []);
 
     const founderEmails = foundersFromTable
       ? foundersFromTable.map(f => f.email || '')
       : (startup.founder_emails
-          ? startup.founder_emails.split(',').map(email => email.trim())
-          : []);
+        ? startup.founder_emails.split(',').map(email => email.trim())
+        : []);
 
     // Get profile pictures - prefer from founders table, fallback to founders_pfp array
     const founderProfilePictures: string[] = [];
-    
+
     if (foundersFromTable) {
       // Use profile_picture from founders table if available
       for (let i = 0; i < foundersFromTable.length; i++) {
@@ -158,12 +158,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
         }
       }
     }
-    
+
     // Fallback: Use founders_pfp from startup (handles case when founders table doesn't exist)
     if (startup.founders_pfp) {
       // Parse founders_pfp - handle both array and string formats
       let founderProfilePicturesRaw: string[] = [];
-      
+
       if (Array.isArray(startup.founders_pfp)) {
         // PostgreSQL array comes as array
         founderProfilePicturesRaw = startup.founders_pfp
@@ -194,29 +194,29 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     const founderBackgroundsArray = foundersFromTable
       ? foundersFromTable.map(f => f.background || '')
       : founderNames.map((name, idx) => {
-          if (!startup.founder_backgrounds) return '';
+        if (!startup.founder_backgrounds) return '';
 
-          // Create regex to find "FounderName: background text"
-          // Match from "Name:" until the next founder's "Name:" or end of string
-          const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          const nextFounderName = idx < founderNames.length - 1 ? founderNames[idx + 1] : null;
+        // Create regex to find "FounderName: background text"
+        // Match from "Name:" until the next founder's "Name:" or end of string
+        const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const nextFounderName = idx < founderNames.length - 1 ? founderNames[idx + 1] : null;
 
-          let pattern;
-          if (nextFounderName) {
-            const escapedNextName = nextFounderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*?)(?=\\n*${escapedNextName}:|$)`, 'i');
-          } else {
-            // Last founder - match until end of string
-            pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*)$`, 'i');
-          }
+        let pattern;
+        if (nextFounderName) {
+          const escapedNextName = nextFounderName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*?)(?=\\n*${escapedNextName}:|$)`, 'i');
+        } else {
+          // Last founder - match until end of string
+          pattern = new RegExp(`${escapedName}:\\s*([\\s\\S]*)$`, 'i');
+        }
 
-          const match = startup.founder_backgrounds.match(pattern);
-          if (match && match[1]) {
-            return match[1].trim();
-          }
+        const match = startup.founder_backgrounds.match(pattern);
+        if (match && match[1]) {
+          return match[1].trim();
+        }
 
-          return '';
-        });
+        return '';
+      });
 
     return {
       founderNames,
@@ -236,11 +236,11 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     if (tab === 'apply' && !match.job?.job_url) {
       return;
     }
-    
+
     if (ref.current) {
       // Mark this as a manual tab click to prevent scroll handler from overriding
       manualTabClickRef.current = { tab, timestamp: Date.now() };
-      
+
       // Calculate offset to account for sticky header (approximately 80px)
       const offset = 80;
       const elementPosition = ref.current.getBoundingClientRect().top + window.pageYOffset;
@@ -331,22 +331,20 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
           <div className="flex gap-1 sm:gap-3">
             <button
               onClick={() => scrollToSection(companySectionRef, 'company')}
-              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${
-                activeTab === 'company'
+              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'company'
                   ? 'text-gray-900 border-blue-500'
                   : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
-              }`}
+                }`}
             >
               Company
             </button>
             {match.job?.job_url && (
               <button
                 onClick={() => scrollToSection(applicationSectionRef, 'apply')}
-                className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${
-                  activeTab === 'apply'
+                className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'apply'
                     ? 'text-gray-900 border-blue-500'
                     : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
-                }`}
+                  }`}
               >
                 Apply
               </button>
@@ -386,26 +384,26 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
       <div ref={companySectionRef} className="flex flex-col md:flex-row md:items-start md:justify-between mb-4 md:mb-6">
         <div className="flex-1 w-full">
           <div className="flex flex-row items-start gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-             {/* Logo */}
-             <div className="flex-shrink-0 flex items-start">
-               {match.startup.company_logo ? (
-                 <Image
-                   src={match.startup.company_logo}
-                   alt={`${match.startup.name} logo`}
-                   width={112}
-                   height={112}
-                   className="object-contain w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
-                   unoptimized
-                   loading="eager"
-                 />
-               ) : (
-                 <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-gray-200 flex items-center justify-center">
-                   <span className="text-gray-600 text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold">
-                     {match.startup.name.charAt(0).toUpperCase()}
-                   </span>
-                 </div>
-               )}
-             </div>
+            {/* Logo */}
+            <div className="flex-shrink-0 flex items-start">
+              {match.startup.company_logo ? (
+                <Image
+                  src={match.startup.company_logo}
+                  alt={`${match.startup.name} logo`}
+                  width={112}
+                  height={112}
+                  className="object-contain w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-lg"
+                  unoptimized
+                  loading="eager"
+                />
+              ) : (
+                <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-gray-200 flex items-center justify-center">
+                  <span className="text-gray-600 text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold">
+                    {match.startup.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
             {/* Name, match score, description, and links - aligned with logo */}
             <div className="flex-1 min-w-0 flex flex-col">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3 mb-1 sm:mb-1.5">
@@ -424,17 +422,17 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
               {match.startup.description && (
                 <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed line-clamp-2 sm:line-clamp-none">
                   {match.startup.description}
-          </p>
-        )}
+                </p>
+              )}
               {/* Website, YC, and Twitter buttons underneath description */}
               <div className="flex gap-1.5 sm:gap-2 flex-wrap mt-1 sm:-mt-0.5">
-        {match.startup.website && (
-          <a
-            href={match.startup.website.startsWith('http')
-              ? match.startup.website
-              : `https://${match.startup.website}`}
-            target="_blank"
-            rel="noopener noreferrer"
+                {match.startup.website && (
+                  <a
+                    href={match.startup.website.startsWith('http')
+                      ? match.startup.website
+                      : `https://${match.startup.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 sm:gap-1.5 md:gap-2 rounded-md sm:rounded-lg bg-gray-50 border border-gray-300 px-1.5 py-0.5 sm:px-2.5 sm:py-1.5 md:px-3 md:py-2 text-[10px] sm:text-sm text-gray-900 font-medium w-fit hover:bg-gray-100 transition-colors cursor-pointer"
                   >
                     <ExternalLink className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 flex-shrink-0" />
@@ -486,70 +484,70 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
             match.startup.team_size ||
             match.startup.location
           ) && (
-            <div className="mt-4 sm:mt-5 md:mt-8 w-full flex flex-col items-start">
-              {truncatedYcDescription && (
-                <p className="text-[11px] sm:text-sm md:text-base text-gray-700 leading-relaxed text-left max-w-3xl">
-                  {showFullYcDescription ? fullYcDescription : truncatedYcDescription}
-                  {shouldShowYcToggle && (
-                    <button
-                      type="button"
-                      onClick={() => setShowFullYcDescription((prev) => !prev)}
-                      className="ml-2 text-[10px] sm:text-xs text-blue-300 hover:underline align-baseline cursor-pointer"
-                    >
-                      {showFullYcDescription ? "Show less" : "Show more"}
-                    </button>
+              <div className="mt-4 sm:mt-5 md:mt-8 w-full flex flex-col items-start">
+                {truncatedYcDescription && (
+                  <p className="text-[11px] sm:text-sm md:text-base text-gray-700 leading-relaxed text-left max-w-3xl">
+                    {showFullYcDescription ? fullYcDescription : truncatedYcDescription}
+                    {shouldShowYcToggle && (
+                      <button
+                        type="button"
+                        onClick={() => setShowFullYcDescription((prev) => !prev)}
+                        className="ml-2 text-[10px] sm:text-xs text-blue-300 hover:underline align-baseline cursor-pointer"
+                      >
+                        {showFullYcDescription ? "Show less" : "Show more"}
+                      </button>
+                    )}
+                  </p>
+                )}
+                {/* Stats row: Company Size, Batch, Industry, Headquarters */}
+                <div className="mt-4 sm:mt-6 md:mt-8 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 w-full max-w-4xl self-center">
+                  {/* Company Size */}
+                  {match.startup.team_size && (
+                    <div className="text-left">
+                      <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Company Size
+                      </p>
+                      <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {match.startup.team_size}
+                      </p>
+                    </div>
                   )}
-                </p>
-              )}
-              {/* Stats row: Company Size, Batch, Industry, Headquarters */}
-              <div className="mt-4 sm:mt-6 md:mt-8 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 w-full max-w-4xl self-center">
-                {/* Company Size */}
-                {match.startup.team_size && (
-                  <div className="text-left">
-                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      Company Size
-                    </p>
-                    <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {match.startup.team_size}
-                    </p>
-                  </div>
-                )}
-                {/* Batch */}
-                {match.startup.batch && (
-                  <div className="text-left">
-                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      Batch
-                    </p>
-                    <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
-                      {match.startup.batch}
-                    </p>
-                  </div>
-                )}
-                {/* Industry */}
-                {match.startup.industry && (
-                  <div className="text-left">
-                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      Industry
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
-                      {match.startup.industry}
-                    </p>
-                  </div>
-                )}
-                {/* Headquarters */}
-                {match.startup.location && (
-                  <div className="text-left">
-                    <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      Headquarters
-                    </p>
-                    <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
-                      {match.startup.location}
-                    </p>
-                  </div>
-                )}
+                  {/* Batch */}
+                  {match.startup.batch && (
+                    <div className="text-left">
+                      <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Batch
+                      </p>
+                      <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {match.startup.batch}
+                      </p>
+                    </div>
+                  )}
+                  {/* Industry */}
+                  {match.startup.industry && (
+                    <div className="text-left">
+                      <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Industry
+                      </p>
+                      <p className="text-[11px] sm:text-xs text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
+                        {match.startup.industry}
+                      </p>
+                    </div>
+                  )}
+                  {/* Headquarters */}
+                  {match.startup.location && (
+                    <div className="text-left">
+                      <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Headquarters
+                      </p>
+                      <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
+                        {match.startup.location}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
       </div>
 
@@ -574,7 +572,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
               const initial = firstName[0] || lastName[0] || '?';
 
               const isSelected = selectedFounderIndex === index;
-              
+
               const handleFounderToggle = (e?: React.ChangeEvent<HTMLInputElement> | React.MouseEvent) => {
                 if (e) {
                   e.stopPropagation();
@@ -582,20 +580,19 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                 // Single selection only - toggle if clicking same, select if different
                 setSelectedFounderIndex(prev => prev === index ? null : index);
               };
-              
+
               const handleCardClick = (e: React.MouseEvent) => {
                 e.stopPropagation();
                 handleFounderToggle(e);
               };
 
               return (
-                <div 
-                  key={index} 
-                  className={`bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border p-2.5 sm:p-4 md:p-5 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-blue-300 border-2 bg-blue-50' 
+                <div
+                  key={index}
+                  className={`bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border p-2.5 sm:p-4 md:p-5 cursor-pointer transition-all ${isSelected
+                      ? 'border-blue-300 border-2 bg-blue-50'
                       : 'border-gray-100 hover:border-gray-200'
-                  }`}
+                    }`}
                   onClick={handleCardClick}
                 >
                   <div className="flex flex-row items-start gap-2.5 sm:gap-3 md:gap-4">
@@ -751,7 +748,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                   </div>
                 </div>
               </div>
-              
+
               {/* Right side: Application Link Button */}
               <div className="flex-shrink-0">
                 <a
@@ -787,8 +784,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
 // Use a custom comparison function to ensure re-renders when match changes
 export const MatchCard = memo(MatchCardComponent, (prevProps, nextProps) => {
   // Only prevent re-render if match ID is the same
-  return prevProps.match.id === nextProps.match.id && 
-         prevProps.isPremium === nextProps.isPremium &&
-         prevProps.userEmail === nextProps.userEmail;
+  return prevProps.match.id === nextProps.match.id &&
+    prevProps.isPremium === nextProps.isPremium &&
+    prevProps.userEmail === nextProps.userEmail;
 });
 

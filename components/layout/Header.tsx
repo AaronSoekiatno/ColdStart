@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { UpgradeModal } from "@/components/UpgradeModal";
+import { UpgradeModal } from "@/components/modals/UpgradeModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Menu, X, User as UserIcon, PenTool } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BugReportModal } from "@/components/BugReportModal";
+import { BugReportModal } from "@/components/modals/BugReportModal";
 
 interface HeaderProps {
   initialUser?: User | null;
@@ -51,7 +51,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
       if (fetchingRef.current || lastFetchedEmailRef.current === userEmail) {
         return;
       }
-      
+
       fetchingRef.current = true;
       setIsCheckingPremium(true);
       try {
@@ -94,7 +94,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
   const handlePremiumClick = useCallback(async () => {
     // Open modal immediately for better UX
     setShowPremiumModal(true);
-    
+
     // Sync subscription status in background (non-blocking)
     if (userEmail && !isCheckingPremium) {
       setIsCheckingPremium(true);
@@ -103,7 +103,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
           method: 'POST',
           credentials: 'include',
         });
-        
+
         if (syncResponse.ok) {
           // Refresh premium status after sync
           const response = await fetch('/api/candidate-info', {
@@ -131,7 +131,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
           <Image
             src="/images/blacked.svg"
             alt="Hermes logo"
-            width={32} 
+            width={32}
             height={32}
             priority
           />

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ResumeList } from '@/components/ResumeList';
-import { ResumeUploadModal } from '@/components/ResumeUploadModal';
+import { ResumeList } from '@/components/features/resumes/ResumeList';
+import { ResumeUploadModal } from '@/components/modals/ResumeUploadModal';
 import { EnhancePortfolioBanner } from '@/components/EnhancePortfolioBanner';
-import { CheckMatchesBanner } from '@/components/CheckMatchesBanner';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { CheckMatchesBanner } from '@/components/features/matches/CheckMatchesBanner';
+import { UpgradeModal } from '@/components/modals/UpgradeModal';
 import { supabase } from '@/lib/supabase';
 
 interface Resume {
@@ -53,7 +53,7 @@ export function ResumePageContent({ resumes, isPremium, isNewUser = false, prima
 
   // Check if user just finished enhancing (takes priority over new user banner)
   const [justEnhanced, setJustEnhanced] = useState(false);
-  
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const justEnhancedFlag = sessionStorage.getItem('justEnhancedResume');
@@ -71,12 +71,12 @@ export function ResumePageContent({ resumes, isPremium, isNewUser = false, prima
       <CheckMatchesBanner />
       {/* Only show enhance banner if user didn't just finish enhancing and doesn't have any enhanced resume */}
       {!justEnhanced && !hasEnhancedResume && (
-        <EnhancePortfolioBanner 
+        <EnhancePortfolioBanner
           resumeId={primaryResumeId}
           isNewUser={isNewUser}
         />
       )}
-      <ResumeList 
+      <ResumeList
         resumes={resumes}
         isPremium={isPremium}
         onUploadClick={handleUploadClick}

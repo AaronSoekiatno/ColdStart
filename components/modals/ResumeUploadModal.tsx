@@ -9,9 +9,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import ResumeUpload from "@/app/components/ResumeUpload";
-import { UpgradeModal } from "@/components/UpgradeModal";
-import { SignUpModal } from "@/components/SignUpModal";
-import { SignInModal } from "@/components/SignInModal";
+import { UpgradeModal } from "@/components/modals/UpgradeModal";
+import { SignUpModal } from "@/components/modals/SignUpModal";
+import { SignInModal } from "@/components/modals/SignInModal";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
@@ -73,8 +73,8 @@ export function ResumeUploadModal({ open, onOpenChange, onUploadSuccess }: Resum
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
-            <ResumeUpload 
-              onSuccess={handleUploadSuccess} 
+            <ResumeUpload
+              onSuccess={handleUploadSuccess}
               onUpgradeRequired={() => {
                 setShowUpgradeModal(true);
                 onOpenChange(false); // Close the upload modal

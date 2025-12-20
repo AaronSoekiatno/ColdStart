@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import ResumeUpload from "@/app/components/ResumeUpload";
-// import { ResumeUploadModal } from "@/components/ResumeUploadModal";
+// import { ResumeUploadModal } from \"@/components/modals/ResumeUploadModal\";
 
 type ObjectiveType = 'internship' | 'startup' | 'network' | 'improve-application' | 'sf-scene';
 type JobType = 'full-time' | 'part-time' | 'internship';

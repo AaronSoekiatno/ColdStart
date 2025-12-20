@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ResumeCard } from '@/components/ResumeCard';
+import { ResumeCard } from '@/components/features/resumes/ResumeCard';
 import { useToast } from '@/hooks/use-toast';
 import { Check, Upload } from 'lucide-react';
 
@@ -11,7 +11,7 @@ interface Resume {
   resumeUrl: string | null;
   name?: string;
   isPrimary: boolean;
-   hasEnhancedVersion?: boolean;
+  hasEnhancedVersion?: boolean;
 }
 
 interface ResumeListProps {
@@ -63,7 +63,7 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to set active resume' }));
-        
+
         if (errorData.upgradeRequired) {
           toast({
             title: "Premium feature",
@@ -122,11 +122,10 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
           <button
             onClick={handleSetPrimary}
             disabled={isButtonDisabled}
-            className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 text-white rounded-lg transition-all text-xs sm:text-sm font-medium shadow-sm self-start sm:self-auto flex-shrink-0 cursor-pointer ${
-              isAlreadyActive && isButtonDisabled
+            className={`flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-2.5 text-white rounded-lg transition-all text-xs sm:text-sm font-medium shadow-sm self-start sm:self-auto flex-shrink-0 cursor-pointer ${isAlreadyActive && isButtonDisabled
                 ? 'bg-blue-300 hover:bg-blue-300 disabled:bg-blue-300 disabled:cursor-not-allowed'
                 : 'bg-black hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed'
-            }`}
+              }`}
           >
             {isSettingPrimary ? (
               <>
@@ -151,9 +150,9 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
       {sortedResumes.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-5">
           {sortedResumes.map((resume) => (
-            <ResumeCard 
+            <ResumeCard
               key={resume.id}
-              fileName={resume.fileName} 
+              fileName={resume.fileName}
               resumeUrl={resume.resumeUrl}
               resumeName={resume.name}
               isPrimary={resume.isPrimary}
@@ -180,7 +179,7 @@ export function ResumeList({ resumes, isPremium, onUploadClick }: ResumeListProp
             onClick={onUploadClick}
             className="flex items-center justify-center gap-2.5 px-6 sm:px-8 py-3 sm:py-3.5 bg-black hover:bg-gray-800 text-white rounded-lg transition-all text-sm sm:text-base font-medium shadow-sm cursor-pointer"
           >
-            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />  
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
             <span>Upload Resume</span>
           </button>
         </div>

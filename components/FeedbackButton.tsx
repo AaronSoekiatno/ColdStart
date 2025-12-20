@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { PenTool } from "lucide-react";
-import { BugReportModal } from "@/components/BugReportModal";
+import { BugReportModal } from "@/components/modals/BugReportModal";
 
 export function FeedbackButton() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  
+
   // Hide on landing page
   if (pathname === "/") {
     return null;
