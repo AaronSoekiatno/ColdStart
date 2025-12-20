@@ -377,14 +377,14 @@ class ATSFilter:
                 "required_gpa": None
             }
         
-        # Has requirement but candidate has no GPA → fail
+        # Has requirement but candidate has no GPA → pass (cannot assume they don't meet it)
         if candidate_gpa is None:
             return {
-                "meets_requirement": False,
+                "meets_requirement": True,
                 "has_requirement": True,
                 "candidate_gpa": None,
                 "required_gpa": required_gpa,
-                "reason": f"Candidate GPA not found, but minimum {required_gpa} required"
+                "reason": f"Candidate GPA not found, cannot verify {required_gpa} requirement"
             }
         
         # Compare GPAs
