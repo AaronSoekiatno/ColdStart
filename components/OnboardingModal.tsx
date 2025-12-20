@@ -201,11 +201,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
       // Continue anyway - don't block user
     }
 
-    // Close modal and redirect to matches
-    onOpenChange(false);
-    if (onComplete) {
-      onComplete();
-    }
+    // Directly redirect to matches page
+    window.location.href = "/matches";
   };
 
   // const handleUploadResume = () => {

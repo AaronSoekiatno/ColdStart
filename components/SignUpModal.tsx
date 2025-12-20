@@ -26,6 +26,7 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const googleButtonRef = useRef<HTMLDivElement>(null);
@@ -168,15 +169,24 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
       return;
     }
 
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
       // Use signUp with email and password
       // Always use window.location.origin for redirects to ensure localhost works correctly
       const appUrl = window.location.origin;
-      const redirectUrl = redirectTo 
+      const redirectUrl = redirectTo
         ? `${appUrl}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`
         : `${appUrl}/auth/callback`;
-      
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -213,11 +223,12 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
         description: "Your account has been created successfully. You can now sign in.",
       });
       onOpenChange(false);
-      
+
       // Clear form
       setEmail("");
       setPassword("");
-      
+      setConfirmPassword("");
+
       // If we have a handler to switch to sign-in, suggest signing in
       if (onSwitchToSignIn) {
         setTimeout(() => {
@@ -277,6 +288,16 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
                 placeholder="Enter your password (min. 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                className="bg-gray-900 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 h-12"
+              />
+            </div>
+            <div>
+              <Input
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={isLoading}
                 className="bg-gray-900 border-white/20 text-white placeholder:text-white/40 focus:border-white/40 h-12"
               />

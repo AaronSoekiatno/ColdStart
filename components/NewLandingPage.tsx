@@ -99,9 +99,9 @@ export function NewLandingPage() {
       const currentUser = session?.user ?? null;
       // Only treat as new sign-in if initial load is complete and user changed from null to non-null
       const isNewSignIn = initialLoadComplete && !previousUser && currentUser !== null;
-      
+
       setUser(currentUser);
-      
+
       // Check for post-auth redirect (for email sign-in)
       if (isNewSignIn && typeof window !== 'undefined') {
         const postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect');
@@ -114,7 +114,7 @@ export function NewLandingPage() {
           return; // Exit early to prevent other redirects
         }
       }
-      
+
       checkOnboardingStatus(session, isNewSignIn);
 
       previousUser = currentUser;
@@ -136,7 +136,7 @@ export function NewLandingPage() {
       if (fetchingRef.current || lastFetchedEmailRef.current === userEmail) {
         return;
       }
-      
+
       fetchingRef.current = true;
       setIsCheckingPremium(true);
       try {
@@ -172,9 +172,9 @@ export function NewLandingPage() {
   }, []);
 
   const handleGetStarted = () => {
-    // If not authenticated, prompt sign-in (onboarding will happen after sign-in)
+    // If not authenticated, prompt sign-up (onboarding will happen after sign-up)
     if (!user) {
-      setShowSignIn(true);
+      setShowSignUp(true);
       return;
     }
 
@@ -191,7 +191,7 @@ export function NewLandingPage() {
   const handlePremiumClick = useCallback(async () => {
     // Open modal immediately for better UX
     setShowPremiumModal(true);
-    
+
     // Sync subscription status in background (non-blocking)
     if (userEmail && !isCheckingPremium) {
       setIsCheckingPremium(true);
@@ -200,7 +200,7 @@ export function NewLandingPage() {
           method: 'POST',
           credentials: 'include',
         });
-        
+
         if (syncResponse.ok) {
           // Refresh premium status after sync
           const response = await fetch('/api/candidate-info', {
@@ -226,17 +226,15 @@ export function NewLandingPage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
         <div className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           {/* Logo - Left side */}
-          <Link href="/" className={`flex items-center gap-2 sm:gap-3 transition-opacity duration-300 ${
-            isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}>
+          <Link href="/" className={`flex items-center gap-2 sm:gap-3 transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}>
             <Image src="/images/hermes.png" alt="Hermes" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
             <span className="text-lg sm:text-xl font-semibold text-white drop-shadow-md">Hermes</span>
           </Link>
 
           {/* Navigation - Desktop only, Centered, Hidden when scrolled */}
-          <nav className={`hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-4 transition-opacity duration-300 ${
-            isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}>
+          <nav className={`hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-4 transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}>
             {user ? (
               <>
                 <Link
@@ -274,28 +272,17 @@ export function NewLandingPage() {
                 {/* Sign In Button - Hidden when scrolled on mobile */}
                 <Button
                   onClick={() => setShowSignIn(true)}
-                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300 ${
-                    isScrolled ? 'hidden sm:flex' : 'flex'
-                  }`}
+                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300 ${isScrolled ? 'hidden sm:flex' : 'flex'
+                    }`}
                 >
                   Sign In
-                </Button>
-                {/* Continue Button - Always visible when not scrolled */}
-                <Button
-                  onClick={handleGetStarted}
-                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 ${
-                    isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100 bg-white/10 hover:bg-white/20 border border-white/30'
-                  }`}
-                >
-                  Continue
                 </Button>
               </>
             ) : (
               <>
                 {/* Desktop: Email Dropdown - Hidden when scrolled */}
-                <div className={`hidden md:block transition-opacity duration-300 ${
-                  isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                }`}>
+                <div className={`hidden md:block transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                  }`}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -359,9 +346,8 @@ export function NewLandingPage() {
                 {/* View Matches Button - Only visible when scrolled */}
                 <Button
                   onClick={handleGetStarted}
-                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 transform ${
-                    isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none hidden'
-                  }`}
+                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 transform ${isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none hidden'
+                    }`}
                 >
                   View Matches
                 </Button>
@@ -372,9 +358,8 @@ export function NewLandingPage() {
             {user && (
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className={`md:hidden p-2 text-white transition-opacity duration-300 ${
-                  isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                }`}
+                className={`md:hidden p-2 text-white transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                  }`}
                 aria-label="Toggle menu"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -584,7 +569,7 @@ export function NewLandingPage() {
               <ellipse cx="88" cy="45" rx="32" ry="22" fill="url(#cloud6)" />
             </svg>
           </div>
-          
+
           {/* Content with relative positioning */}
           <div className="relative z-10">
             <NewHero onGetStarted={handleGetStarted} />
