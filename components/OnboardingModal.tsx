@@ -189,7 +189,18 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
     }
   };
 
-  const handleViewMatches = () => {
+  const handleViewMatches = async () => {
+    try {
+      // Mark onboarding as truly complete
+      await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (error) {
+      console.error('Error marking onboarding complete:', error);
+      // Continue anyway - don't block user
+    }
+
     // Close modal and redirect to matches
     onOpenChange(false);
     if (onComplete) {
@@ -606,7 +617,18 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                       </p>
                     </div>
                     <Button
-                      onClick={() => {
+                      onClick={async () => {
+                        try {
+                          // Mark onboarding as complete
+                          await fetch('/api/candidate/mark-onboarding-complete', {
+                            method: 'POST',
+                            credentials: 'include',
+                          });
+                        } catch (error) {
+                          console.error('Error marking onboarding complete:', error);
+                          // Continue anyway - don't block user
+                        }
+
                         window.location.href = "/resumes";
                       }}
                       variant="outline"
