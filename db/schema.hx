@@ -2,7 +2,6 @@
 N::Candidate {
     INDEX email: String,
     name: String,
-    summary: String,
     skills: String,
     embedding: [F64],
 }

@@ -1,11 +1,10 @@
 // ==================== CANDIDATE QUERIES ====================
 
 // Add a new candidate from resume upload
-QUERY AddCandidate(name: String, email: String, summary: String, skills: String, embedding: [F64]) =>
+QUERY AddCandidate(name: String, email: String, skills: String, embedding: [F64]) =>
     candidate <- AddN<Candidate>({
         name: name,
         email: email,
-        summary: summary,
         skills: skills,
         embedding: embedding
     })

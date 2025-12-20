@@ -114,6 +114,14 @@ export default function MatchesPage() {
             router.push('/?uploadResume=true');
             return;
           }
+          if (response.status === 429) {
+            // Rate limit exceeded
+            const errorData = await response.json().catch(() => ({}));
+            setHasError(true);
+            console.error('Rate limit exceeded:', errorData);
+            // Don't throw - show error message to user
+            return;
+          }
           throw new Error('Failed to load matches');
         }
 
@@ -253,7 +261,20 @@ export default function MatchesPage() {
         <section className="pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20">
           <div className="container mx-auto px-4">
             <div className="text-center text-gray-900">
-              <p>Failed to load matches. Please try again.</p>
+              <p className="mb-4">Failed to load matches.</p>
+              <p className="text-sm text-gray-600 mb-4">
+                This may be due to database rate limits. Please wait a moment and try again.
+              </p>
+              <button
+                onClick={() => {
+                  setHasError(false);
+                  setIsLoading(true);
+                  window.location.reload();
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+              >
+                Retry
+              </button>
             </div>
           </div>
         </section>

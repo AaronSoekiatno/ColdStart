@@ -46,7 +46,6 @@ interface StartupRecord {
   founder_names?: string;
   founder_linkedin?: string;
   founder_emails?: string;
-  data_source?: string;
 }
 
 /**
@@ -55,11 +54,11 @@ interface StartupRecord {
 async function getStartupsNeedingEmailEnrichment(limit?: number): Promise<StartupRecord[]> {
   const query = supabase
     .from('startups3')
-    .select('id, name, website, founder_names, founder_linkedin, founder_emails, data_source')
+    .select('id, name, website, founder_names, founder_linkedin, founder_emails')
     .or('founder_emails.is.null,founder_emails.eq.')
     .not('founder_names', 'is', null)
-    .not('website', 'is', null)
-    .eq('data_source', 'yc');
+    .not('website', 'is', null);
+    // Note: Removed .eq('data_source', 'yc') filter as data_source column doesn't exist
 
   if (limit) {
     query.limit(limit);

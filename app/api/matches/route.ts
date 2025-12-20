@@ -57,10 +57,34 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    let { count: totalCount } = await supabaseAdmin
+    let { count: totalCount, error: countError } = await supabaseAdmin
       .from('matches')
       .select('id', { count: 'exact', head: true })
       .eq('candidate_id', candidate.id);
+
+    // Check for Supabase rate limit/quota errors
+    if (countError) {
+      const errorMessage = countError.message || '';
+      const isRateLimit = errorMessage.includes('rate limit') || 
+                         errorMessage.includes('quota') || 
+                         errorMessage.includes('429') ||
+                         errorMessage.includes('too many requests') ||
+                         countError.code === 'PGRST301' || // PostgREST rate limit
+                         countError.code === 'PGRST116'; // Not found (might be rate limit related)
+      
+      if (isRateLimit) {
+        console.error('[Matches API] Supabase rate limit/quota exceeded on count query:', countError);
+        return NextResponse.json(
+          { 
+            error: 'Database rate limit exceeded. Please try again in a few moments.',
+            rateLimit: true 
+          },
+          { status: 429 }
+        );
+      }
+      console.warn('[Matches API] Error getting match count (non-rate-limit):', countError);
+      // Continue with totalCount as undefined if it's not a rate limit
+    }
 
     // Get matches for sorting (limit to first 200 to avoid performance issues)
     // This ensures page 1 users see matches with jobs, while keeping query fast
@@ -73,6 +97,25 @@ export async function GET(request: NextRequest) {
       .limit(fetchLimit);
 
     if (matchError) {
+      const errorMessage = matchError.message || '';
+      const isRateLimit = errorMessage.includes('rate limit') || 
+                         errorMessage.includes('quota') || 
+                         errorMessage.includes('429') ||
+                         errorMessage.includes('too many requests') ||
+                         matchError.code === 'PGRST301' ||
+                         matchError.code === 'PGRST116';
+      
+      if (isRateLimit) {
+        console.error('[Matches API] Supabase rate limit/quota exceeded on matches query:', matchError);
+        return NextResponse.json(
+          { 
+            error: 'Database rate limit exceeded. Please try again in a few moments.',
+            rateLimit: true 
+          },
+          { status: 429 }
+        );
+      }
+      
       return NextResponse.json(
         { error: `Failed to load matches: ${matchError.message}` },
         { status: 500 }
@@ -112,6 +155,10 @@ export async function GET(request: NextRequest) {
           .filter((id): id is string => !!id)
       )
     );
+    
+    if (startupIds.length === 0 && allMatches.length > 0) {
+      console.warn('[Matches API] Warning: Matches exist but no valid startup_ids found');
+    }
 
     // Fetch all jobs for startups in one query
     const jobsByStartupId: Record<string, Array<{
@@ -129,6 +176,24 @@ export async function GET(request: NextRequest) {
         .select('startup_id, job_title, job_url, job_type, salary_range, experience_level')
         .in('startup_id', startupIds)
         .not('job_url', 'is', null);
+
+      if (jobsError) {
+        const errorMessage = jobsError.message || '';
+        const isRateLimit = errorMessage.includes('rate limit') || 
+                           errorMessage.includes('quota') || 
+                           errorMessage.includes('429') ||
+                           errorMessage.includes('too many requests') ||
+                           jobsError.code === 'PGRST301' ||
+                           jobsError.code === 'PGRST116';
+        
+        if (isRateLimit) {
+          console.error('[Matches API] Supabase rate limit/quota exceeded on jobs query:', jobsError);
+          // Continue without jobs rather than failing completely
+          // Jobs are optional, so we'll return matches without job data
+        } else {
+          console.warn('[Matches API] Error fetching jobs (non-rate-limit):', jobsError);
+        }
+      }
 
       if (!jobsError && allJobs) {
         for (const job of allJobs) {
@@ -209,7 +274,31 @@ export async function GET(request: NextRequest) {
         .select('*')
         .in('id', startupIds);
 
+      if (startupsError) {
+        const errorMessage = startupsError.message || '';
+        const isRateLimit = errorMessage.includes('rate limit') || 
+                           errorMessage.includes('quota') || 
+                           errorMessage.includes('429') ||
+                           errorMessage.includes('too many requests') ||
+                           startupsError.code === 'PGRST301' ||
+                           startupsError.code === 'PGRST116';
+        
+        if (isRateLimit) {
+          console.error('[Matches API] Supabase rate limit/quota exceeded on startups query:', startupsError);
+          // Return rate limit error instead of continuing with empty startups
+          return NextResponse.json(
+            { 
+              error: 'Database rate limit exceeded. Please try again in a few moments.',
+              rateLimit: true 
+            },
+            { status: 429 }
+          );
+        }
+        console.error('[Matches API] Error fetching startups (non-rate-limit):', startupsError);
+      }
+      
       if (!startupsError && startupRows) {
+        console.log(`[Matches API] Found ${startupRows.length} startups for ${startupIds.length} startup IDs`);
         // Fetch founders from founders table for all startups
         const { data: foundersRows, error: foundersError } = await supabaseAdmin
           .from('founders')
@@ -335,7 +424,8 @@ export async function GET(request: NextRequest) {
     };
 
     // Join matches with startup data and add job data
-    const matches = rawMatches.map((m) => {
+    // Filter out matches where startup data is missing (these won't display properly)
+    const matchesWithStartups = rawMatches.map((m) => {
       const startup = startupsById[m.startup_id] ?? null;
       const jobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
       const bestJob = findBestJob(jobs);
@@ -355,6 +445,19 @@ export async function GET(request: NextRequest) {
         } : null,
       };
     });
+    
+    // Filter out matches with null startups and log if any were filtered
+    const matches = matchesWithStartups.filter((match) => {
+      if (match.startup === null) {
+        console.warn(`[Matches API] Filtering out match ${match.id} - startup data not found for startup_id`);
+        return false;
+      }
+      return true;
+    });
+    
+    if (matchesWithStartups.length > matches.length) {
+      console.warn(`[Matches API] Filtered out ${matchesWithStartups.length - matches.length} matches due to missing startup data`);
+    }
 
     const totalPages = Math.ceil((totalCount || 0) / limit);
     const hasMore = page < totalPages;

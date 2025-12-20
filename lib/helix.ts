@@ -7,7 +7,6 @@ const helix = new HelixDB(process.env.HELIX_URL || 'http://localhost:6969');
 export interface Candidate {
   name: string;
   email: string;
-  summary: string;
   skills: string;
   embedding: number[];
 }
@@ -29,7 +28,6 @@ export async function addCandidate(candidate: Candidate) {
   const result = await helix.query('AddCandidate', {
     name: candidate.name,
     email: candidate.email,
-    summary: candidate.summary,
     skills: candidate.skills,
     embedding: candidate.embedding,
   });
