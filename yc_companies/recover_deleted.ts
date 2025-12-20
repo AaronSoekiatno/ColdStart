@@ -260,3 +260,4 @@ analyzeDatabase()
     process.exit(1);
   });
 
+
