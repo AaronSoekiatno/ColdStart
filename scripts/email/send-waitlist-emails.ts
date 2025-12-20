@@ -15,7 +15,7 @@ import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
-import { sendWaitlistEmail } from '../lib/resend';
+import { sendWaitlistEmail } from '../../lib/resend';
 
 // Parse command line arguments
 const args = process.argv.slice(2);

@@ -5,7 +5,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { findMatchingStartups } from '../lib/pinecone';
+import { findMatchingStartups } from '../../lib/pinecone';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;

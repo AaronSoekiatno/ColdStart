@@ -7,8 +7,8 @@ import { parse } from 'csv-parse/sync';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { upsertStartup } from '../lib/pinecone';
-import { saveStartup } from '../lib/supabase';
+import { upsertStartup } from '../../lib/pinecone';
+import { saveStartup } from '../../lib/supabase';
 
 // Types for CSV row data
 interface CSVRow {

@@ -11,7 +11,7 @@ import { config } from 'dotenv';
 // Load .env.local file
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { sendWaitlistEmail } from '../../lib/sendgrid';
+import { sendWaitlistEmail } from '../../../lib/sendgrid';
 
 const APP_URL = 'https://joinhermes.co';
 const EMAIL_SUBJECT =

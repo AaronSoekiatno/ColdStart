@@ -11,7 +11,7 @@ import { config } from 'dotenv';
 // Load .env.local file
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { sendWaitlistEmail } from '../lib/resend';
+import { sendWaitlistEmail } from '../../lib/resend';
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
 
