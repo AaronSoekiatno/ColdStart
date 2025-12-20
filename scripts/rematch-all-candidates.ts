@@ -52,7 +52,7 @@ async function findStartupIdsByNames(names: string[]): Promise<Map<string, strin
   const lookupPromises = validNames.map(async (name) => {
     try {
       const { data, error } = await supabase
-        .from('startups3')
+        .from('startups')
         .select('id')
         .ilike('name', name.trim())
         .limit(1)
@@ -87,20 +87,18 @@ async function saveStartup(startup: {
   name: string;
   industry?: string;
   description?: string;
-  funding_stage?: string;
   funding_amount?: string;
   location?: string;
   website?: string;
   keywords?: string;
 }): Promise<void> {
   const { error } = await supabase
-    .from('startups3')
+    .from('startups')
     .upsert({
       id: startup.id,
       name: startup.name,
       industry: startup.industry || '',
       description: startup.description || '',
-      funding_stage: startup.funding_stage || '',
       funding_amount: startup.funding_amount || '',
       location: startup.location || '',
       website: startup.website || '',
@@ -212,7 +210,6 @@ async function rematchCandidate(candidate: any, indexNum: number, total: number)
             name: startupName,
             industry: match.metadata.industry || '',
             description: match.metadata.description || '',
-            funding_stage: match.metadata.funding_stage || '',
             funding_amount: match.metadata.funding_amount || '',
             location: match.metadata.location || '',
             website: match.metadata.website || '',

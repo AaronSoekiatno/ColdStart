@@ -88,10 +88,11 @@ async function processStartup(startup: any, index: number, total: number): Promi
 
   try {
     // Generate embedding text using the same function as the scraper
+    // Note: startups table uses 'round_type' instead of 'funding_stage'
     const embeddingText = generateEmbeddingText(
       startup.description || '',
       startup.name || '',
-      startup.funding_stage || null,
+      startup.round_type || null, // Use round_type from startups table
       startup.funding_amount || null,
       startup.location || null,
       startup.industry || null,
@@ -130,7 +131,7 @@ async function processStartup(startup: any, index: number, total: number): Promi
       name: startup.name || 'Unknown',
       industry: startup.industry || '',
       description: startup.description || '',
-      funding_stage: startup.funding_stage || '',
+      funding_stage: startup.round_type || '', // Map round_type to funding_stage for Pinecone metadata
       funding_amount: startup.funding_amount || '',
       location: startup.location || '',
       website: startup.website || '',
@@ -161,7 +162,7 @@ async function main() {
   try {
     // Fetch startups from Supabase
     const { data: startups, error } = await supabase
-      .from('startups3')
+      .from('startups')
       .select('*')
       .limit(limit);
 

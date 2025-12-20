@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
 
     if (startupIds.length > 0) {
       const { data: startupRows, error: startupsError } = await supabaseAdmin
-        .from('startups3')
+        .from('startups')
         .select('*')
         .in('id', startupIds);
 

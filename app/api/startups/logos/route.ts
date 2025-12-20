@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     const { data: startups, error } = await supabaseAdmin
-      .from('startups3')
+      .from('startups')
       .select('id, name, company_logo')
       .not('company_logo', 'is', null)
       .neq('company_logo', '')
