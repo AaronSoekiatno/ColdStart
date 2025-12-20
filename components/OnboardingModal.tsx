@@ -191,15 +191,21 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
 
   const handleViewMatches = async () => {
     try {
-      // Mark onboarding as truly complete
-      await fetch('/api/candidate/mark-onboarding-complete', {
+      // Mark onboarding as truly complete and wait for response
+      const response = await fetch('/api/candidate/mark-onboarding-complete', {
         method: 'POST',
         credentials: 'include',
       });
+
+      if (!response.ok) {
+        console.error('Failed to mark onboarding complete:', await response.text());
+      }
     } catch (error) {
       console.error('Error marking onboarding complete:', error);
-      // Continue anyway - don't block user
     }
+
+    // Small delay to ensure database propagates
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Directly redirect to matches page
     window.location.href = "/matches";

@@ -96,12 +96,6 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
         throw error;
       }
 
-      // Success - user is signed in
-      toast({
-        title: "Signed in",
-        description: "Welcome back!",
-      });
-
       // Store redirect intent for client-side redirect
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem('postAuthRedirect', '/matches');
@@ -153,19 +147,14 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
         throw error;
       }
 
-      // Success - user is signed in
-      toast({
-        title: "Signed in",
-        description: "Welcome back!",
-      });
-      
+
       // Store redirect intent for client-side redirect
       if (typeof window !== 'undefined') {
         window.sessionStorage.setItem('postAuthRedirect', '/matches');
       }
-      
+
       onOpenChange(false);
-      
+
       // Clear form
       setEmail("");
       setPassword("");
@@ -173,7 +162,7 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
     } catch (error) {
       console.error('Email sign in error:', error);
       const errorMessage = error instanceof Error ? error.message : "Failed to sign in. Please try again.";
-      
+
       // Check for specific error types
       if (errorMessage.includes("Invalid login credentials") || errorMessage.includes("Email not confirmed")) {
         toast({
@@ -268,7 +257,7 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
           </p>
         </div>
       </DialogContent>
-      
+
       {/* Reset Password Modal */}
       <ResetPasswordModal
         open={isResetPasswordModalOpen}

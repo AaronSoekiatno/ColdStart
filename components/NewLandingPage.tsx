@@ -97,6 +97,7 @@ export function NewLandingPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const currentUser = session?.user ?? null;
+
       // Only treat as new sign-in if initial load is complete and user changed from null to non-null
       const isNewSignIn = initialLoadComplete && !previousUser && currentUser !== null;
 

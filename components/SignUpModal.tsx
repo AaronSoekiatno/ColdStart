@@ -104,7 +104,7 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
       const idToken = response.credential;
 
       // Use Supabase's signInWithIdToken to create a session
-      const { error } = await supabase.auth.signInWithIdToken({
+      const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
         token: idToken,
       });
@@ -112,12 +112,6 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
       if (error) {
         throw error;
       }
-
-      // Success - user is signed in/up
-      toast({
-        title: "Welcome!",
-        description: "Your account has been created.",
-      });
 
       // Store redirect intent for client-side redirect
       if (typeof window !== 'undefined') {
@@ -129,10 +123,10 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
 
       // Note: Redirect is handled by onAuthStateChange in NewLandingPage
     } catch (error) {
-      console.error('Google sign up error:', error);
+      console.error('Google sign in error:', error);
       toast({
-        title: "Sign up failed",
-        description: error instanceof Error ? error.message : "Failed to sign up with Google. Please try again.",
+        title: "Sign in failed",
+        description: error instanceof Error ? error.message : "Failed to sign in with Google. Please try again.",
         variant: "destructive",
       });
     } finally {
