@@ -1603,7 +1603,9 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
         print(f"   📋 Processing {len(jobs)} jobs for {company_name}...")
 
         # Track which jobs we see during scraping (for marking inactive later in update mode)
-        scraped_jobs_set = set()  # Set of (job_title, job_url) tuples
+        # Use separate sets for titles and URLs to allow flexible matching
+        scraped_job_titles = set()  # Set of job titles
+        scraped_job_urls = set()    # Set of job URLs (non-empty only)
 
         saved_count = 0
         for idx, job in enumerate(jobs, 1):
@@ -1845,10 +1847,10 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 db_job = {k: v for k, v in db_job.items() if v is not None}
 
                 # Track this job as seen (for inactive marking later)
-                # Normalize job_url for comparison (treat None as empty string)
-                normalized_job_url = db_job.get("job_url") or ""
-                job_identifier = (db_job["job_title"], normalized_job_url)
-                scraped_jobs_set.add(job_identifier)
+                # Track both title and URL separately for flexible matching
+                scraped_job_titles.add(db_job["job_title"])
+                if db_job.get("job_url"):
+                    scraped_job_urls.add(db_job["job_url"])
 
                 if update_mode:
                     # Update mode: Check if job exists and update is_active, or insert new
@@ -1939,14 +1941,29 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
 
                 existing_jobs = existing_jobs_result.data if existing_jobs_result.data else []
 
+                print(f"\n   📊 Inactive check: {len(existing_jobs)} active jobs in DB, {len(scraped_job_titles)} titles scraped, {len(scraped_job_urls)} URLs scraped")
+
                 # Find jobs that exist in DB but weren't scraped (no longer on website)
+                # A job is considered "still active" if EITHER:
+                # 1. Its job_title matches a scraped job title, OR
+                # 2. Its job_url matches a scraped job URL (when URL exists)
                 jobs_to_deactivate = []
                 for job in existing_jobs:
-                    # Normalize job_url for comparison (treat None as empty string)
-                    normalized_existing_url = job.get("job_url") or ""
-                    job_identifier = (job["job_title"], normalized_existing_url)
-                    if job_identifier not in scraped_jobs_set:
+                    job_title = job.get("job_title", "")
+                    job_url = job.get("job_url")
+
+                    # Check if this job was found in scraping (by title OR by URL)
+                    title_matches = job_title in scraped_job_titles
+                    url_matches = job_url and job_url in scraped_job_urls
+
+                    if not title_matches and not url_matches:
+                        # Job wasn't found by title or URL - mark for deactivation
                         jobs_to_deactivate.append(job)
+                        print(f"      ⚠️  Not found: '{job_title}' (URL: {job_url[:50] if job_url else 'None'}...)")
+                    else:
+                        # Debug: show why job is still considered active
+                        match_reason = "title" if title_matches else "URL"
+                        print(f"      ✓ Still active (matched by {match_reason}): '{job_title}'")
 
                 if jobs_to_deactivate:
                     if dry_run:

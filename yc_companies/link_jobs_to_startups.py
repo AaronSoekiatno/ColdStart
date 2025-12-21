@@ -17,22 +17,57 @@ import os
 import sys
 import uuid
 import argparse
+from pathlib import Path
 from typing import Optional, List, Dict, Tuple
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv('.env.local') or load_dotenv('.env') or load_dotenv()
+# Load environment variables FIRST
+# Find project root (parent of script's directory) and look for .env.local there
+script_dir = Path(__file__).parent.absolute()
+project_root = script_dir.parent  # Go up one level from yc_companies/ to root
+
+# Try multiple locations: project root first, then current directory
+env_paths = [
+    project_root / '.env.local',
+    project_root / '.env',
+    script_dir / '.env.local',
+    script_dir / '.env',
+    Path('.env.local'),  # Current working directory
+    Path('.env'),  # Current working directory
+]
+
+env_loaded = False
+for env_path in env_paths:
+    if env_path.exists():
+        env_loaded = load_dotenv(env_path)
+        if env_loaded:
+            print(f"✅ Environment variables loaded from: {env_path}")
+            break
+
+if not env_loaded:
+    print("⚠️  No .env file found - using system environment variables")
+    print(f"   Checked paths: {[str(p) for p in env_paths if p.exists() or str(p).endswith('.env.local')]}")
 
 from supabase import create_client, Client
 
 # Initialize Supabase client
-# Prioritize NEXT_PUBLIC_* variables (Next.js convention)
+# IMPORTANT: Use SERVICE_ROLE_KEY to bypass RLS (Row Level Security)
+# The anon key may not have permission to read startups3
 supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL") or os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+# Prefer service role key (bypasses RLS) over anon key
+supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
 # Debug: Check what we found
 print(f"🔍 Debug - Supabase URL found: {'Yes' if supabase_url else 'No'}")
-print(f"🔍 Debug - Supabase Key found: {'Yes' if supabase_key else 'No'}")
+service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+anon_key = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+if service_key:
+    print(f"🔍 Debug - Using SERVICE_ROLE_KEY (bypasses RLS)")
+elif anon_key:
+    print(f"⚠️  Debug - Using ANON_KEY (may be blocked by RLS!)")
+    print(f"   ℹ️  Add SUPABASE_SERVICE_ROLE_KEY to .env.local for full access")
+else:
+    print(f"❌ Debug - No Supabase key found!")
 if supabase_url:
     print(f"   URL: {supabase_url[:30]}...")
 if not supabase_key:
@@ -67,11 +102,19 @@ def normalize_company_name(name: str) -> str:
         ', co.', ' co.', ', corp.', ', corp', ' corp', ' labs', ' lab', ' studio', ' studios',
         ' ai', ' io', ' hq', ' app', ' tech', ' software', ' solutions', ' systems',
         ' global', ' international', ' usa', ' us',
+        # Product/service type suffixes that might differ between job listings and startup names
+        ' video', ' media', ' group', ' network', ' platform', ' health', ' healthcare',
+        ' finance', ' financial', ' bio', ' robotics', ' automation', ' analytics',
+        ' data', ' cloud', ' security', ' energy', ' foods', ' food',
     ]
     for suffix in suffixes:
         if normalized.endswith(suffix):
-            normalized = normalized[:-len(suffix)]
-            break  # Only remove one suffix
+            # Don't remove suffix if it would leave less than 3 characters
+            # (e.g., don't turn "14 Ai" into "14")
+            remaining = normalized[:-len(suffix)]
+            if len(remaining.strip()) >= 3:
+                normalized = remaining
+                break  # Only remove one suffix
 
     # Remove common prefixes
     prefixes = ['the ', 'a ']
@@ -103,9 +146,15 @@ def get_name_variations(name: str) -> List[str]:
     # Without spaces (e.g., "Open AI" -> "openai")
     variations.add(normalized.replace(' ', ''))
 
+    # First word only (e.g., "Hera Video" -> "hera")
+    # This helps match when company names have extra descriptive words
+    words = normalized.split()
+    if len(words) > 1 and len(words[0]) >= 3:
+        variations.add(words[0])
+
     # With common suffixes removed more aggressively
     base = normalized
-    extra_suffixes = ['ai', 'io', 'hq', 'app', 'labs', 'tech']
+    extra_suffixes = ['ai', 'io', 'hq', 'app', 'labs', 'tech', 'video', 'media', 'health']
     for suffix in extra_suffixes:
         if base.endswith(suffix) and len(base) > len(suffix) + 2:
             variations.add(base[:-len(suffix)].strip())
@@ -130,6 +179,14 @@ def similarity_score(name1: str, name2: str) -> float:
     vars2 = get_name_variations(name2)
 
     best_score = 0.0
+
+    # Check for first-word match (strong signal for company names like "Hera Video" vs "Hera")
+    words1 = normalize_company_name(name1).split()
+    words2 = normalize_company_name(name2).split()
+    if words1 and words2 and len(words1[0]) >= 3 and len(words2[0]) >= 3:
+        if words1[0] == words2[0]:
+            # First words match exactly - very likely the same company
+            best_score = 95.0
 
     for v1 in vars1:
         for v2 in vars2:
@@ -208,12 +265,55 @@ def get_all_startups() -> List[Dict]:
     """Get all startups from startups3 table."""
     print("📋 Fetching all startups from startups3...")
 
-    result = supabase.table("startups3").select("id, name, batch, description").execute()
+    try:
+        # Debug: Try a simple query first
+        print("   🔍 Testing table access...")
+        test_result = supabase.table("startups3").select("id, name").limit(5).execute()
+        print(f"   📊 Test query returned: {len(test_result.data) if test_result.data else 0} rows")
 
-    startups = result.data if result.data else []
-    print(f"   Found {len(startups)} existing startups")
+        if test_result.data:
+            print(f"   Sample: {[r.get('name', 'NO NAME') for r in test_result.data[:3]]}")
 
-    return startups
+        # If test query returns 0, try to understand why
+        if not test_result.data:
+            print("   ⚠️  Table appears empty or inaccessible!")
+            print("   ℹ️  Checking if this is an RLS (Row Level Security) issue...")
+
+            # Try to get count anyway
+            try:
+                count_result = supabase.table("startups3").select("*", count="exact").limit(0).execute()
+                print(f"   📊 Count query: {count_result.count if hasattr(count_result, 'count') else 'N/A'}")
+            except Exception as ce:
+                print(f"   ❌ Count query failed: {ce}")
+
+            # Maybe the table is named differently?
+            print("   ℹ️  If startups3 is empty, this script will create startups from job data.")
+            return []
+
+        # Fetch all startups (with pagination)
+        all_startups = []
+        page_size = 1000
+        offset = 0
+
+        while True:
+            result = supabase.table("startups3").select("id, name, batch, description").range(offset, offset + page_size - 1).execute()
+            if not result.data:
+                break
+            all_startups.extend(result.data)
+            print(f"   📊 Fetched {len(all_startups)} startups so far...")
+            if len(result.data) < page_size:
+                break
+            offset += page_size
+
+        print(f"   ✅ Found {len(all_startups)} existing startups")
+
+        return all_startups
+
+    except Exception as e:
+        print(f"   ❌ Error fetching startups: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
 
 
 def create_startup(company_name: str, dry_run: bool = False) -> Optional[str]:
@@ -277,6 +377,53 @@ def get_top_matches(company_name: str, startups: List[Dict], top_n: int = 3) -> 
     return matches[:top_n]
 
 
+def cluster_similar_names(company_names: List[str], threshold: float = 80.0) -> List[List[str]]:
+    """Cluster similar company names together to avoid duplicates.
+
+    Returns a list of clusters, where each cluster is a list of similar names.
+    """
+    print(f"\n📊 Clustering {len(company_names)} company names (threshold: {threshold}%)...")
+
+    # Sort names so we process consistently
+    sorted_names = sorted(company_names)
+
+    clusters = []
+    assigned = set()
+
+    for name in sorted_names:
+        if name in assigned:
+            continue
+
+        # Start a new cluster with this name
+        cluster = [name]
+        assigned.add(name)
+
+        # Find all similar names
+        for other in sorted_names:
+            if other in assigned:
+                continue
+
+            score = similarity_score(name, other)
+            if score >= threshold:
+                cluster.append(other)
+                assigned.add(other)
+
+        clusters.append(cluster)
+
+    # Show clustering results
+    multi_name_clusters = [c for c in clusters if len(c) > 1]
+    if multi_name_clusters:
+        print(f"   Found {len(multi_name_clusters)} clusters with multiple names:")
+        for cluster in multi_name_clusters[:10]:  # Show first 10
+            print(f"      • {cluster}")
+        if len(multi_name_clusters) > 10:
+            print(f"      ... and {len(multi_name_clusters) - 10} more")
+    else:
+        print("   No duplicate company names detected")
+
+    return clusters
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Link new jobs to startups using fuzzy matching",
@@ -284,22 +431,23 @@ def main():
         epilog="""
 Examples:
     python link_jobs_to_startups.py              # Run with default threshold (80%)
-    python link_jobs_to_startups.py --threshold 85  # Use 85% similarity threshold
+    python link_jobs_to_startups.py --threshold 85  # Use 85% auto-match threshold
     python link_jobs_to_startups.py --dry-run    # Preview changes without modifying DB
-    python link_jobs_to_startups.py --review     # Interactively review close matches
+
+This script:
+1. FIRST clusters similar company names from jobs (e.g., "14 Ai" and "14.ai")
+2. THEN matches clusters to existing startups in startups3
+3. Creates new startups only for unmatched clusters
         """
     )
     parser.add_argument("--threshold", type=float, default=80.0,
                         help="Similarity threshold for matching (0-100, default: 80)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Preview changes without modifying database")
-    parser.add_argument("--review", action="store_true",
-                        help="Interactively review matches below threshold but above 60%%")
 
     args = parser.parse_args()
     threshold = args.threshold
     dry_run = args.dry_run
-    review_mode = args.review
 
     print("=" * 60)
     print("🔗 Link Jobs to Startups")
@@ -307,8 +455,6 @@ Examples:
     print(f"   Similarity threshold: {threshold}%")
     if dry_run:
         print("   Mode: DRY RUN (no changes will be made)")
-    if review_mode:
-        print("   Mode: INTERACTIVE REVIEW (will prompt for close matches)")
     print()
 
     # Get new jobs without startup_id
@@ -322,10 +468,36 @@ Examples:
     company_names = get_unique_company_names(jobs)
     print(f"\n📊 Found {len(company_names)} unique companies to process")
 
+    # STEP 1: Cluster similar company names together FIRST
+    # This prevents "14 Ai" and "14.ai" from becoming separate startups
+    # Use a HIGHER threshold (95%) for clustering to avoid false positives
+    # like grouping "Andon Labs" with "Andson Biotech"
+    clustering_threshold = 95.0  # Very strict - only near-identical names
+    clusters = cluster_similar_names(company_names, clustering_threshold)
+    print(f"   Grouped into {len(clusters)} distinct companies")
+
     # Get all existing startups for matching
     startups = get_all_startups()
 
-    # Process each company
+    # Debug: Verify startups are loaded and check for specific names
+    if startups:
+        startup_names = [s.get("name", "") for s in startups if s.get("name")]
+        print(f"\n🔍 Debug: Loaded {len(startups)} startups")
+        # Check if some of the job company names exist exactly in startups
+        sample_matches = []
+        for cn in company_names[:20]:  # Check first 20
+            if cn in startup_names:
+                sample_matches.append(cn)
+        if sample_matches:
+            print(f"   ✅ Exact matches found for: {sample_matches[:5]}")
+        else:
+            print(f"   ⚠️  No exact matches in first 20 company names")
+            print(f"   Sample startup names: {startup_names[:5]}")
+            print(f"   Sample company names: {company_names[:5]}")
+    else:
+        print(f"\n⚠️  WARNING: No startups loaded! All companies will be created as new.")
+
+    # STEP 2: Process each cluster
     print(f"\n{'=' * 60}")
     print("🔄 Processing companies...")
     print("=" * 60)
@@ -337,106 +509,137 @@ Examples:
         "errors": 0,
         "reviewed": 0,
     }
-    near_misses = []  # Track close matches for summary
 
-    for idx, company_name in enumerate(company_names, 1):
-        print(f"\n[{idx}/{len(company_names)}] {company_name}")
+    for idx, cluster in enumerate(clusters, 1):
+        # Use the first name in the cluster as the canonical name
+        canonical_name = cluster[0]
+        all_names = cluster
 
-        # Try to find a matching startup
-        match, score = find_matching_startup(company_name, startups, threshold)
+        if len(cluster) > 1:
+            print(f"\n[{idx}/{len(clusters)}] {canonical_name} (+ {len(cluster)-1} variations: {cluster[1:]})")
+        else:
+            print(f"\n[{idx}/{len(clusters)}] {canonical_name}")
 
-        if match:
+        # Try to find a matching startup using any name in the cluster
+        best_match = None
+        best_score = 0.0
+
+        # First, check for EXACT match (case-insensitive)
+        for name in all_names:
+            name_lower = name.lower().strip()
+            for startup in startups:
+                startup_name = startup.get("name", "")
+                if startup_name and startup_name.lower().strip() == name_lower:
+                    # Exact match found!
+                    best_match = startup
+                    best_score = 100.0
+                    print(f"   ✅ Exact match found: '{startup_name}'")
+                    break
+            if best_match:
+                break
+
+        # If no exact match, try fuzzy matching
+        if not best_match:
+            for name in all_names:
+                match, score = find_matching_startup(name, startups, threshold)
+                if score > best_score:
+                    best_score = score
+                    if match:
+                        best_match = match
+
+        if best_match:
             # Found a match - use existing startup
-            startup_id = match["id"]
-            match_name = match["name"]
-            print(f"   🔍 Matched to: '{match_name}' (score: {score:.1f}%)")
+            startup_id = best_match["id"]
+            match_name = best_match["name"]
+            print(f"   🔍 Matched to: '{match_name}' (score: {best_score:.1f}%)")
             stats["matched"] += 1
         else:
-            # No auto-match - check if we should review
-            top_matches = get_top_matches(company_name, startups, top_n=3)
+            # No auto-match - check for close matches
+            top_matches = get_top_matches(canonical_name, startups, top_n=3)
 
-            # Track near-misses for summary
-            if top_matches and top_matches[0][1] >= 60:
-                near_misses.append((company_name, top_matches[0]))
+            # Automatic review for close matches (70%+) to prevent duplicates
+            has_close_match = top_matches and top_matches[0][1] >= 70
 
-            # Interactive review mode for close matches
-            if review_mode and top_matches and top_matches[0][1] >= 60:
-                print(f"   📋 Top matches found:")
+            if has_close_match:
+                print(f"   ⚠️  POTENTIAL DUPLICATE - Close matches found:")
                 for i, (startup, s) in enumerate(top_matches, 1):
                     print(f"      {i}. '{startup['name']}' ({s:.1f}%)")
-                print(f"      0. Create new startup")
+                print(f"      0. Create NEW startup (confirm not a duplicate)")
 
                 try:
-                    choice = input("   Select option (0-3, default=0): ").strip()
-                    if choice and choice.isdigit() and 1 <= int(choice) <= len(top_matches):
-                        selected = top_matches[int(choice) - 1]
-                        match = selected[0]
-                        score = selected[1]
-                        startup_id = match["id"]
-                        print(f"   ✅ Selected: '{match['name']}'")
-                        stats["reviewed"] += 1
-                        stats["matched"] += 1
-                    else:
-                        # Create new startup
-                        print(f"   ➕ Creating new startup...")
-                        startup_id = create_startup(company_name, dry_run)
+                    choice = input("   Select option (0-3, default=1 to use best match): ").strip()
+                    if choice == "0":
+                        # Explicitly chose to create new startup
+                        print(f"   ➕ Creating new startup (user confirmed)...")
+                        startup_id = create_startup(canonical_name, dry_run)
                         if startup_id:
                             stats["created"] += 1
-                            startups.append({"id": startup_id, "name": company_name})
+                            startups.append({"id": startup_id, "name": canonical_name})
                         else:
                             stats["errors"] += 1
                             continue
-                except (EOFError, KeyboardInterrupt):
-                    print("\n   ⚠️  Review cancelled, creating new startup...")
-                    startup_id = create_startup(company_name, dry_run)
-                    if startup_id:
-                        stats["created"] += 1
-                        startups.append({"id": startup_id, "name": company_name})
+                    elif choice and choice.isdigit() and 1 <= int(choice) <= len(top_matches):
+                        selected = top_matches[int(choice) - 1]
+                        best_match = selected[0]
+                        best_score = selected[1]
+                        startup_id = best_match["id"]
+                        print(f"   ✅ Selected: '{best_match['name']}'")
+                        stats["reviewed"] += 1
+                        stats["matched"] += 1
                     else:
-                        stats["errors"] += 1
-                        continue
+                        # Default: use best match (option 1)
+                        selected = top_matches[0]
+                        best_match = selected[0]
+                        best_score = selected[1]
+                        startup_id = best_match["id"]
+                        print(f"   ✅ Using best match: '{best_match['name']}' ({best_score:.1f}%)")
+                        stats["reviewed"] += 1
+                        stats["matched"] += 1
+                except (EOFError, KeyboardInterrupt):
+                    # Default to best match on interrupt
+                    selected = top_matches[0]
+                    best_match = selected[0]
+                    best_score = selected[1]
+                    startup_id = best_match["id"]
+                    print(f"\n   ✅ Using best match (default): '{best_match['name']}'")
+                    stats["reviewed"] += 1
+                    stats["matched"] += 1
             else:
-                # No match and not in review mode - create new startup
-                if score > 0:
-                    print(f"   ⚠️  Best match was {score:.1f}% (below {threshold}% threshold)")
-                print(f"   ➕ No match found, creating new startup...")
-                startup_id = create_startup(company_name, dry_run)
+                # No close match - safe to create new startup
+                if best_score > 0:
+                    print(f"   ℹ️  Best match was only {best_score:.1f}% (no close matches)")
+                print(f"   ➕ Creating new startup...")
+                startup_id = create_startup(canonical_name, dry_run)
                 if startup_id:
                     stats["created"] += 1
                     # Add to startups list for future matching in this run
-                    startups.append({"id": startup_id, "name": company_name})
+                    startups.append({"id": startup_id, "name": canonical_name})
                 else:
                     stats["errors"] += 1
                     continue
 
-        # Update jobs with startup_id
-        jobs_updated = update_jobs_with_startup_id(company_name, startup_id, dry_run)
-        stats["jobs_linked"] += jobs_updated
-        if not dry_run:
-            print(f"   ✅ Linked {jobs_updated} job(s)")
+        # Update jobs with startup_id for ALL names in this cluster
+        for name in all_names:
+            jobs_updated = update_jobs_with_startup_id(name, startup_id, dry_run)
+            stats["jobs_linked"] += jobs_updated
+            if not dry_run and jobs_updated > 0:
+                if name == canonical_name:
+                    print(f"   ✅ Linked {jobs_updated} job(s)")
+                else:
+                    print(f"   ✅ Linked {jobs_updated} job(s) for '{name}'")
 
     # Summary
     print(f"\n{'=' * 60}")
     print("📊 Summary")
     print("=" * 60)
-    print(f"   Companies matched to existing startups: {stats['matched']}")
+    print(f"   Company clusters processed: {len(clusters)}")
+    print(f"   Matched to existing startups: {stats['matched']}")
     if stats["reviewed"] > 0:
         print(f"      (including {stats['reviewed']} from interactive review)")
     print(f"   New startups created: {stats['created']}")
     print(f"   Total jobs linked: {stats['jobs_linked']}")
     if stats["errors"] > 0:
         print(f"   Errors: {stats['errors']}")
-
-    # Show near-misses that weren't matched (potential duplicates to review)
-    if near_misses and not review_mode:
-        unmatched_near_misses = [nm for nm in near_misses if nm[1][1] < threshold]
-        if unmatched_near_misses:
-            print(f"\n⚠️  Potential duplicates to review ({len(unmatched_near_misses)} found):")
-            for company_name, (startup, score) in unmatched_near_misses[:10]:
-                print(f"   '{company_name}' ≈ '{startup['name']}' ({score:.1f}%)")
-            if len(unmatched_near_misses) > 10:
-                print(f"   ... and {len(unmatched_near_misses) - 10} more")
-            print(f"\n   💡 Run with --review to interactively match these")
 
     if dry_run:
         print("\n⚠️  DRY RUN - No changes were made to the database")
