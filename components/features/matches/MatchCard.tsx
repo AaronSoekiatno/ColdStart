@@ -2,7 +2,7 @@
 
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { ExternalLink, Mail } from "lucide-react";
+import { ExternalLink, Mail, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
@@ -74,6 +74,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   // Single founder selection (always single selection for all users)
   const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
+  // Track error message for founder selection
+  const [founderSelectionError, setFounderSelectionError] = useState<string | null>(null);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   // Track loaded images to show them once they're ready
@@ -339,7 +341,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
           <div className="flex gap-1 sm:gap-3">
             <button
               onClick={() => scrollToSection(companySectionRef, 'company')}
-              className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'company'
+              className={`px-2 py-1 sm:px-4 sm:py-2 text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'company'
                   ? 'text-gray-900 border-blue-500'
                   : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
                 }`}
@@ -349,7 +351,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
             {match.job?.job_url && (
               <button
                 onClick={() => scrollToSection(applicationSectionRef, 'apply')}
-                className={`px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'apply'
+                className={`px-2 py-1 sm:px-4 sm:py-2 text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'apply'
                     ? 'text-gray-900 border-blue-500'
                     : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
                   }`}
@@ -366,13 +368,24 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                 className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
                 onClick={() => {
                   if (match.startup?.id) {
+                    // Check if a founder is selected
+                    if (selectedFounderIndex === null) {
+                      setFounderSelectionError("Please select a founder first");
+                      return;
+                    }
+
+                    // Check if the selected founder has an email
+                    if (!founderEmails[selectedFounderIndex]) {
+                      setFounderSelectionError("Selected founder has no email");
+                      return;
+                    }
+
+                    // Clear any error and proceed
+                    setFounderSelectionError(null);
                     const params = new URLSearchParams();
                     params.append('startupId', match.startup.id);
                     params.append('matchScore', match.score.toString());
-                    // Use first founder email if available, otherwise leave it empty
-                    if (founderEmails.length > 0 && founderEmails[0]) {
-                      params.append('founderEmail', founderEmails[0]);
-                    }
+                    params.append('founderEmail', founderEmails[selectedFounderIndex]);
                     router.push(`/generate-email?${params.toString()}`);
                   }
                 }}
@@ -515,7 +528,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                       <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                         Company Size
                       </p>
-                      <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                      <p className="text-[11px] sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                         {match.startup.team_size}
                       </p>
                     </div>
@@ -526,7 +539,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                       <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                         Batch
                       </p>
-                      <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                      <p className="text-[11px] sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
                         {match.startup.batch}
                       </p>
                     </div>
@@ -537,7 +550,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                       <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                         Industry
                       </p>
-                      <p className="text-[11px] sm:text-xs text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
+                      <p className="text-[11px] sm:text-xs font-bold text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
                         {match.startup.industry}
                       </p>
                     </div>
@@ -548,7 +561,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                       <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
                         Headquarters
                       </p>
-                      <p className="text-[11px] sm:text-sm text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
+                      <p className="text-[11px] sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
                         {match.startup.location}
                       </p>
                     </div>
@@ -567,9 +580,14 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
         <div className="mt-4 sm:mt-6 md:mt-8">
           <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
             <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
-            <p className="text-xs sm:text-base text-gray-600">
-              Select a founder
-            </p>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {founderSelectionError && (
+                <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
+              )}
+              <p className={`text-xs sm:text-base ${founderSelectionError ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                {founderSelectionError || 'Select a founder'}
+              </p>
+            </div>
           </div>
           <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
             {/* Founder Cards - one for each founder */}
@@ -587,6 +605,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                 }
                 // Single selection only - toggle if clicking same, select if different
                 setSelectedFounderIndex(prev => prev === index ? null : index);
+                // Clear error when a founder is selected
+                setFounderSelectionError(null);
               };
 
               const handleCardClick = (e: React.MouseEvent) => {
