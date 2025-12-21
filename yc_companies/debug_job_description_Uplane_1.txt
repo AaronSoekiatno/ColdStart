@@ -1,0 +1,101 @@
+Job URL: https://www.workatastartup.com/jobs/87497
+Job Title: Full-Stack Software Engineer at Uplane (F25)
+Description Length: 4258 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Full-Stack Software Engineer at Uplane (F25)
+$150
+•
+0.20% - 0.50%
+Replace marketing agencies with AI
+San Francisco, CA, US
+Full-time
+Will sponsor
+3+ years
+Apply now
+About Uplane
+The future of marketing will be nothing like the past.
+Performance marketing is a race to discover the creative angles, visuals, and messages that entertain, engage, and convert audiences before the competition does. Until now, that’s been a manual, messy, and painfully slow process.
+We’re changing that.
+Uplane builds an AI autopilot for advertising. Our intelligent system generates, tests, and optimizes campaigns end-to-end, faster than any human team could dream of. From concept to creative to targeting to scaling, everything happens automatically, driven by real performance data.
+This isn’t just another marketing tool.
+It’s the future of advertising where brands and creators focus on the vision, and AI takes care of winning the market.
+If you want to shape the future and change how the world does marketing, you’ll fit right in.
+About the role
+Skills:
+Next.js, Vue.js, TypeScript, PostgreSQL
+About Uplane (YC F25)
+Companies waste billions on bad ads, mismatched landing pages, and poor budget allocation. Uplane fixes this by replacing a patchwork of agencies, spreadsheets, and siloed tools with one self-improving system. It creates ads, builds matching landing pages, allocates budgets across different channels and more.
+About The Role
+We're seeking a highly skilled and proactive Full-Stack Software Engineer to join our team full-time, on-site in San Francisco. This role offers an excellent chance to take full ownership of features from concept to deployment within an early-stage startup setting.
+Responsibilities
+Full-Stack Development:
+Design, build, and maintain scalable applications using Node.js, TypeScript, and Nuxt (Vue).
+System Architecture:
+Architect and manage robust database schemas with PostgreSQL and Supabase, ensuring data integrity and performance.
+Infrastructure & Operations:
+Manage deployments and background jobs using Render and Inngest, and assist in maintaining dedicated deployments on Microsoft Azure.
+Product Ownership:
+Own projects across the full lifecycle, including concept development, implementation, deployment, and ongoing maintenance.
+User-Centric Design:
+Apply sound product and design judgment to build user-centric software features aligned with current market and customer needs.
+Collaboration:
+Collaborate closely with the operations team and customers via Slack and Notion to ensure technical solutions are aligned with user requirements.
+Requirements
+Bachelor’s or Master’s degree in Computer Science or a related field, or equivalent practical experience.
+Minimum of 2 years full-time experience in software engineering, preferably in early-stage startups.
+Frontend Expertise:
+Proficiency in building responsive frontends using React/Next or Vue.js and the Nuxt framework.
+Backend Expertise:
+Strong backend development skills in TypeScript/Node.js and experience with PostgreSQL or relational databases.
+Strong creative judgment with a sense for marketing.
+Demonstrated ability to work independently.
+Based in or willing to relocate to San Francisco; on-site presence required (Visa sponsorship will be provided if needed).
+Preferred Qualifications
+Experience with Language Models and AI/ML integrations (OpenAI, Anthropic, Google, etc.).
+Familiarity with serverless workflows or event-driven architecture (e.g., Inngest).
+Previous touchpoints with marketing or AdTech are a plus.
+Tech Stack
+Frontend:
+Vue.js, Nuxt
+Backend:
+Node.js, TypeScript, Inngest
+AI Agents:
+LangGraph
+Database:
+PostgreSQL (Supabase)
+Infrastructure:
+Render, Inngest
+Enterprise Cloud:
+Microsoft Azure (Dedicated Deployments)
+Collaboration:
+Linear, GitHub, Slack, Notion
+Apply now
+Other jobs at Uplane
+Full-Stack Software Engineer
+fulltime
+San Francisco, CA, US
+Full stack
+$150
+0.20% - 0.50%
+3+ years
+Apply
+AI Software Engineer
+fulltime
+San Francisco, CA, US
+Data science
+$150
+0.20% - 0.50%
+3+ years
+Apply
+Founder’s Associate Intern (Business) ; Full-time
+intern
+San Francisco, CA, US / Remote (DE; US; GB; CH; AT; IN; CA; AU)
+$1 / monthly
+Senior and above
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

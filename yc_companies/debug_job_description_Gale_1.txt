@@ -1,0 +1,67 @@
+Job URL: https://www.workatastartup.com/jobs/87566
+Job Title: Product Engineer at Gale (W25)
+Description Length: 2447 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Product Engineer at Gale (W25)
+$100K - $120K CAD
+Fast and Data-Driven Immigration Platform
+CA / US / Remote (CA; US)
+Full-time
+US citizenship/visa not required
+Any (new grads ok)
+Apply now
+About Gale
+Gale is an immigration tech platform that makes immigration simple for US companies. We've simplified the visa application process, streamlined compliance, and can integrate with HR systems - saving teams time, money and headaches. Through automation, we enable the independent attorneys we coordinate with to maintain quality whilst being more efficient.
+About the role
+Skills:
+React, TypeScript
+Overview
+Gale
+helps American businesses get work authorization for their employees. We use modern tech and AI to streamline the entire immigration process.
+As our first product engineer, you’ll primarily be building AI-powered internal tooling for lawyers. You’ll manage the full product development cycle for your work, from feature scoping to development and feedback iteration.
+Requirements
+This role will have a significant design/frontend portion to it as well. Be prepared to write React/create Figma mockups.
+We expect you to work effectively with the following languages and frameworks:
+TypeScript
+Postgres
+tRPC
+React
+Figma
+We need to see:
+Strong experience in web technologies, particularly TypeScript
+Strong experience shipping code to production
+Love for building products from 0 to 1
+Bonus points:
+Experience shipping LLM-powered interfaces and products to production
+Sustained interest in functional programming (e.g. Haskell, Scala, Rust, etc.)
+This is probably not the role for you if:
+You’re not interested in the entire product development cycle, from scoping to design to building and iterating on feedback.
+You do not do well with outcome-based assessment. We have straightforward expectations for this role: ship a feature from zero to production.
+Logistics:
+Remote out of Canada or the USA, we accept anyone with work authorization in either country.
+CANADIANS: you will work as a contractor, so you should be ready to withhold your own taxes from your paycheck. We can help you with this.
+BE SURE TO FILL OUT
+THIS FORM
+AS WELL.
+Apply now
+Other jobs at Gale
+Product Engineer
+fulltime
+CA / US / Remote (CA; US)
+Full stack
+$100K - $120K CAD
+Any (new grads ok)
+Apply
+Senior Immigration Attorney
+fulltime
+Remote
+$150K - $250K
+0.10% - 1.00%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

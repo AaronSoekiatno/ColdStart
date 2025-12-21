@@ -1,0 +1,67 @@
+Job URL: https://www.workatastartup.com/jobs/87441
+Job Title: Partnerships Lead at xPay (W24)
+Description Length: 3083 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Partnerships Lead at xPay (W24)
+₹10 - ₹35 INR
+International Billing Ops, Sales Tax and Payments for SaaS businesses
+Bengaluru, KA, IN / Bengaluru, Karnataka, IN
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About xPay
+xPay (YC W24) is an Indian payment processor that helps internet-based Indian companies accept payments from 110+ countries and 100+ currencies. We power large companies ranging all the way from Series B startups to public companies, having replaced incumbents at each of these. We currently have the highest success rates in international payments among Indian PGs.
+About the role
+About xPay
+xPay is a Y Combinator backed international payments company trusted by enterprises across India and Southeast Asia, including public companies and several consumer brands you likely use every day.
+These businesses are increasingly moving their international volumes from billion dollar giants like Stripe, PayPal, and Razorpay to xPay as we expand our footprint across
+180+ countries
+and support
+25+ currencies
+. Since January, we have
+grown 73×
+and now process over
+1 million transactions every month
+.
+While we have begun with inward remittances, our mission ultimately is to disrupt every cross border payment thread in a market that moves more than
+$200 trillion annually
+.
+The Role
+You will own all core partnerships that power xPay’s global rails. This includes building new relationships, expanding existing ones, and driving GTM collaborations. You will work closely with the founders and operate as part of the early leadership team, shaping both strategy and execution.
+Eligibility
+2-5 Years of Experience
+Background in product companies, banking, or fintech
+Based in Bangalore or ready to relocate
+What you will own
+Build, manage, and deepen partnerships with banks, payment processors, and financial institutions
+Drive all fintech partnership initiatives, from evaluation to onboarding to ongoing growth
+Lead GTM driven partnerships that expand xPay’s reach
+Identify new opportunities across markets and work with product, compliance, and operations to turn them into live solutions
+Negotiate commercial and strategic outcomes that move the business forward
+Work closely with the founders on high velocity initiatives that directly impact revenue and market expansion
+Why xPay
+You will be part of the founding team, shaping a high impact function at a company that is solving a real problem for India’s global sellers. Your partnerships will directly influence product direction, market expansion, and the future of cross border payments for Indian businesses.
+Apply here:
+https://binary.so/yZVhScR
+Technology
+We use Java Springboot backend and React.js Frontend. The database used is MongoDB. We aim to keep 99.99% uptime leading our tech to be high in resilience and scalability.
+Interview Process
+Explo call
+Domain explo
+Assignment
+Final round
+Apply now
+Other jobs at xPay
+Partnerships Lead
+fulltime
+Bengaluru, KA, IN / Bengaluru, Karnataka, IN
+₹10 - ₹35 INR
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

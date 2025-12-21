@@ -1,0 +1,86 @@
+Job URL: https://www.workatastartup.com/jobs/74375
+Job Title: Full Stack Software Engineer at Splash Inc. (W25)
+Description Length: 3301 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Full Stack Software Engineer at Splash Inc. (W25)
+$110K - $160K
+•
+0.01% - 0.50%
+Autonomous patrol-boats for National Security
+El Segundo, CA, US
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About Splash Inc.
+Splash is developing the next generation of autonomous surface vessels (ASVs) to provide National Security and defend critical assets such as oil rigs and shipping terminals. Our long-term vision is to make traditional naval vessels obsolete by creating a fleet of low-cost and versatile boats which will be able to dominate the seas. Our expertise in mass manufacturing, engineering and quickly scaling operations will make this vision a reality.
+About the role
+Skills:
+Kubernetes, Python, React, Internet of Things (IoT), gRPC
+We are seeking a versatile Full Stack Software Engineer to help us design and build the systems that power our control and command interface, infrastructure management, and cloud orchestration logic. This role spans the full software development lifecycle—from early design through production deployment—and offers opportunities to work across both back-end and front-end technologies. We are looking for someone who enjoys tackling complex, computationally intensive challenges in the cloud, while also contributing to intuitive, responsive interfaces.
+Key Responsibilities
+Collaborate with the team to design and implement full-stack applications, IoT interfaces, and infrastructure management tools.
+Build and scale backend systems using Go, connectRPC, AWS Lambda, and Load Balancers.
+Develop intuitive, responsive front-end solutions with React.
+Implement real-time communication via web sockets and APIs for dynamic interactions.
+Contribute to secure user-level authorization frameworks.
+Support backend services, automation scripts, and data pipelines to enhance reliability and efficiency.
+Drive cloud planning and orchestration logic for efficient deployment and scaling.
+Requirements
+3+ years of experience building backend systems in Go (including microservices and API design).
+Experience with connectRPC, gRPC, or similar RPC frameworks.
+Strong background in cloud infrastructure (AWS Lambda, Kubernetes) and secure, scalable authorization systems.
+3+ years of experience with React for front-end development.
+Proven ability in building IoT-related systems (e.g., telemetry, debugging).
+Solid understanding of real-time communication (web sockets) and API integrations.
+Familiarity with CI/CD pipelines and agile development workflows.
+Preferred Experience
+Geospatial mapping with MapBox/MapLibre.
+WebRTC and SRT streaming.
+Distributed systems and performance optimization.
+Apply now
+Other jobs at Splash Inc.
+Full Stack Software Engineer
+fulltime
+El Segundo, CA, US
+Full stack
+$110K - $160K
+0.01% - 0.50%
+3+ years
+Apply
+Graphic & Web Designer (Mid-Level)
+fulltime
+El Segundo, CA, US
+Brand/graphic design
+$70K - $110K
+0.01% - 0.20%
+3+ years
+Apply
+Maritime Logistics Specialist
+fulltime
+Inglewood, CA, US
+$60K - $110K
+Any (new grads ok)
+Apply
+Robotics Software Engineer
+fulltime
+El Segundo, CA, US
+Robotics
+$120K - $200K
+0.01% - 0.80%
+3+ years
+Apply
+Mechanical Engineer (Mid-Senior Level)
+fulltime
+El Segundo, CA, US
+Hardware
+$100K - $160K
+0.01% - 0.50%
+6+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›
