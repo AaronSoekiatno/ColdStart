@@ -41,11 +41,11 @@ for env_path in env_paths:
     if env_path.exists():
         env_loaded = load_dotenv(env_path)
         if env_loaded:
-            print(f"✅ Environment variables loaded from: {env_path}")
+            print(f"[OK] Environment variables loaded from: {env_path}")
             break
 
 if not env_loaded:
-    print("⚠️  No .env file found - using system environment variables")
+    print("[WARN] No .env file found - using system environment variables")
     print(f"   Checked paths: {[str(p) for p in env_paths if p.exists() or str(p).endswith('.env.local')]}")
 
 from supabase import create_client, Client
@@ -58,23 +58,23 @@ supabase_url = os.getenv("NEXT_PUBLIC_SUPABASE_URL") or os.getenv("SUPABASE_URL"
 supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
 # Debug: Check what we found
-print(f"🔍 Debug - Supabase URL found: {'Yes' if supabase_url else 'No'}")
+print(f"[DEBUG] Supabase URL found: {'Yes' if supabase_url else 'No'}")
 service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 anon_key = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 if service_key:
-    print(f"🔍 Debug - Using SERVICE_ROLE_KEY (bypasses RLS)")
+    print(f"[DEBUG] Using SERVICE_ROLE_KEY (bypasses RLS)")
 elif anon_key:
-    print(f"⚠️  Debug - Using ANON_KEY (may be blocked by RLS!)")
-    print(f"   ℹ️  Add SUPABASE_SERVICE_ROLE_KEY to .env.local for full access")
+    print(f"[WARN] Using ANON_KEY (may be blocked by RLS!)")
+    print(f"   Add SUPABASE_SERVICE_ROLE_KEY to .env.local for full access")
 else:
-    print(f"❌ Debug - No Supabase key found!")
+    print(f"[ERROR] No Supabase key found!")
 if supabase_url:
     print(f"   URL: {supabase_url[:30]}...")
 if not supabase_key:
     print("   Checking for: NEXT_PUBLIC_SUPABASE_ANON_KEY or SUPABASE_SERVICE_ROLE_KEY")
 
 if not supabase_url or not supabase_key:
-    print("\n❌ Missing Supabase credentials!")
+    print("\n[ERROR] Missing Supabase credentials!")
     print("   Please set one of the following in .env.local:")
     print("   - NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL)")
     print("   - NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY)")
@@ -239,15 +239,29 @@ def find_matching_startup(company_name: str, startups: List[Dict], threshold: fl
 
 def get_new_jobs_without_startup() -> List[Dict]:
     """Get all jobs where startup_id is NULL."""
-    print("📋 Fetching new jobs without startup_id...")
+    print("Fetching new jobs without startup_id...")
 
-    # Query jobs where startup_id is null
-    result = supabase.table("jobs").select("id, company_name, job_title, created_at").is_("startup_id", "null").execute()
+    # Query jobs where startup_id is null (with pagination)
+    all_jobs = []
+    page_size = 1000
+    offset = 0
 
-    jobs = result.data if result.data else []
-    print(f"   Found {len(jobs)} jobs without startup_id")
+    while True:
+        result = supabase.table("jobs").select("id, company_name, job_title, created_at").is_("startup_id", "null").range(offset, offset + page_size - 1).execute()
 
-    return jobs
+        if not result.data:
+            break
+
+        all_jobs.extend(result.data)
+        print(f"   Fetched {len(all_jobs)} jobs so far...")
+
+        if len(result.data) < page_size:
+            break
+
+        offset += page_size
+
+    print(f"   Found {len(all_jobs)} jobs without startup_id")
+    return all_jobs
 
 
 def get_unique_company_names(jobs: List[Dict]) -> List[str]:
@@ -263,31 +277,31 @@ def get_unique_company_names(jobs: List[Dict]) -> List[str]:
 
 def get_all_startups() -> List[Dict]:
     """Get all startups from startups3 table."""
-    print("📋 Fetching all startups from startups3...")
+    print("Fetching all startups from startups3...")
 
     try:
         # Debug: Try a simple query first
-        print("   🔍 Testing table access...")
+        print("   Testing table access...")
         test_result = supabase.table("startups3").select("id, name").limit(5).execute()
-        print(f"   📊 Test query returned: {len(test_result.data) if test_result.data else 0} rows")
+        print(f"   Test query returned: {len(test_result.data) if test_result.data else 0} rows")
 
         if test_result.data:
             print(f"   Sample: {[r.get('name', 'NO NAME') for r in test_result.data[:3]]}")
 
         # If test query returns 0, try to understand why
         if not test_result.data:
-            print("   ⚠️  Table appears empty or inaccessible!")
-            print("   ℹ️  Checking if this is an RLS (Row Level Security) issue...")
+            print("   [WARN] Table appears empty or inaccessible!")
+            print("   Checking if this is an RLS (Row Level Security) issue...")
 
             # Try to get count anyway
             try:
                 count_result = supabase.table("startups3").select("*", count="exact").limit(0).execute()
-                print(f"   📊 Count query: {count_result.count if hasattr(count_result, 'count') else 'N/A'}")
+                print(f"   Count query: {count_result.count if hasattr(count_result, 'count') else 'N/A'}")
             except Exception as ce:
-                print(f"   ❌ Count query failed: {ce}")
+                print(f"   [ERROR] Count query failed: {ce}")
 
             # Maybe the table is named differently?
-            print("   ℹ️  If startups3 is empty, this script will create startups from job data.")
+            print("   If startups3 is empty, this script will create startups from job data.")
             return []
 
         # Fetch all startups (with pagination)
@@ -300,17 +314,17 @@ def get_all_startups() -> List[Dict]:
             if not result.data:
                 break
             all_startups.extend(result.data)
-            print(f"   📊 Fetched {len(all_startups)} startups so far...")
+            print(f"   Fetched {len(all_startups)} startups so far...")
             if len(result.data) < page_size:
                 break
             offset += page_size
 
-        print(f"   ✅ Found {len(all_startups)} existing startups")
+        print(f"   [OK] Found {len(all_startups)} existing startups")
 
         return all_startups
 
     except Exception as e:
-        print(f"   ❌ Error fetching startups: {e}")
+        print(f"   [ERROR] Error fetching startups: {e}")
         import traceback
         traceback.print_exc()
         return []
@@ -333,10 +347,10 @@ def create_startup(company_name: str, dry_run: bool = False) -> Optional[str]:
     try:
         result = supabase.table("startups3").insert(startup_data).execute()
         if result.data:
-            print(f"   ✅ Created startup: {company_name} (ID: {startup_id[:8]}...)")
+            print(f"   [OK] Created startup: {company_name} (ID: {startup_id[:8]}...)")
             return startup_id
     except Exception as e:
-        print(f"   ❌ Error creating startup {company_name}: {e}")
+        print(f"   [ERROR] Error creating startup {company_name}: {e}")
 
     return None
 
@@ -355,7 +369,7 @@ def update_jobs_with_startup_id(company_name: str, startup_id: str, dry_run: boo
         count = len(result.data) if result.data else 0
         return count
     except Exception as e:
-        print(f"   ❌ Error updating jobs for {company_name}: {e}")
+        print(f"   [ERROR] Error updating jobs for {company_name}: {e}")
         return 0
 
 
@@ -382,7 +396,7 @@ def cluster_similar_names(company_names: List[str], threshold: float = 80.0) -> 
 
     Returns a list of clusters, where each cluster is a list of similar names.
     """
-    print(f"\n📊 Clustering {len(company_names)} company names (threshold: {threshold}%)...")
+    print(f"\nClustering {len(company_names)} company names (threshold: {threshold}%)...")
 
     # Sort names so we process consistently
     sorted_names = sorted(company_names)
@@ -415,7 +429,7 @@ def cluster_similar_names(company_names: List[str], threshold: float = 80.0) -> 
     if multi_name_clusters:
         print(f"   Found {len(multi_name_clusters)} clusters with multiple names:")
         for cluster in multi_name_clusters[:10]:  # Show first 10
-            print(f"      • {cluster}")
+            print(f"      - {cluster}")
         if len(multi_name_clusters) > 10:
             print(f"      ... and {len(multi_name_clusters) - 10} more")
     else:
@@ -450,7 +464,7 @@ This script:
     dry_run = args.dry_run
 
     print("=" * 60)
-    print("🔗 Link Jobs to Startups")
+    print("Link Jobs to Startups")
     print("=" * 60)
     print(f"   Similarity threshold: {threshold}%")
     if dry_run:
@@ -461,12 +475,12 @@ This script:
     jobs = get_new_jobs_without_startup()
 
     if not jobs:
-        print("\n✅ No new jobs to link!")
+        print("\n[OK] No new jobs to link!")
         return
 
     # Get unique company names
     company_names = get_unique_company_names(jobs)
-    print(f"\n📊 Found {len(company_names)} unique companies to process")
+    print(f"\nFound {len(company_names)} unique companies to process")
 
     # STEP 1: Cluster similar company names together FIRST
     # This prevents "14 Ai" and "14.ai" from becoming separate startups
@@ -482,24 +496,24 @@ This script:
     # Debug: Verify startups are loaded and check for specific names
     if startups:
         startup_names = [s.get("name", "") for s in startups if s.get("name")]
-        print(f"\n🔍 Debug: Loaded {len(startups)} startups")
+        print(f"\n[DEBUG] Loaded {len(startups)} startups")
         # Check if some of the job company names exist exactly in startups
         sample_matches = []
         for cn in company_names[:20]:  # Check first 20
             if cn in startup_names:
                 sample_matches.append(cn)
         if sample_matches:
-            print(f"   ✅ Exact matches found for: {sample_matches[:5]}")
+            print(f"   [OK] Exact matches found for: {sample_matches[:5]}")
         else:
-            print(f"   ⚠️  No exact matches in first 20 company names")
+            print(f"   [WARN] No exact matches in first 20 company names")
             print(f"   Sample startup names: {startup_names[:5]}")
             print(f"   Sample company names: {company_names[:5]}")
     else:
-        print(f"\n⚠️  WARNING: No startups loaded! All companies will be created as new.")
+        print(f"\n[WARN] No startups loaded! All companies will be created as new.")
 
     # STEP 2: Process each cluster
     print(f"\n{'=' * 60}")
-    print("🔄 Processing companies...")
+    print("Processing companies...")
     print("=" * 60)
 
     stats = {
@@ -533,7 +547,7 @@ This script:
                     # Exact match found!
                     best_match = startup
                     best_score = 100.0
-                    print(f"   ✅ Exact match found: '{startup_name}'")
+                    print(f"   [OK] Exact match found: '{startup_name}'")
                     break
             if best_match:
                 break
@@ -551,7 +565,7 @@ This script:
             # Found a match - use existing startup
             startup_id = best_match["id"]
             match_name = best_match["name"]
-            print(f"   🔍 Matched to: '{match_name}' (score: {best_score:.1f}%)")
+            print(f"   [MATCH] Matched to: '{match_name}' (score: {best_score:.1f}%)")
             stats["matched"] += 1
         else:
             # No auto-match - check for close matches
@@ -561,7 +575,7 @@ This script:
             has_close_match = top_matches and top_matches[0][1] >= 70
 
             if has_close_match:
-                print(f"   ⚠️  POTENTIAL DUPLICATE - Close matches found:")
+                print(f"   [WARN] POTENTIAL DUPLICATE - Close matches found:")
                 for i, (startup, s) in enumerate(top_matches, 1):
                     print(f"      {i}. '{startup['name']}' ({s:.1f}%)")
                 print(f"      0. Create NEW startup (confirm not a duplicate)")
@@ -570,7 +584,7 @@ This script:
                     choice = input("   Select option (0-3, default=1 to use best match): ").strip()
                     if choice == "0":
                         # Explicitly chose to create new startup
-                        print(f"   ➕ Creating new startup (user confirmed)...")
+                        print(f"   [+] Creating new startup (user confirmed)...")
                         startup_id = create_startup(canonical_name, dry_run)
                         if startup_id:
                             stats["created"] += 1
@@ -583,7 +597,7 @@ This script:
                         best_match = selected[0]
                         best_score = selected[1]
                         startup_id = best_match["id"]
-                        print(f"   ✅ Selected: '{best_match['name']}'")
+                        print(f"   [OK] Selected: '{best_match['name']}'")
                         stats["reviewed"] += 1
                         stats["matched"] += 1
                     else:
@@ -592,7 +606,7 @@ This script:
                         best_match = selected[0]
                         best_score = selected[1]
                         startup_id = best_match["id"]
-                        print(f"   ✅ Using best match: '{best_match['name']}' ({best_score:.1f}%)")
+                        print(f"   [OK] Using best match: '{best_match['name']}' ({best_score:.1f}%)")
                         stats["reviewed"] += 1
                         stats["matched"] += 1
                 except (EOFError, KeyboardInterrupt):
@@ -601,14 +615,14 @@ This script:
                     best_match = selected[0]
                     best_score = selected[1]
                     startup_id = best_match["id"]
-                    print(f"\n   ✅ Using best match (default): '{best_match['name']}'")
+                    print(f"\n   [OK] Using best match (default): '{best_match['name']}'")
                     stats["reviewed"] += 1
                     stats["matched"] += 1
             else:
                 # No close match - safe to create new startup
                 if best_score > 0:
-                    print(f"   ℹ️  Best match was only {best_score:.1f}% (no close matches)")
-                print(f"   ➕ Creating new startup...")
+                    print(f"   [INFO] Best match was only {best_score:.1f}% (no close matches)")
+                print(f"   [+] Creating new startup...")
                 startup_id = create_startup(canonical_name, dry_run)
                 if startup_id:
                     stats["created"] += 1
@@ -624,13 +638,13 @@ This script:
             stats["jobs_linked"] += jobs_updated
             if not dry_run and jobs_updated > 0:
                 if name == canonical_name:
-                    print(f"   ✅ Linked {jobs_updated} job(s)")
+                    print(f"   [OK] Linked {jobs_updated} job(s)")
                 else:
-                    print(f"   ✅ Linked {jobs_updated} job(s) for '{name}'")
+                    print(f"   [OK] Linked {jobs_updated} job(s) for '{name}'")
 
     # Summary
     print(f"\n{'=' * 60}")
-    print("📊 Summary")
+    print("Summary")
     print("=" * 60)
     print(f"   Company clusters processed: {len(clusters)}")
     print(f"   Matched to existing startups: {stats['matched']}")
@@ -642,9 +656,9 @@ This script:
         print(f"   Errors: {stats['errors']}")
 
     if dry_run:
-        print("\n⚠️  DRY RUN - No changes were made to the database")
+        print("\n[WARN] DRY RUN - No changes were made to the database")
     else:
-        print("\n✅ Done!")
+        print("\n[OK] Done!")
 
 
 if __name__ == "__main__":
