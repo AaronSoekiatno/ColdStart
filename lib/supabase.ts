@@ -612,7 +612,7 @@ export async function getResumesForCandidate(candidateId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, is_active, is_primary, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
@@ -761,7 +761,7 @@ export async function getResume(resumeId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, resume_full_text, structured_data, is_active, is_primary, updated_at, created_at')
     .eq('id', resumeId)
     .eq('is_active', true)
     .single();
@@ -787,7 +787,7 @@ export async function getMostRecentResumeForCandidate(candidateId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, resume_full_text, structured_data, is_active, is_primary, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
@@ -815,7 +815,7 @@ export async function getPrimaryResumeForCandidate(candidateId: string) {
   
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, resume_full_text, structured_data, is_active, is_primary, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_primary', true)
     .eq('is_active', true)
