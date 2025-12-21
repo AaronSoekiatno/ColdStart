@@ -276,7 +276,13 @@ export async function GET(request: NextRequest) {
     if (startupIds.length > 0) {
       const { data: startupRows, error: startupsError } = await supabaseAdmin
         .from('startups')
-        .select('*')
+        .select(`
+          id, name, industry, location, yc_description, team_size,
+          funding_stage, funding_amount, tags, website, founder_emails,
+          founder_names, founder_linkedin, founder_twitter_urls,
+          founder_backgrounds, founders_pfp, batch, description,
+          company_logo, yc_link, company_twitter_url
+        `)
         .in('id', startupIds);
 
       if (startupsError) {
@@ -598,6 +604,11 @@ export async function GET(request: NextRequest) {
         total: totalCount || 0,
         totalPages,
         hasMore,
+      },
+    }, {
+      headers: {
+        // Cache for 5 minutes on CDN, serve stale for 1 hour while revalidating
+        'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
       },
     });
   } catch (error) {
