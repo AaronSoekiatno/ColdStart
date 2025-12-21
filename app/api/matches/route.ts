@@ -122,15 +122,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get startups that have exceeded daily email limit (15 emails/day)
+    // These startups will be temporarily hidden from matches
+    const overEmailLimitStartupIds = await getStartupsOverEmailLimit(15);
+    
+    // Filter out rate-limited startups from matches
+    if (allMatches && overEmailLimitStartupIds.size > 0) {
+      const originalCount = allMatches.length;
+      allMatches = allMatches.filter(m => !overEmailLimitStartupIds.has(m.startup_id));
+      if (originalCount !== allMatches.length) {
+        console.log(`[Rate Limit] Filtered out ${originalCount - allMatches.length} startups over daily email limit`);
+      }
+    }
+
     // If no matches found, try to find instant matches based on onboarding data
     if (!allMatches || allMatches.length === 0) {
       console.log('No pre-computed matches found. Attempting instant matching...');
       const instantMatches = await findInstantMatches(candidate, limit);
       
       if (instantMatches.length > 0) {
-        // Use instant matches
-        allMatches = instantMatches;
-        totalCount = instantMatches.length;
+        // Use instant matches (also filter out rate-limited startups)
+        allMatches = instantMatches.filter(m => !overEmailLimitStartupIds.has(m.startup_id));
+        totalCount = allMatches.length;
       }
     }
 
@@ -593,6 +606,66 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch matches' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Get startup IDs that have exceeded the daily email limit
+ * Startups receiving too many emails per day are temporarily hidden from matches
+ * to prevent email bombardment and ensure fair distribution.
+ * 
+ * @param limit - Maximum emails per startup per day (default: 15)
+ * @returns Set of startup IDs that have exceeded the limit today
+ */
+async function getStartupsOverEmailLimit(limit: number = 15): Promise<Set<string>> {
+  if (!supabaseAdmin) return new Set();
+  
+  try {
+    // Calculate today's date range in UTC
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    
+    // Query to get all generated emails for today
+    const { data, error } = await supabaseAdmin
+      .from('generated_emails')
+      .select('startup_id')
+      .gte('created_at', todayStart.toISOString())
+      .lte('created_at', todayEnd.toISOString());
+    
+    if (error) {
+      console.error('[Rate Limit] Error querying email counts:', error);
+      return new Set();
+    }
+    
+    if (!data || data.length === 0) {
+      return new Set();
+    }
+    
+    // Count emails per startup
+    const countByStartup = new Map<string, number>();
+    for (const row of data) {
+      if (row.startup_id) {
+        countByStartup.set(row.startup_id, (countByStartup.get(row.startup_id) || 0) + 1);
+      }
+    }
+    
+    // Find startups over limit
+    const overLimitIds = new Set<string>();
+    for (const [startupId, count] of countByStartup) {
+      if (count >= limit) {
+        overLimitIds.add(startupId);
+      }
+    }
+    
+    if (overLimitIds.size > 0) {
+      console.log(`[Rate Limit] Found ${overLimitIds.size} startups over daily email limit (${limit})`);
+    }
+    
+    return overLimitIds;
+  } catch (error) {
+    console.error('[Rate Limit] Exception checking email limits:', error);
+    return new Set();
   }
 }
 
