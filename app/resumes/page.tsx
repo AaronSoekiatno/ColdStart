@@ -82,13 +82,13 @@ export default async function ResumePage() {
     resumes.map(async (resume) => {
       let resumeUrl: string | null = null;
       if (resume.resume_path) {
-        const { data } = await adminClient.storage
-          .from('resumes')
-          .createSignedUrl(resume.resume_path, 3600); // Inline preview, no download parameter
+        // Use proxy API with cache busting to reduce egress
+        // Include updated_at timestamp to invalidate cache when resume changes
+        const timestamp = resume.updated_at
+          ? new Date(resume.updated_at).getTime()
+          : Date.now();
 
-        if (data?.signedUrl) {
-          resumeUrl = data.signedUrl;
-        }
+        resumeUrl = `/api/resumes/proxy?path=${encodeURIComponent(resume.resume_path)}&v=${timestamp}`;
       }
       return {
         ...resume,

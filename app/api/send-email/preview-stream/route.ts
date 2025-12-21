@@ -146,13 +146,13 @@ export async function POST(request: NextRequest) {
           }
 
           if (resume.resume_path) {
-            const { data } = await supabaseAdmin.storage
-              .from('resumes')
-              .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
-
-            if (data?.signedUrl) {
-              resumeUrl = data.signedUrl;
-            }
+            // Use proxy API with cache busting to reduce egress
+            // Include updated_at timestamp to invalidate cache when resume changes
+            const timestamp = resume.updated_at 
+              ? new Date(resume.updated_at).getTime() 
+              : Date.now();
+            
+            resumeUrl = `/api/resumes/proxy?path=${encodeURIComponent(resume.resume_path)}&v=${timestamp}`;
           }
         }
       }
@@ -359,13 +359,13 @@ export async function POST(request: NextRequest) {
         }
 
         if (resume.resume_path) {
-          const { data } = await supabaseAdmin.storage
-            .from('resumes')
-            .createSignedUrl(resume.resume_path, 3600); // Inline display for iframe
-
-          if (data?.signedUrl) {
-            resumeUrl = data.signedUrl;
-          }
+          // Use proxy API with cache busting to reduce egress
+          // Include updated_at timestamp to invalidate cache when resume changes
+          const timestamp = resume.updated_at 
+            ? new Date(resume.updated_at).getTime() 
+            : Date.now();
+          
+          resumeUrl = `/api/resumes/proxy?path=${encodeURIComponent(resume.resume_path)}&v=${timestamp}`;
         }
       }
     }
