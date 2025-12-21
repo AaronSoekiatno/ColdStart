@@ -245,9 +245,7 @@ export async function GET(request: NextRequest) {
         location: string;
         yc_description?: string;
         team_size?: string;
-        funding_stage: string;
-        funding_amount: string;
-        tags: string;
+        funding_amount?: string;
         website: string;
         founder_emails?: string;
         founder_names?: string;
@@ -278,7 +276,7 @@ export async function GET(request: NextRequest) {
         .from('startups')
         .select(`
           id, name, industry, location, yc_description, team_size,
-          funding_stage, funding_amount, tags, website, founder_emails,
+          funding_amount, website, founder_emails,
           founder_names, founder_linkedin, founder_twitter_urls,
           founder_backgrounds, founders_pfp, batch, description,
           company_logo, yc_link, company_twitter_url
@@ -369,9 +367,7 @@ export async function GET(request: NextRequest) {
             location: s.location || '',
             yc_description: s.yc_description ?? undefined,
             team_size: s.team_size ?? undefined,
-            funding_stage: s.funding_stage || '',
-            funding_amount: s.funding_amount || '',
-            tags: s.tags || '',
+            funding_amount: s.funding_amount ?? undefined,
             website: s.website || '',
             founder_emails: s.founder_emails ?? undefined,
             founder_names: s.founder_names ?? undefined,

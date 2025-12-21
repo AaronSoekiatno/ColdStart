@@ -32,9 +32,7 @@ interface MatchCardProps {
       name: string;
       industry: string;
       location: string;
-      funding_stage: string;
-      funding_amount: string;
-      tags: string;
+      funding_amount?: string;
       website: string;
       yc_description?: string;
       team_size?: string;
@@ -563,6 +561,17 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                       </p>
                       <p className="text-[11px] sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 overflow-hidden text-ellipsis">
                         {match.startup.location}
+                      </p>
+                    </div>
+                  )}
+                  {/* Funding Amount */}
+                  {match.startup.funding_amount && (
+                    <div className="text-left">
+                      <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Funding
+                      </p>
+                      <p className="text-[11px] sm:text-sm font-bold text-gray-900 mt-0.5 sm:mt-1 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {match.startup.funding_amount}
                       </p>
                     </div>
                   )}

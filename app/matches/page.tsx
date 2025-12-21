@@ -24,9 +24,7 @@ interface MatchRecord {
     name: string;
     industry: string;
     location: string;
-    funding_stage: string;
-    funding_amount: string;
-    tags: string;
+    funding_amount?: string;
     website: string;
     founder_emails?: string;
     founder_names?: string;
