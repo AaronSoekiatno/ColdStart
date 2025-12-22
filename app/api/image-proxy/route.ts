@@ -44,12 +44,21 @@ export async function GET(request: NextRequest) {
     const imageBuffer = await imageResponse.arrayBuffer();
     const contentType = imageResponse.headers.get('content-type') || 'image/png';
 
+    // Log cache delivery for monitoring
+    console.log('[Image Proxy] Cache delivery:', {
+      sourceUrl: new URL(imageUrl).hostname,
+      contentType,
+      size: imageBuffer.byteLength,
+      timestamp: new Date().toISOString(),
+    });
+
     // Return the image with appropriate headers
     return new NextResponse(imageBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'public, max-age=31536000, immutable', // Cache for 1 year
+        // Cache for 1 year on both browser and CDN (moves to cached egress quota)
+        'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable',
       },
     });
   } catch (error) {
