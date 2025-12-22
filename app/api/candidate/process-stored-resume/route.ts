@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         location: extraction.location || '',
         education_level: extraction.education_level || '',
         university: extraction.university || '',
-        experience: extraction.experience?.join(', ') || '',
+        experience: extraction.past_internships?.join(', ') || '',
         technical_projects: extraction.technical_projects?.join(', ') || '',
       });
     } else {
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
         name: extraction.name || candidate.name,
         skills: extraction.skills?.join(', ') || candidate.skills || '',
         location: extraction.location || candidate.location || '',
-        education_level: extraction.education_level || candidate.education_level || null,
-        university: extraction.university || candidate.university || null,
-        experience: extraction.experience?.join(', ') || candidate.experience || '',
+        education_level: extraction.education_level || candidate.education_level || '',
+        university: extraction.university || candidate.university || '',
+        experience: extraction.past_internships?.join(', ') || candidate.experience || '',
         technical_projects: extraction.technical_projects?.join(', ') || candidate.technical_projects || '',
         job_type: candidate.job_type, // Preserve from onboarding
         role_type: candidate.role_type, // Preserve from onboarding
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
             location: extraction.location || '',
             education_level: extraction.education_level || '',
             university: extraction.university || '',
-            experience: extraction.experience?.join(', ') || '',
+            experience: extraction.past_internships?.join(', ') || '',
             technical_projects: extraction.technical_projects?.join(', ') || '',
           }
         );
