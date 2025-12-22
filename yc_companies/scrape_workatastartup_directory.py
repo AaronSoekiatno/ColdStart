@@ -1685,22 +1685,6 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                         print(f"            - '{match.strip()}'")
                 else:
                     print(f"         ⚠️  No 'Interview Process' section found in description")
-                
-                # Save full description to file for inspection (first job only)
-                if idx == 1:
-                    debug_file = f"debug_job_description_{company_name.replace(' ', '_')}_{idx}.txt"
-                    try:
-                        with open(debug_file, 'w', encoding='utf-8') as f:
-                            f.write(f"Job URL: {job_url}\n")
-                            f.write(f"Job Title: {job_title}\n")
-                            f.write(f"Description Length: {len(description)} characters\n")
-                            f.write(f"{'='*80}\n")
-                            f.write("FULL DESCRIPTION:\n")
-                            f.write(f"{'='*80}\n")
-                            f.write(description)
-                        print(f"         💾 Saved full description to: {debug_file}")
-                    except Exception as e:
-                        print(f"         ⚠️  Could not save debug file: {e}")
             else:
                 print(f"      ⚠️  No description found in job data!")
             tags = job_dict.get("job_tags")  # Nested list: [[tag1, tag2, ...]]
