@@ -37,6 +37,12 @@ export async function GET() {
     return NextResponse.json({
       startups: startupsWithLogos,
       count: startupsWithLogos.length,
+    }, {
+      headers: {
+        // Cache for 24 hours on CDN, serve stale for 1 week while revalidating
+        // This moves egress from PostgREST to cached egress
+        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      },
     });
   } catch (error) {
     console.error('Exception fetching startup logos:', error);
