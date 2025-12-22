@@ -50,7 +50,7 @@ export async function sendWaitlistEmail(
     const from =
       fromEmail ||
       process.env.SENDGRID_FROM_EMAIL ||
-      'hello@joinhermes.co';
+      'robert@joinhermes.co';
 
     const hasHtml = !!htmlContent && htmlContent.trim().length > 0;
     const hasText = !!textContent && textContent.trim().length > 0;
@@ -59,7 +59,7 @@ export async function sendWaitlistEmail(
       to: email,
       from: {
         email: from,
-        name: process.env.SENDGRID_FROM_NAME || 'Hermes',
+        name: process.env.SENDGRID_FROM_NAME || 'Robert Flores',
       },
       subject,
       // Conditionally include parts to support text-only or HTML+text emails

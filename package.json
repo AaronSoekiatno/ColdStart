@@ -19,7 +19,7 @@
     "scrape-and-ingest-techcrunch": "tsx yc_companies/scrape_and_ingest_techcrunch.ts",
     "scrape-techcrunch-supabase": "tsx yc_companies/scrape_techcrunch_supabase_pinecone.ts",
     "ingest-pinecone": "tsx scripts/ingest-startups-to-pinecone.ts",
-    "rematch-all": "tsx scripts/rematch-all-candidates.ts",
+    "rematch-all": "tsx scripts/matching/rematch-all-candidates.ts",
     "re-embed-all": "tsx scripts/re-embed-all-candidates.ts",
     "delete-pinecone-embeddings": "tsx scripts/delete-all-startup-embeddings.ts",
     "test-techcrunch": "tsx yc_companies/test_techcrunch_quick.ts",
