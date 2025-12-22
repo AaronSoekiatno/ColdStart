@@ -54,6 +54,12 @@ export async function GET(
       companySlug: result.companySlug,
       jobs: result.jobs,
       jobCount: result.jobs.length,
+    }, {
+      headers: {
+        // Cache for 1 hour on CDN, serve stale for 6 hours while revalidating
+        // Job listings don't change frequently
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=21600',
+      },
     });
   } catch (error) {
     console.error('Error fetching startup jobs:', error);

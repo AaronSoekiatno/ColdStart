@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
+import { emailLimitCache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -449,13 +450,14 @@ export async function GET(request: NextRequest) {
       });
 
       // Fetch a reasonable number of unlinked jobs (limit to avoid performance issues)
+      // OPTIMIZATION: Reduced from 1000 to 300 to cut egress by ~70%
       // We'll filter in code for case-insensitive matching
       const { data: unlinkedJobs, error: unlinkedJobsError } = await supabaseAdmin
         .from('jobs')
         .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
         .is('startup_id', null)
         .not('job_url', 'is', null)
-        .limit(1000); // Reasonable limit to avoid performance issues
+        .limit(300); // Reduced from 1000 to save egress
 
       if (!unlinkedJobsError && unlinkedJobs) {
         for (const job of unlinkedJobs) {
@@ -710,11 +712,20 @@ export async function GET(request: NextRequest) {
  * Startups receiving too many emails per day are temporarily hidden from matches
  * to prevent email bombardment and ensure fair distribution.
  * 
+ * Uses 1-minute in-memory cache to reduce database queries.
+ * 
  * @param limit - Maximum emails per startup per day (default: 15)
  * @returns Set of startup IDs that have exceeded the limit today
  */
 async function getStartupsOverEmailLimit(limit: number = 15): Promise<Set<string>> {
   if (!supabaseAdmin) return new Set();
+  
+  // Check cache first (1 minute TTL)
+  const cacheKey = `email-limit-${limit}`;
+  const cached = emailLimitCache.get<Set<string>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
   
   try {
     // Calculate today's date range in UTC
@@ -722,12 +733,14 @@ async function getStartupsOverEmailLimit(limit: number = 15): Promise<Set<string
     const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
     const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
     
-    // Query to get all generated emails for today
+    // OPTIMIZATION: Only select startup_id column and use limit to reduce data transfer
+    // We fetch a reasonable batch (500) to count in JS - most days won't have this many emails
     const { data, error } = await supabaseAdmin
       .from('generated_emails')
       .select('startup_id')
       .gte('created_at', todayStart.toISOString())
-      .lte('created_at', todayEnd.toISOString());
+      .lte('created_at', todayEnd.toISOString())
+      .limit(500);  // Cap egress - if more than 500 emails/day, some limit checks may miss
     
     if (error) {
       console.error('[Rate Limit] Error querying email counts:', error);
@@ -735,6 +748,7 @@ async function getStartupsOverEmailLimit(limit: number = 15): Promise<Set<string
     }
     
     if (!data || data.length === 0) {
+      emailLimitCache.set(cacheKey, new Set<string>());
       return new Set();
     }
     
@@ -757,6 +771,9 @@ async function getStartupsOverEmailLimit(limit: number = 15): Promise<Set<string
     if (overLimitIds.size > 0) {
       console.log(`[Rate Limit] Found ${overLimitIds.size} startups over daily email limit (${limit})`);
     }
+    
+    // Cache result for 1 minute
+    emailLimitCache.set(cacheKey, overLimitIds);
     
     return overLimitIds;
   } catch (error) {

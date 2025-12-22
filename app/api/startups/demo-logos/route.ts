@@ -48,7 +48,13 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({ logos });
+    return NextResponse.json({ logos }, {
+      headers: {
+        // Cache for 24 hours on CDN, serve stale for 1 week while revalidating
+        // Demo logos are static and rarely change
+        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+      },
+    });
   } catch (error) {
     console.error('Exception fetching demo startup logos:', error);
     return NextResponse.json(
