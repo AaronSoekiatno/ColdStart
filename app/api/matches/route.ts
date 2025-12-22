@@ -4,6 +4,69 @@ import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
 import { emailLimitCache } from '@/lib/cache';
 
+/**
+ * Wraps a Supabase query with timeout and retry logic
+ * @param queryFn - Function that returns a Supabase query promise
+ * @param timeoutMs - Timeout in milliseconds (default: 15000)
+ * @param maxRetries - Maximum number of retries (default: 2)
+ * @returns Promise with data and error
+ */
+async function withTimeoutAndRetry<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>,
+  timeoutMs: number = 15000,
+  maxRetries: number = 2
+): Promise<{ data: T | null; error: any }> {
+  let lastError: any = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Create timeout promise
+      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Query timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+      });
+
+      // Race between query and timeout
+      const result = await Promise.race([queryFn(), timeoutPromise]);
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      const errorMessage = error?.message || String(error);
+      
+      // Check if it's a timeout or connection error
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError') ||
+                       errorMessage.includes('ECONNRESET') ||
+                       errorMessage.includes('ETIMEDOUT');
+      
+      // Check if it's a rate limit (don't retry these)
+      const isRateLimit = errorMessage.includes('rate limit') || 
+                         errorMessage.includes('quota') ||
+                         errorMessage.includes('429') ||
+                         error?.code === 'PGRST301' ||
+                         error?.code === 'PGRST116';
+      
+      // Don't retry on rate limits or if we've exhausted retries
+      if (isRateLimit || attempt >= maxRetries) {
+        return { data: null, error: error };
+      }
+      
+      // For timeouts/connection errors, wait before retrying
+      if (isTimeout && attempt < maxRetries) {
+        const delayMs = (attempt + 1) * 1000; // Exponential backoff: 1s, 2s
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+      
+      // For other errors, return immediately
+      return { data: null, error: error };
+    }
+  }
+  
+  return { data: null, error: lastError };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -44,13 +107,32 @@ export async function GET(request: NextRequest) {
     }
 
     // Get candidate ID and role preferences
-    const { data: candidate } = await supabaseAdmin
-      .from('candidates')
-      .select('id, role_type')
-      .eq('email', user.email)
-      .single();
+    const candidateResult = await withTimeoutAndRetry<{ id: string; role_type: string[] | null }>(
+      async () => {
+        const result = await supabaseAdmin!
+          .from('candidates')
+          .select('id, role_type')
+          .eq('email', user.email)
+          .single();
+        return result;
+      },
+      10000, // 10 second timeout
+      1 // 1 retry
+    );
+    const { data: candidate, error: candidateError } = candidateResult;
 
-    if (!candidate) {
+    if (candidateError || !candidate) {
+      const errorMessage = candidateError?.message || '';
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
+      if (isTimeout) {
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Candidate not found' },
         { status: 404 }
@@ -58,10 +140,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    let { count: totalCount, error: countError } = await supabaseAdmin
-      .from('matches')
-      .select('id', { count: 'exact', head: true })
-      .eq('candidate_id', candidate.id);
+    // Count queries return { count, error } not { data, error }
+    let totalCount: number | null = null;
+    let countError: any = null;
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout after 10000ms')), 10000);
+      });
+      
+      const countQuery = supabaseAdmin!
+        .from('matches')
+        .select('id', { count: 'exact', head: true })
+        .eq('candidate_id', candidate.id);
+      
+      const result = await Promise.race([countQuery, timeoutPromise]);
+      totalCount = (result as any).count ?? null;
+      countError = (result as any).error ?? null;
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
+      if (isTimeout) {
+        console.error('[Matches API] Timeout getting match count:', error);
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
+        );
+      }
+      countError = error;
+    }
 
     // Check for Supabase rate limit/quota errors
     if (countError) {
@@ -73,6 +181,9 @@ export async function GET(request: NextRequest) {
                          countError.code === 'PGRST301' || // PostgREST rate limit
                          countError.code === 'PGRST116'; // Not found (might be rate limit related)
       
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
       if (isRateLimit) {
         console.error('[Matches API] Supabase rate limit/quota exceeded on count query:', countError);
         return NextResponse.json(
@@ -82,6 +193,12 @@ export async function GET(request: NextRequest) {
           },
           { status: 429 }
         );
+      } else if (isTimeout) {
+        console.error('[Matches API] Timeout getting match count:', countError);
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
+        );
       }
       console.warn('[Matches API] Error getting match count (non-rate-limit):', countError);
       // Continue with totalCount as undefined if it's not a rate limit
@@ -90,12 +207,20 @@ export async function GET(request: NextRequest) {
     // Get matches for sorting (limit to first 200 to avoid performance issues)
     // This ensures page 1 users see matches with jobs, while keeping query fast
     const fetchLimit = Math.max(200, offset + limit);
-    let { data: allMatches, error: matchError } = await supabaseAdmin
-      .from('matches')
-      .select('id, score, matched_at, startup_id')
-      .eq('candidate_id', candidate.id)
-      .order('score', { ascending: false })
-      .limit(fetchLimit);
+    const matchesResult = await withTimeoutAndRetry<Array<{ id: string; score: number; matched_at: string; startup_id: string }>>(
+      async () => {
+        const result = await supabaseAdmin!
+          .from('matches')
+          .select('id, score, matched_at, startup_id')
+          .eq('candidate_id', candidate.id)
+          .order('score', { ascending: false })
+          .limit(fetchLimit);
+        return result;
+      },
+      15000, // 15 second timeout
+      1 // 1 retry
+    );
+    let { data: allMatches, error: matchError } = matchesResult;
 
     if (matchError) {
       const errorMessage = matchError.message || '';
@@ -106,6 +231,9 @@ export async function GET(request: NextRequest) {
                          matchError.code === 'PGRST301' ||
                          matchError.code === 'PGRST116';
       
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
       if (isRateLimit) {
         console.error('[Matches API] Supabase rate limit/quota exceeded on matches query:', matchError);
         return NextResponse.json(
@@ -114,6 +242,12 @@ export async function GET(request: NextRequest) {
             rateLimit: true 
           },
           { status: 429 }
+        );
+      } else if (isTimeout) {
+        console.error('[Matches API] Timeout loading matches:', matchError);
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
         );
       }
       
@@ -195,11 +329,27 @@ export async function GET(request: NextRequest) {
       
       for (let i = 0; i < startupIds.length; i += BATCH_SIZE) {
         const batch = startupIds.slice(i, i + BATCH_SIZE);
-        const { data: batchJobs, error: jobsError } = await supabaseAdmin
-          .from('jobs')
-          .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level')
-          .in('startup_id', batch)
-          .not('job_url', 'is', null);
+        const jobsResult = await withTimeoutAndRetry<Array<{
+          startup_id: string;
+          company_name: string;
+          job_title: string;
+          job_url: string;
+          job_type: string | null;
+          salary_range: string | null;
+          experience_level: string | null;
+        }>>(
+          async () => {
+            const result = await supabaseAdmin!
+              .from('jobs')
+              .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level')
+              .in('startup_id', batch)
+              .not('job_url', 'is', null);
+            return result;
+          },
+          15000, // 15 second timeout
+          2 // 2 retries
+        );
+        const { data: batchJobs, error: jobsError } = jobsResult;
         
         if (jobsError) {
           const errorMessage = jobsError.message || '';
@@ -210,14 +360,26 @@ export async function GET(request: NextRequest) {
                              jobsError.code === 'PGRST301' ||
                              jobsError.code === 'PGRST116';
           
+          const isTimeout = errorMessage.includes('timeout') || 
+                           errorMessage.includes('ConnectTimeoutError') ||
+                           errorMessage.includes('ECONNRESET');
+          
           if (isRateLimit) {
             console.error('[Matches API] Supabase rate limit/quota exceeded on jobs query:', jobsError);
             // Continue without jobs rather than failing completely
+          } else if (isTimeout) {
+            console.warn(`[Matches API] Timeout fetching jobs batch ${i / BATCH_SIZE + 1}, skipping batch`);
+            // Continue without this batch
           } else {
             console.warn(`[Matches API] Error fetching jobs batch ${i / BATCH_SIZE + 1}:`, jobsError.message);
           }
         } else if (batchJobs) {
           allJobs.push(...batchJobs);
+        }
+        
+        // Small delay between batches to avoid overwhelming Supabase
+        if (i + BATCH_SIZE < startupIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
@@ -268,6 +430,7 @@ export async function GET(request: NextRequest) {
         company_logo?: string;
         yc_link?: string;
         company_twitter_url?: string;
+        keywords?: string;
         founders?: Array<{
           id: string;
           name: string;
@@ -290,21 +453,50 @@ export async function GET(request: NextRequest) {
       
         for (let i = 0; i < startupIds.length; i += BATCH_SIZE) {
           const batch = startupIds.slice(i, i + BATCH_SIZE);
-          const { data: batchStartups, error: batchError } = await supabaseAdmin
-            .from('startups3')
-            .select(`
-              id, name, industry, location, yc_description, team_size,
-              funding_amount, website, founder_emails,
-              founder_names, founder_linkedin, founder_twitter_urls,
-              founder_backgrounds, founders_pfp, batch, description,
-              company_logo, yc_link, company_twitter_url
-            `)
-            .in('id', batch)
-            // Filter out startups with null values in critical fields at database level
-            .not('name', 'is', null)
-            .not('industry', 'is', null)
-            .not('location', 'is', null)
-            .not('batch', 'is', null);
+          const startupsResult = await withTimeoutAndRetry<Array<{
+            id: string;
+            name: string;
+            industry: string;
+            location: string;
+            yc_description?: string;
+            team_size?: string;
+            funding_amount?: string;
+            website: string;
+            founder_emails?: string;
+            founder_names?: string;
+            founder_linkedin?: string;
+            founder_twitter_urls?: string;
+            founder_backgrounds?: string;
+            founders_pfp?: string;
+            batch?: string;
+            description?: string;
+            company_logo?: string;
+            yc_link?: string;
+            company_twitter_url?: string;
+            keywords?: string;
+          }>>(
+            async () => {
+              const result = await supabaseAdmin!
+                .from('startups3')
+                .select(`
+                  id, name, industry, location, yc_description, team_size,
+                  funding_amount, website, founder_emails,
+                  founder_names, founder_linkedin, founder_twitter_urls,
+                  founder_backgrounds, founders_pfp, batch, description,
+                  company_logo, yc_link, company_twitter_url, keywords
+                `)
+                .in('id', batch)
+                // Filter out startups with null values in critical fields at database level
+                .not('name', 'is', null)
+                .not('industry', 'is', null)
+                .not('location', 'is', null)
+                .not('batch', 'is', null);
+              return result;
+            },
+            15000, // 15 second timeout
+            2 // 2 retries
+          );
+          const { data: batchStartups, error: batchError } = startupsResult;
             // Note: We'll filter description and founder fields in code since they need OR logic
         
         if (batchError) {
@@ -316,15 +508,28 @@ export async function GET(request: NextRequest) {
                              batchError.code === 'PGRST301' ||
                              batchError.code === 'PGRST116';
           
+          const isTimeout = errorMessage.includes('timeout') || 
+                           errorMessage.includes('ConnectTimeoutError') ||
+                           errorMessage.includes('ECONNRESET');
+          
           if (isRateLimit) {
             console.error(`[Matches API] Supabase rate limit on startups batch ${i / BATCH_SIZE + 1}:`, batchError);
             startupsError = batchError;
             break; // Stop processing batches on rate limit
+          } else if (isTimeout) {
+            console.warn(`[Matches API] Timeout fetching startups batch ${i / BATCH_SIZE + 1}, skipping batch`);
+            // Continue without this batch rather than failing completely
+          } else {
+            console.error(`[Matches API] Error fetching startups batch ${i / BATCH_SIZE + 1}:`, batchError.message);
+            startupsError = batchError;
           }
-          console.error(`[Matches API] Error fetching startups batch ${i / BATCH_SIZE + 1}:`, batchError.message);
-          startupsError = batchError;
         } else if (batchStartups) {
           startupRows.push(...batchStartups);
+        }
+        
+        // Small delay between batches to avoid overwhelming Supabase
+        if (i + BATCH_SIZE < startupIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
@@ -434,6 +639,7 @@ export async function GET(request: NextRequest) {
             company_logo: s.company_logo ?? undefined,
             yc_link: s.yc_link ?? undefined,
             company_twitter_url: s.company_twitter_url ?? undefined,
+            keywords: s.keywords ?? undefined,
             founders: founders,
           };
         }
@@ -452,12 +658,27 @@ export async function GET(request: NextRequest) {
       // Fetch a reasonable number of unlinked jobs (limit to avoid performance issues)
       // OPTIMIZATION: Reduced from 1000 to 300 to cut egress by ~70%
       // We'll filter in code for case-insensitive matching
-      const { data: unlinkedJobs, error: unlinkedJobsError } = await supabaseAdmin
-        .from('jobs')
-        .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
-        .is('startup_id', null)
-        .not('job_url', 'is', null)
-        .limit(300); // Reduced from 1000 to save egress
+      const unlinkedJobsResult = await withTimeoutAndRetry<Array<{
+        company_name: string;
+        job_title: string;
+        job_url: string;
+        job_type: string | null;
+        salary_range: string | null;
+        experience_level: string | null;
+      }>>(
+        async () => {
+          const result = await supabaseAdmin!
+            .from('jobs')
+            .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
+            .is('startup_id', null)
+            .not('job_url', 'is', null)
+            .limit(300); // Reduced from 1000 to save egress
+          return result;
+        },
+        10000, // 10 second timeout
+        1 // 1 retry
+      );
+      const { data: unlinkedJobs, error: unlinkedJobsError } = unlinkedJobsResult;
 
       if (!unlinkedJobsError && unlinkedJobs) {
         for (const job of unlinkedJobs) {

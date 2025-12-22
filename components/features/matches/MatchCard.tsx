@@ -47,6 +47,7 @@ interface MatchCardProps {
       company_logo?: string;
       yc_link?: string;
       company_twitter_url?: string;
+      keywords?: string;
       founders?: Array<{
         id: string;
         name: string;
@@ -61,9 +62,10 @@ interface MatchCardProps {
   };
   isPremium?: boolean;
   userEmail?: string;
+  initialIsSaved?: boolean;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false }: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -80,8 +82,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   // Track manual tab clicks to prevent scroll handler from overriding
   const manualTabClickRef = useRef<{ tab: 'company' | 'apply'; timestamp: number } | null>(null);
-  // Track if match is saved
-  const [isSaved, setIsSaved] = useState(false);
+  // Track if match is saved - initialize with prop if provided
+  const [isSaved, setIsSaved] = useState(initialIsSaved);
   const [isSaving, setIsSaving] = useState(false);
 
   if (!match.startup) {
@@ -314,8 +316,14 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   };
 
 
-  // Check if match is saved on component mount
+  // Check if match is saved on component mount (only if initialIsSaved not provided)
   useEffect(() => {
+    // If initialIsSaved is provided and true, skip the API check
+    if (initialIsSaved === true) {
+      setIsSaved(true);
+      return;
+    }
+
     const checkIfSaved = async () => {
       try {
         const response = await fetch(`/api/matches/saved/check?matchId=${match.id}`, {
@@ -331,7 +339,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     };
 
     checkIfSaved();
-  }, [match.id]);
+  }, [match.id, initialIsSaved]);
 
   // Update active tab based on scroll position
   useEffect(() => {
@@ -524,6 +532,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
               {match.startup.description && (
                 <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed line-clamp-2 sm:line-clamp-none">
                   {match.startup.description}
+                </p>
+              )}
+              {/* Keywords */}
+              {match.startup.keywords && (
+                <p className="text-xs sm:text-sm text-gray-500 mb-1.5 sm:mb-2 break-words leading-relaxed">
+                  {match.startup.keywords.split(',').map(keyword => keyword.trim()).join(' • ')}
                 </p>
               )}
               {/* Website, YC, and Twitter buttons underneath description */}

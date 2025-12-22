@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isSubscribed } from '@/lib/supabase';
-import { MatchCard } from '@/components/features/matches/MatchCard';
+import { SavedMatchCard } from '@/components/features/matches/SavedMatchCard';
 import { Header } from '@/components/layout/Header';
 import { UpgradeModal } from '@/components/modals/UpgradeModal';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface MatchRecord {
@@ -44,27 +44,89 @@ export default function SavedMatchesPage() {
   const [matches, setMatches] = useState<MatchRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [savedMatchIds, setSavedMatchIds] = useState<Set<string>>(new Set());
 
-  const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
+  const hasMatches = matches.length > 0;
 
-  const visibleMatches = useMemo(() => {
-    return matches;
+  // Load saved match IDs on mount
+  useEffect(() => {
+    const loadSavedMatchIds = async () => {
+      const savedIds = new Set<string>();
+      for (const match of matches) {
+        try {
+          const response = await fetch(`/api/matches/saved/check?matchId=${match.id}`, {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.isSaved) {
+              savedIds.add(match.id);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking saved status:', error);
+        }
+      }
+      setSavedMatchIds(savedIds);
+    };
+
+    if (matches.length > 0) {
+      loadSavedMatchIds();
+    }
   }, [matches]);
 
-  const hiddenMatchCount = useMemo(() => {
-    return 0;
-  }, []);
+  const handleToggleSave = async (matchId: string) => {
+    const isCurrentlySaved = savedMatchIds.has(matchId);
+    const previousSavedState = new Set(savedMatchIds);
 
-  // Handle navigation
-  const handleNextMatch = () => {
-    setCurrentMatchIndex((prev) => Math.min(visibleMatches.length - 1, prev + 1));
-  };
+    // Optimistically update UI
+    if (isCurrentlySaved) {
+      savedMatchIds.delete(matchId);
+    } else {
+      savedMatchIds.add(matchId);
+    }
+    setSavedMatchIds(new Set(savedMatchIds));
 
-  const handlePreviousMatch = () => {
-    setCurrentMatchIndex((prev) => Math.max(0, prev - 1));
+    try {
+      if (isCurrentlySaved) {
+        // Unsave the match
+        const response = await fetch(`/api/matches/saved?matchId=${matchId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          // Revert on failure
+          setSavedMatchIds(previousSavedState);
+          console.error('Failed to unsave match');
+        } else {
+          // Remove from matches list
+          setMatches(prev => prev.filter(m => m.id !== matchId));
+        }
+      } else {
+        // Save the match
+        const response = await fetch('/api/matches/saved', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ matchId }),
+        });
+
+        if (!response.ok && response.status !== 409) {
+          // Revert on failure (except for 409 which means already saved)
+          setSavedMatchIds(previousSavedState);
+          console.error('Failed to save match');
+        }
+      }
+    } catch (error) {
+      // Revert on error
+      setSavedMatchIds(previousSavedState);
+      console.error('Error toggling save status:', error);
+    }
   };
 
   // Load initial data
@@ -80,15 +142,26 @@ export default function SavedMatchesPage() {
 
         setUser(currentUser);
 
-        // Get candidate info and premium status
-        const candidateResponse = await fetch('/api/candidate-info', {
+        // Get candidate info and premium status (non-blocking - don't fail if it times out)
+        fetch('/api/candidate-info', {
           credentials: 'include',
           cache: 'no-store',
-        });
-        if (candidateResponse.ok) {
-          const candidateInfo = await candidateResponse.json();
-          setIsPremium(isSubscribed(candidateInfo));
-        }
+        })
+          .then((candidateResponse) => {
+            if (candidateResponse.ok) {
+              return candidateResponse.json();
+            }
+            return null;
+          })
+          .then((candidateInfo) => {
+            if (candidateInfo) {
+              setIsPremium(isSubscribed(candidateInfo));
+            }
+          })
+          .catch((error) => {
+            // Silently handle errors - premium status is optional
+            console.warn('Failed to fetch candidate info (non-critical):', error);
+          });
 
         // Fetch saved matches from API
         const savedResponse = await fetch('/api/matches/saved', {
@@ -112,54 +185,6 @@ export default function SavedMatchesPage() {
     initialize();
   }, [router]);
 
-  // Reset current match index when matches change
-  useEffect(() => {
-    if (visibleMatches.length > 0 && currentMatchIndex >= visibleMatches.length) {
-      setCurrentMatchIndex(0);
-    }
-  }, [visibleMatches.length, currentMatchIndex]);
-
-  // Preload images for current and adjacent cards
-  useEffect(() => {
-    const preloadImages = (matchIndex: number) => {
-      const match = visibleMatches[matchIndex];
-      if (!match?.startup?.founders_pfp) return;
-
-      const foundersPfp = match.startup.founders_pfp;
-
-      // Parse founders_pfp - handle both array and string formats
-      let urls: string[] = [];
-      if (Array.isArray(foundersPfp)) {
-        urls = foundersPfp
-          .map(url => String(url).trim())
-          .filter(url => url && url !== '');
-      } else if (typeof foundersPfp === 'string') {
-        urls = foundersPfp
-          .split(',')
-          .map(url => url.trim())
-          .filter(url => url && url !== '');
-      }
-
-      // Preload each image
-      urls.forEach((url) => {
-        if (url) {
-          const img = new Image();
-          img.src = `/api/image-proxy?url=${encodeURIComponent(url)}`;
-        }
-      });
-    };
-
-    // Preload images for current, next, and previous cards
-    if (visibleMatches.length > 0) {
-      preloadImages(currentMatchIndex);
-      if (currentMatchIndex > 0) {
-        preloadImages(currentMatchIndex - 1);
-      }
-      if (currentMatchIndex < visibleMatches.length - 1) {
-        preloadImages(currentMatchIndex + 1);
-      }
-    }
-  }, [currentMatchIndex, visibleMatches]);
 
   if (isLoading) {
     return (
@@ -200,60 +225,40 @@ export default function SavedMatchesPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
-      <section className="pt-16 sm:pt-20 md:pt-24 lg:pt-32 pb-8 sm:pb-12 md:pb-20">
-        {/* Fixed navigation arrows */}
-        {hasMatches && (
-          <>
-            {/* Left arrow button */}
-            <button
-              onClick={handlePreviousMatch}
-              disabled={currentMatchIndex === 0}
-              className="fixed left-1 sm:left-2 md:left-4 lg:left-[calc(50%-512px-60px)] top-[180px] sm:top-[220px] md:top-[280px] lg:top-[350px] z-50 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
-              aria-label="Previous match"
-            >
-              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
-            </button>
-
-            {/* Right arrow button */}
-            <button
-              onClick={handleNextMatch}
-              disabled={currentMatchIndex >= visibleMatches.length - 1}
-              className="fixed right-1 sm:right-2 md:right-4 lg:right-[calc(50%-512px-60px)] top-[180px] sm:top-[220px] md:top-[280px] lg:top-[350px] z-50 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full bg-blue-300 shadow-lg text-white transition hover:brightness-95 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:brightness-100 cursor-pointer flex items-center justify-center"
-              aria-label="Next match"
-            >
-              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-7 lg:h-7" />
-            </button>
-          </>
-        )}
-
-        <div className="container mx-auto px-2 sm:px-4">
-          {hasMatches ? (
-            <div className="max-w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl mx-auto relative pl-10 sm:pl-0 pr-10 sm:pr-0 md:pl-0 md:pr-0">
-              {/* Single match card display */}
-              {visibleMatches[currentMatchIndex] && (
-                <div key={visibleMatches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard
-                    match={visibleMatches[currentMatchIndex]}
-                    isPremium={isPremium}
-                    userEmail={user?.email || ''}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-2xl md:rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 md:p-12 text-center text-gray-900">
-              <p className="text-sm sm:text-base md:text-lg text-gray-900">No saved matches yet. Start saving matches from your matches page!</p>
-            </div>
-          )}
+      <main className="container mx-auto px-4 pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Saved Matches</h1>
+          <p className="text-gray-600">{matches.length} total saved</p>
         </div>
-      </section>
+
+        {hasMatches ? (
+          <div className="space-y-3">
+            {matches.map((match) => (
+              <SavedMatchCard
+                key={match.id}
+                match={match}
+                isPremium={isPremium}
+                userEmail={user?.email || ''}
+                isSaved={savedMatchIds.has(match.id)}
+                onToggleSave={() => handleToggleSave(match.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
+            <p className="text-gray-600 text-lg">
+              No saved matches yet. Start saving matches from your matches page!
+            </p>
+          </div>
+        )}
+      </main>
 
       {/* Upgrade Modal */}
       {user?.email && (
         <UpgradeModal
           open={showUpgradeModal}
           onOpenChange={setShowUpgradeModal}
-          hiddenMatchCount={hiddenMatchCount}
+          hiddenMatchCount={0}
           email={user.email}
           isPremium={isPremium}
           customTitle="Upgrade to Premium"
