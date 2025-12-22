@@ -76,9 +76,11 @@ export async function GET(request: NextRequest) {
 
     // Get candidate info from candidates table - explicitly selecting subscription fields
     // Note: experience_level and salary_range are in the jobs table, not candidates table
+    // Store in const so TypeScript knows it's not null inside the callback
+    const adminClient = supabaseAdmin;
     const candidateResult = await withTimeout(
       async () => {
-        const result = await supabaseAdmin
+        const result = await adminClient
           .from('candidates')
           .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills')
           .eq('email', user.email)
