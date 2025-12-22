@@ -3009,18 +3009,36 @@ async function storeYCCompanyByName(
       console.log(`   🖼️  Found company logo: ${pageData.companyLogo}`);
     }
 
-    // Update by name instead of yc_link (since yc_link doesn't exist yet)
+    // First verify the startup exists before trying to update
+    // This prevents any issues with cached queries returning deleted startups
+    const { data: existingStartup, error: checkError } = await supabase
+      .from('startups3')
+      .select('id, name, yc_link')
+      .eq('name', companyName)
+      .is('yc_link', null)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error(`  ❌ Error checking if startup exists: ${checkError.message}`);
+      return false;
+    }
+
+    if (!existingStartup) {
+      console.log(`  ⚠️  Company "${companyName}" not found in database (may have been deleted), skipping...`);
+      return false;
+    }
+
+    // Now update the existing startup by ID (more reliable than updating by name)
     const { data, error } = await supabase
       .from('startups3')
       .update(updateData)
-      .eq('name', companyName)
-      .is('yc_link', null)  // Only update if yc_link is still null
+      .eq('id', existingStartup.id)
       .select()
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        console.log('  ⚠️  Company not found in database, skipping...');
+        console.log(`  ⚠️  Startup was deleted during processing, skipping...`);
         return false;
       }
       console.error(`  ❌ Supabase update error: ${error.message}`);

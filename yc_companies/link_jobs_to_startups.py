@@ -7,6 +7,11 @@ This script:
 3. Creates a new startup only if no match is found
 4. Updates the jobs with the matched/created startup_id
 
+IMPORTANT: This script loads all startups into memory at the start. If you delete
+startups from the database while this script is running, it will verify each match
+still exists before using it. However, for best results, restart the script after
+making deletions to ensure you have the latest startup list.
+
 Usage:
     python link_jobs_to_startups.py              # Run with default threshold (80%)
     python link_jobs_to_startups.py --threshold 85  # Use 85% similarity threshold
@@ -213,8 +218,23 @@ def similarity_score(name1: str, name2: str) -> float:
     return best_score
 
 
-def find_matching_startup(company_name: str, startups: List[Dict], threshold: float = 80.0) -> Tuple[Optional[Dict], float]:
+def verify_startup_exists(startup_id: str) -> bool:
+    """Verify that a startup still exists in the database."""
+    try:
+        result = supabase.table("startups3").select("id").eq("id", startup_id).limit(1).execute()
+        return result.data is not None and len(result.data) > 0
+    except Exception:
+        return False
+
+
+def find_matching_startup(company_name: str, startups: List[Dict], threshold: float = 80.0, verify_exists: bool = True) -> Tuple[Optional[Dict], float]:
     """Find a startup that matches the company name using fuzzy matching.
+
+    Args:
+        company_name: The company name to match
+        startups: List of startup dictionaries to search
+        threshold: Similarity threshold (0-100)
+        verify_exists: If True, verify each match still exists in database before returning
 
     Returns:
         Tuple of (matched_startup, similarity_score) or (None, 0.0)
@@ -227,12 +247,26 @@ def find_matching_startup(company_name: str, startups: List[Dict], threshold: fl
         if not startup_name:
             continue
 
+        # Verify startup still exists in database if requested
+        if verify_exists and best_match:
+            startup_id = startup.get("id")
+            if startup_id and not verify_startup_exists(startup_id):
+                # This startup was deleted, skip it
+                continue
+
         score = similarity_score(company_name, startup_name)
 
         if score > best_score:
             best_score = score
             if score >= threshold:
                 best_match = startup
+
+    # Final verification: if we found a match, verify it still exists
+    if verify_exists and best_match:
+        startup_id = best_match.get("id")
+        if startup_id and not verify_startup_exists(startup_id):
+            # Match was deleted, return None
+            return None, best_score
 
     return best_match, best_score
 
@@ -491,6 +525,8 @@ This script:
     print(f"   Grouped into {len(clusters)} distinct companies")
 
     # Get all existing startups for matching
+    # NOTE: This loads startups into memory. If startups are deleted after this point,
+    # the script will verify each match still exists before using it.
     startups = get_all_startups()
 
     # Debug: Verify startups are loaded and check for specific names
@@ -544,29 +580,46 @@ This script:
             for startup in startups:
                 startup_name = startup.get("name", "")
                 if startup_name and startup_name.lower().strip() == name_lower:
-                    # Exact match found!
-                    best_match = startup
-                    best_score = 100.0
-                    print(f"   [OK] Exact match found: '{startup_name}'")
-                    break
+                    # Exact match found! Verify it still exists
+                    if verify_startup_exists(startup.get("id")):
+                        best_match = startup
+                        best_score = 100.0
+                        print(f"   [OK] Exact match found: '{startup_name}'")
+                        break
+                    else:
+                        # Exact match was deleted, skip it
+                        print(f"   [WARN] Exact match '{startup_name}' was deleted, continuing search...")
+                        continue
             if best_match:
                 break
 
         # If no exact match, try fuzzy matching
         if not best_match:
             for name in all_names:
-                match, score = find_matching_startup(name, startups, threshold)
+                match, score = find_matching_startup(name, startups, threshold, verify_exists=True)
                 if score > best_score:
                     best_score = score
                     if match:
-                        best_match = match
+                        # Double-check the match still exists
+                        if verify_startup_exists(match.get("id")):
+                            best_match = match
+                        else:
+                            # Match was deleted, continue searching
+                            print(f"   [WARN] Matched startup was deleted, continuing search...")
+                            continue
 
         if best_match:
-            # Found a match - use existing startup
-            startup_id = best_match["id"]
-            match_name = best_match["name"]
-            print(f"   [MATCH] Matched to: '{match_name}' (score: {best_score:.1f}%)")
-            stats["matched"] += 1
+            # Found a match - verify it still exists before using
+            startup_id = best_match.get("id")
+            if not startup_id or not verify_startup_exists(startup_id):
+                print(f"   [WARN] Matched startup was deleted from database, creating new one...")
+                best_match = None
+                best_score = 0.0
+            else:
+                # Found a match - use existing startup
+                match_name = best_match["name"]
+                print(f"   [MATCH] Matched to: '{match_name}' (score: {best_score:.1f}%)")
+                stats["matched"] += 1
         else:
             # No auto-match - check for close matches
             top_matches = get_top_matches(canonical_name, startups, top_n=3)
@@ -596,28 +649,64 @@ This script:
                         selected = top_matches[int(choice) - 1]
                         best_match = selected[0]
                         best_score = selected[1]
-                        startup_id = best_match["id"]
-                        print(f"   [OK] Selected: '{best_match['name']}'")
-                        stats["reviewed"] += 1
-                        stats["matched"] += 1
+                        # Verify selected startup still exists
+                        if not verify_startup_exists(best_match.get("id")):
+                            print(f"   [WARN] Selected startup was deleted, creating new one...")
+                            best_match = None
+                            startup_id = create_startup(canonical_name, dry_run)
+                            if startup_id:
+                                stats["created"] += 1
+                                startups.append({"id": startup_id, "name": canonical_name})
+                            else:
+                                stats["errors"] += 1
+                                continue
+                        else:
+                            startup_id = best_match["id"]
+                            print(f"   [OK] Selected: '{best_match['name']}'")
+                            stats["reviewed"] += 1
+                            stats["matched"] += 1
                     else:
                         # Default: use best match (option 1)
                         selected = top_matches[0]
                         best_match = selected[0]
                         best_score = selected[1]
-                        startup_id = best_match["id"]
-                        print(f"   [OK] Using best match: '{best_match['name']}' ({best_score:.1f}%)")
-                        stats["reviewed"] += 1
-                        stats["matched"] += 1
+                        # Verify best match still exists
+                        if not verify_startup_exists(best_match.get("id")):
+                            print(f"   [WARN] Best match was deleted, creating new one...")
+                            best_match = None
+                            startup_id = create_startup(canonical_name, dry_run)
+                            if startup_id:
+                                stats["created"] += 1
+                                startups.append({"id": startup_id, "name": canonical_name})
+                            else:
+                                stats["errors"] += 1
+                                continue
+                        else:
+                            startup_id = best_match["id"]
+                            print(f"   [OK] Using best match: '{best_match['name']}' ({best_score:.1f}%)")
+                            stats["reviewed"] += 1
+                            stats["matched"] += 1
                 except (EOFError, KeyboardInterrupt):
                     # Default to best match on interrupt
                     selected = top_matches[0]
                     best_match = selected[0]
                     best_score = selected[1]
-                    startup_id = best_match["id"]
-                    print(f"\n   [OK] Using best match (default): '{best_match['name']}'")
-                    stats["reviewed"] += 1
-                    stats["matched"] += 1
+                    # Verify best match still exists
+                    if not verify_startup_exists(best_match.get("id")):
+                        print(f"\n   [WARN] Best match was deleted, creating new one...")
+                        best_match = None
+                        startup_id = create_startup(canonical_name, dry_run)
+                        if startup_id:
+                            stats["created"] += 1
+                            startups.append({"id": startup_id, "name": canonical_name})
+                        else:
+                            stats["errors"] += 1
+                            continue
+                    else:
+                        startup_id = best_match["id"]
+                        print(f"\n   [OK] Using best match (default): '{best_match['name']}'")
+                        stats["reviewed"] += 1
+                        stats["matched"] += 1
             else:
                 # No close match - safe to create new startup
                 if best_score > 0:

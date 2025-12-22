@@ -1,0 +1,108 @@
+Job URL: https://www.workatastartup.com/jobs/78857
+Job Title: Frontend Engineer at Firecrawl (S22)
+Description Length: 4801 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Skills: Next.js, Tailwind, ReactSalary Range: $150,000–$250,000/year (Range shown is for U.S.-based employees. Compensation outside the U.S. is adjusted fairly based on your country’s cost of living. You can explore how we calculate this here: https://posthog.com/handbook/people/compensation.)
+Equity Range: Up to 0.30%
+Location: San Francisco, CA (Hybrid) OR Remote
+Job Type: Full-Time (SF) OR Contract (Remote)
+Experience: 3+ years
+Visa: US Citizenship/Visa required for SF; N/A for Remote
+About Firecrawl
+Firecrawl is the easiest way to extract data from the web. Developers use us to reliably convert URLs into LLM-ready markdown or structured data with a single API call. In just a year, we’ve hit millions in ARR and 50k+ GitHub stars by building the fastest way for developers to get LLM-ready data.
+Previously, we built Mendable, one of the first commercially available “chat with your data” applications. We sold to companies like MongoDB, Coinbase, Snapchat, and more. To do this, we spent a surprising amount of time building reliable infrastructure for getting clean data from the web. When we started to see our founding friends rebuilding the same thing, we thought we might be on to something.
+Why Firecrawl
+
+
+Technical ownership – Lead critical browser technology and infrastructure
+
+Real impact – Directly shape how our browser stack drives our entire product
+
+High velocity – Rapid iteration and deployment of your work
+
+Small team, big ambition – Collaborate closely with founders, influencing key decisions and future directions
+
+About the Role
+In just a year, we’ve hit millions in ARR and 50k+ GitHub stars by building the fastest way for developers to get LLM-ready data. We’re a small, fast-moving team building essential tools for the AI era. We value autonomy, clarity, and shipping fast.
+We’re looking for a Frontend Engineer (Design focused) who can take ideas from rough sketches to production-ready pages. You’ll own the experience of Firecrawl across our entire frontend platform, from the core product UI to docs, playgrounds, and marketing pages. If you care about building great user experiences, you’ll thrive here.
+What You’ll Do
+
+Build beautiful, fast UIs using Next.js, Tailwind, and Framer Motion
+
+Create and optimize product pages and interactive playgrounds
+Own UX and polish across marketing, docs, and app interfaces
+Collaborate directly with founders to ship high-impact features
+Lead proof-of-concept work for new ideas and experiences
+Fixing bugs and making improvements to the performance of our core products to maintain quality and reliability
+
+Who You Are
+
+A builder with a sharp eye and strong sense of motion and interaction
+Experienced in going from concept → polished product independently
+Very strong with React, Next.js, Tailwind, and Framer Motion
+
+Obsessed with great UX
+Comfortable working quickly in a fast-moving, high-trust team
+
+Bonus Points
+
+Shipped live projects with real users
+Experience across brand, web, and interactive design
+Ex-founder
+
+What it Means to Join Firecrawl
+
+
+High Leverage — Your processes directly amplify our growth.
+
+Autonomy — Own your domain; we care about outcomes, not hours.
+
+Remote-First Culture — Work at our new SF office, while collaborating with our remote team.
+
+Growth Opportunity — Early equity and a role that scales with the company.
+
+Creative Freedom — Experiment with new channels, formats, and automations. If it works, we run with it.
+
+Benefits & Perks
+
+
+Salary that makes sense — $150,000–$250,000 (U.S.-based), based on impact, not tenure
+
+Own a piece — Up to 0.30% equity in what you’re helping build
+
+Full coverage, no red tape (SF Only) — Medical, dental, and vision plans that cover stuff
+
+Parental leave — 12 weeks fully paid, for moms and dads
+
+Take a break (seriously) — Unlimited PTO, minimum of 3 weeks off
+
+Gear up — Get the tools you need to do your best work, no approvals circus
+
+Wellness stipend — Use it for the gym, therapy, or whatever keeps you human
+
+SF HQ perks — Snacks, drinks, lunches, and the occasional chaotic energy
+
+Pet insurance (SF Only) — Because fur babies are family too
+
+Team offsites — A change of scenery, minus the trust falls
+
+Sabbatical — 3 paid months off after 4 years, do something fun and new
+
+Interview Process
+
+
+Application Review – Send us your stuff, and a quick note on why you're excited
+
+Automated Assessment (~30 min) - We will do an initial automated assessment of your skills and knowledge.
+
+Project Showoff + Tech Challenge (~1 hr) – Show us your work and tackle a small challenge
+
+Interview with Founders (~30 min) – Culture, vision, and long-term fit
+
+Paid Work Trial (1–2 weeks) – Work on something real with us
+
+Decision – We move fast
+
+If you care about building great user experiences, you’ll thrive here. Apply now and let’s talk.

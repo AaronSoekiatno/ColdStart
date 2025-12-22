@@ -6,6 +6,10 @@
  * 1. Startups missing yc_link: Searches YC directory by name and scrapes YC page
  * 2. Startups with yc_link but missing other data: Re-scrapes the YC page
  *
+ * IMPORTANT: This script loads startups into memory at the start. If you delete
+ * startups from the database while this script is running, it will verify each
+ * startup still exists before processing it and skip deleted ones gracefully.
+ *
  * Usage:
  *   npm run enrich:all                    # Enrich all needing data
  *   npm run enrich:all -- --limit=10      # Limit to 10 startups
@@ -87,6 +91,30 @@ async function getStartupsNeedingEnrichment(options: {
   }
 
   return data || [];
+}
+
+/**
+ * Verify that a startup still exists in the database
+ */
+async function verifyStartupExists(startupId: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase
+      .from('startups3')
+      .select('id')
+      .eq('id', startupId)
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 is "not found", which is expected for deleted startups
+      console.warn(`   ⚠️  Error verifying startup: ${error.message}`);
+      return false;
+    }
+
+    return data !== null;
+  } catch (error) {
+    return false;
+  }
 }
 
 /**
@@ -197,6 +225,13 @@ async function updateStartupFromYCPage(
     return false;
   }
 
+  // Verify startup still exists before updating
+  const stillExists = await verifyStartupExists(startup.id);
+  if (!stillExists) {
+    console.log(`   ⚠️  Startup ${startup.name} was deleted from database, skipping update`);
+    return false;
+  }
+
   const { error } = await supabase
     .from('startups3')
     .update(updateData)
@@ -234,7 +269,7 @@ async function enrichAllStartups() {
 
   // Get startups needing enrichment
   console.log('\nFetching startups needing enrichment...');
-  const startups = await getStartupsNeedingEnrichment({
+  let startups = await getStartupsNeedingEnrichment({
     limit,
     missingLinkOnly,
     hasLinkOnly,
@@ -244,6 +279,30 @@ async function enrichAllStartups() {
     console.log('\nNo startups need enrichment!');
     return;
   }
+
+  // Filter out any startups that don't actually exist (were deleted)
+  // This prevents processing deleted startups that might be in cache
+  console.log(`\nVerifying ${startups.length} startups still exist in database...`);
+  const verifiedStartups: StartupRecord[] = [];
+  for (const startup of startups) {
+    const exists = await verifyStartupExists(startup.id);
+    if (exists) {
+      verifiedStartups.push(startup);
+    } else {
+      console.log(`   ⚠️  Skipping deleted startup: ${startup.name} (ID: ${startup.id})`);
+    }
+  }
+
+  if (verifiedStartups.length === 0) {
+    console.log('\n⚠️  All fetched startups were deleted. Nothing to enrich!');
+    return;
+  }
+
+  if (verifiedStartups.length < startups.length) {
+    console.log(`   ✅ Verified ${verifiedStartups.length}/${startups.length} startups still exist`);
+  }
+
+  startups = verifiedStartups;
 
   // Categorize startups
   const missingLink = startups.filter(s => !s.yc_link);
@@ -324,6 +383,14 @@ async function enrichAllStartups() {
         const startup = missingLink[i];
         console.log(`\n[${i + 1}/${missingLink.length}] ${startup.name}`);
 
+        // Verify startup still exists before processing
+        const stillExists = await verifyStartupExists(startup.id);
+        if (!stillExists) {
+          console.log(`   ⚠️  Startup was deleted from database, skipping...`);
+          results.skipped++;
+          continue;
+        }
+
         try {
           // Check if page is still valid
           if (page.isClosed()) {
@@ -370,6 +437,14 @@ async function enrichAllStartups() {
         const startup = hasLink[i];
         console.log(`\n[${i + 1}/${hasLink.length}] ${startup.name}`);
         console.log(`   YC Link: ${startup.yc_link}`);
+
+        // Verify startup still exists before processing
+        const stillExists = await verifyStartupExists(startup.id);
+        if (!stillExists) {
+          console.log(`   ⚠️  Startup was deleted from database, skipping...`);
+          results.skipped++;
+          continue;
+        }
 
         try {
           // Check if page is still valid

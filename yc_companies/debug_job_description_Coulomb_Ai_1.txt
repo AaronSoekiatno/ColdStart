@@ -1,0 +1,208 @@
+Job URL: https://www.workatastartup.com/jobs/87063
+Job Title: Senior Product Designer at Coulomb AI (S21)
+Description Length: 7191 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Senior Product Designer at Coulomb AI (S21)
+$20K - $30K
+•
+0.10% - 0.20%
+Battery Observability Platform for Electric Vehicles
+Bengaluru, KA, IN / Bengaluru, Karnataka, IN
+Full-time
+US citizenship/visa not required
+3+ years
+Apply now
+About Coulomb AI
+Battery Analytics Software for Electric Vehicles
+About the role
+Do you want to join a fast-growing climate tech startup with real impact?
+About Coulomb
+At Coulomb AI, we envision a future powered by the seamless integration of
+AI
+and
+Battery Technologies
+, creating a powerful synergy to combat
+climate change
+. We build category-leading software that can significantly improve battery lifespan and performance by employing advanced predictive analytics, real-time monitoring, and adaptive battery management algorithms.
+Coulomb is headquartered in San Francisco with its development and research center in Bangalore. Founders
+Khushboo Shrivastava
+and
+Santanu Mondal
+are alumni of IIT Bombay and have first-hand experience working on first-generation Electric Vehicles at General Motors. We are backed by some of the best climate tech investors in the world, including Y Combinator, Harvard Management Seed Capital, CSVE Ventures, and prominent Silicon Valley-based Angels.
+We already have a global presence with customers in 5 countries across UK, US, APAC and India
+Yet, we’re still at the start of our journey, and we want exceptional people to join us!
+Key Roles and Responsibilities
+Product Design Leadership
+Design end-to-end user experiences for our battery observability platform, from fleet dashboards to predictive analytics interfaces
+Create intuitive data visualization solutions that transform complex battery metrics (SOH, RUL, thermal data) into actionable insights
+Lead the design of real-time alert systems and monitoring interfaces for fleet operators
+Develop executive-level dashboards that translate operational data into business intelligence
+User Research & Strategy
+Conduct user research with fleet managers, operations teams, and C-suite executives at enterprise clients
+Map user journeys across different stakeholder groups (fleet operators, maintenance teams, executives)
+Define design strategies that balance technical complexity with usability for non-technical users
+Collaborate with clients like JBM Electric, Magenta Mobility, and international fleet operators to understand evolving needs
+Cross-functional Collaboration
+Partner with engineering teams to ensure technical feasibility of designs while maintaining user experience quality
+Work closely with data scientists to visualize AI predictions and battery digital twin outputs effectively
+Collaborate with product management to align design decisions with business objectives and ROI metrics
+Support customer success teams with design documentation and training materials
+Design System & Standards
+Establish and maintain a scalable design system for B2B SaaS platform consistency
+Create design patterns for complex data tables, charts, and real-time monitoring interfaces
+Ensure designs meet accessibility standards and work across diverse operational environments
+Document design decisions and maintain component libraries
+Required Qualifications
+Experience
+5+ years of product design experience, with at least 3 years in B2B SaaS or enterprise software
+Proven track record designing complex data visualization and analytics platforms
+Experience with IoT, fleet management, automotive, or energy management systems preferred
+Portfolio demonstrating dashboard design and data-heavy interface solutions
+Technical Skills
+Expert proficiency in Figma, with experience in advanced prototyping and design systems
+Strong understanding of data visualization principles and tools (D3.js knowledge is a plus)
+Experience designing responsive web applications and mobile interfaces
+Familiarity with front-end development concepts to collaborate effectively with engineers
+Domain Knowledge
+Understanding of enterprise software workflows and multi-stakeholder environments
+Experience with real-time monitoring systems or operational dashboards
+Knowledge of sustainability, clean tech, or automotive industries is highly valued
+Ability to quickly grasp technical concepts related to battery technology and fleet operations
+Preferred Qualifications
+Additional Skills
+Experience with predictive analytics or AI-powered platform interfaces
+Background in designing for regulated industries or safety-critical systems
+Knowledge of electric vehicle ecosystem and fleet management operations
+Experience with hardware-software integration (telematics, sensors)
+Soft Skills
+Excellent communication skills to present designs to technical and non-technical stakeholders
+Strong analytical thinking to solve complex information architecture challenges
+Ability to balance user needs with business constraints and technical limitations
+Self-driven with ability to work in a fast-paced startup environment
+What We Offer
+Opportunity to accelerate the transition to sustainable transportation
+Work on cutting-edge AI and digital twin technology
+Direct impact on preventing battery safety hazards and improving fleet efficiency
+Collaborate with global clients transforming their EV operations
+Shape the design culture of a rapidly growing climate tech startup
+Location & Work Style
+Flexible hybrid work arrangement
+Occasional travel to client sites for user research and stakeholder meetings
+This role offers the unique opportunity to define how the world's largest EV fleet operators interact with battery data, directly contributing to safer, more sustainable electric transportation at scale.
+Technology
+Complex Data Engineering
+ML Models to be build for accuracy and performance of the vehicle
+Real time deployment of Algorithms
+Predictive Analytics
+Apply now
+Other jobs at Coulomb AI
+Senior Product Designer
+fulltime
+Bengaluru, KA, IN / Bengaluru, Karnataka, IN
+Product design
+$20K - $30K
+0.10% - 0.20%
+3+ years
+Apply
+UX Designer
+fulltime
+Bengaluru, KA, IN / Bengaluru, Karnataka, IN
+Product design
+$8K - $12K
+0.10% - 0.20%
+1+ years
+Apply
+Frontend Developer - SDE 1
+fulltime
+Bangalore
+Frontend
+$10K - $15K
+0.01% - 0.20%
+1+ years
+Apply
+Senior Full Stack Developer
+fulltime
+Bangalore
+Full stack
+$50K - $70K
+0.10% - 0.50%
+6+ years
+Apply
+Backend Developer
+fulltime
+Bangalore
+Backend
+$12K - $25K
+0.10% - 0.20%
+1+ years
+Apply
+AI Engineer
+fulltime
+Bangalore
+Machine learning
+$40K - $60K
+0.10% - 0.30%
+6+ years
+Apply
+Full Stack Developer
+fulltime
+Bangalore
+Full stack
+$20K - $35K
+0.01% - 0.10%
+3+ years
+Apply
+Senior Data Scientist
+fulltime
+Bengaluru, KA, IN
+Data science
+$25K - $40K
+0.05% - 0.10%
+3+ years
+Apply
+Senior Frontend Developer
+fulltime
+Bangalore
+Frontend
+$30K - $40K
+0.01% - 0.20%
+6+ years
+Apply
+Senior Frontend Developer - Analytics Platform
+fulltime
+Bangalore
+Frontend
+$30K - $40K
+0.01% - 0.20%
+6+ years
+Apply
+Lead Platform Developer
+fulltime
+Bangalore
+Backend
+$35K - $75K
+0.20% - 0.50%
+6+ years
+Apply
+Senior Backend Engineer
+fulltime
+Bangalore
+Backend
+$30K - $40K
+0.01% - 0.20%
+6+ years
+Apply
+Battery Modelling Engineer
+fulltime
+Bangalore
+Chemical engineering
+$10K - $14K
+0.01% - 0.10%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

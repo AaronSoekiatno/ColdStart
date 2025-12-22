@@ -1,0 +1,68 @@
+Job URL: https://www.workatastartup.com/jobs/87017
+Job Title: Frontend Engineer at Leadbay (F25)
+Description Length: 4249 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Frontend Engineer at Leadbay (F25)
+$60K - $200K
+•
+0.01% - 0.20%
+Discover and qualify SMB leads that couldn't be found before.
+Paris, IDF, FR / Paris, Île-de-France, FR / San Francisco, CA, US
+Full-time
+US citizen/visa only
+Any (new grads ok)
+Apply now
+About Leadbay
+Leadbay discovers and qualifies B2B leads that couldn’t be qualified before. We’re building the next generation of sales technology product — an engaging app that empowers every sales representative with always new leads and highly valuable insight, thus becoming the go-to place for all their prospecting activity.
+At Leadbay we are creating conditions for makers to output meaningful work and grow. Our team includes software engineering, product design and AI R&D talent working on challenges in crawling, lead qualification, recommendation and UX.
+About the role
+Skills:
+React, TypeScript
+“Hire people who make you never want to hire “normal” people again.” - Brian Chesky
+“Don’t hire people who need to be managed” - YC advice
+Information about companies is inherently incomplete, outdated, and often wrong. This will not change. Because of this, it has been very hard to build a tool that qualifies B2B leads as a human would, and that can deliver a constant flow of qualified leads to B2B sales representatives. Which is something those people want.
+We believe times are changing, and now we can make AI smarter so that it can achieve more with less data. To tackle this challenge, we develop smarter crawlers to extract exhaustive information about even the smallest companies, and extrapolate missing information. We train lead representation models to power our lead recommender system, and build a whole set of tools to enable AI to leverage all the information we have to answer lead qualification questions as well as a human sales rep would.
+In addition, we relentlessly study user behavior to build an engaging user interface and become a key app in the user workflow.
+We’re doing a pretty good job, with ~70% of our monthly active users using the app weekly, and with our user base growing ~20% week after week. However, to actually turn this into a product that has changed the world of B2B sales, we need to continue to learn, innovate, and improve.
+Our team is a good place for people who are self-starters, who want to express themselves through their work, learn, grow, and are unafraid of hard challenges.
+We are not a good place for people who need to be told precisely what to do, are unable to make judgment calls and tend to wait for validation, or who care more about “whose fault is it” than about “how to make it work”.
+We work in a very low-overhead, agile way, with a single weekly team coordination meeting, all other meetings being in service of actually doing the work or becoming a person that can do it. We use a GitHub Project for keeping track of things. Weekly iterations. English. There is a lot of freedom, but also a sense of not being alone. Or at least that is what we strive for.
+Technology
+We use many technologies like Kotlin, Python, React, PyTorch, LLMs, Posgres, MongoDB, etc. We develop domain-specific AI models to discover and qualify companies in the most data-scarce, fragmented markets.
+Interview Process
+We first look at your application. Make sure you have a public GitHub repo with a project you made that you want us to look at.
+10’ interview with the CTO.
+A meeting with the technical team, often involving review of your code or an exercise.
+Meeting with the CEO.
+Hopefully, if you give us enough information upfront and we do our job well, we won’t waste much of your time on meetings unless there is really a high likelihood that we’d extend you an offer.
+Apply now
+Other jobs at Leadbay
+Frontend Engineer
+fulltime
+Paris, IDF, FR / Paris, Île-de-France, FR / San Francisco, CA, US
+Frontend
+$60K - $200K
+0.01% - 0.20%
+Any (new grads ok)
+Apply
+Engineering Intern
+intern
+Paris, IDF, FR / Paris, Île-de-France, FR / San Francisco, CA, US
+Full stack
+$1K - $10K / monthly
+Senior and above
+Apply
+Backend Engineer
+fulltime
+Paris, IDF, FR / Paris, Île-de-France, FR / San Francisco, CA, US
+Backend
+$60K - $200K
+0.01% - 0.20%
+Any (new grads ok)
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›
