@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
+import { emailLimitCache } from '@/lib/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -122,15 +123,28 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Get startups that have exceeded daily email limit (15 emails/day)
+    // These startups will be temporarily hidden from matches
+    const overEmailLimitStartupIds = await getStartupsOverEmailLimit(15);
+    
+    // Filter out rate-limited startups from matches
+    if (allMatches && overEmailLimitStartupIds.size > 0) {
+      const originalCount = allMatches.length;
+      allMatches = allMatches.filter(m => !overEmailLimitStartupIds.has(m.startup_id));
+      if (originalCount !== allMatches.length) {
+        console.log(`[Rate Limit] Filtered out ${originalCount - allMatches.length} startups over daily email limit`);
+      }
+    }
+
     // If no matches found, try to find instant matches based on onboarding data
     if (!allMatches || allMatches.length === 0) {
       console.log('No pre-computed matches found. Attempting instant matching...');
       const instantMatches = await findInstantMatches(candidate, limit);
       
       if (instantMatches.length > 0) {
-        // Use instant matches
-        allMatches = instantMatches;
-        totalCount = instantMatches.length;
+        // Use instant matches (also filter out rate-limited startups)
+        allMatches = instantMatches.filter(m => !overEmailLimitStartupIds.has(m.startup_id));
+        totalCount = allMatches.length;
       }
     }
 
@@ -161,6 +175,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all jobs for startups in one query
+    // First, get jobs that have startup_id set
     const jobsByStartupId: Record<string, Array<{
       job_title: string;
       job_url: string;
@@ -169,11 +184,14 @@ export async function GET(request: NextRequest) {
       experience_level?: string;
     }>> = {};
     const startupsWithJobs = new Set<string>();
+    // Track which startups have jobs with startup_id set (vs linked by company name)
+    const startupsWithDirectJobLinks = new Set<string>();
     
     if (startupIds.length > 0) {
+      // Fetch jobs with startup_id
       const { data: allJobs, error: jobsError } = await supabaseAdmin
         .from('jobs')
-        .select('startup_id, job_title, job_url, job_type, salary_range, experience_level')
+        .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level')
         .in('startup_id', startupIds)
         .not('job_url', 'is', null);
 
@@ -209,26 +227,14 @@ export async function GET(request: NextRequest) {
               experience_level: job.experience_level || undefined,
             });
             startupsWithJobs.add(job.startup_id);
+            startupsWithDirectJobLinks.add(job.startup_id); // Track direct links
           }
         }
       }
+
+      // Also fetch jobs without startup_id and link them by company_name
+      // We'll need startup names for this, so we'll do it after loading startup data
     }
-
-    // Sort matches: prioritize those with job listings
-    const sortedMatches = [...allMatches].sort((a, b) => {
-      const aHasJobs = a.startup_id ? startupsWithJobs.has(a.startup_id) : false;
-      const bHasJobs = b.startup_id ? startupsWithJobs.has(b.startup_id) : false;
-
-      // First sort by job availability
-      if (aHasJobs && !bHasJobs) return -1;
-      if (!aHasJobs && bHasJobs) return 1;
-
-      // Then by score (already sorted from query, but ensure it's maintained)
-      return b.score - a.score;
-    });
-
-    // Apply pagination AFTER sorting
-    const rawMatches = sortedMatches.slice(offset, offset + limit);
 
     // Load startup data
     let startupsById: Record<
@@ -240,9 +246,7 @@ export async function GET(request: NextRequest) {
         location: string;
         yc_description?: string;
         team_size?: string;
-        funding_stage: string;
-        funding_amount: string;
-        tags: string;
+        funding_amount?: string;
         website: string;
         founder_emails?: string;
         founder_names?: string;
@@ -271,7 +275,13 @@ export async function GET(request: NextRequest) {
     if (startupIds.length > 0) {
       const { data: startupRows, error: startupsError } = await supabaseAdmin
         .from('startups')
-        .select('*')
+        .select(`
+          id, name, industry, location, yc_description, team_size,
+          funding_amount, website, founder_emails,
+          founder_names, founder_linkedin, founder_twitter_urls,
+          founder_backgrounds, founders_pfp, batch, description,
+          company_logo, yc_link, company_twitter_url
+        `)
         .in('id', startupIds);
 
       if (startupsError) {
@@ -358,9 +368,7 @@ export async function GET(request: NextRequest) {
             location: s.location || '',
             yc_description: s.yc_description ?? undefined,
             team_size: s.team_size ?? undefined,
-            funding_stage: s.funding_stage || '',
-            funding_amount: s.funding_amount || '',
-            tags: s.tags || '',
+            funding_amount: s.funding_amount ?? undefined,
             website: s.website || '',
             founder_emails: s.founder_emails ?? undefined,
             founder_names: s.founder_names ?? undefined,
@@ -379,7 +387,99 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Role matching patterns for finding best job match
+    // Link jobs without startup_id by matching company_name to startup name
+    // We'll fetch unlinked jobs and match them in code for case-insensitive matching
+    if (startupIds.length > 0 && Object.keys(startupsById).length > 0) {
+      // Create a map of startup name (lowercase) to startup ID for quick lookup
+      const startupNameToId = new Map<string, string>();
+      Object.values(startupsById).forEach(startup => {
+        startupNameToId.set(startup.name.toLowerCase().trim(), startup.id);
+      });
+
+      // Fetch a reasonable number of unlinked jobs (limit to avoid performance issues)
+      // OPTIMIZATION: Reduced from 1000 to 300 to cut egress by ~70%
+      // We'll filter in code for case-insensitive matching
+      const { data: unlinkedJobs, error: unlinkedJobsError } = await supabaseAdmin
+        .from('jobs')
+        .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
+        .is('startup_id', null)
+        .not('job_url', 'is', null)
+        .limit(300); // Reduced from 1000 to save egress
+
+      if (!unlinkedJobsError && unlinkedJobs) {
+        for (const job of unlinkedJobs) {
+          // Find matching startup by case-insensitive name match
+          const jobCompanyNameLower = job.company_name?.toLowerCase().trim();
+          if (!jobCompanyNameLower) continue;
+
+          const matchingStartupId = startupNameToId.get(jobCompanyNameLower);
+          
+          // Also try partial matches (e.g., "Company Inc" matches "Company")
+          if (!matchingStartupId) {
+            for (const [startupNameLower, startupId] of startupNameToId.entries()) {
+              if (jobCompanyNameLower === startupNameLower || 
+                  jobCompanyNameLower.includes(startupNameLower) ||
+                  startupNameLower.includes(jobCompanyNameLower)) {
+                const partialMatchStartupId = startupId;
+                if (partialMatchStartupId) {
+                  if (!jobsByStartupId[partialMatchStartupId]) {
+                    jobsByStartupId[partialMatchStartupId] = [];
+                  }
+                  jobsByStartupId[partialMatchStartupId].push({
+                    job_title: job.job_title,
+                    job_url: job.job_url,
+                    job_type: job.job_type || undefined,
+                    salary_range: job.salary_range || undefined,
+                    experience_level: job.experience_level || undefined,
+                  });
+                  startupsWithJobs.add(partialMatchStartupId);
+                }
+                break;
+              }
+            }
+          } else {
+            // Exact match found
+            if (!jobsByStartupId[matchingStartupId]) {
+              jobsByStartupId[matchingStartupId] = [];
+            }
+            jobsByStartupId[matchingStartupId].push({
+              job_title: job.job_title,
+              job_url: job.job_url,
+              job_type: job.job_type || undefined,
+              salary_range: job.salary_range || undefined,
+              experience_level: job.experience_level || undefined,
+            });
+            startupsWithJobs.add(matchingStartupId);
+          }
+        }
+      }
+    }
+
+    // NOW sort matches: prioritize those with job listings
+    // Do this AFTER all job linking is complete (both direct and by company name)
+    // Prioritize startups with direct job links (startup_id) over those linked by company name
+    const sortedMatches = [...allMatches].sort((a, b) => {
+      const aHasDirectJobs = a.startup_id ? startupsWithDirectJobLinks.has(a.startup_id) : false;
+      const bHasDirectJobs = b.startup_id ? startupsWithDirectJobLinks.has(b.startup_id) : false;
+      const aHasJobs = a.startup_id ? startupsWithJobs.has(a.startup_id) : false;
+      const bHasJobs = b.startup_id ? startupsWithJobs.has(b.startup_id) : false;
+
+      // First priority: startups with direct job links (startup_id set)
+      if (aHasDirectJobs && !bHasDirectJobs) return -1;
+      if (!aHasDirectJobs && bHasDirectJobs) return 1;
+
+      // Second priority: startups with jobs (either direct or linked by company name)
+      if (aHasJobs && !bHasJobs) return -1;
+      if (!aHasJobs && bHasJobs) return 1;
+
+      // Then by score (already sorted from query, but ensure it's maintained)
+      return b.score - a.score;
+    });
+
+    // Apply pagination AFTER sorting
+    const rawMatches = sortedMatches.slice(offset, offset + limit);
+
+    // Role matching patterns for ordering jobs by role preferences
     const rolePatterns: { [key: string]: string[] } = {
       'pm': ['product manager', 'pm', 'product lead', 'product owner', 'product'],
       'swe': ['software engineer', 'swe', 'engineer', 'software developer', 'developer'],
@@ -398,50 +498,82 @@ export async function GET(request: NextRequest) {
       'product design': ['product designer', 'product design', 'ux designer', 'ui/ux', 'ux/ui'],
     };
 
-    // Function to find best matching job based on role preferences
-    const findBestJob = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>) => {
-      if (jobs.length === 0) return null;
-      
+    // Function to calculate job relevance score based on role preferences
+    // Higher score = better match
+    const calculateJobScore = (job: { job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }): number => {
       const roleTypes = candidate.role_type || [];
-      if (roleTypes.length === 0) return jobs[0]; // No preferences, return first job
+      if (roleTypes.length === 0) return 0; // No preferences, all jobs equal
 
-      for (const job of jobs) {
-        const titleLower = job.job_title.toLowerCase();
+      const titleLower = job.job_title.toLowerCase();
+      let maxScore = 0;
 
-        for (const roleType of roleTypes) {
-          const roleLower = roleType.toLowerCase();
-          const patterns = rolePatterns[roleLower] || [roleLower];
+      for (const roleType of roleTypes) {
+        const roleLower = roleType.toLowerCase();
+        const patterns = rolePatterns[roleLower] || [roleLower];
 
-          for (const pattern of patterns) {
-            if (titleLower.includes(pattern)) {
-              return job;
-            }
+        for (const pattern of patterns) {
+          if (titleLower.includes(pattern)) {
+            // Exact match gets higher score, partial match gets lower
+            const score = titleLower === pattern ? 100 : 
+                         titleLower.startsWith(pattern) ? 80 :
+                         titleLower.includes(pattern) ? 60 : 0;
+            maxScore = Math.max(maxScore, score);
           }
         }
       }
 
-      return jobs[0]; // Fallback to first job if no match found
+      return maxScore;
+    };
+
+    // Function to order jobs by role preferences (highest score first)
+    const orderJobsByPreference = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }> => {
+      if (jobs.length === 0) return [];
+      
+      // Calculate score for each job and sort
+      const jobsWithScores = jobs.map(job => ({
+        job,
+        score: calculateJobScore(job),
+      }));
+
+      // Sort by score (descending), then alphabetically by title for ties
+      jobsWithScores.sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.job.job_title.localeCompare(b.job.job_title);
+      });
+
+      return jobsWithScores.map(item => item.job);
     };
 
     // Join matches with startup data and add job data
     // Filter out matches where startup data is missing (these won't display properly)
     const matchesWithStartups = rawMatches.map((m) => {
       const startup = startupsById[m.startup_id] ?? null;
-      const jobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
-      const bestJob = findBestJob(jobs);
+      const allJobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
+      // Order jobs by role preference
+      const orderedJobs = orderJobsByPreference(allJobs);
 
       return {
         id: m.id,
         score: m.score,
         matched_at: m.matched_at,
         startup: startup,
-        has_job_listings: jobs.length > 0,
-        job: bestJob ? {
-          job_title: bestJob.job_title,
-          job_url: bestJob.job_url,
-          job_type: bestJob.job_type,
-          salary_range: bestJob.salary_range,
-          experience_level: bestJob.experience_level,
+        has_job_listings: orderedJobs.length > 0,
+        jobs: orderedJobs.map(job => ({
+          job_title: job.job_title,
+          job_url: job.job_url,
+          job_type: job.job_type,
+          salary_range: job.salary_range,
+          experience_level: job.experience_level,
+        })),
+        // Keep 'job' for backward compatibility (first job in ordered list)
+        job: orderedJobs.length > 0 ? {
+          job_title: orderedJobs[0].job_title,
+          job_url: orderedJobs[0].job_url,
+          job_type: orderedJobs[0].job_type,
+          salary_range: orderedJobs[0].salary_range,
+          experience_level: orderedJobs[0].experience_level,
         } : null,
       };
     });
@@ -471,6 +603,11 @@ export async function GET(request: NextRequest) {
         totalPages,
         hasMore,
       },
+    }, {
+      headers: {
+        // Cache for 5 minutes on CDN, serve stale for 1 hour while revalidating
+        'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+      },
     });
   } catch (error) {
     console.error('Error fetching matches:', error);
@@ -478,6 +615,81 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch matches' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Get startup IDs that have exceeded the daily email limit
+ * Startups receiving too many emails per day are temporarily hidden from matches
+ * to prevent email bombardment and ensure fair distribution.
+ * 
+ * Uses 1-minute in-memory cache to reduce database queries.
+ * 
+ * @param limit - Maximum emails per startup per day (default: 15)
+ * @returns Set of startup IDs that have exceeded the limit today
+ */
+async function getStartupsOverEmailLimit(limit: number = 15): Promise<Set<string>> {
+  if (!supabaseAdmin) return new Set();
+  
+  // Check cache first (1 minute TTL)
+  const cacheKey = `email-limit-${limit}`;
+  const cached = emailLimitCache.get<Set<string>>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  
+  try {
+    // Calculate today's date range in UTC
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const todayEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59, 999));
+    
+    // OPTIMIZATION: Only select startup_id column and use limit to reduce data transfer
+    // We fetch a reasonable batch (500) to count in JS - most days won't have this many emails
+    const { data, error } = await supabaseAdmin
+      .from('generated_emails')
+      .select('startup_id')
+      .gte('created_at', todayStart.toISOString())
+      .lte('created_at', todayEnd.toISOString())
+      .limit(500);  // Cap egress - if more than 500 emails/day, some limit checks may miss
+    
+    if (error) {
+      console.error('[Rate Limit] Error querying email counts:', error);
+      return new Set();
+    }
+    
+    if (!data || data.length === 0) {
+      emailLimitCache.set(cacheKey, new Set<string>());
+      return new Set();
+    }
+    
+    // Count emails per startup
+    const countByStartup = new Map<string, number>();
+    for (const row of data) {
+      if (row.startup_id) {
+        countByStartup.set(row.startup_id, (countByStartup.get(row.startup_id) || 0) + 1);
+      }
+    }
+    
+    // Find startups over limit
+    const overLimitIds = new Set<string>();
+    for (const [startupId, count] of countByStartup) {
+      if (count >= limit) {
+        overLimitIds.add(startupId);
+      }
+    }
+    
+    if (overLimitIds.size > 0) {
+      console.log(`[Rate Limit] Found ${overLimitIds.size} startups over daily email limit (${limit})`);
+    }
+    
+    // Cache result for 1 minute
+    emailLimitCache.set(cacheKey, overLimitIds);
+    
+    return overLimitIds;
+  } catch (error) {
+    console.error('[Rate Limit] Exception checking email limits:', error);
+    return new Set();
   }
 }
 

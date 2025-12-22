@@ -35,10 +35,10 @@ export async function GET() {
       );
     }
 
-    // Check if candidate exists and has both job_type and role_type set
+    // Check if candidate exists and has completed onboarding
     const { data: candidate, error } = await supabaseAdmin
       .from('candidates')
-      .select('job_type, role_type')
+      .select('job_type, role_type, onboarding_completed')
       .eq('email', user.email)
       .single();
 
@@ -47,10 +47,11 @@ export async function GET() {
       return NextResponse.json({ needsOnboarding: true });
     }
 
-    // If job_type or role_type is null or empty array, they need onboarding
+    // If job_type, role_type is null/empty, OR onboarding_completed is not true, they need onboarding
     return NextResponse.json({
       needsOnboarding: !candidate.job_type || !candidate.role_type || 
-                       (Array.isArray(candidate.role_type) && candidate.role_type.length === 0),
+                       (Array.isArray(candidate.role_type) && candidate.role_type.length === 0) ||
+                       candidate.onboarding_completed !== true,
     });
   } catch (error) {
     console.error('Exception checking onboarding status:', error);

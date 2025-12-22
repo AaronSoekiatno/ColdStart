@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Header } from '@/components/Header';
+import { Header } from '@/components/layout/Header';
+
 
 interface EmailPreview {
   subject: string;
@@ -96,11 +97,10 @@ export default function PreviewWaitlistEmailPage() {
           <h1 className="text-3xl font-bold mb-6">Waitlist Email Preview</h1>
 
           {/* API Connection Status */}
-          <div className={`mb-6 p-4 rounded-lg border ${
-            emailPreview.hasApiKey 
-              ? 'bg-green-50 border-green-200' 
-              : 'bg-yellow-50 border-yellow-200'
-          }`}>
+          <div className={`mb-6 p-4 rounded-lg border ${emailPreview.hasApiKey
+            ? 'bg-green-50 border-green-200'
+            : 'bg-yellow-50 border-yellow-200'
+            }`}>
             <div className="flex items-center justify-between mb-2">
               <h2 className="font-semibold">Resend API Connection Status</h2>
               {emailPreview.hasApiKey && (
@@ -132,17 +132,15 @@ export default function PreviewWaitlistEmailPage() {
                 Add RESEND_API_KEY to your .env.local file to enable email sending.
               </p>
             )}
-            
+
             {/* Connection Test Results */}
             {connectionTest && (
-              <div className={`mt-4 p-3 rounded-lg ${
-                connectionTest.success 
-                  ? 'bg-green-100 border border-green-300' 
-                  : 'bg-red-100 border border-red-300'
-              }`}>
-                <p className={`text-sm font-medium ${
-                  connectionTest.success ? 'text-green-800' : 'text-red-800'
+              <div className={`mt-4 p-3 rounded-lg ${connectionTest.success
+                ? 'bg-green-100 border border-green-300'
+                : 'bg-red-100 border border-red-300'
                 }`}>
+                <p className={`text-sm font-medium ${connectionTest.success ? 'text-green-800' : 'text-red-800'
+                  }`}>
                   {connectionTest.success ? '✓' : '✗'} {connectionTest.message}
                 </p>
                 {connectionTest.error && (
@@ -172,7 +170,7 @@ export default function PreviewWaitlistEmailPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-sm font-semibold text-gray-500 uppercase mb-4">HTML Preview</h2>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div 
+              <div
                 className="bg-white p-4"
                 dangerouslySetInnerHTML={{ __html: emailPreview.html }}
               />
@@ -190,7 +188,7 @@ export default function PreviewWaitlistEmailPage() {
           {/* Note about email placeholder */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> The <code className="bg-blue-100 px-1 rounded">{"{{email}}"}</code> placeholder 
+              <strong>Note:</strong> The <code className="bg-blue-100 px-1 rounded">{"{{email}}"}</code> placeholder
               in the unsubscribe link will be replaced with the actual recipient email when sending.
             </p>
           </div>

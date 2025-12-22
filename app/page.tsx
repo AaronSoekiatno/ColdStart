@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from "react";
-import { NewLandingPage } from "@/components/NewLandingPage";
+import { NewLandingPage } from "@/components/landing/NewLandingPage";
 
 export const dynamic = 'force-dynamic';
 

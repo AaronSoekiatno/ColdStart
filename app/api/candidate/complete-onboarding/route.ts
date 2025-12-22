@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { jobType, roleTypes, yearsOfExperience } = await request.json();
+    const { objectives, jobType, roleTypes, yearsOfExperience } = await request.json();
 
     if (!jobType || !['full-time', 'part-time', 'internship'].includes(jobType)) {
       return NextResponse.json(
@@ -80,9 +80,11 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: candidateName,
         skills: '',
+        objectives: objectives,
         job_type: jobType,
         role_type: roleTypes,
         years_of_experience: yearsOfExperience,
+        onboarding_completed: true,
       });
       
       console.log('Created new candidate during onboarding:', {
@@ -96,9 +98,11 @@ export async function POST(request: NextRequest) {
       const { error: updateError } = await supabaseAdmin
         .from('candidates')
         .update({ 
+          objectives: objectives,
           job_type: jobType,
           role_type: roleTypes,
           years_of_experience: yearsOfExperience,
+          onboarding_completed: true,
         })
         .eq('email', user.email);
 

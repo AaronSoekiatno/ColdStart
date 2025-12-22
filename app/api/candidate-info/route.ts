@@ -77,7 +77,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(candidate);
+    return NextResponse.json(candidate, {
+      headers: {
+        // Private cache (browser only, not CDN) for 5 minutes
+        // User-specific data that doesn't change frequently
+        'Cache-Control': 'private, max-age=300',
+      },
+    });
   } catch (error) {
     console.error('Error fetching candidate info:', error);
     return NextResponse.json(

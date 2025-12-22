@@ -71,9 +71,11 @@ export interface CandidateRow {
   university?: string;
   experience?: string; // Comma-separated string
   technical_projects?: string; // Comma-separated string
+  objectives?: string[]; // Array of objectives selected during onboarding
   job_type?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
   role_type?: string[]; // Preferred role types (array) (PM, SWE, SDE, ML, AI, etc.)
   years_of_experience?: string; // Years of experience (e.g., "1-2", "2-5")
+  onboarding_completed?: boolean; // Whether user has completed onboarding
   resume_path?: string; // Path to resume file in Supabase Storage (DEPRECATED - use resumes table)
   resume_full_text?: string; // Full extracted text content from resume (DEPRECATED - use resumes table)
   resume_latex?: string; // LaTeX source code generated from resume
@@ -149,9 +151,11 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
     university: normalizedUniversity,
     experience: candidate.experience,
     technical_projects: candidate.technical_projects,
+    objectives: candidate.objectives,
     job_type: candidate.job_type,
     role_type: candidate.role_type,
     years_of_experience: candidate.years_of_experience,
+    onboarding_completed: candidate.onboarding_completed,
     // resume_path and resume_full_text are deprecated; full text now lives in the resumes table.
     // Keep these fields untouched to prepare for dropping them from the schema.
     resume_latex: candidate.resume_latex,
@@ -608,7 +612,7 @@ export async function getResumesForCandidate(candidateId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, is_active, is_primary, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
@@ -757,7 +761,7 @@ export async function getResume(resumeId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, resume_full_text, structured_data, is_active, is_primary, updated_at, created_at')
     .eq('id', resumeId)
     .eq('is_active', true)
     .single();
@@ -783,7 +787,7 @@ export async function getMostRecentResumeForCandidate(candidateId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, resume_full_text, structured_data, is_active, is_primary, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
@@ -811,7 +815,7 @@ export async function getPrimaryResumeForCandidate(candidateId: string) {
   
   const { data, error } = await client
     .from('resumes')
-    .select('*')
+    .select('id, candidate_id, name, file_name, resume_path, resume_full_text, structured_data, is_active, is_primary, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_primary', true)
     .eq('is_active', true)

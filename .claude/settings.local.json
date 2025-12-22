@@ -16,7 +16,11 @@
       "Bash(dig:*)",
       "Bash(npx tsx:*)",
       "Bash(npx puppeteer browsers install chrome)",
-      "Bash(echo:*)"
+      "Bash(python3:*)",
+      "Bash(chmod:*)",
+      "Bash(pip3 install:*)",
+      "Bash(timeout 10 python3:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 // Import the scraper function
-import { scrapeAndSaveWorkAtAStartup } from '../../../yc_companies/scrape_workatastartup';
+import { scrapeAndSaveWorkAtAStartup } from '../../../scripts/scrape_workatastartup';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max execution time

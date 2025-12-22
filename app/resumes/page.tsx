@@ -2,9 +2,9 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getResumesForCandidate, getCandidate, isSubscribed, getPrimaryResumeForCandidate } from '@/lib/supabase';
-import { Header } from '@/components/Header';
-import { ResumeList } from '@/components/ResumeList';
-import { ResumePageContent } from '@/components/ResumePageContent';
+import { Header } from '@/components/layout/Header';
+import { ResumeList } from '@/components/features/resumes/ResumeList';
+import { ResumePageContent } from '@/components/features/resumes/ResumePageContent';
 
 export default async function ResumePage() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,7 +20,7 @@ export default async function ResumePage() {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll() {},
+      setAll() { },
     },
   });
 
@@ -82,13 +82,13 @@ export default async function ResumePage() {
     resumes.map(async (resume) => {
       let resumeUrl: string | null = null;
       if (resume.resume_path) {
-        const { data } = await adminClient.storage
-          .from('resumes')
-          .createSignedUrl(resume.resume_path, 3600); // Inline preview, no download parameter
+        // Use proxy API with cache busting to reduce egress
+        // Include updated_at timestamp to invalidate cache when resume changes
+        const timestamp = resume.updated_at
+          ? new Date(resume.updated_at).getTime()
+          : Date.now();
 
-        if (data?.signedUrl) {
-          resumeUrl = data.signedUrl;
-        }
+        resumeUrl = `/api/resumes/proxy?path=${encodeURIComponent(resume.resume_path)}&v=${timestamp}`;
       }
       return {
         ...resume,
@@ -101,7 +101,7 @@ export default async function ResumePage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
-      
+
       <main className="container mx-auto px-3 sm:px-4 pt-16 sm:pt-20 md:pt-24 lg:pt-32 pb-4 sm:pb-6 max-w-6xl">
         <ResumePageContent
           resumes={resumesWithUrls.map((resume) => ({

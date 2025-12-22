@@ -3,9 +3,9 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isSubscribed } from '@/lib/supabase';
-import { MatchCard } from '@/components/MatchCard';
-import { Header } from '@/components/Header';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { MatchCard } from '@/components/features/matches/MatchCard';
+import { Header } from '@/components/layout/Header';
+import { UpgradeModal } from '@/components/modals/UpgradeModal';
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
@@ -24,9 +24,7 @@ interface MatchRecord {
     name: string;
     industry: string;
     location: string;
-    funding_stage: string;
-    funding_amount: string;
-    tags: string;
+    funding_amount?: string;
     website: string;
     founder_emails?: string;
     founder_names?: string;
@@ -61,21 +59,21 @@ export default function MatchesPage() {
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
-  
+
   // All users can see all matches
   const visibleMatches = useMemo(() => {
     return matches;
   }, [matches]);
-  
+
   const hiddenMatchCount = useMemo(() => {
     return 0;
   }, []);
-  
+
   // Handle navigation
   const handleNextMatch = () => {
     setCurrentMatchIndex((prev) => Math.min(visibleMatches.length - 1, prev + 1));
   };
-  
+
   const handlePreviousMatch = () => {
     setCurrentMatchIndex((prev) => Math.max(0, prev - 1));
   };
@@ -208,7 +206,7 @@ export default function MatchesPage() {
       if (!match?.startup?.founders_pfp) return;
 
       const foundersPfp = match.startup.founders_pfp;
-      
+
       // Parse founders_pfp - handle both array and string formats
       let urls: string[] = [];
       if (Array.isArray(foundersPfp)) {
@@ -317,9 +315,9 @@ export default function MatchesPage() {
               {/* Single match card display */}
               {visibleMatches[currentMatchIndex] && (
                 <div key={visibleMatches[currentMatchIndex].id} className="animate-fade-in">
-                  <MatchCard 
-                    match={visibleMatches[currentMatchIndex]} 
-                    isPremium={isPremium} 
+                  <MatchCard
+                    match={visibleMatches[currentMatchIndex]}
+                    isPremium={isPremium}
                     userEmail={user?.email || ''}
                   />
                 </div>
@@ -332,7 +330,7 @@ export default function MatchesPage() {
           )}
         </div>
       </section>
-      
+
       {/* Upgrade Modal */}
       {user?.email && (
         <UpgradeModal

@@ -74,9 +74,9 @@
     "retry:keywords-batch": "tsx yc_companies/retry_failed_keywords_batch.ts",
     "retry:keywords-batch:dry-run": "tsx yc_companies/retry_failed_keywords_batch.ts --dry-run",
     "send-waitlist": "tsx scripts/send-waitlist-emails.ts",
-    "send-waitlist:sendgrid": "tsx scripts/sendgrid/sendgrid-send-waitlist-emails.ts",
+    "send-waitlist:sendgrid": "tsx scripts/email/sendgrid/sendgrid-send-waitlist-emails.ts",
     "test-email": "tsx scripts/test-email.ts",
-    "test-email:sendgrid": "tsx scripts/sendgrid/sendgrid-test-email.ts"
+    "test-email:sendgrid": "tsx scripts/email/sendgrid/sendgrid-test-email.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -97,7 +97,6 @@
     "dotenv": "^17.2.3",
     "duck-duck-scrape": "^2.2.7",
     "googleapis": "^166.0.0",
-    "helix-ts": "^1.0.8",
     "lucide-react": "^0.555.0",
     "mammoth": "^1.11.0",
     "next": "^16.0.10",
