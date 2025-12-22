@@ -102,13 +102,26 @@ export async function GET(request: NextRequest) {
     // 5. Convert to buffer
     const buffer = Buffer.from(await data.arrayBuffer());
 
-    // 6. Return with browser caching headers
+    // 6. Return with browser and CDN caching headers
+    const cacheControl = 'private, max-age=3600, s-maxage=3600, must-revalidate';
+    
+    // Log cache delivery for monitoring egress shift
+    console.log('[Resume Proxy] Cache delivery:', {
+      resumePath,
+      candidateId: resumeData.candidate_id,
+      cacheControl,
+      timestamp: new Date().toISOString(),
+    });
+
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'application/pdf',
-        // Private cache - only this user's browser caches it
-        // max-age=3600 - cache for 1 hour (reduces egress by ~90%)
-        'Cache-Control': 'private, max-age=3600',
+        // Private cache with CDN support:
+        // - private: prevents public caching (only authenticated user can access)
+        // - max-age=3600: browser caches for 1 hour
+        // - s-maxage=3600: CDN caches for 1 hour (moves to cached egress quota)
+        // - must-revalidate: ensures fresh content after expiration
+        'Cache-Control': cacheControl,
         // ETag for cache validation
         'ETag': `"${resumePath}"`,
         // Allow inline display in iframes
