@@ -1,0 +1,114 @@
+Job URL: https://www.workatastartup.com/jobs/87606
+Job Title: Head of Developer Relations at Interfere (S25)
+Description Length: 5278 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Head of Developer Relations at Interfere (S25)
+$120K - $150K
+•
+0.40% - 0.90%
+Build software that never breaks
+New York, NY, US
+Full-time
+Will sponsor
+3+ years
+Apply now
+About Interfere
+The experience layer for modern product teams – detect, triage, and fix bugs automatically, no human required. Backed by Y Combinator, Vercel, Designer Fund, and many more.
+About the role
+Interfere is building the self-healing layer of the internet: software that detects issues, diagnoses root causes, and ships fixes before anyone notices something’s broken. The goal is to empower founders, product managers, and designers to understand how the product they're building
+actually
+works in the real world.
+Software runs civilization. When it breaks, the world stutters. We're building its immune system.
+This is not a normal job – it demands taste, intensity, and obsession. Difficulty wakes the genius.
+The Moment
+AI has democratized shipping code, but excellence remains scarce. We're creating the infrastructure that makes product excellence no longer aspirational but inevitable and expected. We've raised over $5.1M from world class investors like Y Combinator, Vercel Ventures, Hummingbird, Designer Fund, and many others to turn our vision into reality.
+This isn't about incremental improvements, but about fundamentally changing how reliable software gets built. As our
+Head of Community & Developer Relations
+, you’ll shape how the world understands, adopts, and builds with Interfere.
+The Role
+You’ll be the voice, steward, and architect of Interfere’s developer ecosystem.
+This role sits at the intersection of product, engineering, design, and storytelling. Your mission is to build deep trust with developers and technical leaders - and turn that trust into a community that shapes the product itself.
+You’ll ensure that when developers talk about autonomous software repair, reliability, and AI-native infrastructure,
+Interfere is the reference point
+.
+The Work
+You'll operate at the intersection of the impossible and the inevitable. This role demands:
+Depth over breadth
+– You know the difference between real community and performative engagement, and you build the former
+Boundless empathy
+– You deeply understand how developers think, build, and debug - and you translate complexity without dilution
+Craft at velocity
+– High-quality writing, talks, demos, and resources, shipped quickly without sacrificing clarity or depth
+"High Standards Win"
+– Question everything, rebuild from scratch when needed, never accept "that's how it's done" or "good enough"
+Ownership without borders
+– Your domain is whatever needs doing to make Interfere exceptional. No excuses
+What You'll Build
+A developer community that trusts Interfere with production-critical systems
+Clear, compelling narratives around self-healing software and AI-driven reliability
+Documentation, guides, demos, and examples that developers actually want to use
+Feedback loops between users, community, and the core engineering team
+Developer education through talks, workshops, writing, and events
+Strategic presence in the places that matter: GitHub, Discord/Slack, conferences, and technical media
+Early champions who shape the roadmap and advocate for Interfere organically
+What We're Looking For
+Immense pride
+in the work you do and a desire to work towards building the best products on earth
+Builders with taste
+: You know the difference between good and great, and you can't sleep until you've achieved the latter
+Systems thinkers:
+You understand how community, product, and adoption reinforce each other
+Relentless learners:
+You dive into unfamiliar domains and emerge with either expertise or a delusional drive to acquire it.
+Clear communicators:
+You make hard ideas feel inevitable rather than intimidating
+Deep technical credibility
+: You’ve worked closely with engineers or have been one yourself
+Nice to Have
+Experience in developer relations, developer marketing, or technical community leadership
+Background in developer tools, infrastructure, observability, or AI platforms
+Strong technical writing or public speaking track record
+Experience building early-stage developer communities from zero to critical mass
+Open source contributions, talks, blogs, or other proof of exceptional work
+What We Offer
+Founding team equity and competitive compensation
+Complete ownership of meaningful work
+Health, dental, and vision coverage
+Visa sponsorship for exceptional international candidates
+The opportunity to define how AI rebuilds software reliability
+How We Work
+We're in-person in New York City, and believe proximity accelerates everything that matters - but we'll gladly help you move here.
+Send us
+evidence of exceptional work
+you’ve shipped - writing, talks, communities you’ve built, developer products you’ve supported - and a note about why Interfere resonates with you.
+Apply now
+Other jobs at Interfere
+Head of Developer Relations
+fulltime
+New York, NY, US
+$120K - $150K
+0.40% - 0.90%
+3+ years
+Apply
+Founding AI Engineer
+fulltime
+New York, NY, US
+Machine learning
+$160K - $210K
+0.50% - 1.25%
+3+ years
+Apply
+Founding Product Engineer
+fulltime
+New York, NY, US
+Full stack
+$150K - $190K
+0.50% - 1.10%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

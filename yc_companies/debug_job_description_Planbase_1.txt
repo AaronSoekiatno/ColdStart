@@ -1,0 +1,83 @@
+Job URL: https://www.workatastartup.com/jobs/86588
+Job Title: Founding Engineer (Full-Stack) at Planbase (S24)
+Description Length: 4114 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Engineer (Full-Stack) at Planbase (S24)
+$130K - $200K
+•
+0.30% - 1.75%
+AI workforce management for healthcare
+San Francisco, CA, US
+Full-time
+US citizen/visa only
+Any (new grads ok)
+Apply now
+About Planbase
+Two decades ago, cloud-native companies rebuilt entire categories of B2B software with architectures incumbents couldn’t match. Those who moved early became the platforms powering the world’s largest organizations.
+AI is the same kind of shift today. The next generation of systems won’t just record work — they’ll embed intelligence into operations, adapt to each customer’s workflows, and help teams move faster and more accurately.
+That’s what we’re building at Planbase. Traditional software forces customers into a tradeoff: fragmented point solutions or bloated platforms that are hard to customize. Planbase takes a different approach. We handle the hard parts — infrastructure, data modeling, permissions, and compliance — while giving customers the ability to extend the system with custom workflows and apps, generated through LLMs and a simple chat interface. The result is software that can flex to match the unique way each business operates.
+Planbase already supports organizations that together touch over 100 million patients. Our customers include leading healthcare companies with $500M+ in revenue and some of the most complex operational needs in the industry. From day one, the code you ship will support these systems and directly impact how providers and patients experience care.
+About the role
+Planbase is building the AI-native operations layer that will power every modern clinic in the U.S.
+We’re already the operational backbone for
+multiple healthcare organizations valued at over $1B.
+5,000+ doctors delivering care to 100M+ patients
+are scheduled weekly through Planbase.
+Customers love us.
+Our top sales channel is unprompted referrals.
+We’re hiring founding engineers to help build the infrastructure behind the next generation of B2B software. This is a high-ownership role: you’ll work directly with the founders to shape the product, the company, and the way healthcare and staffing operations are run.
+You’ll be among the first employees at an early-stage startup, which means challenge, uncertainty, and opportunity. This role isn’t for everyone — to be a good fit, you need to be hungry to move build, break and push boundaries.
+What you’ll do
+Ship fast, talk to customers, and build AI agents that automate complex tasks in healthcare
+Work across the stack — from re-architecting ML forecasting systems to delivering elegant user-facing features.
+Build the platform infrastructure that allows AI to generate customer-specific apps, reports, insights and workflows.
+Help define engineering culture and grow the team.
+What kind of person we’re looking for
+High-energy, opinionated, and fun to work with.
+You must have experience building complex products to hit the ground running.
+Strong product taste.
+You’ve built real products for real customers, not just internal tools, integrations or side projects.
+You move quickly but maintain a high bar for quality — and expect the same from those around you.
+You want to help build not just a product, but a company and a category-defining business.
+Visa required but open to O-1 visa sponsorship for exceptional candidates (e.g., top-20 university, publications, or press).
+If applicable, please mention how you meet these O-1 criteria in your application.
+Tech stack
+LLMs:
+OpenAI, Anthropic
+ML:
+LightGBM, Prophet
+Backend:
+Python, Postgres
+Frontend:
+React, TypeScript
+Infrastructure:
+AWS
+Interview Process
+Interview screen (20 mins)
+Technical Interview (45min)
+Take-home technical assignment
+On-site working session with the team in San Francisco (1 day)
+Apply now
+Other jobs at Planbase
+Founding Engineer (Full-Stack)
+fulltime
+San Francisco, CA, US
+Full stack
+$130K - $200K
+0.30% - 1.75%
+Any (new grads ok)
+Apply
+Founding Product Engineer
+fulltime
+San Francisco, CA, US
+Full stack
+$130K - $200K
+0.30% - 1.75%
+Any (new grads ok)
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

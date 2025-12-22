@@ -1,0 +1,111 @@
+Job URL: https://www.workatastartup.com/jobs/87607
+Job Title: Drone Pilot & Field Technician at Voltair (W26)
+Description Length: 5118 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Drone Pilot & Field Technician at Voltair (W26)
+$25 - $45 / hourly
+Self Charging Drones
+Spokane, WA, US / San Francisco, CA, US / Pullman, WA, US / Remote (US)
+Contract
+US citizen/visa only
+1+ years
+Apply now
+About Voltair
+We build drones with unlimited range (by recharging on power lines).
+The grid is the world’s largest machine. Thus, we can collect data anywhere, anytime.
+We're selling a full-stack inspection service to power utilities by delivering reports with annotated photos of equipment that is broken or at risk.
+Our mission is to find faults and other maintenance concerns before they spark wildfires.
+Today power utilities are our customer, but tomorrow they'll be our deployment partner. At scale we are a new infrastructure layer for data on the physical world.
+About the role
+Field Technician – Drone Inspections
+Company Overview
+Voltair builds drones that recharge directly off power lines. We are a YC-funded (W26) technology company focused on preventing wildfires by enabling continuous inspection of electric distribution infrastructure.
+Our drones collect high-quality inspection data to help utilities identify and address asset issues before they lead to failures or fires.
+Job Summary
+Voltair is hiring a Field Technician to support power utility drone inspection work. This role is focused on field execution: operating drones, planning daily missions, following safety procedures, and collecting consistent inspection data.
+This position involves regular travel, outdoor work, and coordination with utility operations teams. It does not involve managing people or owning program design.
+Location & Travel
+Preferred Region: Pacific Northwest
+Target Cities: Spokane, Pullman, Boise, Missoula
+Travel: Required across the United States
+Compensation
+$25–45/hour as a part-time contractor
+Potential transition to a full-time role as inspection volume increases
+Key Responsibilities
+Field Execution
+Operate drones to inspect power lines and related assets
+Perform mission planning accounting for weather, terrain, and airspace
+Follow defined safety procedures and operational checklists
+Collect and upload inspection data accurately and consistently
+Coordination & Documentation
+Coordinate day-of logistics with utility operations teams
+Maintain basic field documentation and inspection records
+Communicate clearly with internal teams regarding field conditions
+Public & Customer Interaction
+Engage calmly and professionally with members of the public during on-site work
+Communicate clearly with utility stakeholders regarding inspection activities
+Minimum Qualifications
+Experience
+Experience in field-based technical or operational roles
+OR working knowledge of utility or electrical infrastructure
+(e.g., lineman apprentice, utility technician, electrical technician)
+Physical & Practical Requirements
+Ability to travel frequently
+Risk-aware operating style and adherence to safety standards
+Valid driver’s license
+Ability to work outdoors in variable weather
+Ability to lift up to 50 lbs and remain active for 8–10 hour field days
+Desired / Bonus Qualifications
+FAA Part 107 Remote Pilot Certificate
+Experience in utilities, construction, telecom, agriculture, forestry, or similar field work
+Comfort with basic technical concepts (cameras, sensors, batteries, data files)
+Ideal Candidate Profile
+This role is well suited for someone with field experience who wants hands-on, outdoor work supporting utility inspections. You are reliable, safety-conscious, and comfortable following defined procedures.
+Voltair provides the equipment, training, and workflows. You execute in the field.
+Technology
+Our drones recharge inductively from power lines by harvesting the magnetic field with a current transformer. We build custom drones with COTS parts. We collect visual and thermal data. Soon we'll fly our drones BVLOS over LTE, but today our field technicians collect data on-site. We run this data through a MV pipelines and then deliver the GIS and PDF reports to our customers.
+Our Hardest Challenges
+Performant recharging on distribution lines
+Drone weather hardening & reliability
+Tele-operations & autonomy
+Mission planning with (1) range / recharge locations (stochastic!) (2) weather (3) FAA and other compliance constraints + traveling inspector problem
+Cost effective uplink & data management / MV on the edge
+Interview Process
+15 min screener
+Personality Test
+45 behavioral
+On-Site Interview
+Apply now
+Other jobs at Voltair
+Drone Pilot & Field Technician
+contract
+Spokane, WA, US / San Francisco, CA, US / Pullman, WA, US / Remote (US)
+$25 - $45 / hourly
+1+ years
+Apply
+Inspection Data Review Contractor (Utility Experience Required)
+contract
+US / Remote (US)
+$25 - $65
+6+ years
+Apply
+Founding Software Engineer
+fulltime
+San Francisco, CA, US
+Robotics
+$100K - $180K
+0.50% - 2.00%
+1+ years
+Apply
+Founding Field Operations Lead
+contract
+Pullman, WA, US / San Francisco, CA, US / Spokane, WA, US / Missoula, MT, US / Boise, ID, US / Seattle, WA, US / Remote (US)
+$25 - $45 / hourly
+Any (new grads ok)
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

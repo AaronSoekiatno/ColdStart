@@ -1,0 +1,61 @@
+Job URL: https://www.workatastartup.com/jobs/87600
+Job Title: Software Engineer (Full Stack) at Brickwise (F25)
+Description Length: 4012 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Software Engineer (Full Stack) at Brickwise (F25)
+£60K - £80K GBP
+•
+0.50% - 1.00%
+AI property manager for landlords and estate agents
+London, England, GB
+Full-time
+US citizenship/visa not required
+1+ years
+Apply now
+About Brickwise
+We've built an AI property manager that automates maintenance requests, handling tenant calls and messages 24/7, following up by chasing contractors and resolving issues.
+We're based in London, have raised over $3M in funding, and have over 10 customers through a reliable sales pipeline, including a >$1m cARR enterprise contract.
+Ismail the CEO is an ex-Founder at LiveLink AI, where he raised $3M, growing the platform to editing 150k videos per month. He also built his own prop firm to $500k ARR.
+Elias the CTO was an early engineer at a YC backed company, acquired by Google. While a senior engineer at Google for 5 years, he took the product from $50k ARR to >$100m. CS at Bristol, MBA from Imperial.
+About the role
+Skills:
+Prompt Engineering, Node.js, React, TypeScript, Data Analytics, Machine Learning
+Join Brickwise to build "Alice," an autonomous AI property manager that handles voice calls, diagnoses maintenance issues, and dispatches contractors for thousands of units. With over $3M in funding and a >$1M enterprise contract already secured, you will be shipping code that immediately impacts real-world operations, moving far faster than a standard corporate role.
+We’re looking for someone enthusiastic about the product, and keen to ship 🚀 lots of code that makes customers happy.
+This offer includes a top 10% salary for this experience level, and equity grants 5x the market average.
+You will code directly alongside our founders: a CTO (ex-Google Senior Engineer) who scaled products to >$100m ARR, and a CEO who has previously scaled a venture-backed AI platform. We don't believe in silos; you will learn engineering best practices and startup strategy, and talk directly to customers.
+We’re not all work though. As a team we enjoy going to the gym, playing tennis, board games, computer games, and the cheeky beer (or diet coke) on a Friday evening. If you’re not having fun at a startup, then you’re doing it wrong :)
+Technology
+When tenants, vendors or landlords chat with property managers, they do this via email, phone call, SMS or WhatsApp. Because we’re building an AI property manager that’s a drop-in replacement for existing systems, these are the AI communication channels we’re focusing on. Try it out: +447588351283 (UK),
+alice@brickwiseai.com
+(email), +18445391844 (US).
+Property management organizations configure our AI using a React frontend app, which is kept in a Typescript monorepo alongside our express server, which are both deployed simultaneously to Vercel, avoiding service layer breakage. We use Supabase as our persistence layer and for auth.
+We’re aiming for enterprise grade AI, so we’re using a discrete step pipeline for maintenance issues. This lets us observe and maximumise reliability to satisfy our 99.9% SLA, and minimise the latency between steps, which is a secondary customer KPI of time to resolve maintenance issues (which results in happy tenants).
+Our engineering principles:
+No ownership silos. All engineers must be able to contribute to all parts of the code base, and must be comfortable with talking to clients.
+Fast iteration loops. Quickly delivering feature MVPs to customers has been key to our success so far; sometimes we push small features during customer calls.
+Customer-centric and culture of experimentation. If you’re excited about something and want to build it, I’ll find you the time. But let's try out a prototype for customers first.
+Apply now
+Other jobs at Brickwise
+Software Engineer (Full Stack)
+fulltime
+London, England, GB
+Full stack
+£60K - £80K GBP
+0.50% - 1.00%
+1+ years
+Apply
+Senior Software Engineer (Full Stack)
+fulltime
+London, England, GB
+Full stack
+£100K - £120K GBP
+1.00% - 2.00%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

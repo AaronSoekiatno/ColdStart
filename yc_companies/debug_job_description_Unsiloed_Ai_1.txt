@@ -1,0 +1,66 @@
+Job URL: https://www.workatastartup.com/jobs/87605
+Job Title: Founding Software Engineer - Backend and Infrastructure at Unsiloed AI (F25)
+Description Length: 3170 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Software Engineer - Backend and Infrastructure at Unsiloed AI (F25)
+$150K - $300K
+•
+0.10% - 1.00%
+API for parsing multimodal unstructured data
+San Francisco, CA, US
+Full-time
+Will sponsor
+Any (new grads ok)
+Apply now
+About Unsiloed AI
+Unsiloed AI is the unstructured data interface for LLMs and AI agents.
+We build vision-first, layout-aware systems that use computer vision, OCR, and multimodal models to turn complex documents into deterministic, machine-readable representations so that AI agents can read and write to documents as reliably as humans.
+About the role
+We are hiring a Founding Software Engineer in San Francisco.
+We are building a small, talent-dense team. This role will define the engineering archetype at Unsiloed AI and set the ceiling for the team. We strongly believe technical DNA compounds (or degrades) with every hire and hence the first few matter disproportionately. You will be expected to operate proactively, take full ownership, and independently drive systems from idea to production.
+What you Will Do
+As a Founding Software Engineer, you will own the entire technical stack end-to-end, from core infrastructure and production systems to deployment, reliability, and developer experience.
+Architect, build, and scale core backend systems powering document intelligence and VLM-based workflows
+Own production infrastructure end-to-end: deployments, monitoring, performance, reliability
+Design and operate high-throughput, low-latency services in real production environments
+Take systems from R&D → production → enterprise scale
+Build and maintain cloud and on-prem deployments (Docker, Kubernetes, Helm) for enterprise customers
+Establish best practices for CI/CD, observability, debugging, and incident response
+Work closely with the founders and research team to turn research prototypes into production-grade, scalable systems.
+What We are Looking For
+This role is backend & infrastructure-heavy. You should have most of the following:
+Experience building and operating scaled production systems
+Strong backend engineering skills (Python required; C++/Rust is a major plus)
+Experience with distributed systems (microservices, parallel processing, queues, caches like Redis)
+Deep familiarity with cloud infrastructure (AWS, GCP, Azure)
+Hands-on experience with Docker, Kubernetes, Helm, and infrastructure-as-code (Terraform / Pulumi)
+An ownership mindset
+Nice to have: Experience serving ML / VLM / GPU-heavy workloads
+Compensation:
+$150k – $300k
+Equity:
+0.1% – 1%
+Location:
+In-person, San Francisco
+Visa:
+Open to sponsoring
+Hiring process:
+We don’t believe interviews alone can assess fit on either side.
+Our process centers around paid work trials, which can be done remotely. You will work with us on real problems, collaborate as peers, and get a genuine sense of what building Unsiloed AI feels like.
+For any questions, email hiring [at] unsiloed [dot] ai
+Apply now
+Other jobs at Unsiloed AI
+Founding Software Engineer - Backend and Infrastructure
+fulltime
+San Francisco, CA, US
+Backend
+$150K - $300K
+0.10% - 1.00%
+Any (new grads ok)
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

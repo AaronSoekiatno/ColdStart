@@ -1,0 +1,83 @@
+Job URL: https://www.workatastartup.com/jobs/87569
+Job Title: Founding Engineer @ x1 at x1 (F24)
+Description Length: 3469 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Engineer @ x1 at x1 (F24)
+$100K - $175K
+•
+2.00%
+The Blueprint for Shipping iOS Apps
+San Francisco, CA, US / Remote (US)
+Full-time
+US citizen/visa only
+1+ years
+Apply now
+About x1
+We’re building the first end-to-end evaluation and training platform for web agents. Our system enables teams to test, benchmark, and optimize browser automation models at scale.
+Deterministic Web Simulation → Stable, reproducible testing with versioned web snapshots.
+Live Web Evaluation → Identify failures caused by UI drift, captchas, and dynamic content.
+Automated Annotation & Labeling → Generate high-quality training data for benchmarking.
+RL-Driven Agent Optimization → Improve models with scalable, feedback-driven learning.
+By combining synthetic user simulations, automated evaluations, and large-scale benchmarking, we help teams build more reliable web agents that handle real-world environments with confidence.
+About the role
+We’re building x1.
+AI has made writing code much easier.
+Shipping complete, reliable products is still the bottleneck.
+x1 focuses on that gap: helping people go from an idea and some code to a working iOS app that can actually be shipped and maintained.
+Why this problem matters
+Apple reviewed ~7.7 million App Store submissions in 2024
+~1.9 million were rejected (~25%)
+The most common reasons were not “bad ideas” or “bad code,” but broken flows, missing setup, and integration issues
+At the same time, AI tools are dramatically increasing the number of people who can write code
+So the top of the funnel is growing fast.
+The number of apps that successfully ship is not.
+We’re building for that mismatch.
+What you’ll work on
+This is a founding-level role. You’ll work directly with the founder and own meaningful parts of the product.
+The work spans:
+End-to-end product flows that turn ambiguous user intent into concrete implementation steps
+Full-stack systems (frontend, backend, APIs, data models)
+Native iOS development (Swift, SwiftUI, Xcode)
+Integrations with modern AI tooling
+Making systems reliable enough that users can actually finish and ship
+You’ll make early architectural decisions, revisit them as we learn, and see the impact directly in user outcomes.
+Ideal experience
+We’re looking for someone with range and judgment.
+Strong signals include:
+Full-stack experience (e.g. TypeScript/React or similar + backend systems)
+Native iOS experience (Swift/SwiftUI), ideally with shipped apps
+Comfort owning features end-to-end
+Ability to reason about tradeoffs, edge cases, and UX
+Bias toward shipping and iteration
+We care more about what you’ve built than specific titles or years of experience.
+Why join now
+Very early team
+YC-backed
+Real equity and ownership
+Direct exposure to users and real feedback
+Opportunity to work on a product aimed at a large and growing market:
+50M+ registered Apple developers
+Millions of new builders entering via AI tools
+This role is for someone who wants responsibility early and prefers building over process.
+Hiring process
+Intro → technical + product discussion → small scoped build → decision.
+We move quickly and keep it lightweight.
+How to reach out
+Send a short note and links to things you’ve built (GitHub, apps, products).
+If the work is strong, we’ll respond.
+Apply now
+Other jobs at x1
+Founding Engineer @ x1
+fulltime
+San Francisco, CA, US / Remote (US)
+Full stack
+$100K - $175K
+2.00%
+1+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›
