@@ -1780,7 +1780,6 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
           if (match && match[1]) {
             let loc = match[1].trim();
             
-            // Stop at common footer/navigation patterns
             // Stop at common footer/navigation patterns and content patterns
             const stopPatterns = [
               /Footer/i,
@@ -1794,6 +1793,14 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
               /\s+Founder/i,
               /Co$/i,
               /Company$/i,
+              // Stop at educational/organizational phrases
+              /\s+Program\s+at/i,
+              /\s+at\s+a\s+/i,
+              /\s+School/i,
+              /\s+University/i,
+              /\s+College/i,
+              /\s+Institute/i,
+              /\s+Academy/i,
               // Stop at capitalized words that look like names/roles (after location)
               /\s+[A-Z][a-z]+\s+[A-Z][a-z]+/i, // Pattern like "San Francisco John Doe"
             ];
@@ -1812,9 +1819,10 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
             
             // Stop at common navigation/content words
             const stopWords = [
-              'Footer', 'Y Combinator', 'Programs', 'YC Program', 'Startup School', 
+              'Footer', 'Y Combinator', 'Programs', 'YC Program', 'Startup School',
               'Work at a Startup', 'Primary Partner', 'Primary', 'Partner',
-              'Founders', 'Founder'
+              'Founders', 'Founder', 'Program at', 'at a ', 'School', 'University',
+              'College', 'Institute', 'Academy', 'Fellowship', 'Accelerator'
             ];
             for (const stopWord of stopWords) {
               const stopIndex = loc.indexOf(stopWord);
@@ -1824,27 +1832,37 @@ async function scrapeYCCompanyPage(page: Page, ycUrl: string): Promise<YCPageDat
               }
             }
             
-            // Additional cleanup: if location contains a pattern like "CityWord" (no space), 
+            // Additional cleanup: if location contains a pattern like "CityWord" (no space),
             // try to split at capital letters
             // This handles cases like "San FranciscoPrimary" -> "San Francisco"
             if (loc.match(/[a-z][A-Z]/)) {
               // Split at capital letters that look like role words
               loc = loc.replace(/([a-z])([A-Z][a-z]+)/g, (match, p1, p2) => {
                 // If p2 looks like a name/role word, stop before it
-                const roleWords = ['Primary', 'Partner', 'Founder', 'Founders', 'Programs'];
+                const roleWords = ['Primary', 'Partner', 'Founder', 'Founders', 'Programs', 'Program', 'School', 'University'];
                 if (roleWords.some(word => p2.includes(word))) {
                   return p1;
                 }
                 return match;
               });
             }
-            
+
+            // Final cleanup: Only keep text up to a valid location pattern
+            // Valid patterns: "City", "City, State", "City, ST", "City, Country"
+            const locationMatch = loc.match(/^([A-Z][A-Za-z\s]+(?:,\s*[A-Z][A-Za-z\s]+)?(?:,\s*[A-Z]{2,})?)/);
+            if (locationMatch) {
+              loc = locationMatch[1].trim();
+              // Remove trailing partial words
+              loc = loc.replace(/\s+\w{1,2}$/, '').trim();
+            }
+
             // Validate location format: should be like "City, State" or "City, Country"
-            // Should start with capital letter, contain letters and commas, max 100 chars
-            if (loc.length > 3 && loc.length < 100 && 
-                !loc.includes('http') && 
-                /^[A-Z][A-Za-z\s,]+/.test(loc) &&
-                !loc.match(/^(Footer|Y Combinator|Programs|YC Program)/i)) {
+            // Should start with capital letter, contain letters and commas, max 60 chars
+            if (loc.length > 3 && loc.length < 60 &&
+                !loc.includes('http') &&
+                /^[A-Z][A-Za-z\s,]+$/.test(loc) &&
+                !loc.match(/^(Footer|Y Combinator|Programs|YC Program)/i) &&
+                !loc.match(/(Program|School|University|College|Institute|Academy|Fellowship)/i)) {
               data.location = loc;
               break;
             }
@@ -2991,18 +3009,36 @@ async function storeYCCompanyByName(
       console.log(`   🖼️  Found company logo: ${pageData.companyLogo}`);
     }
 
-    // Update by name instead of yc_link (since yc_link doesn't exist yet)
+    // First verify the startup exists before trying to update
+    // This prevents any issues with cached queries returning deleted startups
+    const { data: existingStartup, error: checkError } = await supabase
+      .from('startups3')
+      .select('id, name, yc_link')
+      .eq('name', companyName)
+      .is('yc_link', null)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error(`  ❌ Error checking if startup exists: ${checkError.message}`);
+      return false;
+    }
+
+    if (!existingStartup) {
+      console.log(`  ⚠️  Company "${companyName}" not found in database (may have been deleted), skipping...`);
+      return false;
+    }
+
+    // Now update the existing startup by ID (more reliable than updating by name)
     const { data, error } = await supabase
       .from('startups3')
       .update(updateData)
-      .eq('name', companyName)
-      .is('yc_link', null)  // Only update if yc_link is still null
+      .eq('id', existingStartup.id)
       .select()
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        console.log('  ⚠️  Company not found in database, skipping...');
+        console.log(`  ⚠️  Startup was deleted during processing, skipping...`);
         return false;
       }
       console.error(`  ❌ Supabase update error: ${error.message}`);

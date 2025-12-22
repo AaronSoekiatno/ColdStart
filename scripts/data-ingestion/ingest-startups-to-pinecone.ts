@@ -6,7 +6,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { upsertStartup } from '../../lib/pinecone';
-import { generateEmbeddingText } from '../enrichment/yc_companies/scrape_techcrunch_supabase_pinecone';
+import { generateEmbeddingText } from '../scrape_techcrunch_supabase_pinecone';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
