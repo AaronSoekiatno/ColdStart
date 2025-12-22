@@ -50,6 +50,8 @@
     "re-scrape:missing": "tsx yc_companies/re_scrape_missing_data.ts",
     "scrape:logos": "tsx yc_companies/scrape_missing_logos.ts",
     "enrich:emails": "tsx yc_companies/enrich_founder_emails.ts",
+    "enrich:all": "tsx yc_companies/enrich_all_startups.ts",
+    "enrich:all:dry-run": "tsx yc_companies/enrich_all_startups.ts --dry-run",
     "funding:fetch": "tsx yc_companies/fetch_funding_data.ts",
     "add-startups": "tsx scripts/add-test-startups.ts",
     "delete-test-startups": "tsx scripts/delete-test-startups.ts",
