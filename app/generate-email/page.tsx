@@ -734,7 +734,7 @@ function GenerateEmailPageContent() {
                         style={isPreviewLoading && !previewBody ? {
                           background: 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)',
                           backgroundSize: '200% 100%',
-                          animation: 'shimmer 2s infinite',
+                          animation: 'shimmer-bg 2s linear infinite',
                         } : undefined}
                       />
                       <button
