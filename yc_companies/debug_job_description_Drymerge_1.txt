@@ -1,0 +1,68 @@
+Job URL: https://www.workatastartup.com/jobs/70506
+Job Title: Founding Fullstack Engineer at DryMerge (W24)
+Description Length: 2697 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Fullstack Engineer at DryMerge (W24)
+$115K - $175K
+•
+1.00% - 2.00%
+AI that updates your CRM for you
+San Francisco, CA, US
+Full-time
+US citizen/visa only
+Any (new grads ok)
+Apply now
+About DryMerge
+DryMerge lets users create AI agents that connect to their apps and automate repetitive tasks. These agents adhere to arbitrary user instructions telling them what to do. For example, a user could say "When I get a new demo request on my calendar, enrich the attendee's info, add them as a contact + deal in my CRM, and send me a Slack message with the details". DryMerge spins up an agent that works in the background and automates that task in seconds.
+Importantly, DryMerge uses a chat interface instead of a traditional drag-and-drop automation builder. This makes it faster to set up and far more intuitive for non-technical users.
+We are a small engineering organization that ships a lot of high-impact code fast.
+About the role
+Skills:
+JavaScript, Rust
+The role
+As a founding engineer, you’ll help build the core of DryMerge’s product across the stack. You will…
+Build high-quality, durable integrations with various software apps.
+Identify patterns in user requests, scope new features to address them, and build the features end-to-end.
+Make complex agentic systems work at near-perfect accuracy.
+You’ll be successful in this role if you…
+Are an extremely resourceful and fast-iterating engineer with 2 or more years of experience building impactful applications.
+Have an extremely high bar for quality and attention to detail.
+Can rapidly learn new technologies like Rust.
+Care a ton about user success and satisfaction.
+Are a kind and compassionate team player and communicator.
+Bonus points if you’ve…
+Previously been a founder or founding engineer.
+Built something
+awesome
+on the side
+Details...
+This is a full-time in-person role. We are based in San Francisco.
+Technology
+Our stack includes a Rust backend and Javascript/Svelte frontend.
+There are a ton of hard technical challenges we're solving, the top 3 being...
+Achieving near-perfect accuracy on mission-critical AI agents adhering to arbitrary user instructions.
+Deep integration with SaaS services like Gmail, Salesforce, etc. to scaffold agent interaction.
+Creating an intuitive chat-based interface to create automations, ditching the no-code drag-and-drop paradigm entirely.
+Apply now
+Other jobs at DryMerge
+Founding Fullstack Engineer
+fulltime
+San Francisco, CA, US
+Full stack
+$115K - $175K
+1.00% - 2.00%
+Any (new grads ok)
+Apply
+Sales Development Representative
+fulltime
+San Francisco, CA, US
+$80K - $120K
+0.25% - 0.75%
+1+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

@@ -1,0 +1,81 @@
+Job URL: https://www.workatastartup.com/jobs/77377
+Job Title: Founding Senior Software Engineer at Symphony (F24)
+Description Length: 5093 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Senior Software Engineer at Symphony (F24)
+$135K - $175K
+•
+0.50% - 1.00%
+Voice AI sims for next-gen employee training
+New York, NY, US
+Full-time
+Will sponsor
+3+ years
+Apply now
+About Symphony
+About the role
+Skills:
+Prompt Engineering, React, TypeScript, SQL, Amazon Web Services (AWS)
+About Symphony
+Symphony is building voice AI sims for large enterprises.
+Use cases include training front-line employees and augmenting & automating customer-facing workflows.
+Since launching in January, we’re live with 4 of the top 10 auto insurers in North America, helping train 1000s of newly hired claims adjusters using interactive voice AI simulations of real-world scenarios. Teams can create an infinite number of simulations allowing their teams to practice the job - avoiding costly mistakes with real customers.
+We graduated from YCombinator’s F24 batch and are backed by top investors in Silicon Valley including 22 Ventures, Transpose Platform, and Rebel Fund.
+What you’ll do
+Take full ownership of new product features — from scoping and user experience design to implementation across the frontend, backend, database, and infrastructure layers
+Refine and test prompts and build new agentic features, researching novel approaches to improve reliability of LLM-based functionality
+Collaborate with founders to scope, plan, and prioritize new features
+Lead engineering best practices and code quality standards, leveraging AI coding tools to accelerate development and maintain technical excellence
+Work directly with enterprise customers—from sales and onboarding to implementation and ongoing support—to ensure successful adoption and feedback-driven iteration
+You’ll enjoy this role if you:
+Are excited to experiment with new features as LLMs unlock product experiences that require rethinking traditional UI and workflows
+Enjoy thinking through new features end to end, including scalability, extensible abstractions, data model design, and long-term reliability
+Want extreme autonomy and ownership, including leading mission-critical initiatives from idea to execution
+Are ready to have a front-row seat at a high-growth startup, helping us craft our long-term vision, contributing to our GTM efforts, and pushing our hiring efforts
+What a typical week might look like
+Use the latest AI coding tools to ship a critical feature end-to end
+Review user session recordings and feedback to find ways to improve our no-code role play builder
+Research and test advancements in the voice AI world, including new LLM and speech-to-text capabilities that can make AI roleplays more dynamic and human-like
+Build a custom prototype of a new feature to help push a sale
+Propose roadmap changes to the founders
+What we’re looking for
+3+ years of software engineering experience, owning end-to-end development efforts and leading technical decisions
+Experience across the stack, including frontend frameworks like React/Next.js, backend technologies like Node.js or Flask, relational databases, and/or infrastructure management
+High ownership - you’re not afraid to take accountability for large bodies of mission-critical work
+Strong verbal and written communication skills that enable crystal-clear, unambiguous collaboration with customers, teammates, and during technical discussions
+Opinionated about code quality and architectural decisions, with a bias toward maintainability, clarity, and long-term scalability
+Able to operate with minimal direction—proactively asking questions, doing your own research, and engaging others to resolve ambiguity
+Bonus points
+Prior experience founding a software startup
+Built tools leveraging LLMs or ML in production
+Experience with real-time applications and technologies such as WebRTC, WebSockets, or streaming media pipelines
+Experience working on enterprise Saas applications
+Interview Process
+30-minute intro chat
+You’ll chat with one of the founders to quickly get a sense of mutual fit and whether it makes sense to move forward.
+45-minute technical interview
+A deeper conversation covering your past work, technical skills, and how you approach problems.
+Paid work trial (5-7 days)
+You’ll join us for about a week and work on a real project. We’ll compensate you hourly. This is a chance for us to see how you work, and for you to get a feel for what it’s like to be part of the team.
+The project
+You’ll take on a well-scoped but ambiguous problem — the kind of work you’d be doing day-to-day. This won’t be throwaway work; it’ll be a real feature or improvement we plan to ship.
+Timing
+Ideally, you’re able to work full-time in-person for the trial week. But we understand that may not always be feasible — if needed, nights and weekends are fine, and we’ll work with your schedule to make sure we have enough overlap to collaborate.
+Decision
+We aim to make a final decision within 1 day of completing the work trial.
+Apply now
+Other jobs at Symphony
+Founding Senior Software Engineer
+fulltime
+New York, NY, US
+Full stack
+$135K - $175K
+0.50% - 1.00%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

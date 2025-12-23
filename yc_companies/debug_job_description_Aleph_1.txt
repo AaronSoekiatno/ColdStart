@@ -1,0 +1,88 @@
+Job URL: https://www.workatastartup.com/jobs/76395
+Job Title: Staff Fullstack Engineer at Aleph (S21)
+Description Length: 6374 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Staff Fullstack Engineer at Aleph (S21)
+$109K - $240K
+One source of truth for financial data.
+Remote - Americas / Remote (US; AR; CL; UY; MX; BR; CA)
+Full-time
+US citizen/visa only
+11+ years
+Apply now
+About Aleph
+Aleph (YC S21) makes it easy for finance teams to build financial models in Excel/Google Sheets that are always up-to-date. Our main thesis is that, while specialized software abounds (Anaplan, Adaptive Insights, etc.), it's usually clunky, too expensive to implement and maintain, and takes people away from the tool they love the most — spreadsheets. This is a huge market that’s ripe for innovation, and we’re expanding our team to go after it. We’re participating in the current Y Combinator batch and looking to move quickly, so we hope you’re the individual we’re looking for!
+Aleph was founded by Albert Gozzi and Santiago Perez De Rosso, two technical founders with backgrounds from Stanford and MIT and experience working at top-tier companies such as Google, Microsoft, DocuSign, and Bain & Company.
+About the role
+Skills:
+JavaScript, React, TypeScript, Google Cloud
+About Aleph
+Aleph is an AI-native platform for Financial Planning & Analysis (FP&A). We operate in an established software category with a multi-billion market but no clear winner. Our growth has come from product velocity and customer outcomes, not marketing spend, and the results speak for themselves.
+Aleph was founded by Albert Gozzi and Santiago Perez De Rosso, two technical founders with backgrounds from Stanford and MIT and experience working at top-tier companies such as Google, Microsoft, and Bain & Company. We’re backed by top VCs (Bain Capital Ventures, Khosla Ventures, YC, Picus Capital), and work with customers like Webflow, Turo, Notion, Zapier, and many others.
+What we’ve built so far is the most seamless way to centralize all of a company's financial data – think expenses from Quickbooks or Netsuite, pipeline forecasts from Salesforce – and bring it into the tools finance teams are already using. But the vision goes way beyond that: Aleph is AI-native at its core, automating reporting, variance analysis, and forecasting through intelligent agents. We’re building the always-on decision layer for modern businesses.
+We’re moving fast, shipping constantly, leaning into AI to make the product smarter with every release, while also applying AI to how we sell, support and scale. Our churn is low, growth is strong, and the pace keeps accelerating.
+We are hiring remotely across the Americas (United States, Canada, LATAM).
+We're looking for a Staff Software Engineer to join our growing engineering team. You will partner with our technical CEO, CTO, and other members of the engineering team to build critical software with an outsized impact on our users and our business.
+This is an exciting opportunity for someone to come in as an early member of the team and drive the development of our platform from the ground up.
+You may be matched to any of our 3 Product Engineering Teams, depending on strengths, interests and team composition. If you have a particular interest in AI work (which we very much welcome!) - don't worry, all of our teams have an AI focus.
+👷 What you'll be doing
+Work hand-in-hand with leadership and other teammates to prioritize and execute on our product roadmap
+Design, develop and own complex features or software components
+Deliver robust, scalable, and well-tested code
+Help develop and establish best practices to lay the foundation for a high-performing technology team and its culture
+Collaborate with Design and Operation teams to keep making Aleph better every day
+🤠 About you
+Enjoy owning a project from start to finish and loves to take on the responsibility to bring projects across the finish line
+Can navigate a fast-paced/dynamic environment and operate autonomously to get work done
+Comfortable working in a remote team
+Enjoy enabling others to do their best work. Our product is all about enabling businesses to make smarter decisions and giving the people who work at the data level, super-powers.
+Product-driven engineer. You're comfortable and eager to meet customers and develop an empathetic understanding of their problems to ensure we're building the right solutions
+📝 What you bring
+8+ years of software development experience
+3+ years of experience contributing to the system design or architecture (architecture, design patterns, reliability and scaling) of new or existing systems
+Previous startup experience, or experience thriving in an unstructured environment
+Experience with a B2B SaaS product, analytics, or building tools for Finance teams
+Exposure or interest in Finance, with emphasis in FP&A
+Additional notes
+Our tech stack is GCP, TypeScript, JavaScript, React, Node.js, MongoDB and BigQuery.
+Learn more about Aleph Engineering
+While this is a remote-first opportunity, we're focusing on candidates within the Americas to better align with our working hours as a team.
+Aleph is an equal opportunity employer that is committed to diversity and inclusion in the workplace. We prohibit discrimination and harassment of any kind based on race, color, sex, religion, sexual orientation, national origin, disability, genetic information, pregnancy, or any other protected characteristic as outlined by federal, state, or local laws.
+This policy applies to all employment practices within our organization, including hiring, recruiting, promotion, termination, layoff, recall, leave of absence, compensation, benefits, training, and apprenticeship. Aleph makes hiring decisions based solely on qualifications, merit, and business needs at the time.
+Technology
+JavaScript, React, Node.js, MongoDB, BigQuery. We like to keep our stack simple, but we are open to fresh ideas that can help us move faster.
+Interview Process
+https://getaleph.notion.site/engineering-careers
+Apply now
+Other jobs at Aleph
+Staff Fullstack Engineer
+fulltime
+Remote - Americas / Remote (US; AR; CL; UY; MX; BR; CA)
+Full stack
+$109K - $240K
+11+ years
+Apply
+Engineering Manager
+fulltime
+Remote - Americas / Remote (US)
+Full stack
+Apply
+Senior Fullstack Engineer
+fulltime
+Americas / Remote (US)
+Full stack
+Apply
+Engagement Associate
+fulltime
+Americas / Remote (US)
+Apply
+Strategic Business Development Lead
+fulltime
+Americas / Remote (US)
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

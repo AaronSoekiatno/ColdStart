@@ -1,0 +1,90 @@
+Job URL: https://www.workatastartup.com/jobs/77152
+Job Title: Founding Product Engineer at Type (W23)
+Description Length: 3955 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Product Engineer at Type (W23)
+$175K - $250K
+•
+3.00% - 5.00%
+The AI-first document editor.
+NY, US
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About Type
+Type.ai is an AI writing tool and document editor that helps professionals write better and faster. Type integrates powerful AI writing and editing features in a simple, familiar writing interface. It's built for writers who need greater control and precision in their work.
+About the role
+Skills:
+MongoDB, React, TypeScript
+About Type and the Role
+Type
+is an AI-native document editor. Our mission is to help people communicate confidently.
+We believe that writing is and will always be the backbone of clear thinking and effective communication, especially in the AI era.
+Tools like Type free writers up to do more high-level thinking – exploring more ideas before coming to a conclusion, testing lots of approaches to expressing a message, and arguing with the AI about the oxford comma.
+We're backed by Y Combinator and have thousands of customers who love our product.
+We're looking for a product-minded software engineer to join our small, formidable team in Brooklyn. Our ideal candidate is high-ownership, low ego, obsessed with their craft, and excited to work at a startup.
+If this resonates with you, please apply.
+What you'll do
+Here's a sample of some things you might work on:
+Building advanced rich text editing features
+Working on sync and offline first features using data structures such as CRDTs
+Building multiplayer features for collaborative editing
+Building LLM-based writing and editing features that span all levels in the stack
+Prototyping experimental AI writing and editing workflows
+What we're looking for in you
+4+ years of software engineering with focus on complex web applications
+Proven experience building interaction-heavy applications like editors
+Strong product intuition for identifying friction points and solving real user problems
+Obsessive attention to detail and appreciation for the subtle UX elements that make editors feel natural
+Ability to contribute to product strategy, not just implementation
+A belief that customer problems come first in all product decisions
+Strong foundational skills in Computer Science
+A track record of shipping complex products with excellent user experiences
+Low ego, high ownership
+Technical Skills
+We value curiosity and adaptability in our engineers. Your specific technical background should include:
+Must Have:
+Strong JavaScript expertise
+— Deep experience with React and TypeScript for complex applications
+Full-stack capabilities
+— Ability to design scalable systems and build production-ready services
+Nice to Have:
+Rich text editing
+— Familiarity with frameworks like Slate.js or ProseMirror
+Collaborative editing
+— Experience with CRDTs or similar real-time synchronization technologies
+Offline-first design
+— Knowledge of IndexedDB, service workers, and efficient sync protocols
+Large language models
+— Experience building production applications with LLMs
+Backend technologies
+— Experience with Node.js/Express and MongoDB
+Benefits
+Competitive salary
+Generous stock package
+100% employer-covered medical, dental, and vision for you and any dependents
+Dedicated workspace at our HQ in Williamsburg, Brooklyn
+We actively encourage people of all backgrounds – particularly those from underrepresented groups – to apply. We believe a diverse set of perspectives and lived experiences strengthen our team and product, and we're committed to building an inclusive work environment.
+Technology
+Our current stack is:
+NodeJS backend written in TypeScript.
+React/TypeScript front end.
+Google Cloud Run + various services.
+Type is built as a local-first PWA that heavily uses service workers and IndexedDb.
+Apply now
+Other jobs at Type
+Founding Product Engineer
+fulltime
+NY, US
+Full stack
+$175K - $250K
+3.00% - 5.00%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

@@ -1,0 +1,90 @@
+Job URL: https://www.workatastartup.com/jobs/69159
+Job Title: Microfabrication Engineer at Andson Biotech (W22)
+Description Length: 4626 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Microfabrication Engineer at Andson Biotech (W22)
+$75K - $130K
+•
+0.01% - 0.50%
+Empowering Mass Spec for Biotech and Beyond
+Atlanta, GA, US
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About Andson Biotech
+About Andson: (TL;DR video about us:
+https://youtu.be/wMyAikoQkXE
+)
+Andson Biotech is developing a microfluidic platform enabling rapid sample cleanup for mass spectrometry applications. Mass spectrometry is a gold-standard chemical analysis tool, but it remains limited in utility due to the complex workflows associated with going from raw sample to analysis. Our flagship product, the DynaCHIP, enables simple, on-demand mass spectrometric analysis with easy-to-use interfaces that democratize mass spectrometry from lab to market.
+Andson Biotech was spun out of Georgia Tech and is supported by Y Combinator and Merck Digital Sciences Studio. We are a seed-stage startup, so every role has the chance for growth.
+About the role
+Skills:
+Membranes, Microfluidics, Prototyping
+Job Title:
+Microfabrication Engineer (flexible titles depending on experience)
+Location:
+Atlanta
+Company Overview:
+Andson Biotech’s mission is to make mass spectrometry a tool for everyone. Currently, sample preparation and data analytics bottleneck mass spec workflows and limit them to mostly niche applications. Highly trained personnel can spend hours to weeks getting single data points.
+DynaCHIP
+packages advanced microfluidics into an easy-to-use system and drops into existing mass spec workflows to enable 1-second sample prep for 10-100x faster results.
+Role Summary:
+This position is focused on the 1) scaling up our existing microfabrication processes and 2) developing new microfabrication approaches for our technology road map. The ideal candidate will have substantial hands-on experience in cleanrooms and common MEMS workflows including photolithography (SPR 220, SU-8), etching (Wet & Dry), deposition (evaporation, sputtering), and QC/characterization (SEM, TEM, etc.).
+Key Responsibilities:
+Develop, maintain, and continuously improve Andson Biotech's microfabrication manufacturing and quality control practices.
+Design and prototype fixtures and tooling to aid in manufacturing processes.
+Coordinate with the Applications Engineering team to develop and evaluate new microfluidic chip designs.
+Evaluate external contract manufacturers for microfabrication needs as necessary.
+Coordinate with Operations on production planning and tracking WIP through the microfabrication manufacturing workflow.
+Track and report microfabrication manufacturing KPI metrics for weekly cross-functional reviews.
+Perform root cause analysis on failed microfluidic devices.
+Utilize standard semiconductor/MEMS microfabrication processes including (photolithography, RIE, DRIE, wafer bonding, PVD, wet cleaning, laser micro machining) to fabricate microfluidic devices
+Technical Qualifications:
+Minimum 5 years of experience (graduate work and/or professional) in cleanroom environments (MEMS, microfabrication, microelectronics, etc.)
+Experimentalist: hands on lab experience is a MUST - you will be expected to independently debug and develop complex research tools everyday.
+Experience managing vendors and third-parties (e.g., NDAs, SSAs, etc.) is strongly preferred.
+Experience with microfluidics strongly preferred.
+Experience in cell culture and GLP, GMP or other regulated environments is a plus.
+Nontechnical Qualifications:
+Independent and open-minded thinker with entrepreneurial and customer-focused mindset.
+Strong communication skills, capable of managing relationships with clients, vendors, and cross-functional teams.
+Ability to reprioritize tasks and accept a dynamic environment (welcome to a startup)
+Prior experience in a startup is a huge plus.
+Expectations of the Role:
+Flexible hours with minimal travel expected (<10%)
+Opportunity to grow within Andson – you will be one of the first hires, and this role has a high potential for growth within the company.
+Equity packages available
+Even if you do not fit the role's description perfectly, but you feel that you'd be a good fit, please consider applying. We can't know if we should hire you if we never meet you!
+Apply now
+Other jobs at Andson Biotech
+Microfabrication Engineer
+fulltime
+Atlanta, GA, US
+Hardware
+$75K - $130K
+0.01% - 0.50%
+3+ years
+Apply
+Electro-Mechanical Engineer
+fulltime
+Atlanta, GA, US
+Hardware
+$65K - $115K
+0.01% - 1.00%
+Any (new grads ok)
+Apply
+Full-Stack Software/Controls Engineer
+fulltime
+Atlanta, GA, US
+Full stack
+$80K - $150K
+0.01% - 1.00%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

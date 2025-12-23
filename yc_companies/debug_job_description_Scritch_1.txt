@@ -1,0 +1,43 @@
+Job URL: https://www.workatastartup.com/jobs/77016
+Job Title: Founding Engineer at Scritch (W24)
+Description Length: 3591 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding Engineer at Scritch (W24)
+$100K - $200K
+•
+0.50% - 1.00%
+AI operating system for veterinary care
+San Francisco, CA, US
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About Scritch
+Scritch is a YC-backed, seed-stage startup based in San Francisco. We’re building the leading AI systems for veterinary medicine, starting with voice agents that automate front-desk operations in veterinary practices.
+The founders are Princeton and Cornell grads with machine learning and software engineering experience at Tesla Autopilot and Amazon. Driven by their personal experience raising pets, they founded Scritch to transform the experience of healthcare for pets, their families, and the veterinary teams who serve them.
+About the role
+Scritch
+is building the AI operating system for veterinary care. Emily, our flagship product, is an AI receptionist who works 24/7 to schedule appointments, answer questions, email medical records, handle prescription refill requests, and more. She’s already live in veterinary practices, talking to thousands of pet owners every day and freeing up human staff to deliver higher-quality care.
+As we scale, we’re looking for an exceptional software engineer with hands-on experience with LLMs. Our stack includes Python, React, TypeScript, Twilio, and AWS. You’ll have significant ownership over our product stack, from our AI voice agents to the internal tools that power our operations. The work you do will be mission-critical and technically challenging. Our agents handle high-stakes conversations, including identifying possible emergencies and helping distressed pet owners navigate urgent situations. Being useful in these moments takes more than good dialogue - it requires deep context. That means integrating appointment history, medical records, and practice-specific protocols. Beyond scheduling, we’re building agents with real veterinary expertise that can triage, educate, and guide pet owners in ways that optimize clinical outcomes from the moment they reach out.
+We’re a mission-driven team working out of our pet-friendly office in San Francisco. This is a rare opportunity to join early and shape the company’s product, culture, and engineering foundation. You’ll have significant ownership, direct access to customers, and a path to technical leadership as we grow. We’re building something ambitious and meaningful, and that takes urgency, ownership, and real dedication.
+About You
+Hacker:
+You move fast, think creatively, and treat every problem as a solvable one. You’ve got the skills and drive to figure things out and make them work. You want to contribute to the cutting edge of technology rather than just keeping up with it.
+Mission-driven:
+You’re a former/current pet owner and you care deeply about animals and the people who care for them. Over 70% of U.S. households have a dog or cat, and pets are increasingly seen as true family members. As the pet-owning population grows, veterinary professionals are under more pressure than ever, facing high burnout rates, emotionally demanding work, and limited time to meet rising expectations. We’re building AI coworkers to support and augment this workforce - lightening their load, improving the client experience, and helping more pets get the care they need. If you’re inspired by this mission and bring deep empathy to your work, we’d love to talk to you.
+Apply now
+Other jobs at Scritch
+Founding Engineer
+fulltime
+San Francisco, CA, US
+Full stack
+$100K - $200K
+0.50% - 1.00%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

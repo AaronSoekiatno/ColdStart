@@ -1,0 +1,63 @@
+Job URL: https://www.workatastartup.com/jobs/76236
+Job Title: Full Stack Engineer at Stardex (S21)
+Description Length: 2738 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Full Stack Engineer at Stardex (S21)
+$30K - $50K
+AI native ATS + CRM for executive search firms
+CO / AR / CL / IN / MX / PE / PL / Remote (CO; AR; CL; IN; MX; PE; PL)
+Full-time
+US citizen/visa only
+1+ years
+Apply now
+About Stardex
+Stardex is an AI native ATS + CRM for recruiting firms. We are building the best recruiting copilot to enable recruiters to execute searches faster, and focus on things that matter the most.
+About the role
+Skills:
+Node.js, React, TypeScript
+At Stardex, we are building software to help recruiters automate tasks. We are backed by incredible investors, and are excited to shape the future of how recruiting will evolve in age of AI.
+We are looking for a remote full stack engineer. If you are interested, please apply here or directly email our founder, Sanket, at sanket(at)stardex.ai on why you are interested to join us!
+🔍
+Who are you?
+You have built multiple React apps over the last 2-3 years
+You have experience with a backend technology such as Node or Django
+You understand the value of writing clean, maintainable software, including documentation
+You have a high quality bar but can embrace MVP mindset when needed
+You have an owner mentality and love experimenting/disrupting things
+You love learning and finding ways to improve yourself
+🧗🏽‍♀️
+Your responsibilities...
+Work closely with the founders to building products across our stack (using React, Node, Serverless and more)
+Writing backend code that integrates with a wide variety of community software that is used by our customers
+Collaborating directly with our founders and customers to ship stable, maintainable code while iterating as fast as possible
+Architecting and scoping high-level systems
+Hopefully having a blast working with us 😇
+✨
+Bonus points if you have...
+Worked at (or founded) an early-stage startup previously
+Experience with building APIs on the serverless framework
+An eye for visual design (or past experience in product design, Figma, etc)
+🎉
+Why work with us?
+Get the chance to be an early engineer at a fast-growth YC Startup!
+We are a tight-knit team where you will have ownership, and learn a lot
+We provide competitive compensation, and take care of all your benefits (+ whatever you need to be productive)
+If the above resonates with you, we would love to hear from you!
+Remote
+Technology
+Our frontend is built using ReactJS. We use Supabase (open source firebase alternative) for backend that is built on top of PostgresSQL. We also extensively use AWS lambdas.
+Apply now
+Other jobs at Stardex
+Full Stack Engineer
+fulltime
+CO / AR / CL / IN / MX / PE / PL / Remote (CO; AR; CL; IN; MX; PE; PL)
+Full stack
+$30K - $50K
+1+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

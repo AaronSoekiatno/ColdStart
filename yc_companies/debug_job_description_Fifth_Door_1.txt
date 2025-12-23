@@ -1,0 +1,76 @@
+Job URL: https://www.workatastartup.com/jobs/77736
+Job Title: Front End Engineer at Fifth Door (F25)
+Description Length: 2843 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Front End Engineer at Fifth Door (F25)
+$150 - $250
+•
+0.10% - 0.50%
+Create and play games with AI
+San Francisco, CA, US / Remote
+Full-time
+Will sponsor
+3+ years
+Apply now
+About Fifth Door
+Fifth Door unlocks the power of imagination by making it easy for everyone to create, share, and play games anywhere, with anyone. We exist to stimulate the creativity, connection, and joy that people get when they play games.
+About the role
+Skills:
+React, TypeScript
+About Us
+Fifth Door unlocks the power of imagination by making it easy for anyone to create, share, and play turn-based games anywhere, with anyone. We exist to inspire connection, creativity, and community through the limitless joy of games.
+Create. Play. Anywhere.
+About the Role
+We are seeking a
+Front-End Engineer
+who is passionate about delivering outstanding user experiences that delight our users. This is an opportunity to join a fast-moving, ambitious team where your work will have real impact from day one.
+Responsibilities
+Architect, develop, and maintain highly responsive and user-friendly web applications.
+Collaborate with cross-functional teams to turn mockups and prototypes into elegant, functional code.
+Ensure the technical feasibility of UI/UX designs.
+Optimize applications for maximum speed and scalability.
+Write clean, maintainable, and well-tested code.
+Identify and troubleshoot front-end performance issues.
+Stay current with front-end trends and emerging technologies, bringing ideas back to the team.
+Qualifications
+Must-Have:
+3+ years of experience as a front-end engineer or similar role.
+Expert proficiency with React and Typescript.
+Strong understanding of cross-browser compatibility, responsive design, and accessibility standards.
+Familiarity with modern build pipelines and tools (Webpack, Vite, Rollup, etc.).
+Experience integrating with RESTful APIs and WebSockets.
+Git proficiency and experience working in an agile development environment.
+Proficiency using AI tools in development workflows
+Nice-to-Have:
+Interest or experience in animations on the web.
+Some familiarity with back-end technologies is a plus.
+Passion for gaming, creative tools, or AI applications.
+Benefits
+Competitive salary and meaningful equity.
+Health, dental, and vision coverage.
+Flexible work hours and unlimited vacation policy.
+A collaborative, supportive team environment.
+Opportunity to shape product direction and culture early.
+Technology
+We are building an AI-powered game engine that allows anyone to create a game simply by talking with an AI.
+Interview Process
+Phone call
+Technical Phone Screening
+3× 1hr long Technical interviews
+Offer
+Apply now
+Other jobs at Fifth Door
+Front End Engineer
+fulltime
+San Francisco, CA, US / Remote
+Frontend
+$150 - $250
+0.10% - 0.50%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

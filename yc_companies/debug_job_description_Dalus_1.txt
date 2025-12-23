@@ -1,0 +1,78 @@
+Job URL: https://www.workatastartup.com/jobs/76205
+Job Title: Software Engineering Internship at Dalus (W25)
+Description Length: 3382 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Software Engineering Internship at Dalus (W25)
+$4.2K - $6.7K / monthly
+AI-Powered Hardware System Design Software
+San Francisco, CA, US
+Internship
+US citizen/visa only
+Apply now
+About Dalus
+At Dalus, we're building AI-powered software to reimagine how complex hardware systems are designed — think rockets, satellites, EVs, aircraft, nuclear plants.
+Right now, companies building these systems are held back by legacy tools that were never built for today’s fast-paced engineering teams. We’re changing that. Our platform makes hardware development faster, safer, and more scalable, even with smaller teams.
+We believe that designing atoms should feel more like working with bits — and that the next industrial renaissance needs better software.
+About the role
+Why Dalus Exists
+At
+Dalus
+, we're building AI-powered software to reimagine how complex hardware systems are designed — think rockets, satellites, EVs, aircraft, nuclear plants.
+Right now, companies building these systems are held back by legacy tools that were never built for today’s fast-paced engineering teams. We’re changing that. Our platform makes hardware development faster, safer, and more scalable, even with smaller teams.
+We believe that designing atoms should feel more like working with bits — and that the next industrial renaissance needs better software.
+More on our vision
+here
+About the Role
+We’re looking for
+an SWE Intern
+— someone who wants to go deep, build fast, and shape the future of our product and team. You’ll be working across the entire stack (frontend, backend, AI, systems modeling) and helping us deliver real value to some of the most advanced hardware companies in the world.
+You’ll thrive in this role if you:
+Love wearing multiple hats and learning new things fast
+Have strong product intuition and care about UX
+Are excited to build the future of complex system design, not just work on it
+Don’t mind getting your hands dirty with hard problems (and hard schedules)
+Our Stack
+Frontend:
+Next.js, Typescript, React
+Backend:
+Node.js, Python (for simulation/AI), AWS
+AI:
+Different LLMs, Langfuse, agent tooling workflows
+Who We Are
+We started Dalus in 2024.
+Eliot
+was a test/systems engineer at Aerojet Rocketdyne (L3Harris), where he saw firsthand how siloed communication slowed down hardware teams.
+Sebastian
+previously founded a neurotech hardware startup and scaled a software company to exit.
+We just wrapped up YC W25, have revenue, and are working closely with aerospace, robotics, and defense customers
+Nice to Have
+Experience with systems engineering, aerospace, manufacturing, or industrial software
+Interest in simulation, modeling tools, or AI workflows
+Past startup experience or personal projects that went deep
+If there appears to be a fit, we'll reach to schedule 2-3 short technicals. The final step is an onsite in our office, where you'll work on a small project, discuss ideas, and meet the team.
+Base Salary: $50-$80k
+We can fly you out here and provide housing, so you won't need to worry about rent.
+Must be a US Citizen to apply
+Apply now
+Other jobs at Dalus
+Software Engineering Internship
+intern
+San Francisco, CA, US
+Full stack
+$4.2K - $6.7K / monthly
+Any
+Apply
+Founding Software Engineer #1
+fulltime
+San Francisco, CA, US
+Full stack
+$140K - $200K
+0.50% - 2.50%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

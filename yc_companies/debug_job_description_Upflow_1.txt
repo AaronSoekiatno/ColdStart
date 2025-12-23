@@ -1,0 +1,114 @@
+Job URL: https://www.workatastartup.com/jobs/76434
+Job Title: Associate Account Executive - US at Upflow (W20)
+Description Length: 7296 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Associate Account Executive - US at Upflow (W20)
+$100K - $200K
+•
+0.01% - 0.03%
+Cash collection tech for B2B businesses.
+New York Office
+Full-time
+US citizen/visa only
+1+ years
+Apply now
+About Upflow
+Upflow is a new kind of payments platform for B2B businesses. You can think of us like Stripe but for businesses that get paid via wire transfer, 30-45 days after they issue an invoice. Today, 100s of businesses rely on Upflow to understand cashflow, collaborate on collections and receive payment.
+For more information, please visit
+https://upflow.io
+or checkout our product demo here:
+https://demo.upflow.io
+About the role
+About Upflow
+Upflow revolutionizes the way B2B businesses get paid, unlocks owed cash reserves, and empowers B2B companies to grow better.
+Most modern, fast-growing companies are fully focused on sales growth and retention and struggle to maintain focus on cash collection. This leads to thousands of unpaid invoices, broken communications, outdated payment methods, and a negative customer experience. As a result, cash flow suffers, and growth is inhibited. Upflow is the modern collections hub that manages all data, analytics, communications and payments to improve cash flows.
+We are a product-led organization launched in 2018 and trusted by hundreds of companies across the US and EMEA, including Lattice, Front, Iziwork, ProductBoard, and more. We're also backed by leading investors (YCombinator, 9yards, eFounders) and top business angels from N26, Square, Mercury, Uber, and Netsuite.
+We're distributed across three continents and rapidly expanding. It's a perfect time to join if you're looking for an exciting personal growth opportunity and international experience.
+For more information about our company and our team, visit our careers page at
+www.upflow.io/careers
+Your role at Upflow
+Your primary focus will be to support our fast growth in EMEA by closing net new business deals. We are looking for motivated, talented and smart hunters with SaaS new business sales experience to join our team. If you are eager and willing to learn, and thrive off of building something great with close team collaboration in an exploding space, you have come to the right place!
+As a Senior Account Executive at Upflow, you will develop key sales knowledge through mentorship and our sales training program, and be able to take advantage of an uncapped commission structure coupled with an incredible product.
+As an AE, you will:
+Work at a best-in-class software provider that is revolutionizing the way companies get paid.
+Work with the Sales & Growth teams to generate qualified opportunities, and work full deal-cycles to sign new clients to Upflow's SaaS platform.
+Get on calls with prospects to understand their processes and challenges, and pitch them Upflow's value proposition.
+Constantly improve our processes with best practices and learnings found along the way.
+Get trained to elevate your game and harness your skills.
+Maximize an uncapped commission structure and drive MRR growth for Upflow!
+This role is based in our Paris offices in Le Marais.
+Who you are
+Experienced & proven
+: You’ve been in the AE game for 2+ years and have the results to back it up.
+Always on top of your game
+: You love overcoming the challenges you set for yourself and have shown steady success.
+Ecosystem-savvy
+: You've got experience within our world —ideally from a start-up/fintech with exposure to bigger players in the ERP/Accounting space
+Hunter mentality
+: You live for outbound and understand the power of networking, alliances , building pipeline, etc.
+Ambitious & proactive
+: You’re internally driven, take initiative, and don’t wait around for direction — you own it.
+Strong sense of ownership
+: You are accountable for your actions and you are not afraid to commit to things.
+Honest & human
+: You show up as your true self — no ego, just genuine drive and a sharp mind.
+Extremely coachable
+: Approach new processes with an open mind and eagerness to learn.
+Listener & smart
+: You are able to listen to people, but most importantly, understand them.
+Positive and forward-thinking
+: You have a lot of energy, and you are able to share it with the people you interact with!
+Rigorous and well organized
+: Inbox zero, always on time contacting a company, able to manage large volumes of data on Salesforce.
+Fluent in English and based in New York.
+Why join us?
+International Mindset
+: We have offices in Paris and New York.
+Flexible working
+: On-site job in New York in a hybrid office culture.
+Exciting moment
+: Opportunity to join early and build the partnership function from the ground up.
+All-star team
+: Extremely solid team with deep functional and domain expertise.
+Learning opportunity
+: Strong focus on learning and growing through education and professional development in hard and soft skills.
+Trusting environment
+: Hands-off management style. We have a strong culture of ownership and autonomy.
+Best in class perks
+: 35 paid days off, meal vouchers, cool offices, top-of-the-range equipment, great healthcare, and competitive salary and
+equity
+.
+Offsites
+: Regular offsites with the team, meetups, and strong connections to the startup ecosystem
+Recruitment process
+1 - Screening call with Quentin, Global Sales Director
+It’s a discussion with your future Director and manager. We’ll get deeper into your expertise and know-how. We’ll also give you a clearer view of what your day-to-day in that role is like. It’s a good opportunity to see if you foresee yourself working at Upflow.
+2 - Home assignment
+Your time to shine! You’ll be given a home assignment. Yes, it is designed to assess your skills. But it’s also designed to give you a better taste of what being part of Upflow is like. Again, hiring is a two-way street! Ultimately: we believe assignments are a great way to control our biases. We care for what you do; not your schooling, social background, or the gender you identify yourself to.
+3 - Home assignment review
+Your hiring manager will spend up to 90 minutes debriefing your case with you. A peer can take part in this review. Hiring managers at Upflow are looking for team players: taking and giving feedback is key to thriving with us!
+4 - Meet the team!
+You'll meet with Brad, VP of Sales. You’ll also meet up with at least two other peers so you can foresee yourself as part of this team. 😃
+5 - Founder interview
+Meet with Alex (co-founder & CEO). He will tell you everything about Upflow’s vision and values. It’s a privileged moment to ask questions, too.
+At Upflow, we are committed to building a diverse and inclusive workplace. We encourage all individuals to apply, even if you don’t meet every qualification. Research shows that some candidates may hesitate to apply unless they meet every requirement. However, we believe that a variety of experiences and perspectives can bring value beyond the listed qualifications. If you’re excited about what we do and feel you could contribute, we want to hear from you.
+Technology
+Language: TypeScript,
+Frameworks: React & Express
+Storage: Postgres, Redis
+Hosting: Heroku
+Apply now
+Other jobs at Upflow
+Associate Account Executive - US
+fulltime
+New York Office
+$100K - $200K
+0.01% - 0.03%
+1+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

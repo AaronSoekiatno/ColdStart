@@ -1,0 +1,54 @@
+Job URL: https://www.workatastartup.com/jobs/76546
+Job Title: Founding AI Engineer (Go, Typescript, Kubernetes, Docker) at Glasskube (S24)
+Description Length: 2581 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Founding AI Engineer (Go, Typescript, Kubernetes, Docker) at Glasskube (S24)
+€50K - €75K EUR
+Software Distribution Platform for On-Prem, Kubernetes, Docker & BYOC
+Vienna, Vienna, AT
+Full-time
+US citizenship/visa not required
+1+ years
+Apply now
+About Glasskube
+Glasskube develops Open Source deployment tools to make engineers more productive. Check out our projects on GitHub github.com/glasskube/distr!
+About the role
+Skills:
+Git, Go, Kubernetes, TypeScript, Docker, Angular, PostgreSQL
+Glasskube develops Open Source deployment tools to make engineers more productive. Check out our projects on GitHub
+github.com/glasskube
+!
+You should join Glasskube if any of these are true:
+You are fascinated by how the latest technology trends (LLMs, MCP server, Agent mode) are changing the way software developers work.
+Debugging and exploring are fun, and you spend way too much time thinking about the inner workings of the tools you use.
+You're comfortable automating deployment and monitoring tasks.
+You’ve always loved working hands-on in a small and fast-paced team where you can start making an impact on day one.
+Tips for the application:
+Just write casually, like to your friends :)
+We don't care much about your work experience, university, or CV.
+Tell us more about your past personal projects, ideas, or any cool things you have done!
+Technology:
+We are building in Go, TypeScript, and PostgreSQL, and we’re committed to open source. Although a lot of AI tooling is already open source, the deployment space still has huge potential to be disrupted.
+We’re a small team of experienced engineers, and we’re looking for someone with at least a year of hands-on experience who loves building. You don’t need to have a deep DevOps background — just curiosity, initiative, and high intrinsic motivation.
+If you want to work in Vienna and stay close to the San Francisco startup ecosystem, we’re the right team for you.
+Technology
+We are building in Go, TypeScript, and PostgreSQL, and we’re committed to open source. Although a lot of AI tooling is already open source, the deployment space still has huge potential to be disrupted.
+Interview Process
+Get to know the company and founders in a 30 minute video call
+Solve a small Coding Challenge to see if you are comfortable with how we work
+Meet the Team in our beautiful Vienna office space
+Apply now
+Other jobs at Glasskube
+Founding AI Engineer (Go, Typescript, Kubernetes, Docker)
+fulltime
+Vienna, Vienna, AT
+Full stack
+€50K - €75K EUR
+1+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

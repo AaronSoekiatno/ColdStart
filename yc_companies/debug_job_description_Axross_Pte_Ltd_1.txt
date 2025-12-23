@@ -1,0 +1,142 @@
+Job URL: https://www.workatastartup.com/jobs/71712
+Job Title: Junior IoT Engineer at Axross Pte Ltd (W22)
+Description Length: 5977 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Junior IoT Engineer at Axross Pte Ltd (W22)
+AI-driven HVAC control system for improved energy performance
+MY / Kuala Lumpur, Federal Territory of Kuala Lumpur, MY / Remote (MY)
+Contract
+US citizenship/visa not required
+Any (new grads ok)
+Apply now
+About Axross Pte Ltd
+At Axross, we specialize in delivering AI-driven HVAC control systems designed to enhance energy efficiency and reduce operational costs for manufacturers. Our solutions are tailored to meet the stringent requirements of industries, where maintaining precise environmental conditions is critical.
+With a team of experts in AI, data science, and industrial systems, Axross is committed to providing reliable, scalable solutions that help manufacturers achieve their energy efficiency goals and support sustainable practices.
+About the role
+About Us:
+At Axross, we build advanced AI-powered HVAC solutions to optimize energy efficiency in
+industries such as pharmaceuticals, semiconductors, and precision manufacturing. Our
+cutting-edge systems help manufacturers better control their production environments while
+reducing energy consumption, leading to significant cost reductions and supporting
+environmental sustainability.
+Role Overview:
+As an IoT Engineer, you will play a vital role in deploying and maintaining our AI-driven HVAC
+solutions onsite. Your responsibilities will include ensuring that our equipment is properly
+installed, well-maintained, and functioning effectively. You will address client concerns, perform
+onsite repairs, and coordinate closely with our software and technical teams to ensure seamless
+integration of hardware and software.
+This role also involves testing and validating our in-house apps and software to ensure optimal
+performance. We are looking for a Junior IoT Engineer who is passionate about IoT technology,
+enjoys problem-solving, and thrives in a collaborative environment. Your work will contribute
+directly to creating sustainable solutions that enhance system performance, improve energy
+efficiency, and deliver value to our clients.
+Key Responsibilities:
+● IoT System Development:
+○ Design, develop, and test IoT applications for connected HVAC systems.
+○ Write and maintain software in Python, C, or C++ for IoT devices and edge
+computing.
+● Device Integration:
+○ Collaborate with hardware engineers to integrate sensors, actuators, and other
+peripherals into IoT systems.
+○ Address operating system-level tasks, including driver/kernel development and
+hardware-software interfacing.
+● Communication Protocols:
+○ Implement and optimize IoT communication protocols like MQTT, HTTP, and
+CoAP.
+○ Ensure secure and efficient data transmission between IoT devices and cloud or
+on-premises systems.
+● System Monitoring & Troubleshooting
+:
+○ Debug and resolve hardware and software issues, including network
+communication problems and memory leaks.
+○ Monitor and maintain IoT systems to ensure high availability and scalability.
+●
+Collaboration & Documentation:
+○ Work closely with software developers, hardware engineers, and AI specialists
+to develop integrated solutions.
+○ Create and maintain detailed technical documentation for IoT systems, protocols,
+and configurations.
+Requirements:
+● Education:
+○ Bachelor’s degree in Computer Science, Electrical Engineering, or a related field.
+● Technical Skills:
+○ Proficiency in programming languages like Python, C, C++.
+○ Familiarity with IoT communication protocols (e.g., MQTT, HTTP, BLE) and cloud
+platforms (e.g., AWS IoT, Azure IoT).
+○ Experience with Linux systems, Docker, and embedded programming.
+○ Understanding of networking concepts (TCP/UDP) and debugging tools (e.g.,
+GDB, tcpdump, valgrind).
+● Problem-Solving:
+○ Strong analytical and troubleshooting skills to identify and resolve IoT system
+issues.
+● Soft Skills:
+○ Excellent communication skills and the ability to work effectively in a
+collaborative, dynamic environment.
+○ Eagerness to learn and stay updated on new IoT technologies and industry
+trends.
+Preferred Attributes:
+● Hands-on experience with industrial hardware and IoT security best practices.
+● Familiarity with REST APIs, data management, and cybersecurity in IoT systems.
+● Exposure to cloud platform integrations and scalable IoT solution design.
+● Opportunities to work on impactful AI-driven IoT projects in a cutting-edge industry.
+● Mentorship and career growth in IoT development and integration.
+● A collaborative and innovative work environment with exposure to high-profile clients.
+● Competitive salary, benefits, and professional development opportunities.
+What We Offer:
+● Opportunities to work on impactful AI-driven IoT projects in a cutting-edge industry.
+● Mentorship and career growth in IoT development and integration.
+● A collaborative and innovative work environment with exposure to high-profile clients.
+● Competitive salary, benefits, and professional development opportunities.
+Technology
+Artificial Intellegence
+Machine Learning
+Digital Twin Simulation
+Computational Fluid Dynamics
+Cloud-based Platform
+Apply now
+Other jobs at Axross Pte Ltd
+Junior IoT Engineer
+contract
+MY / Kuala Lumpur, Federal Territory of Kuala Lumpur, MY / Remote (MY)
+Electrical
+Any (new grads ok)
+Apply
+Data Engineer – Real Time Data
+fulltime
+Kuala Lumpur, Federal Territory of Kuala Lumpur, MY / MY / Remote (MY)
+Data science
+$1.5K - $3K
+3+ years
+Apply
+M&E Project Manager
+fulltime
+MY / Kuala Lumpur, Federal Territory of Kuala Lumpur, MY / Remote (MY)
+Mechanical
+$2K - $4K
+3+ years
+Apply
+Data Scientist
+fulltime
+MY / Kuala Lumpur, Federal Territory of Kuala Lumpur, MY / Remote (MY; ID; SG)
+Machine learning
+$2K - $5K
+1+ years
+Apply
+Data Scientist
+fulltime
+MY / Kuala Lumpur, Federal Territory of Kuala Lumpur, MY / Remote (MY; ID; SG)
+Machine learning
+$2K - $5K
+1+ years
+Apply
+Cybersecurity consultant
+contract
+MY / Kuala Lumpur, Federal Territory of Kuala Lumpur, MY / Remote (MY)
+6+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

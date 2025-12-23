@@ -1,0 +1,87 @@
+Job URL: https://www.workatastartup.com/jobs/77372
+Job Title: AI Researcher / Quant at attimet (F24)
+Description Length: 3059 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+AI Researcher / Quant at attimet (F24)
+$100K - $200K
+•
+0.25% - 1.00%
+we predict stuff
+San Francisco, CA, US
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About attimet
+We’re building a research lab that puts its ideas to the test in one of the most complex, information-rich environments in the world: the financial markets.
+Much of trading still depends on hand-crafted signals and intuition. We’re approaching it differently - from first principles. We design systems that learn, adapt, and improve with data. Our infrastructure is built to accelerate research: fast iteration loops, real-time feedback, and direct connection between ideas and outcomes.
+We’re starting with liquid markets like equities and options - high-dimensional, dynamic systems where traditional pipelines break down. Our goal isn’t just to model them better - it’s to build a platform for experimentation, where every result tightens the loop between theory and practice.
+If you care about learning systems, clean abstractions, and applying research in the wild - we’re hiring.
+About the role
+Skills:
+Machine learning, Python, Machine Learning
+Why you should join us
+We’re building a
+research lab with a real-time feedback loop
+: the financial markets.
+We're working with structured and unstructured data at scale to build
+temporal AI systems
+that adapt, predict, and act.
+Our edge isn’t secret data or microwaves — it’s
+the speed at which we iterate and learn.
+You’ll
+lead ML/AI strategy
+at the intersection of research and live deployment.
+We’re starting in options - complex, under-modeled, and
+full of opportunity
+.
+Join a frontier team with
+over a decade of experience in quant trading
+. These aren’t logos from internships - we’ve started and led teams at Optiver, DRW, and Argo AI.
+What you’ll do
+Lead development of predictive models
+, RL agents, and signal discovery workflows.
+Integrate alternative data, design experiments, and rapidly test hypotheses in sim + live trading.
+Measure your impact in market returns.
+Work side-by-side with the founders to test predictions in real markets and
+learn from every outcome
+- good and bad.
+Shape the research direction
+, modeling stack, and experimental culture from day one.
+What we’re looking for
+Deep expertise in ML/AI
+- especially time-series, forecasting, representation learning.
+Strong coding background
+: Python, data pipelines, AWS/GCP infra.
+Experience deploying models in production:
+you care about what works
+, not just what looks good on paper.
+Clear thinker, fast builder, excited to
+work at the edge of research and execution
+Zero experience in financial markets is expected. Drive and curiosity matter.
+You’ll be given the autonomy to do some of the
+best work for your life.
+Apply now
+Other jobs at attimet
+AI Researcher / Quant
+fulltime
+San Francisco, CA, US
+Machine learning
+$100K - $200K
+0.25% - 1.00%
+3+ years
+Apply
+Software Engineer, Backend
+fulltime
+San Francisco, CA, US
+Full stack
+$100K - $250K
+0.25% - 1.00%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

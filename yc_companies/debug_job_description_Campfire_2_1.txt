@@ -1,0 +1,66 @@
+Job URL: https://www.workatastartup.com/jobs/77546
+Job Title: Accounting Solutions & Customer Success Manager at Campfire (S23)
+Description Length: 4180 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Accounting Solutions & Customer Success Manager at Campfire (S23)
+$100K - $130K
+A modern version of NetSuite
+San Francisco, CA, US
+Full-time
+Will sponsor
+1+ years
+Apply now
+About Campfire
+Campfire is the modern accounting platform for startups and mid-size tech companies. Features include a powerful general ledger, invoicing, billing, revenue accounting and reporting, financial statements, AI-powered conversational reporting, and automated accounting workflows such as bank reconciliation. The product is natively integrated with industry leading solutions such as Ramp, Brex, Rho, Stripe, and has over 100+ API endpoints to build custom integrations and workflows. Campfire is a modern replacement for legacy, small business accounting software and mid-market ERPs.
+Campfire's customers range from Seed to Series C with a variety of business models including SaaS, usage, FinTech, consulting and transactions — from startups like Suger and Parallel to mid-size companies like Carbon Direct, Sprig and Delphia.
+The company is headquartered in San Francisco and backed by Foundation Capital, Y Combinator and Twenty Two Ventures.
+About the role
+Please note:
+This role is required to be based in San Francisco. Our entire team goes into the office 5 days per week and you will be working alongside your peers.
+Our Story
+Campfire is a next-gen core accounting platform that helps modern mid-market finance teams close fast, and scale faster. We replace outdated legacy ERPs and manual accounting processes with automation-driven solutions that simplify and accelerate finance workflows. With Campfire, finance teams gain clarity, control, and strategic visibility — fast.
+Position Overview
+As a full-time member of our Customer Experience team, you will play a critical role in driving adoption for Campfire. You'll be the bridge between our clients and our product, ensuring smooth migrations to our product and ongoing support. You'll work closely with new customers to understand their accounting software needs, configure the software accordingly, and provide post-implementation support to help them achieve their accounting and business goals. You will report to the Head of Implementation & Customer Success as part of this role.
+Key Responsibilities:
+Lead the ERP implementation process for new customers, from kickoff to full go-live.
+Migrate customer data from their previous accounting software based on client requirements
+Provide training sessions to ensure users are proficient with the software.
+Serve as the primary point of contact for assigned accounts, for both of the implementation and post-go live periods.
+Drive feature adoption and identify growth opportunities within existing accounts.
+Collaborate with product and engineering teams to communicate customer bugs and feature requests.
+Develop and maintain implementation best practices and documentation.
+Experience:
+2+ years of experience in accounting audit, accounting or finance or 2+ years of experience in customer success, implementation, or account management. Strong preference for candidates with experience in an in-house or public accounting role.
+Bonus: at least 1 year of experience with ERPs (Quickbooks, Xero, Sage Intacct, Netsuite)
+Strong technical aptitude and ability to quickly learn new software platforms
+Intermediate-level Microsoft Excel/Google Sheets skills
+Bachelor's degree or equivalent experience in a relevant field
+Personal Attributes:
+Highly proactive, adaptable, and capable of working in a fast-paced environment.
+Excellent attention to detail and ability to work under tight deadlines.
+Exceptional communication and interpersonal skills.
+Problem-solving mindset with the ability to translate customer needs into practical solutions
+A growth mindset with a focus on continuous improvement.
+Technology
+We use Django in the backend, and NextJS in the frontend.
+Apply now
+Other jobs at Campfire
+Accounting Solutions & Customer Success Manager
+fulltime
+San Francisco, CA, US
+$100K - $130K
+1+ years
+Apply
+Full-Stack Engineer
+fulltime
+San Francisco, CA, US
+Full stack
+$130K - $185K
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

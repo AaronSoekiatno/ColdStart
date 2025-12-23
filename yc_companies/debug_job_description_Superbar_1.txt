@@ -1,0 +1,92 @@
+Job URL: https://www.workatastartup.com/jobs/77701
+Job Title: Senior Software Engineer, AI at Superbar (S22)
+Description Length: 4535 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Senior Software Engineer, AI at Superbar (S22)
+$150K - $200K CAD
+•
+0.25% - 0.75%
+Search & Answers Superbar for E-Commerce
+ON, CA / Toronto, ON, CA / CA / Remote (ON, CA; Toronto, ON, CA; CA)
+Full-time
+US citizenship/visa not required
+6+ years
+Apply now
+About Superbar
+Caddie helps e-commerce companies improve their online conversion with an AI Superbar. It combines search with personalized sales assistance. It helps customers find products and answers their questions to drive purchasing behaviour.
+We use AI and machine learning to guide customers similarly to a salesperson in a store. We're a Y Combinator company with $3M+ in funding. We’re currently in stealth mode, working with a set of large e-commerce customers who are paying us to help them fix their conversion.
+About the role
+Skills:
+React, TypeScript
+Introduction to Superbar
+Superbar is the AI-powered search and answer bar built to drive conversion for e-commerce brands. It connects to your product catalog, content, and reviews to deliver fast, high-converting answers that help shoppers buy. It’s platform-agnostic, no-code, and self-improving via reinforcement learning. Backed by top investors, we’ve raised ~$5M to redefine how people shop online.
+About the Role
+As a
+Senior Software Engineer,
+you’ll play a critical role in building and shaping Superbar. We’re still pretty early, so you’ll get a chance to work on infrastructure, AI, ML, front-end, core features, and everything in between. Our product has a small front-end footprint, so most of the work is backend. You’ll work hand-in-hand with the co-founders to go from zero to one.
+What We’re Looking For
+We’ll keep it short. We’re looking for great people rather than checking 100 boxes.
+5+ years of experience building modern web applications
+Degree in Computer Science or related discipline
+Full-stack experience that includes Typescript, RESTful APIs, React
+A passion for building something incredible from the ground up
+A startup mindset (collaborate, move quickly, iterate)
+Bonus
+Worked on search, AI or ML products
+Experience with any of the following: NestJS, Pulumi, Terraform, LLama 2, OpenAI APIs, LangChain, LangGraph, e-commerce APIs (e.g. Shopify, Magento)
+Worked with microservices, Domain-driven design, Object Oriented Programming.
+Job Details
+Title:
+Senior Software Engineer, AI
+Salary
+: $150k - $200k
+Equity:
+0.25% to 0.75%
+Location:
+Greater Toronto Area / Ontario (Remote)
+How to Apply
+Please submit your resume using the YC portal. We’d still love to hear from you if you don't have any of the bonus points. You might have other bonus points we haven’t listed 🙂
+Talk soon! 👋
+The Superbar Team
+Technology
+We're building a search and conversational AI system that needs to be fast and accurate. Our backend is Typescript, using PostgreSQL. The frontend is a lightweight TypeScript/React widget that customers embed on their sites.
+The hard problems we're solving include making search work reliably across massive product catalogs (1M+ SKUs) and building AI systems that can understand complex product queries in addition to traditional text-based search methods. Our Answers product helps customers with their questions. The hard problem here is building a system that can learn on its own, what type of answers lead to conversion and continuously improve. This requires building reinforcement learning systems and stitching it with various AI components.
+Interview Process
+We’re excited to get to know you and want to make the process as smooth and enjoyable as possible. Here’s what to expect:
+1.
+15-minute introduction call
+– A quick chat to meet you and share a bit about us.
+2.
+30-45 minute conversation
+– A deeper discussion to get to know you better and give you a chance to learn more about us.
+3.
+90-minute technical interview
+– An opportunity to showcase your technical skills and dive into some interesting challenges.
+4.
+Take-home technical assessment
+– A flexible way for you to demonstrate your expertise at your own pace.
+If you have other offers on the table, just let us know. We’ll happily do our best to speed things up for you!
+Apply now
+Other jobs at Superbar
+Senior Software Engineer, AI
+fulltime
+ON, CA / Toronto, ON, CA / CA / Remote (ON, CA; Toronto, ON, CA; CA)
+Full stack
+$150K - $200K CAD
+0.25% - 0.75%
+6+ years
+Apply
+Software Engineer, AI
+fulltime
+ON, CA / Toronto, ON, CA / CA / Remote (ON, CA; Toronto, ON, CA; CA)
+Full stack
+$125K - $150K CAD
+0.25% - 0.50%
+6+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

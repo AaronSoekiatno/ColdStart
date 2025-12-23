@@ -1,0 +1,73 @@
+Job URL: https://www.workatastartup.com/jobs/77589
+Job Title: Head of Marketing at Writesonic (S21)
+Description Length: 4038 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Head of Marketing at Writesonic (S21)
+$60K - $150K
+Track & Boost Your Brand’s Visibility in AI Search
+Remote (US)
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About Writesonic
+Writesonic is building the content marketing platform of the future to help businesses write better marketing copy using AI. It’s like having a copywriter in your pocket, ready to help with any kind of content you need - from Facebook and Google ads to landing pages, product descriptions, blog posts, summaries, and more.
+About the role
+🧠
+About Writesonic
+Every day, millions turn to AI for answers—and if your brand isn’t there, you’re nowhere. While others scramble to adapt to AI-driven search, Writesonic is already leading the way.
+We’re building the world’s most advanced AI SEO and Generative Engine Optimization (GEO) platform—designed to help brands monitor and improve visibility across AI search engines like ChatGPT, Claude, Perplexity, and Google AI Overviews. But we don’t stop there. Writesonic is the only platform that unifies GEO insights with traditional SEO, giving brands the tools to rank across both Google and emerging AI search platforms.
+We show you exactly how AI sees your brand—and give you the AI-powered content and SEO tools to fix it fast. From insight to execution, Writesonic helps marketers stay ahead of the AI search revolution.
+Trusted by 20,000+ marketers worldwide, we’re redefining what it means to be discoverable—from Google to AI and beyond.
+About This Role
+We're hiring a strategic and hands-on
+Head of Marketing
+to lead Writesonic’s growth and brand. You’ll be responsible for driving demand, growing awareness, and positioning us as the undisputed leader in AI-powered SEO and GEO.
+You’ll own and scale every marketing function—from content and SEO to paid ads, social, influencer programs, and community—while also being able to jump in and execute when needed. This is a high-impact leadership role, reporting directly to the founder.
+What You’ll Be Doing
+Develop and lead multi-channel marketing strategies across SEO, content, paid, social, influencer, and community
+Personally execute high-leverage campaigns where needed to drive demand
+Build and scale a high-performance marketing team and culture
+Elevate Writesonic’s brand across the SEO and AI ecosystems through content, events, and partnerships
+Build influencer and affiliate programs to expand brand reach
+Own key metrics—CAC, MRR growth, lead gen, and conversion rates
+Partner with product and sales to shape and launch go-to-market campaigns
+Actively grow your personal brand while representing Writesonic at events and online
+You’d Be a Great Fit If You
+Have 5+ years of hands-on B2B marketing experience across SEO, content, paid, and brand
+Are technically fluent in key channels and can execute when needed
+Maintain a strong personal brand and are comfortable with public speaking
+Have scaled growth at a startup and built marketing from the ground up
+Are highly data-driven, KPI-focused, and results-oriented
+Have connections in the SEO or MarTech community
+Know how to position a technical product in a competitive, fast-changing space
+💡
+Bonus Points
+Experience in MarTech, SaaS, or PLG environments
+Familiarity with tools like HubSpot, Webflow, Figma, Semrush, or Apollo
+Built or scaled an influencer/affiliate program
+Prior experience building a brand from zero to industry recognition
+🎁
+Why Join Writesonic
+🪄 Lead the Future of Marketing: Define a category at the cutting edge of AI and search
+💰 Competitive Compensation: Strong base + equity + performance bonuses
+🏡 Work Remotely: Flexible hours with async-friendly culture
+📚 Upskilling Budget: Courses, events, certifications covered
+🚀 High Ownership: Build and lead your function with impact
+Technology
+Backend: FastAPI (Python), Docker, Kubernetes, AWS.
+Frontend: NextJs, React, Tailwind CSS, Vercel.
+Apply now
+Other jobs at Writesonic
+Head of Marketing
+fulltime
+Remote (US)
+$60K - $150K
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

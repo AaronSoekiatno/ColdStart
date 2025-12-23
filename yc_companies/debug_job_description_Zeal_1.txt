@@ -1,0 +1,68 @@
+Job URL: https://www.workatastartup.com/jobs/76603
+Job Title: Senior Software Engineer (Typescript | React) at Zeal (S19)
+Description Length: 5233 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Senior Software Engineer (Typescript | React) at Zeal (S19)
+$160K - $180K
+•
+0.05% - 0.15%
+Modern payroll for modern work
+San Francisco, CA, US / Remote (US)
+Full-time
+US citizen/visa only
+6+ years
+Apply now
+About Zeal
+We are building the next generation of staffing software. Our platform makes it faster, easier, and better for staffing companies to onboard, pay, and bill. Traditional staffing companies and tech-forward labor marketplaces use our automated, flexible, and integrated platform to reduce costs, improve worker satisfaction, and unlock new revenue streams. We onboard thousands of workers every week and orchestrate the processing of tens of thousands of paychecks per week, positioning us as critical infrastructure for workers and employers. We help our customers maintain compliance in a complex and shifting regulatory environment, and have the immense responsibility of ensuring accurate and timely payments to hard-working Americans.
+Zeal is a Series B company, backed by top investors such as Y Combinator, Spark Capital (Plaid, Marqeta, Coinbase, Anthropic), and Portage. Our aim is to pioneer a new generation of software that revolutionizes the way staffing companies manage their operations and deliver world-class experiences for their employees.
+About the role
+Skills:
+JavaScript, React, TypeScript
+WHO WE ARE
+We are building the next generation of staffing software. Our platform makes it faster, easier, and better for staffing companies to onboard, pay, and bill. Traditional staffing companies and tech-forward labor marketplaces use our automated, flexible, and integrated platform to reduce costs, improve worker satisfaction, and unlock new revenue streams. We onboard thousands of workers every week and orchestrate the processing of tens of thousands of paychecks per week, positioning us as critical infrastructure for workers and employers. We help our customers maintain compliance in a complex and shifting regulatory environment, and have the immense responsibility of ensuring accurate and timely payments to hard-working Americans.
+Zeal is a Series B company, backed by top investors such as Y Combinator, Spark Capital (Plaid, Marqeta, Coinbase, Anthropic), and Portage. Our aim is to pioneer a new generation of software that revolutionizes the way staffing companies manage their operations and deliver world-class experiences for their employees.
+ABOUT THE ROLE
+This role is great for those who want to work at a fast-moving, collaborative start-up where new ideas are praised and autonomy and proactiveness are rewarded.
+We are seeking a versatile engineer who also has full stack proficiency and enjoys tackling customer-facing product challenges. You will work closely with the Product team to collaborate on requirements and be responsible for the end-to-end design and implementation of the requirements.
+SOME THINGS YOU MAY BE WORKING ON
+Design and implement enhancements in our web app, which serves multiple types of dashboards tailoring to user types while also prioritizing a clean, simple, and seamless user experience
+Build UI components, so customers are able to get started quickly with our product by using them as external modules in their application
+Create technical designs from requirements by holding collaborative discussions with engineers and validating recommendations as needed
+Ensure our product holds a high level of quality, with adequate tests and debug and solve production issues
+Hold technical conversations with strong communication skills while challenging others with a positive growth mindset
+Solve for enterprise readiness by solving for scalability, security, and performance by identifying bottlenecks
+Design such that the application is functional on mobile devices
+YOU HAVE
+5+ years of professional software engineering experience, preferably in a start-up environment
+You’re experienced in React, React Query, Typescript, and building UI components
+You’re proficient in NodeJS, MongoDB, and AWS
+You thrive in a fast-paced and, at times, ambiguous environment
+Built quality tests using Jest or a similar framework
+Familiarity in building with LLMs
+NICE TO HAVE
+Experience in working with UI tools such as Storybook, Playwright, Cypress, Webpack, WebSDK, and NPM
+Experience working with React Native and mobile
+SELLING POINTS
+Get to work directly with end-users, close to design and product, and have a say on how we build and ship our products
+Never a dull moment with chill people who care about quality code, helping out others, and working hard under a shared vision as we grow and scale the company!
+OUR INTERVIEW PROCESS
+We are a fast-paced startup, so you may expect to hear back from us soon. While this is our process for most of our roles, sometimes stages are subject to change from time to time. But we will definitely notify you of the change ahead of time.
+Call with CTO (30 min)
+Live Technical Round: Staff Engineer (1.5 hour)
+☕️ Coffee Chat with Product team member (30 min)
+Apply now
+Other jobs at Zeal
+Senior Software Engineer (Typescript | React)
+fulltime
+San Francisco, CA, US / Remote (US)
+Full stack
+$160K - $180K
+0.05% - 0.15%
+6+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

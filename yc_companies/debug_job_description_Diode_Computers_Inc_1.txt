@@ -1,0 +1,80 @@
+Job URL: https://www.workatastartup.com/jobs/76882
+Job Title: Senior Software Engineer at Diode Computers, Inc. (S24)
+Description Length: 4532 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Senior Software Engineer at Diode Computers, Inc. (S24)
+$125K - $200K
+•
+0.20% - 0.70%
+Automate circuit board design using AI
+New York, NY, US
+Full-time
+US citizen/visa only
+3+ years
+Apply now
+About Diode Computers, Inc.
+Diode works with hardware companies to design and manufacture circuit boards (PCBs) to their specifications. We do this in days instead of months.
+About the role
+Skills:
+Python, Rust, TypeScript
+Diode Computers, Inc. is looking for a senior software engineer to help us fix circuit board design and manufacturing.
+The team has shipped real hardware at Apple, Anduril, and several med-tech startups; now we’re focusing our attention on helping others build hardware better. We’ve raised $14M and were featured on the a16z
+“American Dynamism 50”
+list this year. Our customers include some of the biggest names in robotics, health-tech, and defense.
+Since we make software for hardware, you'll learn lots about the world of building physical things, even if you haven't tinkered with electronics before. You'll quickly pick up the basics of electrical engineering and PCB design, and we expect you to bring a strong software-first lens as we build tools for our customers and in-house EE team.
+We work in a fast, engineering-driven culture. We iterate on ideas quickly, and expect you to take ownership over what you build. You'll make decisions on everything from technical implementation to UX, and drive projects through from idea to production.
+What you'll do
+We move fast, so expect each week to look a little different than the last. That said, here’s a sampling of projects we have/will work on, to give you a taste for the kinds of problems we think about.
+Designing a programming language for PCB schematics that is intuitive for both humans and LLMs to read and write
+Rust compiler and CLI build tool for compiling schematics and interacting with the rest of our infrastructure
+API integrations with PCB fabs for real-time quoting and ordering
+Constraint-based layout algorithm for automatically arranging components on a PCB
+Auto-generated electrical schematics visualization
+AI agents to automate various steps of the design process, building on our bespoke tooling
+Collaborate with our in-house EE team to ruthlessly optimize their workflow
+Contribute to
+open source
+libraries, and publish our own (more here soon)
+We work mostly in Rust and TypeScript.
+What you'll need
+A few years of experience with at least one of {Rust, Python, TypeScript}
+Some prior experience owning large parts of a technical project
+Excitement to work hard on hard technical problems
+The ability to work from our office in NYC, ~5 days a week
+Bonus points:
+You've tinkered with hardware before (even small hobby projects). If not, you’ll learn on the job!
+Experience with building robust AI tools (agents, evals, the whole shebang)
+What you'll get
+A competitive salary and equity grant
+Free food and the occasional team offsite
+Great healthcare (incl. vision, dental), PTO, and other benefits
+Relocation support to NYC, if you need it
+Technology
+We're truly full stack, from metal to the cloud. This includes:
+Rust circuit board compiler and CLI build tool
+Python backend for fab integration, algorithmic part selection, and more
+AI agents to automate various steps of the PCB design workflow
+Firmware (embedded Rust/C) for board validation and bringup
+PCB design using our own tools + KiCad
+React webapp for placing and tracking orders
+Interview Process
+30 min chat with founder(s): We’ll tell you more about our company and backgrounds, and you’ll tell us a bit about what you’re looking for.
+1-2 technical interviews with team: We want to see how you approach problems. You’ll get an open-ended technical problem and we’ll work together to implement a solution. You’ll screen share and use whatever tools or codegen you want: the idea is to simulate how we work together in practice.
+3-5 day paid work trial in NYC: You’ll spend a few days with us in NYC and we’ll pay you for your time. We want you to get to know our working styles, and to get to know yours. (We can be flexible and work around your schedule here.)
+References + offer: We’ll ask for a couple references and then give you an offer. If you’re moving to NYC, we’ll cover your expenses and help you find a place, if you need it.
+Apply now
+Other jobs at Diode Computers, Inc.
+Senior Software Engineer
+fulltime
+New York, NY, US
+Full stack
+$125K - $200K
+0.20% - 0.70%
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

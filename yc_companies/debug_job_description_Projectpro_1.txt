@@ -1,0 +1,64 @@
+Job URL: https://www.workatastartup.com/jobs/76665
+Job Title: Looking for an LLM Developer with knowledge of Agentic AI Frameworks like CrewAI and AutoGen, RAGs at ProjectPro (IK12)
+Description Length: 2451 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Looking for an LLM Developer with knowledge of Agentic AI Frameworks like CrewAI and AutoGen, RAGs at ProjectPro (IK12)
+$500 - $1.4K
+We are a work-acceleration platform - we help Data Scientists get their work done faster and learn in the process.
+Remote
+Contract
+US citizenship/visa not required
+1+ years
+Apply now
+About ProjectPro
+ProjectPro.io is changing how data developers get their work done. We help developers get their work done faster by providing a curated library of reusable, ready-made project solutions.
+About the role
+Skills:
+Machine Learning, Deep Learning, Natural Language Processing, Microsoft Azure, Amazon Web Services (AWS)
+Hi,
+I am the Co-founder of ProjectPro.io - we help Data Scientists learn and get their work done faster by providing ready-made reusable project templates.
+Role Overview:
+Position:
+Part-time Freelance LLM Developer
+Duration:
+Approximately 4–6 weeks per project
+Compensation:
+Competitive, per-project basis
+Note -
+The exact amount of compensation will be based on the use case, its complexity, and several other factors.
+Experienced Professionals preferred.
+We're expanding our portfolio to include Agentic AI projects. These projects will leverage cutting-edge multi-agent frameworks such as CrewAI and AutoGen to simulate real-world scenarios and workflows.
+Responsibilities:
+Design and develop LLM-based projects utilizing agentic AI frameworks (e.g., CrewAI, AutoGen, LangGraph etc)
+Implement scalable LLM solutions on cloud platforms (AWS, Azure)
+Incorporate Retrieval-Augmented Generation (RAG) techniques for enhanced data retrieval
+Produce a series of explanatory videos to guide users through the project solutions
+Required Qualifications:
+Strong foundation in Deep Learning and hands-on experience with Large Language Models (LLMs)
+Proficiency in agentic AI frameworks such as CrewAI, AutoGen, or similar
+Experience with cloud platforms like AWS or Azure for deploying scalable LLM applications
+Ability to create clear and concise instructional videos
+Thanks, Binny
+Technology
+LAMP stack, Machine Learning, Big Data
+Apply now
+Other jobs at ProjectPro
+Looking for an LLM Developer with knowledge of Agentic AI Frameworks like CrewAI and AutoGen, RAGs
+contract
+Remote
+Machine learning
+$500 - $1.4K
+1+ years
+Apply
+Account Executive to sell to Analytics teams
+fulltime
+Bengaluru, KA, IN
+₹1.2M - ₹1.7M INR
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

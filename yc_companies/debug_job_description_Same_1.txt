@@ -1,0 +1,78 @@
+Job URL: https://www.workatastartup.com/jobs/74472
+Job Title: Software Engineer, Product at Same (W24)
+Description Length: 4481 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Software Engineer, Product at Same (W24)
+$135K - $300K
+Build products without coding
+San Francisco, CA, US / Remote
+Full-time
+Will sponsor
+3+ years
+Apply now
+About Same
+Same enables anybody in the world to prompt software into existence. We launched Same in Mar 2025 (link). In 8 weeks, we hit 350k in signups and 7 figures in ARR, and we’re growing very fast.
+Our founders are Aiden Bai and Nisarg Patel. We built open source projects used by millions of developers (Million.js, React Scan) and Airbnb, Robinhood, Perplexity, and Shopify in production.
+We're a small but experienced team that ships relentlessly. We welcome feedback to improve both our product and ourselves. We work hard, and we operate with a high degree of trust, agency, and ownership.
+About the role
+Skills:
+Next.js, MySQL, Node.js, React, TypeScript
+Product engineers build our core product experience. You'll be working directly on Same, making it better at generating accurate code that captures visual design, functionality, and our user's intent.
+You might be a good fit if...
+You've shipped a great product
+You blend excellent engineering with a strong taste for design
+You have opinions about developer tools and how they could be better
+You work 10+ hours a day, 6+ days a week
+Technology
+You've shipped a great product
+You blend excellent engineering with a strong taste for design
+You have opinions about developer tools and how they could be better
+You work 10+ hours a day, 6+ days a week
+Interview Process
+1. Phone Screen
+This stage is a more informal call to get to know more about the role, and for you to evaluate whether it’s a good fit for you. We are looking for people with a strong interest in startups and motivation to help them; this is usually exhibited by past experience working at or starting one yourself.
+The conversation will cover some light technical discussion about web programming and your past projects. Mostly, we want to know that you can code and ship fairly involved systems, and speak to them with clarity on the details. This tends to be a good indication that an engineer had strong ownership and showed autonomy in making product or technical decisions.
+2. Technical Screen
+Our first technical screen can be either remote or in-person, and is intended as a first pass to assess basic programming web skills (which is core to what we do here!) You’ll work on a 1-hour practical programming problem.
+For this project, you should have a full stack web environment set up AND a relational database already running on your machine. Here at Same, we use Next.js with mysql, but React + Vite or anything else you’re familiar with works. To make the most of the time, you should have a working project set up before the interview.
+During the interview, you’re also free to google for syntax. We believe this helps developers feel more comfortable during the process, and avoids any learning curve or limitations of 3rd party platforms. While you are welcome to use AI to help with code completion, we’ve found it often adds noise to the interview process.
+3. Paid work trial
+The work trial process is a deeper dive into technical abilities, product thinking and overall fit. For the “fit” portion, we are again looking for ownership and autonomy, but we also dig deeper into communication. This is evaluated throughout the process -- in how you communicate your approach, solutions and overall thinking.
+A work trial is 2 weeks long. We prefer to schedule the in-person trial at our SF office, and we’ll provide lunch and housing for you to get to know more of the team. (We’ll cover costs of travel and accommodations if needed.) We do not guarantee the 2 weeks and we sometimes short-circuit the process if we think it’s not a good fit.
+We have found that going through this process gives us enough to make a go/no-go decision. We offer feedback to candidates who request it, and relate the feedback to the skills, qualification and process above.
+Apply now
+Other jobs at Same
+Software Engineer, Product
+fulltime
+San Francisco, CA, US / Remote
+Full stack
+$135K - $300K
+3+ years
+Apply
+Software Engineer, Platform
+fulltime
+San Francisco, CA, US / Remote
+Backend
+$135K - $300K
+6+ years
+Apply
+Software Engineer, Design
+fulltime
+San Francisco, CA, US / Remote
+Full stack
+$135K - $300K
+3+ years
+Apply
+Research Engineer
+fulltime
+San Francisco, CA, US / Remote
+Research
+$135K - $300K
+3+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

@@ -1,0 +1,123 @@
+Job URL: https://www.workatastartup.com/jobs/76409
+Job Title: Frontend at Kalshi (W19)
+Description Length: 5782 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Frontend at Kalshi (W19)
+$100K - $250K
+1st federally regulated exchange where people can trade on events
+New York, NY, US
+Full-time
+Will sponsor
+3+ years
+Apply now
+About Kalshi
+Kalshi is a an exchange where people can trade on the outcome of events. Our vision is to allow people to capitalize on what they know and what they believe in by making predictions on the outcome of things they’re interested in.
+About the role
+Skills:
+Next.js, React, TypeScript
+Kalshi is defining a new category
+Kalshi has defined a new category: prediction markets. Kalshi allows people to trade on the outcome of any events and turn any question about the future into a financial asset. Kalshi fought for years and legalized prediction markets in the US for the first time in history. Kalshi is currently the fastest growing financial market in America, and has thousands of markets across politics, economics, financials, weather, tech, AI, culture and more.
+We believe prediction markets have the potential to be the largest financial market because they turn anything into a financial position.
+Our vision: well… build the largest financial market on the planet.
+Our mission: bring more truth to the world through the power of markets.
+Building a new category is hard… like really hard. But it’s
+beautiful and deeply fulfilling
+. Our culture is simple: we hire really talented people, work really hard, and enjoy the climb. We are looking for ambitious and exceptional people to join our (relatively small) team to help us build the next generation of financial markets.
+Role Roadmap
+As a Frontend Engineer, you'll be part of the SWAT team in charge of building the trading experience and user-facing platform of Kalshi. You won't just implement specifications, but instead, get to be part of the product development cycle and conceive entire features before developing. You'll engage with our user base and use your product intuition to build something they love. We're scaling, which means your role will evolve and grow with the company; your initial attack threads include:
+Building new features and flows across our web application
+Writing and maintaining frontend code to drive the product features
+Iterating with designers to ensure an impeccable visual flow and continuity on the platform
+Weighing customer feedback, business needs, and long-term goals to make product decisions
+Working with marketing and business development teams to increase user engagement and satisfaction
+The rest of what the role looks like is up to you - a big part of our approach is that you get to chart your path as we grow and evolve. There's a lot of green field to conquer, we trust that you'll make a lot of it your own :)
+About You
+5+ years of React experience and extensive TypeScript experience
+Nice to haves: NextJS, and backend knowledge
+Attention to detail and good UI/UX intuition
+NYC Pay Transparency Disclosure:
+Salary Range: $100,000 to $250,000 annually plus equity and benefits.
+This salary range is based on the current available market data, and represents the expected salary range for this role. Kalshi has minimal hierarchy and few titles, but has broad ranges of experience represented within roles. Should you have compensation expectations that exceed these bands, we'd love to hear from you and would welcome you to reach out to further discuss.
+Our Culture
+Meritocracy is at our core, and we value people who take ownership and figure (usually hard) things out. We dream big. We love our craft deeply and are proud of what we put out in the world. We are committed to our vision of building something big… but also useful: a product that brings more truth through the power of markets.
+Kalshians are Kalshi’s most important asset: we pick Kalshians carefully, so we trust them fully on day 1.
+Commitment to Equal Opportunity
+Kalshi is committed to creating a culture of inclusion and belonging, and we are proud to be an equal opportunity employer. We believe it is our collective responsibility to uphold these values and encourage candidates from all backgrounds to join us in our mission. All qualified applicants will be treated with respect and receive equal consideration for employment without regard to race, color, creed, religion, sex, gender identity, sexual orientation, national origin, disability, uniform service, veteran status, age, or any other protected characteristic per federal, state, or local law. If you are passionate about what you do and want to use your talents to support our mission and values, we’d love to hear from you.
+Technology
+Go backend, React frontend, Python for our surveillance systems.
+Apply now
+Other jobs at Kalshi
+Frontend
+fulltime
+New York, NY, US
+Frontend
+$100K - $250K
+3+ years
+Apply
+Marketing & Stunt Man (or Woman, or Whatever)
+fulltime
+New York or Remote / Remote (US)
+Apply
+Backend Engineer
+fulltime
+New York, New York, United States / Remote
+Full stack
+$100K - $200K
+3+ years
+Apply
+Product Designer
+fulltime
+Remote
+$100K - $200K
+3+ years
+Apply
+Partnerships - Social Media
+fulltime
+New York, New York, United States
+Apply
+Graphic Designer
+fulltime
+New York or Remote / Remote (US)
+Web design
+Apply
+Market Structure
+fulltime
+New York, NY, US
+$100K - $200K
+3+ years
+Apply
+Quantitative Researcher (Market Making)
+fulltime
+New York, New York, United States
+Apply
+Chief of Staff
+fulltime
+New York, New York, United States
+Apply
+App Growth & Retention Manager
+fulltime
+New York, New York, United States
+Apply
+Social Media Manager
+fulltime
+New York or Remote / Remote (US)
+$70K - $150K
+Any (new grads ok)
+Apply
+Site Reliability Engineer
+fulltime
+New York, NY, US
+Devops
+$100K - $250K
+3+ years
+Apply
+Talent Lead
+fulltime
+New York, New York, United States
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

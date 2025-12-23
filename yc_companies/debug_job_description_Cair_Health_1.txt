@@ -1,0 +1,67 @@
+Job URL: https://www.workatastartup.com/jobs/65511
+Job Title: Software Engineering Intern (Summer 2025) at Cair Health (S23)
+Description Length: 2730 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Software Engineering Intern (Summer 2025) at Cair Health (S23)
+$4K - $8K / monthly
+Predictive analytics and automation for medical claims
+Remote (US)
+Internship
+US citizen/visa only
+Apply now
+About Cair Health
+Cair Health is an innovative early-stage healthcare technology startup on a mission to revolutionize the medical insurance claims process. We are developing a platform that leverages machine learning and LLMs to automate tasks related to submitting and reviewing medical insurance claims. Our platform provides healthcare providers with predictive insights into claims and automates the submission process.
+Founded by healthcare and technology experts from UC Berkeley, Cair Health is backed by industry-leading investors like Y Combinator, Foundation Capital, Soma Capital, and CapitalX.
+About the role
+Skills:
+Django, Java, Python, React Native
+We’re looking for a full-stack SWE Intern (undergrad/grad student) that will work closely with the founding team to improve and further develop our product. This is a full-time paid internship that will last 12 weeks, with the option to extend into the Fall ($4k to $8k per month). We’re looking for someone excited to work in a start-up environment and willing to take charge to push the product forward.
+Follow
+Cair Health
+on LinkedIn to stay updated on company progress and relevant job postings.
+Responsibilities
+Collaborate closely with the founding team to shape the product vision and roadmap.
+Lead front-end development of new features & products (working off of and implementing mockups from our designer)
+Design, develop, and deploy sales demos for new features & products.
+Support with QA and customer onboarding & deployment.
+Skills
+Proven experience in software development, preferably deploying solutions at scale.
+Experience with front-end engineering (UI/UX design is a plus).
+Experience with healthcare data is a plus.
+Excellent problem-solving skills and a growth mindset.
+Strong communication and collaboration skills.
+Join us in our mission to make medical insurance claims seamless and predictive for all stakeholders. If you're a visionary engineer looking to impact the healthcare industry significantly, we'd love to hear from you.
+Apply now
+Other jobs at Cair Health
+Software Engineering Intern (Summer 2025)
+intern
+Remote (US)
+Full stack
+$4K - $8K / monthly
+Sophomore and above
+Apply
+Business/Sales Analyst Intern
+intern
+Palo Alto, CA, US / Remote (US)
+$20 - $40 / hourly
+Sophomore and above
+Apply
+Founding Engineer
+fulltime
+Remote (San Francisco, CA, US; US)
+Full stack
+$110K - $160K
+3+ years
+Apply
+Claims Consultant
+contract
+US / Remote (US)
+$20 - $45
+6+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›

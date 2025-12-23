@@ -1,0 +1,120 @@
+Job URL: https://www.workatastartup.com/jobs/77441
+Job Title: Junior/Mid Software Engineer at Mytos (S18)
+Description Length: 8112 characters
+================================================================================
+FULL DESCRIPTION:
+================================================================================
+Junior/Mid Software Engineer at Mytos (S18)
+£40K - £75K GBP
+Robotic human cell manufacturing
+London / GB
+Full-time
+US citizenship/visa not required
+Any (new grads ok)
+Apply now
+About Mytos
+You rarely get the chance to change an entire industry. But that's the position we find ourselves in. Join us, and you’ll unleash scientists, accelerate their research and help get cures to patients sooner.
+We’ve developed machines to fully automate human cell production - the most manual process in Biotech. Cells are used to discover and develop new drugs, and now they're being used to cure diseases like Parkinson’s and age-related blindness. Mytos will impact cure development across the board.
+We're live in multibillion dollar biotechs on both coasts of the US, and raised $19m to expand into the market faster, and accelerate our development! Next year, neurons grown on our machines will be going into Parkinson patient brains.
+We’ve assembled a world-class team to take on this challenge, with ex-Dyson engineers and Nature-published scientists working hand-in-hand. You can learn more about your potential Mytos teammates here:
+Team
+About the role
+About Mytos
+You rarely get the chance to change an entire industry. But that's the position we find ourselves in. Join us, and you’ll unleash scientists, accelerate their research and help get cures to patients sooner.
+We’ve developed machines to fully automate human cell production - the most manual process in Biotech. Cells are used to discover and develop new drugs, and now they're being used to cure diseases like Parkinson’s and age-related blindness. Mytos will impact cure development across the board.
+We're live in multibillion dollar biotechs on both coasts of the US, and raised $19m to expand into the market faster, and accelerate our development! Next year, neurons grown on our machines will be going into Parkinson patient brains.
+We’ve assembled a world-class team to take on this challenge, with ex-Dyson engineers and Nature-published scientists working hand-in-hand. You can learn more about your potential Mytos teammates here:
+Team
+Mytos is backed by Y Combinator, the most successful startup program in the world which produced companies such as AirBnb, Dropbox, and Ginkgo Bioworks.
+The Role
+As a Junior/Mid level Software Engineer (depending on experience) you’ll be contributing across all areas of our full-stack product based in the Cloud, and our IoT devices that interface with Mytos hardware to manufacture cells. You'll contribute across a variety of technologies and paradigms, leaning how to research, design, implement, maintain, and evolve product functionality giving users powerful tools to customise and monitor cell growth protocols.
+Your work will directly impact how quickly and effectively new therapies and research tools can be developed, ultimately helping patients worldwide.
+What You'll Do
+Collaborate closely with other engineers to deliver end-to-end product functionality spanning experiment scheduling, automated image analysis, and remote operation of our devices.
+Develop and improve our frontend applications using TypeScript, React, and GraphQL to create intuitive interfaces for complex biological workflows.
+Build backend services that communicate with our hardware systems and learn about data integrity throughout the cell manufacturing process.
+Collaborate across disciplines with hardware engineers, biologists, and commercial teams to build reliable and effective systems in record time.
+Learn and contribute to our testing methods to help us deliver quality software at speed.
+Learn and contribute to architecture and infrastructure, system performance, and interesting distributed system challenges.
+Write code that you can immediately see the real-world impact: testing on our prototype machines in our own lab.
+Up-skill in domains outside software engineering, from donning a lab coat and be trained on the nuances of stem cells, to the basics of fluid mechanics.
+Be given a lot of autonomy, responsibility, and ownership of product problems and the technical solutions you design and deliver to address customer needs.
+What We're Looking For (depending on experience level)
+Are early in your software career and want to join an environment that gives you the chance to grow quickly
+Have demonstrated technical promise so far in your studies or work
+Want to work on difficult technical challenges in a field that will define the biggest scientific advancement this century
+Self-starter attitude with a drive for producing quality work.
+Care and compassion for customers and colleagues.
+Experience with full-stack web development using TypeScript or other typed languages.
+Experience with modern frontend frameworks (React preferred).
+Experience with backend development and API design (Node.js preferred).
+Experience working with databases (PostgreSQL and Prisma or similar ORM experience ideal).
+Our technologies
+Frontend (Netlify): React, TypeScript, GraphQL, Storybook
+Backend (AWS & Heroku): NodeJS, TypeScript, GraphQL, MQTT, PostgreSQL, Python, Pulumi IaC
+Physical Device (on-premise): NodeJS, Typescript, FastAPI, Python, MQTT
+Firmware: C++, GTest, GMock, Bazel, Platformio
+Nice-to-Haves:
+Understanding of distributed systems concepts.
+Experience with Python for data processing or image analysis.
+Background or interest in biology, lab automation, or scientific instrumentation.
+Any experience with regulated environments (GMP, HIPAA, etc.)
+Any experience with UI/product design processes and tools (wireframes, mockups, looks-like prototypes, etc.).
+Why You'll Love Working Here
+Impact
+: Your work will directly enable the production of cell therapies that can transform patients' lives.
+Growth
+: We're solving complex problems at the intersection of software, hardware, and biology—you'll constantly learn and develop new skills.
+Autonomy
+: You'll have the freedom to shape our approach to GMP readiness, with support from a talented cross-disciplinary team.
+Team
+: Work with the best engineers and scientists in a collaborative environment where diverse perspectives drive innovation.
+Salary and Benefits
+Competitive salary with stock options
+Collaborative team environment with very high potential to learn new skills
+32 days holiday (bank holidays, end-of-year closure, and 21 days discretionary PTO)
+Workspace with office, workshop and wet lab facilities in the Imperial College Innovation hub, White City
+Strong in-person culture with team lunches covered daily when in office
+Flexible working with core hours (10am to 4pm) to support team collaboration
+Hybrid working (typically 2-3 days on-site per week) that respects where you do your best work while maintaining overall team efficiency
+Competitive pension scheme with tax-efficient salary sacrifice option
+We're building a team that enjoys moving fast, strives for continuous improvement through learning from mistakes, and is passionate about work that contributes to solving real world problems. No GMP experience? No problem! We want someone who is motivated to deliver an innovative product into a regulated space with creative, efficient solutions.
+If you're excited about solving interesting problems at the intersection of software, hardware, and biology while helping us prepare for the next phase of our growth, we want to hear from you!
+We currently do not sponsor visa for our junior roles.
+Technology
+Mytos's tech stack covers a huge breadth of areas:
+Cloud-hosted user app and infrastructure
+AWS-based image processing pipelines
+OS-level services running on on-prem linux computer within device
+Firmware and electronics
+Mechanical design
+Optical design and image processing
+Cell biology, including stem cells
+Biochemistry for analytics
+Apply now
+Other jobs at Mytos
+Junior/Mid Software Engineer
+fulltime
+London / GB
+Full stack
+£40K - £75K GBP
+Any (new grads ok)
+Apply
+Mechanical Engineer
+fulltime
+London
+Mechanical
+£50K - £62K GBP
+3+ years
+Apply
+Senior Product Designer
+fulltime
+London
+Product design
+£50K - £80K GBP
+1+ years
+Apply
+Hundreds of
+YC startups
+are hiring on Work at a Startup.
+Sign up to see more ›
