@@ -85,6 +85,7 @@ export interface CandidateRow {
   stripe_subscription_id?: string; // Stripe subscription ID
   subscription_status?: 'active' | 'inactive' | 'canceled' | 'past_due' | 'trialing'; // Subscription status
   subscription_current_period_end?: string; // ISO timestamp of when subscription period ends
+  major?: string[]; // Array of majors extracted from education history
   created_at?: string;
 }
 
@@ -130,6 +131,27 @@ export function isSubscribed(candidate: {
 }
 
 /**
+ * Extract majors from structured resume data
+ * @param structuredResumeData - Structured resume data object
+ * @returns Array of unique majors found in education history
+ */
+function extractMajorsFromStructuredData(structuredResumeData: any): string[] {
+  if (!structuredResumeData || !structuredResumeData.education || !Array.isArray(structuredResumeData.education)) {
+    return [];
+  }
+
+  const majors: string[] = [];
+  for (const edu of structuredResumeData.education) {
+    if (edu.major && typeof edu.major === 'string' && edu.major.trim()) {
+      majors.push(edu.major.trim());
+    }
+  }
+
+  // Remove duplicates and return
+  return [...new Set(majors)];
+}
+
+/**
  * Save or update a candidate in Supabase
  * @param candidate - Candidate data
  * @returns The saved candidate record with UUID id
@@ -142,7 +164,34 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
   const normalizedEducationLevel = normalizeEducationLevel(candidate.education_level);
   const normalizedUniversity = normalizeUniversityName(candidate.university);
 
-  const upsertData = {
+  // Extract major from structured_resume_data if present and not explicitly provided
+  let extractedMajor: string[] | undefined = candidate.major;
+  if (!extractedMajor && candidate.structured_resume_data) {
+    extractedMajor = extractMajorsFromStructuredData(candidate.structured_resume_data);
+    // Only set if we found majors (don't overwrite with empty array)
+    if (extractedMajor.length === 0) {
+      extractedMajor = undefined;
+    }
+  }
+
+  // Check if candidate already exists to preserve existing major if not updating
+  let existingMajor: string[] | undefined = undefined;
+  if (!extractedMajor && !candidate.major) {
+    // Only fetch existing if we're not explicitly setting major
+    try {
+      const existing = await getCandidate(candidate.email);
+      if (existing && (existing as any).major) {
+        existingMajor = Array.isArray((existing as any).major) 
+          ? (existing as any).major 
+          : [(existing as any).major];
+      }
+    } catch (error) {
+      // If candidate doesn't exist or error fetching, continue without preserving
+      console.log('[saveCandidate] Could not fetch existing candidate for major preservation:', error);
+    }
+  }
+
+  const upsertData: any = {
     email: candidate.email,
     name: normalizedName || candidate.name, // Fallback to original if normalization returns null
     skills: candidate.skills,
@@ -162,6 +211,13 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
     structured_resume_data: candidate.structured_resume_data,
     created_at: candidate.created_at || new Date().toISOString(),
   };
+
+  // Only include major if we have a value to set (extracted, provided, or existing)
+  // This prevents overwriting existing major with null when updating other fields
+  const majorToSet = extractedMajor || candidate.major || existingMajor;
+  if (majorToSet !== undefined) {
+    upsertData.major = majorToSet;
+  }
 
   console.log('[saveCandidate] Upserting candidate with structured_resume_data:', {
     email: upsertData.email,
@@ -192,6 +248,7 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
       onboarding_completed,
       resume_latex,
       structured_resume_data,
+      major,
       subscription_tier,
       subscription_status,
       stripe_customer_id,
@@ -244,6 +301,7 @@ export async function getCandidate(email: string) {
       role_type,
       years_of_experience,
       onboarding_completed,
+      major,
       subscription_tier,
       subscription_status,
       stripe_customer_id,
