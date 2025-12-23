@@ -29,14 +29,13 @@ export async function POST(request: NextRequest) {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if waitlist table exists, if not we'll create it via migration
-    // For now, we'll insert into a waitlist table
-    // You may need to create this table in Supabase
+    const normalizedEmail = email.toLowerCase().trim();
     
+    // Insert into waitlist table
     const { data, error } = await supabaseAdmin
       .from("waitlist")
       .insert({
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         created_at: new Date().toISOString(),
       })
       .select()
@@ -59,6 +58,23 @@ export async function POST(request: NextRequest) {
 
       // If email already exists, that's okay - return success
       if (error.code === "23505") {
+        // Update email preferences to opt-in to newsletter if not already
+        try {
+          const { getOrCreateEmailPreferences } = await import("@/lib/supabase");
+          const preferences = await getOrCreateEmailPreferences(normalizedEmail);
+          
+          // If marketing emails are disabled, opt them in (they're on waitlist)
+          if (!preferences.marketing_emails_enabled) {
+            await supabaseAdmin
+              .from("email_preferences")
+              .update({ marketing_emails_enabled: true })
+              .eq("email", normalizedEmail);
+          }
+        } catch (prefError) {
+          // Log but don't fail - waitlist signup should still succeed
+          console.error("Error updating email preferences for waitlist:", prefError);
+        }
+        
         return NextResponse.json(
           { success: true, message: "You're already on the waitlist!" },
           { status: 200 }
@@ -70,6 +86,24 @@ export async function POST(request: NextRequest) {
         { error: "Failed to join waitlist" },
         { status: 500 }
       );
+    }
+
+    // Create or update email preferences to opt-in to newsletter
+    // Waitlist signups should automatically opt-in to marketing emails
+    try {
+      const { getOrCreateEmailPreferences } = await import("@/lib/supabase");
+      const preferences = await getOrCreateEmailPreferences(normalizedEmail);
+      
+      // Opt them into marketing emails (newsletter) since they joined waitlist
+      if (!preferences.marketing_emails_enabled) {
+        await supabaseAdmin
+          .from("email_preferences")
+          .update({ marketing_emails_enabled: true })
+          .eq("email", normalizedEmail);
+      }
+    } catch (prefError) {
+      // Log but don't fail - waitlist signup should still succeed
+      console.error("Error creating email preferences for waitlist:", prefError);
     }
 
     return NextResponse.json(

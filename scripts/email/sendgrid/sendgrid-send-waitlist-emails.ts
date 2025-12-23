@@ -15,7 +15,7 @@ import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import { createClient } from '@supabase/supabase-js';
-import { sendWaitlistEmail } from '../../../lib/sendgrid';
+import { sendNewsletterEmail } from '../../../lib/sendgrid';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -161,11 +161,11 @@ async function main() {
       .update({ sent_status: 'pending' })
       .eq('id', entry.id);
 
-    // Send email
-    const result = await sendWaitlistEmail(
+    // Send newsletter email (checks marketing_emails_enabled preference)
+    const result = await sendNewsletterEmail(
       entry.email,
       EMAIL_SUBJECT,
-      '',
+      '',  // No HTML content (plain text only)
       textContent
     );
 

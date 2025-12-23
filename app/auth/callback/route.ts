@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendWelcomeEmail, extractFirstName } from '@/lib/sendgrid';
+import { getOrCreateEmailPreferences } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -74,6 +76,33 @@ export async function GET(request: NextRequest) {
       
       // If no candidate record exists, this is likely a new sign-up
       isNewSignUp = !candidate;
+
+      // Send welcome email for new signups (non-blocking)
+      if (isNewSignUp && user.email) {
+        // Create email preferences if they don't exist
+        try {
+          await getOrCreateEmailPreferences(user.email);
+          
+          // Extract first name from user metadata
+          const firstName = extractFirstName(user.user_metadata, user.email);
+          
+          // Send welcome email (don't block redirect on failure)
+          sendWelcomeEmail(user.email, firstName, user.user_metadata)
+            .then((result) => {
+              if (result.success) {
+                console.log(`[Auth Callback] Welcome email sent to ${user.email}`);
+              } else {
+                console.warn(`[Auth Callback] Failed to send welcome email to ${user.email}:`, result.error);
+              }
+            })
+            .catch((error) => {
+              console.error(`[Auth Callback] Error sending welcome email to ${user.email}:`, error);
+            });
+        } catch (error) {
+          // Log error but don't block signup flow
+          console.error('[Auth Callback] Error setting up welcome email:', error);
+        }
+      }
     }
 
     // Check for redirect parameter
@@ -151,6 +180,49 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('Magic link verification error:', error);
       return NextResponse.redirect(new URL('/?error=auth_failed', origin));
+    }
+
+    // Check if this is a new signup for email/password signups
+    const { data: { user: magicLinkUser } } = await supabase.auth.getUser();
+    let isNewSignUpMagicLink = false;
+    
+    if (magicLinkUser?.email) {
+      // Check if user has a candidate record
+      const { data: candidate } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('email', magicLinkUser.email)
+        .single();
+      
+      // If no candidate record exists, this is likely a new sign-up
+      isNewSignUpMagicLink = !candidate;
+
+      // Send welcome email for new signups (non-blocking)
+      if (isNewSignUpMagicLink && magicLinkUser.email) {
+        // Create email preferences if they don't exist
+        try {
+          await getOrCreateEmailPreferences(magicLinkUser.email);
+          
+          // Extract first name from user metadata
+          const firstName = extractFirstName(magicLinkUser.user_metadata, magicLinkUser.email);
+          
+          // Send welcome email (don't block redirect on failure)
+          sendWelcomeEmail(magicLinkUser.email, firstName, magicLinkUser.user_metadata)
+            .then((result) => {
+              if (result.success) {
+                console.log(`[Auth Callback] Welcome email sent to ${magicLinkUser.email}`);
+              } else {
+                console.warn(`[Auth Callback] Failed to send welcome email to ${magicLinkUser.email}:`, result.error);
+              }
+            })
+            .catch((error) => {
+              console.error(`[Auth Callback] Error sending welcome email to ${magicLinkUser.email}:`, error);
+            });
+        } catch (error) {
+          // Log error but don't block signup flow
+          console.error('[Auth Callback] Error setting up welcome email:', error);
+        }
+      }
     }
 
     // Check for redirect parameter
