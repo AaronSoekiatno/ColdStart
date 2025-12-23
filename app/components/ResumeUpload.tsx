@@ -57,23 +57,12 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
     setErrorMessage('');
     setUploadStatus('idle');
 
-    // Create preview for PDF
-    if (selectedFile.type === 'application/pdf') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFile({
-          file: selectedFile,
-          preview: e.target?.result as string,
-        });
-      };
-      reader.readAsDataURL(selectedFile);
-    } else {
-      // For DOCX, just set the file without preview
-      setFile({
-        file: selectedFile,
-        preview: '',
-      });
-    }
+    // For DOCX files, just set the file without preview
+    // Preview will be available after upload in the resume card
+    setFile({
+      file: selectedFile,
+      preview: '',
+    });
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {

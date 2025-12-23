@@ -516,7 +516,7 @@ export async function POST(request: NextRequest) {
           resume_latex: resumeLatex, // Store LaTeX source for editing
           structured_resume_data: structuredResumeData, // Store structured data for template editing
         });
-        candidateId = savedCandidate.id || null; // Get the UUID
+        candidateId = savedCandidate.id; // Get the UUID
         subscriptionTier = savedCandidate.subscription_tier || 'free';
         subscriptionStatus = savedCandidate.subscription_status || 'inactive';
 

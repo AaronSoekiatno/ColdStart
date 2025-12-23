@@ -221,7 +221,6 @@ export async function getCandidate(email: string) {
       role_type,
       years_of_experience,
       onboarding_completed,
-      resume_path,
       subscription_tier,
       subscription_status,
       stripe_customer_id,
