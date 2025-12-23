@@ -6,7 +6,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { upsertStartup } from '../../lib/pinecone';
-import { generateEmbeddingText } from '../enrichment/yc_companies/scrape_techcrunch_supabase_pinecone';
+import { generateEmbeddingText } from '../scrape_techcrunch_supabase_pinecone';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -160,10 +160,25 @@ async function main() {
   console.log(`📊 Fetching up to ${limit} startups from Supabase...\n`);
 
   try {
-    // Fetch startups from Supabase
+    // Fetch startups from Supabase (only fields needed for embeddings)
     const { data: startups, error } = await supabase
       .from('startups')
-      .select('*')
+      .select(`
+        id,
+        name,
+        description,
+        round_type,
+        funding_amount,
+        location,
+        industry,
+        business_type,
+        team_size,
+        tech_stack,
+        founder_backgrounds,
+        website_keywords,
+        hiring_roles,
+        website
+      `)
       .limit(limit);
 
     if (error) {

@@ -3,6 +3,43 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
 
+/**
+ * Wraps a Supabase query with timeout
+ */
+async function withTimeout<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>,
+  timeoutMs: number = 10000
+): Promise<{ data: T | null; error: any }> {
+  try {
+    const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Query timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    const result = await Promise.race([queryFn(), timeoutPromise]);
+    return result;
+  } catch (error: any) {
+    const errorMessage = error?.message || String(error);
+    const isTimeout = errorMessage.includes('timeout') || 
+                     errorMessage.includes('ConnectTimeoutError') ||
+                     errorMessage.includes('ECONNRESET');
+    
+    if (isTimeout) {
+      return { 
+        data: null, 
+        error: { 
+          message: 'Database connection timeout', 
+          code: 'TIMEOUT',
+          isTimeout: true 
+        } 
+      };
+    }
+    
+    return { data: null, error: error };
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Import cookies at runtime (Next.js 15+ requirement)
@@ -39,13 +76,35 @@ export async function GET(request: NextRequest) {
 
     // Get candidate info from candidates table - explicitly selecting subscription fields
     // Note: experience_level and salary_range are in the jobs table, not candidates table
-    const { data: candidate, error: candidateError } = await supabaseAdmin
-      .from('candidates')
-      .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills')
-      .eq('email', user.email)
-      .single();
+    // Store in const so TypeScript knows it's not null inside the callback
+    const adminClient = supabaseAdmin;
+    const candidateResult = await withTimeout(
+      async () => {
+        const result = await adminClient
+          .from('candidates')
+          .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills')
+          .eq('email', user.email)
+          .single();
+        return result;
+      },
+      10000 // 10 second timeout
+    );
+    
+    const { data: candidate, error: candidateError } = candidateResult;
 
     if (candidateError) {
+      // Handle timeout errors
+      if (candidateError.isTimeout || candidateError.code === 'TIMEOUT') {
+        console.error('[Candidate Info] Timeout fetching candidate:', candidateError);
+        return NextResponse.json(
+          { 
+            error: 'Database connection timeout',
+            message: 'Request timed out. Please try again.'
+          },
+          { status: 504 }
+        );
+      }
+      
       // PGRST116 is "not found" - return 404
       if (candidateError.code === 'PGRST116') {
         return NextResponse.json(

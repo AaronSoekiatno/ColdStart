@@ -31,9 +31,11 @@ export const Header = ({ initialUser }: HeaderProps) => {
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [matchesDropdownOpen, setMatchesDropdownOpen] = useState(false);
   const { toast } = useToast();
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
+  const matchesDropdownTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Memoize user email to prevent unnecessary re-fetches
   const userEmail = useMemo(() => user?.email, [user?.email]);
@@ -90,6 +92,24 @@ export const Header = ({ initialUser }: HeaderProps) => {
     };
   }, []);
 
+  // Handle matches dropdown with delay
+  const handleMatchesDropdownEnter = useCallback(() => {
+    if (matchesDropdownTimerRef.current) {
+      clearTimeout(matchesDropdownTimerRef.current);
+      matchesDropdownTimerRef.current = null;
+    }
+    setMatchesDropdownOpen(true);
+  }, []);
+
+  const handleMatchesDropdownLeave = useCallback(() => {
+    if (matchesDropdownTimerRef.current) {
+      clearTimeout(matchesDropdownTimerRef.current);
+    }
+    matchesDropdownTimerRef.current = setTimeout(() => {
+      setMatchesDropdownOpen(false);
+    }, 300); // 300ms delay before closing
+  }, []);
+
   // Handle Premium button click - memoized callback
   const handlePremiumClick = useCallback(async () => {
     // Open modal immediately for better UX
@@ -142,12 +162,36 @@ export const Header = ({ initialUser }: HeaderProps) => {
         <nav className="hidden lg:flex items-center gap-8 flex-1 justify-center">
           {user ? (
             <>
-              <Link
-                href="/matches"
-                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
-              >
-                Your Matches
-              </Link>
+              <DropdownMenu modal={false} open={matchesDropdownOpen} onOpenChange={setMatchesDropdownOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+                    onMouseEnter={handleMatchesDropdownEnter}
+                    onMouseLeave={handleMatchesDropdownLeave}
+                  >
+                    Your Matches
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="center"
+                  className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-xl overflow-hidden min-w-[160px] shadow-lg"
+                  onMouseEnter={handleMatchesDropdownEnter}
+                  onMouseLeave={handleMatchesDropdownLeave}
+                >
+                  <DropdownMenuItem
+                    className="cursor-pointer font-medium text-gray-900 hover:text-gray-900 w-full px-4 py-2.5 text-sm hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 border-b border-gray-100"
+                    onSelect={() => router.push('/matches')}
+                  >
+                    All Matches
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer font-medium text-gray-900 hover:text-gray-900 w-full px-4 py-2.5 text-sm hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900"
+                    onSelect={() => router.push('/matches/saved')}
+                  >
+                    Saved
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Link
                 href="/tracker"
                 className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
@@ -270,7 +314,16 @@ export const Header = ({ initialUser }: HeaderProps) => {
                     router.push('/matches');
                   }}
                 >
-                  Your Matches
+                  All Matches
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
+                  onSelect={() => {
+                    setMobileMenuOpen(false);
+                    router.push('/matches/saved');
+                  }}
+                >
+                  Saved Matches
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"

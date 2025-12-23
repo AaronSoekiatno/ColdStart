@@ -317,10 +317,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the specific resume
+    // Get the specific resume (exclude large fields to reduce egress)
     const { data: resume, error: resumeError } = await supabaseAdmin
       .from('resumes')
-      .select('*')
+      .select('id, candidate_id, name, file_name, resume_path, structured_data, is_active, is_primary, created_at, updated_at')
       .eq('id', resumeId)
       .eq('candidate_id', candidate.id)
       .single();

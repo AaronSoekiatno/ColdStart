@@ -6,8 +6,8 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build",
+    "dev": "cross-env NEXT_PRIVATE_SKIP_TURBO=1 next dev --webpack",
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next build --webpack",
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
@@ -19,7 +19,7 @@
     "scrape-and-ingest-techcrunch": "tsx yc_companies/scrape_and_ingest_techcrunch.ts",
     "scrape-techcrunch-supabase": "tsx yc_companies/scrape_techcrunch_supabase_pinecone.ts",
     "ingest-pinecone": "tsx scripts/ingest-startups-to-pinecone.ts",
-    "rematch-all": "tsx scripts/rematch-all-candidates.ts",
+    "rematch-all": "tsx scripts/matching/rematch-all-candidates.ts",
     "re-embed-all": "tsx scripts/re-embed-all-candidates.ts",
     "delete-pinecone-embeddings": "tsx scripts/delete-all-startup-embeddings.ts",
     "test-techcrunch": "tsx yc_companies/test_techcrunch_quick.ts",
@@ -50,6 +50,8 @@
     "re-scrape:missing": "tsx yc_companies/re_scrape_missing_data.ts",
     "scrape:logos": "tsx yc_companies/scrape_missing_logos.ts",
     "enrich:emails": "tsx yc_companies/enrich_founder_emails.ts",
+    "enrich:all": "tsx yc_companies/enrich_all_startups.ts",
+    "enrich:all:dry-run": "tsx yc_companies/enrich_all_startups.ts --dry-run",
     "funding:fetch": "tsx yc_companies/fetch_funding_data.ts",
     "add-startups": "tsx scripts/add-test-startups.ts",
     "delete-test-startups": "tsx scripts/delete-test-startups.ts",

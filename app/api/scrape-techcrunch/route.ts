@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 // Import the scraper function - using relative path from app/api
-import { scrapeAndIngestTechCrunch } from '../../../scripts/enrichment/yc_companies/scrape_techcrunch_supabase_pinecone';
+import { scrapeAndIngestTechCrunch } from '../../../scripts/scrape_techcrunch_supabase_pinecone';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes max execution time (Vercel Pro plan allows up to 300s)
