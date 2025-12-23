@@ -208,26 +208,32 @@ Your skills go in the email body. The subject earns the open by showing you unde
 
 **The Email Structure:**
 
-Choose ONE of these opening hooks based on the context email:
+Choose ONE of these opening hooks randomly for each email:
 1. "My name is ${candidate.name}—I'll keep this to 45 seconds:"
 2. "I know you're building fast, so here is the tl;dr on why I can help ${startup.name}:"
 3. "I've been following ${startup.name}'s work on [Specific Feature]. I'll only use three bullets:"
 4. "I'm ${candidate.name}, ${candidate.major && candidate.major.length > 0 ? (() => { const majors = candidate.major.filter(m => m && m.trim()); if (majors.length === 0) return 'a student'; const firstMajor = majors[0]; const article = /^[aeiouAEIOU]/i.test(firstMajor) ? 'an' : 'a'; if (majors.length === 1) return `${article} ${firstMajor} major`; return `${article} ${majors.slice(0, -1).join(', ')} and ${majors[majors.length - 1]} major`; })() : 'a student'}${candidate.university ? ` at ${candidate.university}` : ''}. Here's my 3-bullet pitch:"
 
-**Exactly 3 bullet points required:**
-- Do not always use the same bullet order.
-- Mix prose with data. (e.g., "Shipped [Project] to 100 users" vs. "I've spent 2 years mastering [Tech Stack]")
+**Exactly 3 bullet points required (1 sentence each):**
+- Use time references to show growth: "Started X 2 years ago, now building Y" or "3 years of [relevant experience]"
+- Mix data with progression: "Shipped [Project] to 100 users" or "Over the past year, I've built [X]"
 
-Bullet point 1: A "Proof of Work" statement (e.g., "Programming since 8th grade" or "Built a data pipeline for [X]").
-Bullet point 2: Explain your relevant experience WITH AN EXPLICIT CONNECTION to the company
-   - Don't just list skills - explain how your experience relates to what THIS company does
-   - Reference the company's product, mission, industry, or tech stack specifically
-   - Show you understand their work and have done something similar or relevant
-Bullet point 3: Another relevant experience or qualification that connects to the company
-   - Keep it concise and specific
-   - Each bullet should be 1-2 sentences max
+Bullet point 1: Proof of work showing long-term commitment (e.g., "Programming since 8th grade" or "Started learning ML 2 years ago, now deploying models in production")
 
-The ask: "Want to ${jobTypeShort} for ${startup.name} this [Season] as a ${candidate.educationLevel}. How?"
+Bullet point 2: Relevant experience WITH EXPLICIT CONNECTION to the company
+   - Explain how your experience relates to what THIS company does
+   - Reference their product, mission, or tech stack specifically
+   - Show progression: "Started with [beginner project], progressed to [advanced work]"
+
+Bullet point 3: Another relevant qualification connecting to the company, showing evolution
+
+The ask: Choose ONE randomly for each email:
+1. "Want to ${jobTypeShort} for ${startup.name} this [Season] as a ${candidate.jobType}. How?"
+2. "Interested in ${jobTypeShort}ing at ${startup.name} this [Season]. What's the best way to apply?"
+3. "Would love to ${jobTypeShort} for ${startup.name} this [Season]. How can I get started?"
+4. "Looking to ${jobTypeShort} at ${startup.name} this [Season]. What's next?"
+5. "Want to join ${startup.name} as a ${jobTypeShort} this [Season]. How do we make that happen?"
+
 Sign-off: "Thanks, ${candidate.name}"
 
 4. Professional links: Include relevant links (resume, GitHub, portfolio, LinkedIn) after your signature
@@ -235,11 +241,9 @@ Sign-off: "Thanks, ${candidate.name}"
    - Only include links that are available in the candidate's profile
 
 **Formatting Requirements:**
-- Use exactly 3 bullet points (required, not optional)
-- Keep qualifications concise and scannable
-- Each bullet should be 1-2 sentences max
-- Include professional links at the end after your signature (e.g., "Best, [Name]")
-- Only include links that are available in the candidate's profile
+- Use exactly 3 bullet points (1 sentence each)
+- Keep it concise and scannable
+- Include professional links after your signature (only if available in candidate's profile)
 
 That's it. Keep it short and make every sentence count.
 
