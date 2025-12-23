@@ -777,7 +777,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                   newIndex,
                   founderName: founderNames[index],
                   founderEmail: founderEmails[index],
-                  allFounderNames,
+                  allFounderNames: founderNames,
                   allFounderEmails: founderEmails,
                 });
                 setSelectedFounderIndex(newIndex);
