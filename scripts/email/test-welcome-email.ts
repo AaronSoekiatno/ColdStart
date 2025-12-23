@@ -12,22 +12,326 @@
  * 4. Opt-out checking
  */
 
-import { resolve } from 'path';
-import { config } from 'dotenv';
-// Load .env.local file
+// Load .env.local file FIRST using require to ensure it's synchronous
+// This is critical because lib/supabase.ts initializes clients at module load time
+const { resolve } = require('path');
+const { config } = require('dotenv');
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { 
-  getEmailPreferences, 
-  createEmailPreferences, 
-  checkCanSendWelcomeEmail,
-  getOrCreateEmailPreferences 
-} from '../../lib/supabase';
-import { sendWelcomeEmail, extractFirstName } from '../../lib/sendgrid';
+// Now import other modules after env vars are loaded
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { randomBytes } from 'crypto';
+import sgMail from '@sendgrid/mail';
+
+interface SendEmailResult {
+  success: boolean;
+  messageId?: string;
+  error?: string;
+}
+
+let sgMailInitialized = false;
+
+function initSendGrid() {
+  if (sgMailInitialized) return;
+  const apiKey = process.env.SENDGRID_API_KEY;
+  if (!apiKey) {
+    throw new Error('SENDGRID_API_KEY environment variable is not set');
+  }
+  sgMail.setApiKey(apiKey);
+  sgMailInitialized = true;
+}
+
+function extractFirstName(
+  userMetadata?: { full_name?: string; name?: string },
+  email?: string
+): string {
+  // Try full_name first
+  if (userMetadata?.full_name) {
+    const parts = userMetadata.full_name.trim().split(/\s+/);
+    if (parts.length > 0) {
+      return parts[0];
+    }
+  }
+
+  // Try name
+  if (userMetadata?.name) {
+    const parts = userMetadata.name.trim().split(/\s+/);
+    if (parts.length > 0) {
+      return parts[0];
+    }
+  }
+
+  // Try to extract from email
+  if (email) {
+    const emailParts = email.split('@')[0];
+    // Capitalize first letter
+    return emailParts.charAt(0).toUpperCase() + emailParts.slice(1);
+  }
+
+  // Final fallback
+  return 'there';
+}
 
 const TEST_EMAIL = process.argv[2];
 
+// Helper functions (inlined to avoid importing from lib/supabase.ts which initializes clients at module load)
+function generateUnsubscribeToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+async function getEmailPreferences(supabaseClient: SupabaseClient, email: string) {
+  const { data, error } = await supabaseClient
+    .from('email_preferences')
+    .select('*')
+    .eq('email', email)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get email preferences: ${error.message}`);
+  }
+
+  return data;
+}
+
+async function createEmailPreferences(supabaseClient: SupabaseClient, email: string, options?: { marketingOptIn?: boolean }) {
+  const unsubscribeToken = generateUnsubscribeToken();
+
+  const { data, error } = await supabaseClient
+    .from('email_preferences')
+    .insert({
+      email,
+      welcome_emails_enabled: true,
+      marketing_emails_enabled: options?.marketingOptIn ?? false,
+      unsubscribe_token: unsubscribeToken,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create email preferences: ${error.message}`);
+  }
+
+  return data;
+}
+
+async function checkCanSendWelcomeEmail(supabaseClient: SupabaseClient, email: string): Promise<boolean> {
+  const preferences = await getEmailPreferences(supabaseClient, email);
+  
+  // If no preferences exist, default to allowing welcome emails (opt-in by default for new signups)
+  if (!preferences) {
+    return true;
+  }
+
+  // If user has unsubscribed globally, don't send
+  if (preferences.unsubscribed_at) {
+    return false;
+  }
+
+  // Check if welcome emails are enabled
+  return preferences.welcome_emails_enabled;
+}
+
+async function getOrCreateEmailPreferences(supabaseClient: SupabaseClient, email: string, options?: { marketingOptIn?: boolean }) {
+  let preferences = await getEmailPreferences(supabaseClient, email);
+  
+  if (!preferences) {
+    preferences = await createEmailPreferences(supabaseClient, email, options);
+  } else if (options?.marketingOptIn && !preferences.marketing_emails_enabled) {
+    const { data, error } = await supabaseClient
+      .from('email_preferences')
+      .update({ marketing_emails_enabled: true })
+      .eq('email', email)
+      .select()
+      .single();
+    
+    if (error) {
+      throw new Error(`Failed to update email preferences: ${error.message}`);
+    }
+    
+    preferences = data;
+  }
+  
+  return preferences;
+}
+
+async function sendWelcomeEmail(
+  supabaseClient: SupabaseClient,
+  email: string,
+  firstName?: string,
+  userMetadata?: { full_name?: string; name?: string }
+): Promise<SendEmailResult> {
+  if (!process.env.SENDGRID_API_KEY) {
+    return {
+      success: false,
+      error: 'SENDGRID_API_KEY environment variable is not set',
+    };
+  }
+
+  try {
+    // Check if we can send welcome email (respects opt-out preferences)
+    const canSend = await checkCanSendWelcomeEmail(supabaseClient, email);
+    if (!canSend) {
+      console.log(`[SendGrid] Skipping welcome email to ${email} - user has opted out`);
+      return {
+        success: false,
+        error: 'User has opted out of welcome emails',
+      };
+    }
+
+    // Get or create email preferences to ensure we have an unsubscribe token
+    const preferences = await getOrCreateEmailPreferences(supabaseClient, email);
+    const unsubscribeToken = preferences.unsubscribe_token;
+
+    if (!unsubscribeToken) {
+      console.error(`[SendGrid] No unsubscribe token found for ${email}`);
+      return {
+        success: false,
+        error: 'Failed to generate unsubscribe token',
+      };
+    }
+
+    // Try to get first name from candidate's name in database (first part of name)
+    let userFirstName = firstName;
+    if (!userFirstName) {
+      try {
+        const { data: candidate, error: candidateError } = await supabaseClient
+          .from('candidates')
+          .select('name')
+          .eq('email', email)
+          .single();
+        
+        if (!candidateError && candidate?.name) {
+          // Use first part of candidate's name (before first space)
+          userFirstName = candidate.name.split(' ')[0].trim();
+        }
+      } catch (error) {
+        // If candidate lookup fails, fall back to extractFirstName
+        console.warn(`[SendGrid] Could not fetch candidate for ${email}, using fallback name extraction`);
+      }
+    }
+    
+    // Final fallback to existing extractFirstName logic
+    if (!userFirstName) {
+      userFirstName = extractFirstName(userMetadata, email);
+    }
+
+    // Get app URL for unsubscribe link
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
+
+    // Build email subject
+    const subject = `Hey ${userFirstName} - welcome to Hermes`;
+
+    // Build email body with message
+    const emailBody = `Hi ${userFirstName},
+
+We built Hermes because we realized the job market is broken. 
+
+We're here to help you discover hidden roles at hot startups and reach out directly to the founders. 
+One thing to do today: Upload your resume so our agent can start matching you with companies and use that to write your outreach for you.
+
+Best,
+Robert`;
+
+    // Build email footer with compliance requirements
+    const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
+    
+    const footer = `
+
+---
+You're receiving this email because you signed up for Hermes.
+
+Unsubscribe: ${unsubscribeLink}
+
+Privacy Policy: ${APP_URL}/privacy
+Terms of Service: ${APP_URL}/terms
+
+Hermes
+${APP_URL}`;
+
+    const fullTextContent = emailBody + footer;
+
+    // Send email directly using SendGrid
+    initSendGrid();
+
+    const from =
+      process.env.SENDGRID_FROM_EMAIL ||
+      'robert@joinhermes.co';
+
+    const msg = {
+      to: email,
+      from: {
+        email: from,
+        name: process.env.SENDGRID_FROM_NAME || 'Robert Flores',
+      },
+      subject,
+      text: fullTextContent,
+      categories: ['welcome'],
+      customArgs: {
+        category: 'welcome',
+      },
+      trackingSettings: {
+        clickTracking: {
+          enable: false,
+          enableText: false,
+        },
+        openTracking: {
+          enable: false,
+        },
+      },
+    } as sgMail.MailDataRequired;
+
+    const [response] = await sgMail.send(msg);
+
+    const headers = response.headers as Record<string, string>;
+    const messageId =
+      headers['x-message-id'] ||
+      headers['X-Message-Id'] ||
+      headers['x-message-id'.toLowerCase()];
+
+    console.log(
+      `[SendGrid] Successfully sent welcome email to ${email}${
+        messageId ? `, message ID: ${messageId}` : ''
+      }`
+    );
+
+    return {
+      success: true,
+      messageId,
+    };
+  } catch (error: any) {
+    const sgErrorBody = error?.response?.body;
+    if (sgErrorBody?.errors) {
+      console.error('[SendGrid] Error details:', sgErrorBody.errors);
+    } else {
+      console.error('[SendGrid] Error sending welcome email:', error);
+    }
+
+    const errorMessage =
+      sgErrorBody?.errors?.map((e: any) => e.message).join(', ') ||
+      error?.message ||
+      'Unknown SendGrid error';
+
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
 async function main() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('❌ Missing Supabase configuration');
+    console.error('   Required: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+    process.exit(1);
+  }
+
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
   if (!TEST_EMAIL) {
     console.error('❌ Please provide an email address');
     console.error('   Usage: npm run test-welcome-email your.email@example.com');
@@ -60,7 +364,7 @@ async function main() {
   ];
 
   for (const testCase of testCases) {
-    const firstName = extractFirstName(testCase.metadata, testCase.email);
+    const firstName = extractFirstName(testCase.metadata as any, testCase.email);
     const passed = firstName === testCase.expected || firstName.length > 0;
     console.log(`  ${passed ? '✅' : '❌'} ${testCase.email} → "${firstName}" ${passed ? '' : `(expected: ${testCase.expected})`}`);
   }
@@ -71,13 +375,13 @@ async function main() {
   console.log('-----------------------------------');
   try {
     // Clean up any existing preferences for test email
-    const existing = await getEmailPreferences(TEST_EMAIL);
+    const existing = await getEmailPreferences(supabaseAdmin, TEST_EMAIL);
     if (existing) {
       console.log(`  ⚠️  Preferences already exist for ${TEST_EMAIL}`);
       console.log(`     welcome_emails_enabled: ${existing.welcome_emails_enabled}`);
       console.log(`     unsubscribe_token: ${existing.unsubscribe_token ? '✅ Set' : '❌ Missing'}`);
     } else {
-      const preferences = await createEmailPreferences(TEST_EMAIL);
+      const preferences = await createEmailPreferences(supabaseAdmin, TEST_EMAIL);
       console.log(`  ✅ Created email preferences`);
       console.log(`     welcome_emails_enabled: ${preferences.welcome_emails_enabled}`);
       console.log(`     unsubscribe_token: ${preferences.unsubscribe_token ? '✅ Set' : '❌ Missing'}`);
@@ -91,7 +395,7 @@ async function main() {
   console.log('Test 3: Check Can Send Welcome Email');
   console.log('-------------------------------------');
   try {
-    const canSend = await checkCanSendWelcomeEmail(TEST_EMAIL);
+    const canSend = await checkCanSendWelcomeEmail(supabaseAdmin, TEST_EMAIL);
     console.log(`  ${canSend ? '✅' : '❌'} Can send welcome email: ${canSend}`);
   } catch (error) {
     console.error(`  ❌ Failed to check:`, error);
@@ -102,7 +406,7 @@ async function main() {
   console.log('Test 4: Get or Create Email Preferences');
   console.log('--------------------------------------');
   try {
-    const preferences = await getOrCreateEmailPreferences(TEST_EMAIL);
+    const preferences = await getOrCreateEmailPreferences(supabaseAdmin, TEST_EMAIL);
     console.log(`  ✅ Preferences retrieved/created`);
     console.log(`     Email: ${preferences.email}`);
     console.log(`     Welcome emails enabled: ${preferences.welcome_emails_enabled}`);
@@ -118,11 +422,32 @@ async function main() {
   console.log('Test 5: Send Welcome Email');
   console.log('--------------------------');
   try {
-    const firstName = extractFirstName({}, TEST_EMAIL);
-    console.log(`  📤 Sending welcome email to ${TEST_EMAIL}...`);
-    console.log(`     First name: ${firstName}`);
+    // Try to get first name from candidate's name in database
+    let firstName: string | undefined;
+    try {
+      const { data: candidate } = await supabaseAdmin
+        .from('candidates')
+        .select('name')
+        .eq('email', TEST_EMAIL)
+        .single();
+      
+      if (candidate?.name) {
+        firstName = candidate.name.split(' ')[0].trim();
+        console.log(`  📧 Found candidate in database: ${candidate.name}`);
+        console.log(`     Using first name: ${firstName}`);
+      }
+    } catch (error) {
+      console.log(`  ⚠️  Candidate not found in database, will use email fallback`);
+    }
     
-    const result = await sendWelcomeEmail(TEST_EMAIL, firstName);
+    console.log(`  📤 Sending welcome email to ${TEST_EMAIL}...`);
+    if (firstName) {
+      console.log(`     First name from candidate: ${firstName}`);
+    } else {
+      console.log(`     Will extract from email or metadata`);
+    }
+    
+    const result = await sendWelcomeEmail(supabaseAdmin, TEST_EMAIL, firstName);
     
     if (result.success) {
       console.log(`  ✅ Welcome email sent successfully!`);
@@ -146,7 +471,7 @@ async function main() {
   console.log('Test 6: Unsubscribe Link');
   console.log('------------------------');
   try {
-    const preferences = await getEmailPreferences(TEST_EMAIL);
+    const preferences = await getEmailPreferences(supabaseAdmin, TEST_EMAIL);
     if (preferences?.unsubscribe_token) {
       const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
       const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(TEST_EMAIL)}&token=${encodeURIComponent(preferences.unsubscribe_token)}`;

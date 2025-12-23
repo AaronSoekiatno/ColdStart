@@ -12,19 +12,64 @@
  *   npm run backfill-email-preferences -- --limit=100      # Limit to first 100 users
  */
 
-import { resolve } from 'path';
-import { config } from 'dotenv';
-// Load .env.local file
+// Load .env.local file FIRST using require to ensure it's synchronous
+// This is critical because lib/supabase.ts initializes clients at module load time
+const { resolve } = require('path');
+const { config } = require('dotenv');
 config({ path: resolve(process.cwd(), '.env.local') });
 
-import { createClient } from '@supabase/supabase-js';
-import { createEmailPreferences, getEmailPreferences } from '../../lib/supabase';
+// Now import other modules after env vars are loaded
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { randomBytes } from 'crypto';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
 const isDryRun = args.includes('--dry-run');
 const limitArg = args.find(arg => arg.startsWith('--limit='));
 const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : undefined;
+
+// Helper functions (inlined to avoid importing from lib/supabase.ts which initializes clients at module load)
+function generateUnsubscribeToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+async function getEmailPreferences(supabaseClient: SupabaseClient, email: string) {
+  const { data, error } = await supabaseClient
+    .from('email_preferences')
+    .select('*')
+    .eq('email', email)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get email preferences: ${error.message}`);
+  }
+
+  return data;
+}
+
+async function createEmailPreferences(supabaseClient: SupabaseClient, email: string, options?: { marketingOptIn?: boolean }) {
+  const unsubscribeToken = generateUnsubscribeToken();
+
+  const { data, error } = await supabaseClient
+    .from('email_preferences')
+    .insert({
+      email,
+      welcome_emails_enabled: true,
+      marketing_emails_enabled: options?.marketingOptIn ?? false,
+      unsubscribe_token: unsubscribeToken,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create email preferences: ${error.message}`);
+  }
+
+  return data;
+}
 
 async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -155,13 +200,13 @@ async function main() {
 
       try {
         // Check if preferences already exist (race condition protection)
-        const existing = await getEmailPreferences(email);
+        const existing = await getEmailPreferences(supabaseAdmin, email);
         if (existing) {
           console.log(`  ⚠️  Preferences already exist for ${email} (skipping)`);
           return { email, success: true, skipped: true };
         }
 
-        await createEmailPreferences(email);
+        await createEmailPreferences(supabaseAdmin, email);
         console.log(`  ✅ Created preferences for: ${email}`);
         return { email, success: true };
       } catch (error) {

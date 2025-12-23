@@ -1,6 +1,6 @@
 // @ts-ignore
 import sgMail from '@sendgrid/mail';
-import { checkCanSendWelcomeEmail, checkCanSendNewsletterEmail, getOrCreateEmailPreferences } from './supabase';
+import { checkCanSendWelcomeEmail, checkCanSendNewsletterEmail, getOrCreateEmailPreferences, getCandidate } from './supabase';
 
 export interface SendEmailResult {
   success: boolean;
@@ -207,8 +207,25 @@ export async function sendWelcomeEmail(
       };
     }
 
-    // Extract first name if not provided
-    const userFirstName = firstName || extractFirstName(userMetadata, email);
+    // Try to get first name from candidate's name in database (first part of name)
+    let userFirstName = firstName;
+    if (!userFirstName) {
+      try {
+        const candidate = await getCandidate(email);
+        if (candidate?.name) {
+          // Use first part of candidate's name (before first space)
+          userFirstName = candidate.name.split(' ')[0].trim();
+        }
+      } catch (error) {
+        // If candidate lookup fails, fall back to extractFirstName
+        console.warn(`[SendGrid] Could not fetch candidate for ${email}, using fallback name extraction`);
+      }
+    }
+    
+    // Final fallback to existing extractFirstName logic
+    if (!userFirstName) {
+      userFirstName = extractFirstName(userMetadata, email);
+    }
 
     // Get app URL for unsubscribe link
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
