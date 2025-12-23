@@ -317,7 +317,7 @@ export function ResumeCard({
             <button
               onClick={handleDownloadNewResume}
               disabled={isDownloadingNewResume}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-300 hover:bg-blue-400 text-white rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-400 hover:bg-blue-300 text-white rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{isDownloadingNewResume ? 'Downloading...' : 'Download New Resume'}</span>

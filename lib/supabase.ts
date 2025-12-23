@@ -612,7 +612,7 @@ export async function getResumesForCandidate(candidateId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('id, candidate_id, name, file_name, resume_path, is_active, is_primary, updated_at, created_at')
+    .select('id, candidate_id, name, file_name, resume_path, is_active, is_primary, has_been_enhanced, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_active', true)
     .order('created_at', { ascending: false });

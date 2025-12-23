@@ -610,7 +610,8 @@ function EnhanceResumePageContent() {
         }
       }
 
-      router.push('/resumes');
+      // Force a full page reload to ensure the updated resume status is visible
+      window.location.href = '/resumes';
     } else {
       // First click - clear highlights and show "Finish" button
       setHighlightedFields(new Set());
@@ -621,7 +622,7 @@ function EnhanceResumePageContent() {
       // Mark this resume as enhanced so the download button appears in the list
       if (resumeId) {
         try {
-          await fetch('/api/resumes/mark-enhanced', {
+          const response = await fetch('/api/resumes/mark-enhanced', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -629,8 +630,23 @@ function EnhanceResumePageContent() {
             credentials: 'include',
             body: JSON.stringify({ resumeId }),
           });
+          
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            console.error('Failed to mark resume as enhanced:', errorData?.error || 'Unknown error');
+            toast({
+              title: "Warning",
+              description: "Resume was enhanced but may not show download button. Please refresh the page.",
+              variant: "default",
+            });
+          }
         } catch (error) {
           console.error('Failed to mark resume as enhanced from Finish button:', error);
+          toast({
+            title: "Warning",
+            description: "Resume was enhanced but may not show download button. Please refresh the page.",
+            variant: "default",
+          });
         }
       }
 
@@ -795,7 +811,7 @@ function EnhanceResumePageContent() {
                     <button
                       type="button"
                       onClick={handleDoneEnhancing}
-                      className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-blue-400 rounded-full hover:bg-blue-300 transition-colors cursor-pointer"
                     >
                       <span>{showFinishButton ? 'Finish' : 'Done'}</span>
                     </button>
@@ -833,12 +849,12 @@ function EnhanceResumePageContent() {
                               >
                                 <div className="flex-1">
                                   {suggestion.section && (
-                                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
+                                    <p className="text-[10px] font-bold uppercase tracking-wide text-black mb-0.5">
                                       {suggestion.section}
                                     </p>
                                   )}
                                   <p
-                                    className="text-sm text-gray-900 line-clamp-2"
+                                    className="text-sm text-gray-600 line-clamp-2"
                                   >
                                     {suggestion.suggested || suggestion.original}
                                   </p>
