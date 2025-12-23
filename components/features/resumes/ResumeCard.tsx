@@ -45,7 +45,54 @@ export function ResumeCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [editedName, setEditedName] = useState(resumeName || fileName);
   const [isDownloadingNewResume, setIsDownloadingNewResume] = useState(false);
+  const [docxText, setDocxText] = useState<string | null>(null);
+  const [isLoadingDocx, setIsLoadingDocx] = useState(false);
   const { toast } = useToast();
+
+  // Check if file is DOCX
+  const isDocxFile = fileName.toLowerCase().endsWith('.docx');
+
+  // Load DOCX text when preview opens for DOCX files
+  useEffect(() => {
+    if (isPreviewOpen && isDocxFile && resumeUrl && !docxText && !isLoadingDocx) {
+      setIsLoadingDocx(true);
+      fetch(resumeUrl)
+        .then(response => response.blob())
+        .then(blob => {
+          // Create a new blob with the correct MIME type for DOCX
+          const docxBlob = new Blob([blob], { 
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+          });
+          const formData = new FormData();
+          formData.append('file', docxBlob, fileName);
+          return fetch('/api/upload-resume/extract-text', {
+            method: 'POST',
+            body: formData,
+          });
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Failed to extract text: ${response.statusText}`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          setDocxText(data.text || null);
+          setIsLoadingDocx(false);
+        })
+        .catch(error => {
+          console.error('Failed to extract DOCX text:', error);
+          setIsLoadingDocx(false);
+        });
+    }
+  }, [isPreviewOpen, isDocxFile, resumeUrl, fileName, docxText, isLoadingDocx]);
+
+  // Reset DOCX text when preview closes
+  useEffect(() => {
+    if (!isPreviewOpen) {
+      setDocxText(null);
+    }
+  }, [isPreviewOpen]);
 
   if (!resumeUrl) {
     return null;
@@ -317,7 +364,7 @@ export function ResumeCard({
             <button
               onClick={handleDownloadNewResume}
               disabled={isDownloadingNewResume}
-              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-300 hover:bg-blue-400 text-white rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-400 hover:bg-blue-300 text-white rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{isDownloadingNewResume ? 'Downloading...' : 'Download New Resume'}</span>
@@ -344,11 +391,30 @@ export function ResumeCard({
             </DialogPrimitive.Close>
 
             <div className="w-full h-[80vh]">
-              <iframe
-                src={resumeUrl}
-                className="w-full h-full rounded-lg border border-white/10"
-                title={`Preview of ${fileName}`}
-              />
+              {isDocxFile ? (
+                <div className="w-full h-full rounded-lg border border-white/10 bg-white overflow-auto p-6">
+                  {isLoadingDocx ? (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <div className="w-8 h-8 border-4 border-gray-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+                      <p className="text-sm text-gray-600">Extracting text from DOCX...</p>
+                    </div>
+                  ) : docxText ? (
+                    <pre className="text-sm text-gray-900 whitespace-pre-wrap font-sans leading-relaxed">
+                      {docxText}
+                    </pre>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <p className="text-sm text-gray-600">Failed to load DOCX preview</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <iframe
+                  src={resumeUrl}
+                  className="w-full h-full rounded-lg border border-white/10"
+                  title={`Preview of ${fileName}`}
+                />
+              )}
             </div>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>

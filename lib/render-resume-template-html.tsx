@@ -93,12 +93,6 @@ export function renderResumeTemplateHtml(data: StructuredResumeData): string {
     push(`<div class="contact">${contactParts.join(" | ")}</div>`);
   }
 
-  // Summary
-  if (data.summary && data.summary.trim()) {
-    push("<h2>Summary</h2>");
-    push(`<p>${esc(data.summary.trim())}</p>`);
-  }
-
   // Education
   if (data.education && data.education.length > 0) {
     push("<h2>Education</h2>");

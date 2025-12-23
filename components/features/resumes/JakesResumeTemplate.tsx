@@ -111,24 +111,6 @@ export function JakesResumeTemplate({
           </div>
         </div>
 
-        {/* Summary */}
-        {data.summary && (() => {
-          const fieldPath = 'summary';
-          const suggestionId = getSuggestionId(fieldPath);
-          const highlighted = isHighlighted(fieldPath);
-          const active = isActiveSelection(fieldPath);
-          return (
-            <div
-              className={`mb-3 ${highlighted ? 'px-2 py-1 cursor-pointer' : ''} ${active ? 'border border-yellow-400 rounded bg-yellow-50/70' : ''} ${isBlurred(fieldPath) ? 'filter blur-sm opacity-60' : ''}`}
-              onMouseEnter={highlighted && suggestionId && onHover ? (e) => onHover(suggestionId, e) : undefined}
-              onClick={highlighted && suggestionId && onClick ? () => onClick(suggestionId) : undefined}
-              onMouseLeave={highlighted && onLeave ? onLeave : undefined}
-            >
-              <p className="text-justify text-sm leading-relaxed">{data.summary}</p>
-            </div>
-          );
-        })()}
-
         {/* Education */}
         {data.education.length > 0 && (
           <div className="mb-3">

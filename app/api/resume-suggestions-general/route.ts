@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleAIFileManager } from '@google/generative-ai/server';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { getCandidate } from '@/lib/supabase';
-import { cleanJsonResponse, parseJsonSafely } from '../upload-resume/utils';
+import { cleanJsonResponse, parseJsonSafely, extractDocxText, extractPdfText } from '../upload-resume/utils';
 import type { ResumePatch } from '@/types/resume-patch';
 import type { StructuredResumeData } from '@/types/resume';
 
@@ -20,14 +19,48 @@ interface ResumeSuggestion {
 }
 
 /**
+ * Checks if structured resume data is comprehensive enough to generate suggestions
+ * without needing the raw text file
+ */
+function isStructuredDataComprehensive(data: StructuredResumeData): boolean {
+  // Must have personal info
+  if (!data.personal?.name || !data.personal?.email) {
+    return false;
+  }
+
+  // Should have at least one of: experience, education, skills, or projects
+  const hasExperience = data.experience && data.experience.length > 0;
+  const hasEducation = data.education && data.education.length > 0;
+  const hasSkills = data.skills && data.skills.length > 0;
+  const hasProjects = data.projects && data.projects.length > 0;
+
+  // At least one major section should be present
+  if (!hasExperience && !hasEducation && !hasSkills && !hasProjects) {
+    return false;
+  }
+
+  // If experience exists, it should have descriptions
+  if (hasExperience) {
+    const hasDescriptions = data.experience.some(exp => 
+      exp.description && Array.isArray(exp.description) && exp.description.length > 0
+    );
+    if (!hasDescriptions) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Generates general ATS-optimized resume suggestions using Gemini
  * This version provides general improvements without targeting a specific startup
  */
 async function generateGeneralResumeSuggestions(
-  resumeBuffer: Buffer,
-  resumeMimeType: string,
-  resumeFileName: string,
-  structuredResumeData: StructuredResumeData | null
+  structuredResumeData: StructuredResumeData | null,
+  resumeBuffer?: Buffer,
+  resumeMimeType?: string,
+  resumeFileName?: string
 ): Promise<ResumeSuggestion[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -35,7 +68,6 @@ async function generateGeneralResumeSuggestions(
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const fileManager = new GoogleAIFileManager(apiKey);
 
   // Build structured data context for AI
   const structuredDataContext = structuredResumeData
@@ -138,25 +170,6 @@ Return ONLY valid JSON in this exact format (no markdown, no code blocks):
 Focus on the most impactful changes that would make the biggest difference to this candidate's resume.`;
 
   try {
-    // Upload file to Gemini File API
-    const uploadResult = await fileManager.uploadFile(resumeBuffer, {
-      mimeType: resumeMimeType,
-      displayName: resumeFileName,
-    });
-
-    // Wait for processing
-    let fileMetadata = uploadResult.file;
-    let attempts = 0;
-    while (fileMetadata.state === 'PROCESSING' && attempts < 10) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      fileMetadata = await fileManager.getFile(uploadResult.file.name);
-      attempts++;
-    }
-
-    if (fileMetadata.state === 'FAILED') {
-      throw new Error('File processing failed');
-    }
-
     // Generate suggestions with Gemini 2.0 Flash
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',
@@ -167,23 +180,34 @@ Focus on the most impactful changes that would make the biggest difference to th
       },
     });
 
-    // Generate suggestions without retry logic to reduce API costs
-    // If rate limited, fail fast and let the user know to try again later
-    const result = await model.generateContent([
-      { text: prompt },
-      {
-        fileData: {
-          fileUri: fileMetadata.uri,
-          mimeType: fileMetadata.mimeType,
-        },
-      },
-    ]);
+    let result;
 
-    // Clean up
-    try {
-      await fileManager.deleteFile(uploadResult.file.name);
-    } catch (error) {
-      console.warn('Failed to delete uploaded file:', error);
+    // If structured data is comprehensive, use only that (skip file download/extraction)
+    // This is faster, cheaper, and reduces token usage
+    if (structuredResumeData && isStructuredDataComprehensive(structuredResumeData)) {
+      console.log('Using structured data only - skipping file download and text extraction');
+      result = await model.generateContent([
+        { text: prompt },
+        { text: `\n\nSTRUCTURED RESUME DATA:\n${JSON.stringify(structuredResumeData, null, 2)}` },
+      ]);
+    } else if (resumeBuffer && resumeMimeType) {
+      // Fallback: Extract text from file if structured data is missing or incomplete
+      console.log('Structured data not available or incomplete - extracting text from file');
+      let resumeText: string;
+      if (resumeMimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        resumeText = await extractDocxText(resumeBuffer);
+      } else {
+        // PDF file
+        resumeText = await extractPdfText(resumeBuffer);
+      }
+
+      // Generate suggestions using text content
+      result = await model.generateContent([
+        { text: prompt },
+        { text: `\n\nRESUME CONTENT:\n${resumeText}` },
+      ]);
+    } else {
+      throw new Error('Cannot generate suggestions: structured data is incomplete and file buffer is not available');
     }
 
     // Parse response
@@ -285,7 +309,6 @@ export async function POST(request: NextRequest) {
     const cacheKey = `general-${user.email}-${resumeId}`;
     const cached = suggestionCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log('Returning cached suggestions for', cacheKey);
       return NextResponse.json({
         success: true,
         suggestions: cached.suggestions,
@@ -332,38 +355,48 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Download resume from Supabase Storage
-    const { data: resumeData, error: downloadError } = await supabaseAdmin.storage
-      .from('resumes')
-      .download(resume.resume_path);
-
-    if (downloadError || !resumeData) {
-      console.error('Failed to download resume:', downloadError);
-      return NextResponse.json(
-        { error: 'Failed to retrieve resume file' },
-        { status: 500 }
-      );
-    }
-
-    // Convert blob to buffer
-    const arrayBuffer = await resumeData.arrayBuffer();
-    const resumeBuffer = Buffer.from(arrayBuffer);
-
-    // Determine MIME type from file extension
-    const fileExt = resume.resume_path.split('.').pop()?.toLowerCase();
-    const mimeType = fileExt === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-
     // Get structured resume data - prefer per-resume structured_data, fall back to candidate-level legacy field
     const structuredResumeData = (resume.structured_data ||
       (candidate as any).structured_resume_data ||
       null) as StructuredResumeData | null;
 
+    // Only download file if structured data is not comprehensive
+    let resumeBuffer: Buffer | undefined;
+    let mimeType: string | undefined;
+    
+    if (!structuredResumeData || !isStructuredDataComprehensive(structuredResumeData)) {
+      console.log('Structured data missing or incomplete - downloading file for text extraction');
+      
+      // Download resume from Supabase Storage
+      const { data: resumeData, error: downloadError } = await supabaseAdmin.storage
+        .from('resumes')
+        .download(resume.resume_path);
+
+      if (downloadError || !resumeData) {
+        console.error('Failed to download resume:', downloadError);
+        return NextResponse.json(
+          { error: 'Failed to retrieve resume file' },
+          { status: 500 }
+        );
+      }
+
+      // Convert blob to buffer
+      const arrayBuffer = await resumeData.arrayBuffer();
+      resumeBuffer = Buffer.from(arrayBuffer);
+
+      // Determine MIME type from file extension
+      const fileExt = resume.resume_path.split('.').pop()?.toLowerCase();
+      mimeType = fileExt === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    } else {
+      console.log('Structured data is comprehensive - skipping file download');
+    }
+
     // Generate general suggestions
     const suggestions = await generateGeneralResumeSuggestions(
+      structuredResumeData,
       resumeBuffer,
       mimeType,
-      resume.resume_path,
-      structuredResumeData
+      resume.resume_path
     );
 
     // Cache the suggestions

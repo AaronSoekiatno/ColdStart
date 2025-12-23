@@ -57,23 +57,12 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
     setErrorMessage('');
     setUploadStatus('idle');
 
-    // Create preview for PDF
-    if (selectedFile.type === 'application/pdf') {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFile({
-          file: selectedFile,
-          preview: e.target?.result as string,
-        });
-      };
-      reader.readAsDataURL(selectedFile);
-    } else {
-      // For DOCX, just set the file without preview
-      setFile({
-        file: selectedFile,
-        preview: '',
-      });
-    }
+    // For DOCX files, just set the file without preview
+    // Preview will be available after upload in the resume card
+    setFile({
+      file: selectedFile,
+      preview: '',
+    });
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -322,23 +311,6 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
             </div>
           </div>
 
-          {file.file.type === 'application/pdf' && file.preview && (
-            <div className="border border-foreground/10 rounded-2xl overflow-hidden bg-background/20">
-              <iframe
-                src={file.preview}
-                className="w-full h-96"
-                title="PDF Preview"
-              />
-            </div>
-          )}
-
-          {file.file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && (
-            <div className="border border-foreground/10 rounded-2xl p-12 text-center bg-background/20">
-              <p className="text-sm text-muted-foreground">
-                DOCX files cannot be previewed in the browser
-              </p>
-            </div>
-          )}
         </div>
       )}
 

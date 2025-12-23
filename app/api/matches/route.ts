@@ -540,7 +540,8 @@ export async function GET(request: NextRequest) {
                 .not('name', 'is', null)
                 .not('industry', 'is', null)
                 .not('location', 'is', null)
-                .not('batch', 'is', null);
+                .not('batch', 'is', null)
+                .not('founder_emails', 'is', null);
               return result;
             },
             15000, // 15 second timeout
@@ -883,36 +884,40 @@ export async function GET(request: NextRequest) {
         startup: startup,
         has_job_listings: orderedJobs.length > 0,
         jobs: orderedJobs.map(job => {
-          const jobData = {
+          const jobData: {
+            job_title: string;
+            job_url: string;
+            job_type?: string;
+            salary_range?: string;
+            experience_level?: string;
+            created_at?: string;
+          } = {
             job_title: job.job_title,
             job_url: job.job_url,
             job_type: job.job_type,
             salary_range: job.salary_range,
             experience_level: job.experience_level,
-            created_at: job.created_at,
+            created_at: (job as any).created_at,
           };
-          console.log('[Matches API] Building jobs array item:', {
-            title: jobData.job_title,
-            created_at: jobData.created_at,
-            has_created_at: !!jobData.created_at
-          });
           return jobData;
         }),
         // Keep 'job' for backward compatibility (first job in ordered list)
         job: orderedJobs.length > 0 ? (() => {
-          const jobData = {
+          const jobData: {
+            job_title: string;
+            job_url: string;
+            job_type?: string;
+            salary_range?: string;
+            experience_level?: string;
+            created_at?: string;
+          } = {
             job_title: orderedJobs[0].job_title,
             job_url: orderedJobs[0].job_url,
             job_type: orderedJobs[0].job_type,
             salary_range: orderedJobs[0].salary_range,
             experience_level: orderedJobs[0].experience_level,
-            created_at: orderedJobs[0].created_at,
+            created_at: (orderedJobs[0] as any).created_at,
           };
-          console.log('[Matches API] Building single job object:', {
-            title: jobData.job_title,
-            created_at: jobData.created_at,
-            has_created_at: !!jobData.created_at
-          });
           return jobData;
         })() : null,
       };

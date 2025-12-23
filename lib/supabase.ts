@@ -134,7 +134,7 @@ export function isSubscribed(candidate: {
  * @param candidate - Candidate data
  * @returns The saved candidate record with UUID id
  */
-export async function saveCandidate(candidate: CandidateRow): Promise<{ id: string; email: string; [key: string]: any }> {
+export async function saveCandidate(candidate: Partial<CandidateRow> & { email: string; name: string; skills: string }): Promise<CandidateRow> {
   const client = supabaseAdmin || supabase;
 
   // Normalize fields before saving
@@ -175,12 +175,39 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
     .upsert(upsertData, {
       onConflict: 'email',
     })
-    .select()
+    .select(`
+      id,
+      email,
+      name,
+      skills,
+      location,
+      education_level,
+      university,
+      experience,
+      technical_projects,
+      objectives,
+      job_type,
+      role_type,
+      years_of_experience,
+      onboarding_completed,
+      resume_latex,
+      structured_resume_data,
+      subscription_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id,
+      subscription_current_period_end,
+      created_at
+    `)
     .single();
 
   if (error) {
     console.error('[saveCandidate] Error upserting candidate:', error);
     throw new Error(`Failed to save candidate: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error('Failed to save candidate: No data returned');
   }
 
   console.log('[saveCandidate] Successfully upserted candidate:', {
@@ -189,7 +216,7 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
     has_structured_resume_data: !!data.structured_resume_data,
   });
 
-  return data;
+  return data as CandidateRow;
 }
 
 /**
@@ -217,7 +244,6 @@ export async function getCandidate(email: string) {
       role_type,
       years_of_experience,
       onboarding_completed,
-      resume_path,
       subscription_tier,
       subscription_status,
       stripe_customer_id,
@@ -635,7 +661,7 @@ export async function getResumesForCandidate(candidateId: string) {
 
   const { data, error } = await client
     .from('resumes')
-    .select('id, candidate_id, name, file_name, resume_path, is_active, is_primary, updated_at, created_at')
+    .select('id, candidate_id, name, file_name, resume_path, is_active, is_primary, has_been_enhanced, updated_at, created_at')
     .eq('candidate_id', candidateId)
     .eq('is_active', true)
     .order('created_at', { ascending: false });

@@ -23,12 +23,6 @@ export function structuredResumeToPlainText(data: StructuredResumeData): string 
     lines.push(contactParts.join(" | "));
   }
 
-  // Summary
-  if (data.summary && data.summary.trim().length > 0) {
-    lines.push("", "SUMMARY");
-    lines.push(data.summary.trim());
-  }
-
   // Experience
   if (data.experience && data.experience.length > 0) {
     lines.push("", "EXPERIENCE");
