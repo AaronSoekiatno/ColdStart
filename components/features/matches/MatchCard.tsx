@@ -111,6 +111,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
     });
   }, [match.jobs, match.job]);
 
+  // Check if this is a stealth opportunity (no job listings)
+  const isStealthOpportunity = useMemo(() => {
+    const hasJobs = (match.jobs && match.jobs.length > 0) || match.job?.job_url;
+    return !hasJobs;
+  }, [match.jobs, match.job]);
+
   // Helper to truncate YC description to first two sentences
   const getTruncatedYcDescription = (text?: string | null): string | null => {
     if (!text) return null;
@@ -546,6 +552,15 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                       <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse"></div>
                       <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight">
                         Fresh
+                      </span>
+                    </div>
+                  )}
+                  {/* Stealth Opportunity Badge - Next to company name */}
+                  {isStealthOpportunity && (
+                    <div className="relative inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse"></div>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight">
+                        Stealth
                       </span>
                     </div>
                   )}
