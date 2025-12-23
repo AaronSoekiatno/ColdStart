@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Bookmark, Mail, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Bookmark, Mail, X, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { MatchCard } from './MatchCard';
@@ -48,6 +48,7 @@ interface SavedMatchCardProps {
 export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSaved = true }: SavedMatchCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showFounderDropdown, setShowFounderDropdown] = useState(false);
+  const [founderSelectionError, setFounderSelectionError] = useState<string | null>(null);
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -94,15 +95,17 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
 
   const handleContactFounder = (e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     // If no founders, expand card to show full details
     if (founderData.founderNames.length === 0) {
       setIsExpanded(true);
+      setFounderSelectionError(null);
       return;
     }
 
     // If only one founder with email, navigate directly
     if (founderData.founderNames.length === 1 && founderData.founderEmails[0]) {
+      setFounderSelectionError(null);
       const params = new URLSearchParams();
       params.append('startupId', match.startup?.id || '');
       params.append('matchScore', match.score.toString());
@@ -111,12 +114,23 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
       return;
     }
 
-    // Show dropdown for multiple founders
-    setShowFounderDropdown(true);
+    // If multiple founders
+    if (founderData.founderNames.length > 1) {
+      // If dropdown is already open, show error (user clicked without selecting)
+      if (showFounderDropdown) {
+        setFounderSelectionError("Please select a founder first");
+        return;
+      }
+      // Otherwise, open the dropdown
+      setShowFounderDropdown(true);
+      setFounderSelectionError(null);
+    }
   };
 
   const handleSelectFounder = (index: number) => {
     const founderEmail = founderData.founderEmails[index];
+    // Clear error when a founder is selected
+    setFounderSelectionError(null);
     if (!founderEmail) {
       // If no email, expand card to show full details
       setIsExpanded(true);
@@ -136,7 +150,13 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
       {/* Compact Card Header */}
       <div
         className="p-4 flex items-center gap-4 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => {
+          setIsExpanded(!isExpanded);
+          // Clear error when collapsing the card
+          if (isExpanded) {
+            setFounderSelectionError(null);
+          }
+        }}
       >
         {/* Company Logo */}
         <div className="flex-shrink-0 w-12 h-12 rounded-full bg-blue-300 flex items-center justify-center text-white font-semibold text-lg shadow-sm overflow-hidden relative">
@@ -164,10 +184,7 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
             {match.startup?.name || 'Unknown Startup'}
           </h3>
           <p className="text-sm text-gray-500 truncate">
-            {match.startup?.keywords 
-              ? `${match.startup.keywords.split(',').map((k: string) => k.trim()).join(' • ')} • ${match.startup?.industry} • ${match.startup?.location}`
-              : `${match.startup?.industry} • ${match.startup?.location}`
-            }
+          {match.startup?.location}
           </p>
         </div>
 
@@ -206,6 +223,8 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowFounderDropdown(false);
+                      // Clear error when closing dropdown
+                      setFounderSelectionError(null);
                     }}
                     className="p-1 hover:bg-gray-100 rounded transition-colors"
                     aria-label="Close"
@@ -243,8 +262,17 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
           </div>
         )}
 
-        {/* Saved Button */}
-        <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+        {/* Error Message and Saved Button */}
+        <div className="flex-shrink-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {/* Error Message - shown to the left of save button */}
+          {founderSelectionError && (
+            <div className="flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
+              <p className="text-xs sm:text-sm text-red-600 font-medium whitespace-nowrap">
+                {founderSelectionError}
+              </p>
+            </div>
+          )}
           <button
             onClick={onToggleSave}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -274,6 +302,8 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
             isPremium={isPremium}
             userEmail={userEmail}
             initialIsSaved={true}
+            initialFounderError={founderSelectionError}
+            onFounderError={setFounderSelectionError}
           />
         </div>
       )}
