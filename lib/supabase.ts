@@ -134,7 +134,7 @@ export function isSubscribed(candidate: {
  * @param candidate - Candidate data
  * @returns The saved candidate record with UUID id
  */
-export async function saveCandidate(candidate: CandidateRow): Promise<{ id: string; email: string; [key: string]: any }> {
+export async function saveCandidate(candidate: Partial<CandidateRow> & { email: string; name: string; skills: string }): Promise<CandidateRow> {
   const client = supabaseAdmin || supabase;
 
   // Normalize fields before saving
@@ -189,7 +189,7 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
     has_structured_resume_data: !!data.structured_resume_data,
   });
 
-  return data;
+  return data as CandidateRow;
 }
 
 /**

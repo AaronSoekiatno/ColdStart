@@ -67,16 +67,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if candidate exists, create if not
-    let candidate = await getCandidate(user.email);
-    
+    let candidate: Awaited<ReturnType<typeof getCandidate>> = await getCandidate(user.email);
+
     if (!candidate) {
       // Create a new candidate record with basic info from auth
-      const candidateName = user.user_metadata?.full_name || 
-                           user.user_metadata?.name || 
-                           user.email?.split('@')[0] || 
+      const candidateName = user.user_metadata?.full_name ||
+                           user.user_metadata?.name ||
+                           user.email?.split('@')[0] ||
                            'User';
-      
-      candidate = await saveCandidate({
+
+      const savedCandidate = await saveCandidate({
         email: user.email,
         name: candidateName,
         skills: '',
@@ -86,6 +86,16 @@ export async function POST(request: NextRequest) {
         years_of_experience: yearsOfExperience,
         onboarding_completed: true,
       });
+
+      // Refetch the candidate to get the complete type with required fields
+      candidate = await getCandidate(user.email);
+
+      if (!candidate) {
+        return NextResponse.json(
+          { error: 'Failed to create candidate' },
+          { status: 500 }
+        );
+      }
       
       console.log('Created new candidate during onboarding:', {
         id: candidate.id,

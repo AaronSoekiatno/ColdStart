@@ -56,10 +56,10 @@ export async function POST(request: NextRequest) {
 
     // Get candidate (should exist from onboarding)
     let candidate = await getCandidate(user.email);
-    
+
     if (!candidate) {
       // Create candidate with resume data (shouldn't happen if onboarding completed, but handle it)
-      candidate = await saveCandidate({
+      await saveCandidate({
         email: user.email,
         name: extraction.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
         skills: extraction.skills?.join(', ') || '',
@@ -69,6 +69,16 @@ export async function POST(request: NextRequest) {
         experience: extraction.past_internships?.join(', ') || '',
         technical_projects: extraction.technical_projects?.join(', ') || '',
       });
+
+      // Refetch the candidate to get the complete type with required fields
+      candidate = await getCandidate(user.email);
+
+      if (!candidate) {
+        return NextResponse.json(
+          { error: 'Failed to create candidate' },
+          { status: 500 }
+        );
+      }
     } else {
       // Update candidate with resume data (prioritize resume data, but keep job_type and role_type from onboarding)
       await saveCandidate({

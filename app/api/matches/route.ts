@@ -845,7 +845,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Function to order jobs by role preferences (highest score first)
-    const orderJobsByPreference = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }> => {
+    const orderJobsByPreference = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }> => {
       if (jobs.length === 0) return [];
       
       // Calculate score for each job and sort
@@ -883,7 +883,14 @@ export async function GET(request: NextRequest) {
         startup: startup,
         has_job_listings: orderedJobs.length > 0,
         jobs: orderedJobs.map(job => {
-          const jobData = {
+          const jobData: {
+            job_title: string;
+            job_url: string;
+            job_type?: string;
+            salary_range?: string;
+            experience_level?: string;
+            created_at?: string;
+          } = {
             job_title: job.job_title,
             job_url: job.job_url,
             job_type: job.job_type,
@@ -900,7 +907,14 @@ export async function GET(request: NextRequest) {
         }),
         // Keep 'job' for backward compatibility (first job in ordered list)
         job: orderedJobs.length > 0 ? (() => {
-          const jobData = {
+          const jobData: {
+            job_title: string;
+            job_url: string;
+            job_type?: string;
+            salary_range?: string;
+            experience_level?: string;
+            created_at?: string;
+          } = {
             job_title: orderedJobs[0].job_title,
             job_url: orderedJobs[0].job_url,
             job_type: orderedJobs[0].job_type,
