@@ -97,8 +97,8 @@ class MemoryCache {
 }
 
 // Singleton instances for different cache purposes
-// Matches cache: 5 minute TTL, 100 entries
-export const matchesCache = new MemoryCache(100, 5 * 60 * 1000);
+// Matches cache: 12 hour TTL, 100 entries (matches are generated overnight, don't need frequent refresh)
+export const matchesCache = new MemoryCache(100, 12 * 60 * 60 * 1000);
 
 // Startups cache: 10 minute TTL, 500 entries (startup data changes rarely)
 export const startupsCache = new MemoryCache(500, 10 * 60 * 1000);
