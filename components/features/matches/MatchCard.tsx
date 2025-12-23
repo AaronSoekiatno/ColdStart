@@ -494,12 +494,27 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                       return;
                     }
 
+                    // Log selection details for debugging
+                    console.log('[MatchCard] Contact Founder clicked:', {
+                      selectedFounderIndex,
+                      founderNames,
+                      founderEmails,
+                      selectedFounderName: founderNames[selectedFounderIndex],
+                      selectedFounderEmail: founderEmails[selectedFounderIndex],
+                      allFounderEmails: founderEmails,
+                      startupId: match.startup.id,
+                    });
+
                     // Clear any error and proceed
                     setFounderSelectionError(null);
                     const params = new URLSearchParams();
                     params.append('startupId', match.startup.id);
                     params.append('matchScore', match.score.toString());
                     params.append('founderEmail', founderEmails[selectedFounderIndex]);
+                    console.log('[MatchCard] Navigating with params:', {
+                      founderEmail: founderEmails[selectedFounderIndex],
+                      fullParams: params.toString(),
+                    });
                     router.push(`/generate-email?${params.toString()}`);
                   }
                 }}
@@ -755,7 +770,17 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                   e.stopPropagation();
                 }
                 // Single selection only - toggle if clicking same, select if different
-                setSelectedFounderIndex(prev => prev === index ? null : index);
+                const newIndex = selectedFounderIndex === index ? null : index;
+                console.log('[MatchCard] Founder selection changed:', {
+                  clickedIndex: index,
+                  previousIndex: selectedFounderIndex,
+                  newIndex,
+                  founderName: founderNames[index],
+                  founderEmail: founderEmails[index],
+                  allFounderNames,
+                  allFounderEmails: founderEmails,
+                });
+                setSelectedFounderIndex(newIndex);
                 // Clear error when a founder is selected
                 setFounderSelectionError(null);
               };

@@ -41,12 +41,13 @@ export interface StartupInfo {
   location?: string;
   website?: string;
   tags?: string[];
-  founderName?: string; // Full founder name (may include "Dr.", "Prof.", etc.)
+  founderName?: string; // The matched founder name for this email (may include "Dr.", "Prof.", etc.)
+  founderNames?: string[]; // All founder names (optional, for reference)
   scrapedContext?: string; // Scraped intel/news about the startup
   keywords?: string[]; // Keywords about the startup
   batch?: string; // YC batch (e.g., "Summer 2025")
-  founderEmails?: string; // Comma-separated founder emails
-  founderLinkedIn?: string; // Comma-separated LinkedIn URLs
+  founderEmails?: string[]; // Array of founder emails
+  founderLinkedIn?: string[]; // Array of LinkedIn URLs
   yc_description?: string; // YC description of the startup
 }
 
@@ -289,9 +290,12 @@ That's it. Keep it short and make every sentence count.
 - Always sign with the candidate's name: ${candidate.name}
 
 ### NAMING RULES
+- CRITICAL: Use the EXACT founder name from the "Founder:" field in the DATA INPUTS section above
+- Extract the first name from that founder name for the greeting
 - If founder name has "Dr." or "Prof." → Use it: "Hi Dr. Smith,"
-- Otherwise → First name only: "Hi Alex,"
+- Otherwise → First name only: "Hi Alex," (extract from the founder name provided)
 - NEVER: "Dear Sir/Madam", "To whom it may concern", "Hi [Company] team"
+- NEVER: Use a different founder name than the one provided in DATA INPUTS
 
 ### DATA INPUTS
 
@@ -446,7 +450,10 @@ This persona lives or dies by the subject. It must feel like a peer reaching out
 Before generating: Could this email ONLY be sent to this specific company? If you could swap the company name and send it elsewhere, it fails.
 
 ### NAMING RULES
-- First name only: "Hi Alex,"
+- CRITICAL: Use the EXACT founder name from the "Founder:" field in the DATA INPUTS section above
+- Extract the first name from that founder name for the greeting
+- First name only: "Hi Alex," (extract from the founder name provided)
+- NEVER: Use a different founder name than the one provided in DATA INPUTS
 - Exception: Keep "Dr." or "Prof." if present
 
 ### DATA INPUTS
@@ -637,9 +644,11 @@ The email should be useful to them even if they don't hire you. They should lear
 - Always sign with the candidate's name: ${candidate.name}
 
 ### NAMING RULES
-- First name unless they have "Dr." or "Prof."
+- CRITICAL: Use the EXACT founder name from the "Founder:" field in the DATA INPUTS section above
+- Extract the first name from that founder name for the greeting
 - If founder name has "Dr." or "Prof." → Use it: "Hi Dr. Smith,"
-- Otherwise → First name only: "Hi Alex,"
+- Otherwise → First name only: "Hi Alex," (extract from the founder name provided)
+- NEVER: Use a different founder name than the one provided in DATA INPUTS
 
 ### DATA INPUTS
 

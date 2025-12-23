@@ -152,10 +152,54 @@ export async function POST(request: NextRequest) {
       // Get primary/current resume for resume_full_text
       const resume = await getPrimaryResumeForCandidate(candidate.id);
       
-      // Extract founder name (use first founder if multiple)
-      const founderName = startup.founder_names
-        ? startup.founder_names.split(',')[0].trim()
-        : undefined;
+      // Extract founder name - match to target email if available, otherwise use first founder
+      let founderName = undefined;
+      if (startup.founder_names) {
+        if (targetEmail && startup.founder_emails) {
+          // Match the target email to the correct founder name
+          const founderNames = startup.founder_names.split(',').map((n: string) => n.trim());
+          const founderEmails = startup.founder_emails.split(',').map((e: string) => e.trim());
+          console.log('[Founder Name Matching] Attempting to match founder name to email:', {
+            targetEmail,
+            founderEmails,
+            founderNames,
+            startupId: startup.id,
+            startupName: startup.name,
+          });
+          const emailIndex = founderEmails.indexOf(targetEmail);
+          if (emailIndex !== -1 && founderNames[emailIndex]) {
+            founderName = founderNames[emailIndex];
+            console.log('[Founder Name Matching] ✅ Successfully matched email to founder:', {
+              email: targetEmail,
+              founderName,
+              index: emailIndex,
+            });
+          } else {
+            // Fallback to first founder if email doesn't match
+            founderName = founderNames[0];
+            console.log('[Founder Name Matching] ⚠️ Fallback to first founder - email not found in founder_emails:', {
+              targetEmail,
+              founderEmails,
+              usingFounderName: founderName,
+              emailIndex,
+            });
+          }
+        } else {
+          // No email matching possible, use first founder
+          founderName = startup.founder_names.split(',')[0].trim();
+          console.log('[Founder Name Matching] ⚠️ Fallback to first founder - missing targetEmail or founder_emails:', {
+            hasTargetEmail: !!targetEmail,
+            hasFounderEmails: !!startup.founder_emails,
+            usingFounderName: founderName,
+            startupId: startup.id,
+          });
+        }
+      } else {
+        console.log('[Founder Name Matching] ⚠️ No founder_names available for startup:', {
+          startupId: startup.id,
+          startupName: startup.name,
+        });
+      }
 
       // Generate email as before
       // Gemini will intelligently extract links from resume text

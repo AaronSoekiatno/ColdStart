@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { startupId, matchScore, persona } = await request.json();
+    const { startupId, matchScore, persona, founderEmail: providedFounderEmail } = await request.json();
 
     if (!startupId || matchScore === undefined) {
       return new Response(
@@ -316,17 +316,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Decide which email address to use (real or guessed)
-    const { email: targetEmail } = guessFounderEmailFromStartup(startup);
-
-    if (!targetEmail) {
-      return new Response(
-        JSON.stringify({
-          error:
-            'Founder email not available for this startup and could not be guessed from first name + website.',
-        }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    // Use provided founder email if available, otherwise guess
+    let targetEmail: string;
+    if (providedFounderEmail) {
+      targetEmail = providedFounderEmail;
+      console.log('[Founder Email] Using provided founder email:', targetEmail);
+    } else {
+      const { email: guessedEmail } = guessFounderEmailFromStartup(startup);
+      if (!guessedEmail) {
+        return new Response(
+          JSON.stringify({
+            error:
+              'Founder email not available for this startup and could not be guessed from first name + website.',
+          }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+      targetEmail = guessedEmail;
+      console.log('[Founder Email] Guessed founder email:', targetEmail);
     }
 
     // Generate signed URL for resume preview (get primary/current resume)
@@ -375,10 +382,54 @@ export async function POST(request: NextRequest) {
             encoder.encode(`data: ${JSON.stringify({ type: 'metadata', targetEmail, resumeUrl })}\n\n`)
           );
 
-          // Extract founder name (use first founder if multiple)
-          const founderName = startup.founder_names
-            ? startup.founder_names.split(',')[0].trim()
-            : undefined;
+          // Extract founder name - match to target email if available, otherwise use first founder
+          let founderName = undefined;
+          if (startup.founder_names) {
+            if (targetEmail && startup.founder_emails) {
+              // Match the target email to the correct founder name
+              const founderNames = startup.founder_names.split(',').map((n: string) => n.trim());
+              const founderEmails = startup.founder_emails.split(',').map((e: string) => e.trim());
+              console.log('[Founder Name Matching] Attempting to match founder name to email:', {
+                targetEmail,
+                founderEmails,
+                founderNames,
+                startupId: startup.id,
+                startupName: startup.name,
+              });
+              const emailIndex = founderEmails.indexOf(targetEmail);
+              if (emailIndex !== -1 && founderNames[emailIndex]) {
+                founderName = founderNames[emailIndex];
+                console.log('[Founder Name Matching] ✅ Successfully matched email to founder:', {
+                  email: targetEmail,
+                  founderName,
+                  index: emailIndex,
+                });
+              } else {
+                // Fallback to first founder if email doesn't match
+                founderName = founderNames[0];
+                console.log('[Founder Name Matching] ⚠️ Fallback to first founder - email not found in founder_emails:', {
+                  targetEmail,
+                  founderEmails,
+                  usingFounderName: founderName,
+                  emailIndex,
+                });
+              }
+            } else {
+              // No email matching possible, use first founder
+              founderName = startup.founder_names.split(',')[0].trim();
+              console.log('[Founder Name Matching] ⚠️ Fallback to first founder - missing targetEmail or founder_emails:', {
+                hasTargetEmail: !!targetEmail,
+                hasFounderEmails: !!startup.founder_emails,
+                usingFounderName: founderName,
+                startupId: startup.id,
+              });
+            }
+          } else {
+            console.log('[Founder Name Matching] ⚠️ No founder_names available for startup:', {
+              startupId: startup.id,
+              startupName: startup.name,
+            });
+          }
 
           // Stream the email generation
           let fullText = '';

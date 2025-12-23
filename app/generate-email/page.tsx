@@ -156,6 +156,7 @@ function GenerateEmailPageContent() {
 
       // Use streaming endpoint
       console.log(`[Email Preview] Requesting email generation with persona: '${currentPersona}' (from URL param: '${personaParam}', state: '${emailPersona}') for startupId: ${startupId}`);
+      console.log(`[Email Preview] Founder email from URL: '${founderEmail}'`);
       const response = await fetch("/api/send-email/preview-stream", {
         method: 'POST',
         headers: {
@@ -166,6 +167,7 @@ function GenerateEmailPageContent() {
           startupId,
           matchScore,
           persona: currentPersona,
+          founderEmail: founderEmail || undefined,
         }),
       });
 
