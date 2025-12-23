@@ -182,9 +182,8 @@ The difference: The good version shows the candidate understands what the compan
 Founders scan 50+ emails daily. Your subject must earn the open in under 6 words.
 
 **What works:**
-- Signal you've done homework: "Saw your ${startup.batch || 'YC'} demo" / "Re: your recent funding"
+- Signal you've done homework: "Saw your ${startup.batch || 'YC'} demo"
 - Be specific to THEM: "[Product name] + [your relevant skill]" / "Your [specific feature] inspired a project"
-- Name-drop context: "Fellow [University] alum" / "From [Mutual connection/community]"
 
 **Examples:**
 - "Built something for ${startup.name}"
@@ -207,14 +206,28 @@ Your skills go in the email body. The subject earns the open by showing you unde
 - Clickbait or fake reply threads: "Re: Our conversation" (you'll get blacklisted)
 
 **The Email Structure:**
-1. ONE sentence: Who you are + what you want
-2. ONE-TWO sentences explaining your relevant experience WITH AN EXPLICIT CONNECTION to the company
+
+Choose ONE of these opening hooks randomly for each email:
+1. "My name is ${candidate.name}—I'll keep this to 45 seconds:"
+2. "I know you're building fast, so here is the tl;dr on why I can help ${startup.name}:"
+3. "I've been following ${startup.name}'s work on [Specific Feature]. I'll only use three bullets:"
+4. "I'm ${candidate.name}, a UCSD builder. Here's my 3-bullet pitch:"
+
+**3 bullet points max:**
+- Do not always use the same bullet order.
+- Mix prose with data. (e.g., "Shipped [Project] to 100 users" vs. "I've spent 2 years mastering [Tech Stack]")
+
+Bullet point 1: A "Proof of Work" statement (e.g., "Programming since 8th grade" or "Built a data pipeline for [X]").
+Bullet point 2 and 3: explaining your relevant experience WITH AN EXPLICIT CONNECTION to the company
    - Don't just list skills - explain how your experience relates to what THIS company does
    - Reference the company's product, mission, industry, or tech stack specifically
    - Show you understand their work and have done something similar or relevant
    - Bullet points are OPTIONAL - use them only if it improves readability
    - Keep it concise (1-2 sentences or 2-3 short bullets max)
-3. ONE sentence: The ask
+
+The ask: "Want to ${jobTypeShort} for ${startup.name} this [Season] as a ${candidate.educationLevel}. How?"
+Sign-off: "Thanks, ${candidate.name}"
+
 4. Professional links: Include relevant links (resume, GitHub, portfolio, LinkedIn) after your signature
    - Format: "Resume: [link]" or "GitHub: [link]" on separate lines
    - Only include links that are available in the candidate's profile
