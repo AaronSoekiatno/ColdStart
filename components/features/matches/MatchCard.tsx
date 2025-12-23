@@ -66,9 +66,11 @@ interface MatchCardProps {
   isPremium?: boolean;
   userEmail?: string;
   initialIsSaved?: boolean;
+  initialFounderError?: string | null;
+  onFounderError?: (error: string | null) => void;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError }: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -78,7 +80,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
   // Single founder selection (always single selection for all users)
   const [selectedFounderIndex, setSelectedFounderIndex] = useState<number | null>(null);
   // Track error message for founder selection
-  const [founderSelectionError, setFounderSelectionError] = useState<string | null>(null);
+  const [founderSelectionError, setFounderSelectionError] = useState<string | null>(initialFounderError);
   // Track failed image loads to fall back to placeholder
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   // Track loaded images to show them once they're ready
@@ -484,18 +486,24 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                   if (match.startup?.id) {
                     // Check if a founder is selected
                     if (selectedFounderIndex === null) {
-                      setFounderSelectionError("Please select a founder first");
+                      const errorMsg = "Please select a founder first";
+                      setFounderSelectionError(errorMsg);
+                      onFounderError?.(errorMsg);
                       return;
                     }
 
                     // Check if the selected founder has an email
                     if (!founderEmails[selectedFounderIndex]) {
-                      setFounderSelectionError("Selected founder has no email");
+                      const errorMsg = "Selected founder has no email";
+                      setFounderSelectionError(errorMsg);
+                      onFounderError?.(errorMsg);
                       return;
                     }
 
                     // Clear any error and proceed
                     setFounderSelectionError(null);
+                onFounderError?.(null);
+                    onFounderError?.(null);
                     const params = new URLSearchParams();
                     params.append('startupId', match.startup.id);
                     params.append('matchScore', match.score.toString());
@@ -758,6 +766,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                 setSelectedFounderIndex(prev => prev === index ? null : index);
                 // Clear error when a founder is selected
                 setFounderSelectionError(null);
+                onFounderError?.(null);
               };
 
               const handleCardClick = (e: React.MouseEvent) => {

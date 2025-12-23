@@ -258,7 +258,7 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
     switch (status) {
       case 'sent': return 'bg-gray-100 text-gray-700 border-gray-200';
       case 'responded': return 'bg-green-100 text-green-700 border-green-200';
-      case 'connected': return 'bg-blue-300 text-white border-blue-300';
+      case 'connected': return 'bg-green-100 text-green-700 border-green-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
   };
@@ -437,7 +437,7 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
                       <DropdownMenuItem
                         className={`cursor-pointer font-medium w-full px-4 py-2 border-b border-gray-200 rounded-t-2xl flex items-center justify-between ${
                           email.status === 'sent'
-                            ? 'bg-blue-300 text-white hover:bg-blue-300 focus:bg-blue-300'
+                            ? 'bg-gray-300 text-white hover:bg-gray-400 focus:bg-gray-400'
                             : 'text-black hover:text-black hover:bg-gray-50 focus:bg-gray-200 focus:text-black'
                         }`}
                         onSelect={() => updateEmailStatus(email.id, 'sent')}
@@ -448,7 +448,7 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
                       <DropdownMenuItem
                         className={`cursor-pointer font-medium w-full px-4 py-2 border-b border-gray-200 flex items-center justify-between ${
                           email.status === 'responded'
-                            ? 'bg-blue-300 text-white hover:bg-blue-300 focus:bg-blue-300'
+                            ? 'bg-gray-300 text-white hover:bg-gray-400 focus:bg-gray-400'
                             : 'text-black hover:text-black hover:bg-gray-50 focus:bg-gray-200 focus:text-black'
                         }`}
                         onSelect={() => updateEmailStatus(email.id, 'responded')}
@@ -459,8 +459,8 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
                       <DropdownMenuItem
                         className={`cursor-pointer font-medium w-full px-4 py-2 rounded-b-2xl flex items-center justify-between ${
                           email.status === 'connected'
-                            ? 'bg-blue-300 text-white hover:bg-blue-300 focus:bg-blue-300'
-                            : 'text-black hover:text-black hover:bg-gray-10 focus:bg-gray-200 focus:text-black'
+                            ? 'bg-gray-300 text-white hover:bg-gray-400 focus:bg-gray-400'
+                            : 'text-black hover:text-black hover:bg-gray-50 focus:bg-gray-200 focus:text-black'
                         }`}
                         onSelect={() => updateEmailStatus(email.id, 'connected')}
                       >
@@ -472,8 +472,11 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
                 </div>
 
                 {/* Timestamp */}
-                <div className="flex-shrink-0 text-sm text-gray-500 w-20 text-right">
-                  {getRelativeTime(email.sent_at)}
+                <div className="flex-shrink-0 flex items-center gap-2">
+                  <div className="text-sm text-gray-500 w-20 text-right">
+                    {getRelativeTime(email.sent_at)}
+                  </div>
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
                 </div>
               </div>
 

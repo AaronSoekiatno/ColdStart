@@ -75,11 +75,7 @@ export async function POST(request: NextRequest) {
                            user.user_metadata?.name ||
                            user.email?.split('@')[0] ||
                            'User';
-<<<<<<< HEAD
       
-=======
-
->>>>>>> ae9610b25f7387c0ad4ee562dae32c35ac232e48
       const savedCandidate = await saveCandidate({
         email: user.email,
         name: candidateName,
@@ -101,13 +97,6 @@ export async function POST(request: NextRequest) {
         );
       }
       
-      // Fetch the candidate again to get the same structure as getCandidate returns
-      candidate = await getCandidate(user.email);
-      
-      if (!candidate) {
-        throw new Error('Failed to retrieve newly created candidate');
-      }
-      
       console.log('Created new candidate during onboarding:', {
         id: candidate.id,
         email: candidate.email,
@@ -116,21 +105,29 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Update existing candidate's job_type and role_type
-      const { error: updateError } = await supabaseAdmin
-        .from('candidates')
-        .update({ 
-          objectives: objectives,
-          job_type: jobType,
-          role_type: roleTypes,
-          years_of_experience: yearsOfExperience,
-          onboarding_completed: true,
-        })
-        .eq('email', user.email);
-
-      if (updateError) {
-        console.error('Error updating onboarding preferences:', updateError);
+      await saveCandidate({
+        email: user.email,
+        name: candidate.name,
+        skills: candidate.skills || '',
+        objectives: objectives,
+        job_type: jobType,
+        role_type: roleTypes,
+        years_of_experience: yearsOfExperience,
+        onboarding_completed: true,
+        // Preserve existing fields
+        location: candidate.location,
+        education_level: candidate.education_level,
+        university: candidate.university,
+        experience: candidate.experience,
+        technical_projects: candidate.technical_projects,
+      });
+      
+      // Refetch the candidate to get updated data
+      candidate = await getCandidate(user.email);
+      
+      if (!candidate) {
         return NextResponse.json(
-          { error: 'Failed to update preferences' },
+          { error: 'Failed to update candidate' },
           { status: 500 }
         );
       }

@@ -161,6 +161,7 @@ export async function POST(request: NextRequest) {
         file_name: fileName,
         resume_path: resumePath,
         resume_full_text: rawText,
+        structured_data: structuredResumeData,
         is_active: true,
         is_primary: shouldSetAsPrimary,
       });
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
             location: extraction.location || '',
             education_level: extraction.education_level || '',
             university: extraction.university || '',
-            experience: extraction.past_internships?.join(', ') || '',
+            experience: extraction.experience?.join(', ') || '',
             technical_projects: extraction.technical_projects?.join(', ') || '',
           }
         );

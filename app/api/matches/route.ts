@@ -123,7 +123,6 @@ export async function GET(request: NextRequest) {
     }>(cacheKey);
     
     if (cached) {
-      console.log(`[Matches API] ✅ Cache HIT for ${cacheKey} - skipping database queries`);
       return NextResponse.json(cached, {
         headers: {
           'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
@@ -132,8 +131,6 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    
-    console.log(`[Matches API] ❌ Cache MISS for ${cacheKey} - fetching from database`);
 
     // Get candidate ID and role preferences
     const candidateResult = await withTimeoutAndRetry<{ id: string; role_type: string[] | null }>(
@@ -324,7 +321,6 @@ export async function GET(request: NextRequest) {
         },
       };
       matchesCache.set(cacheKey, emptyResponse);
-      console.log(`[Matches API] 💾 Cached empty response for ${cacheKey}`);
       
       return NextResponse.json(emptyResponse, {
         headers: {
@@ -783,11 +779,6 @@ export async function GET(request: NextRequest) {
               experience_level: job.experience_level || undefined,
               created_at: job.created_at || undefined,
             };
-            console.log('[Matches API] Unlinked job (exact match):', {
-              title: jobData.job_title,
-              created_at: jobData.created_at,
-              has_created_at: !!jobData.created_at
-            });
             jobsByStartupId[matchingStartupId].push(jobData);
             startupsWithJobs.add(matchingStartupId);
           }
@@ -1006,7 +997,6 @@ export async function GET(request: NextRequest) {
 
     // Cache the response for 5 minutes (default TTL from matchesCache)
     matchesCache.set(cacheKey, response);
-    console.log(`[Matches API] 💾 Cached response for ${cacheKey} - ${matches.length} matches`);
 
     return NextResponse.json(response, {
       headers: {

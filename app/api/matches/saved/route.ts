@@ -31,18 +31,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log('[Saved Matches GET] Fetching saved matches for user:', user.id);
-
     // First, let's check if there are any saved matches at all for this user
     const { data: rawSavedMatches, error: rawError } = await supabase
       .from('saved_matches')
       .select('id, match_id, saved_at')
       .eq('user_id', user.id);
 
-    console.log('[Saved Matches GET] Raw saved_matches count (before join):', rawSavedMatches?.length || 0);
-    if (rawSavedMatches && rawSavedMatches.length > 0) {
-      console.log('[Saved Matches GET] Match IDs in saved_matches:', rawSavedMatches.map((s: any) => s.match_id));
-    }
     if (rawError) {
       console.error('[Saved Matches GET] Error fetching raw saved matches:', rawError);
     }
@@ -56,7 +50,6 @@ export async function GET(req: NextRequest) {
 
     // Get the match IDs
     const matchIds = rawSavedMatches.map((s: any) => s.match_id).filter((id: any) => !!id);
-    console.log('[Saved Matches GET] Fetching matches for IDs:', matchIds);
 
     // Fetch matches and their startups separately to avoid join issues
     if (!supabaseAdmin) {
@@ -71,7 +64,6 @@ export async function GET(req: NextRequest) {
       .select('id, score, matched_at, startup_id')
       .in('id', matchIds);
 
-    console.log('[Saved Matches GET] Matches found:', matches?.length || 0);
     if (matchesError) {
       console.error('[Saved Matches GET] Error fetching matches:', matchesError);
     }
@@ -88,8 +80,6 @@ export async function GET(req: NextRequest) {
     const matchStartupIds = matches
       .map((m: any) => m.startup_id)
       .filter((id: string | null): id is string => !!id);
-
-    console.log('[Saved Matches GET] Startup IDs found:', matchStartupIds.length);
 
     // Fetch startups
     const { data: startups, error: startupsError } = await supabaseAdmin
@@ -122,7 +112,6 @@ export async function GET(req: NextRequest) {
       .not('location', 'is', null)
       .not('batch', 'is', null);
 
-    console.log('[Saved Matches GET] Startups found:', startups?.length || 0);
     if (startupsError) {
       console.error('[Saved Matches GET] Error fetching startups:', startupsError);
     }
@@ -152,15 +141,11 @@ export async function GET(req: NextRequest) {
       })
       .filter((s: any) => s !== null);
 
-    console.log('[Saved Matches API] Combined savedMatches count:', savedMatches.length);
-
     // Get startup IDs from the combined data
     const startupIds = savedMatches
       .map((saved: any) => saved.matches?.startup_id)
       .filter((id: string | null | undefined): id is string => !!id);
     
-    console.log('[Saved Matches API] Startup IDs found:', startupIds.length);
-
     // Fetch jobs for these startups to determine has_job_listings
     const jobsByStartupId: Record<string, Array<{
       job_title: string;
@@ -234,8 +219,6 @@ export async function GET(req: NextRequest) {
       })
       .filter((match: any): match is NonNullable<typeof match> => match !== null);
     
-    console.log('[Saved Matches API] Transformed matches count:', transformedMatches.length);
-
     return NextResponse.json({
       matches: transformedMatches,
       count: transformedMatches.length,
