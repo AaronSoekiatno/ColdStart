@@ -160,10 +160,25 @@ async function main() {
   console.log(`📊 Fetching up to ${limit} startups from Supabase...\n`);
 
   try {
-    // Fetch startups from Supabase
+    // Fetch startups from Supabase (only fields needed for embeddings)
     const { data: startups, error } = await supabase
       .from('startups')
-      .select('*')
+      .select(`
+        id,
+        name,
+        description,
+        round_type,
+        funding_amount,
+        location,
+        industry,
+        business_type,
+        team_size,
+        tech_stack,
+        founder_backgrounds,
+        website_keywords,
+        hiring_roles,
+        website
+      `)
       .limit(limit);
 
     if (error) {

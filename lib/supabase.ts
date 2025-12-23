@@ -195,13 +195,36 @@ export async function saveCandidate(candidate: CandidateRow): Promise<{ id: stri
 /**
  * Get a candidate by email
  * Explicitly selects subscription_tier and subscription_status from candidates table
+ * Excludes large text fields (structured_resume_data, resume_latex) to reduce egress
  */
 export async function getCandidate(email: string) {
   const client = supabaseAdmin || supabase;
   
   const { data, error } = await client
     .from('candidates')
-    .select('*, subscription_tier, subscription_status')
+    .select(`
+      id,
+      email,
+      name,
+      skills,
+      location,
+      education_level,
+      university,
+      experience,
+      technical_projects,
+      objectives,
+      job_type,
+      role_type,
+      years_of_experience,
+      onboarding_completed,
+      resume_path,
+      subscription_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id,
+      subscription_current_period_end,
+      created_at
+    `)
     .eq('email', email)
     .single();
 
@@ -253,7 +276,30 @@ export async function saveStartup(startup: StartupRow) {
   // FIRST: Check if startup already exists in Supabase
   const { data: existing, error: fetchError } = await client
     .from('startups')
-    .select('*')
+    .select(`
+      id,
+      name,
+      industry,
+      description,
+      round_type,
+      funding_stage,
+      funding_amount,
+      location,
+      website,
+      keywords,
+      tags,
+      founder_emails,
+      founder_names,
+      founder_linkedin,
+      batch,
+      date_raised,
+      yc_link,
+      company_logo,
+      business_type,
+      team_size,
+      hiring_roles,
+      created_at
+    `)
     .eq('id', startup.id)
     .single();
 
@@ -353,7 +399,28 @@ export async function getStartup(id: string) {
   
   const { data, error } = await client
     .from('startups')
-    .select('*')
+    .select(`
+      id,
+      name,
+      industry,
+      description,
+      round_type,
+      funding_amount,
+      location,
+      website,
+      keywords,
+      founder_emails,
+      founder_names,
+      founder_linkedin,
+      batch,
+      date_raised,
+      yc_link,
+      company_logo,
+      business_type,
+      team_size,
+      hiring_roles,
+      created_at
+    `)
     .eq('id', id)
     .single();
 
@@ -376,7 +443,30 @@ export async function getStartupByName(name: string) {
   // Use case-insensitive search
   const { data, error } = await client
     .from('startups')
-    .select('*')
+    .select(`
+      id,
+      name,
+      industry,
+      description,
+      round_type,
+      funding_stage,
+      funding_amount,
+      location,
+      website,
+      keywords,
+      tags,
+      founder_emails,
+      founder_names,
+      founder_linkedin,
+      batch,
+      date_raised,
+      yc_link,
+      company_logo,
+      business_type,
+      team_size,
+      hiring_roles,
+      created_at
+    `)
     .ilike('name', name)
     .limit(1)
     .single();

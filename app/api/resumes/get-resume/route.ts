@@ -67,10 +67,10 @@ export async function GET(request: NextRequest) {
       serviceRoleKey
     );
 
-    // Get the resume from database
+    // Get the resume from database (exclude resume_full_text to reduce egress)
     const { data: resume, error: resumeError } = await supabaseAdmin
       .from('resumes')
-      .select('*')
+      .select('id, candidate_id, name, file_name, resume_path, structured_data, is_active, is_primary, created_at, updated_at')
       .eq('id', resumeId)
       .single();
 
@@ -91,12 +91,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Return the resume text and structured data
+    // Return the resume metadata and structured data (full_text excluded to reduce egress)
     return NextResponse.json({
       success: true,
-      resumeText: resume.full_text,
+      // Note: resume_full_text excluded to reduce database egress
       // Prefer per-resume structured_data; fall back to legacy candidate-level structured_resume_data
       structuredResumeData: resume.structured_data || (candidate as any).structured_resume_data || null,
+      resumeMetadata: {
+        id: resume.id,
+        name: resume.name,
+        fileName: resume.file_name,
+        resumePath: resume.resume_path,
+        isActive: resume.is_active,
+        isPrimary: resume.is_primary,
+        createdAt: resume.created_at,
+        updatedAt: resume.updated_at,
+      },
     });
   } catch (error) {
     console.error('Error in get-resume API:', error);

@@ -1917,11 +1917,18 @@ Examples:
     if args.skip_directory:
         print("📋 Getting companies from startups3 table (skipping directory scraping)...")
         try:
-            # Get all companies from startups3 table
-            result = supabase.table("startups3").select("id, name, batch").execute()
+            # Get companies from startups3 table with pagination to prevent excessive egress
+            # Default to 1000 max if no limit specified to avoid fetching entire table
+            query_limit = limit if limit else 1000
+            
+            print(f"   📊 Fetching up to {query_limit} startups from database...")
+            result = supabase.table("startups3").select("id, name, batch").limit(query_limit).execute()
+            
             if not result.data:
                 print("⚠️  No companies found in startups3 table")
                 return
+            
+            print(f"   ✅ Retrieved {len(result.data)} startups from database (~{len(result.data) * 50} bytes)")
             
             companies = []
             for startup in result.data:
@@ -1943,10 +1950,7 @@ Examples:
                     "startup_id": startup.get("id")
                 })
             
-            if limit:
-                companies = companies[:limit]
-            
-            print(f"✅ Found {len(companies)} companies in startups3 table")
+            print(f"✅ Prepared {len(companies)} companies for processing")
         except Exception as e:
             print(f"❌ Error getting companies from database: {e}")
             import traceback
