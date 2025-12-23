@@ -59,9 +59,10 @@ export async function POST(request: NextRequest) {
     
     if (!candidate) {
       // Create candidate with resume data (shouldn't happen if onboarding completed, but handle it)
-      candidate = await saveCandidate({
+      const candidateName = extraction.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User';
+      await saveCandidate({
         email: user.email,
-        name: extraction.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        name: candidateName,
         skills: extraction.skills?.join(', ') || '',
         location: extraction.location || '',
         education_level: extraction.education_level || '',
@@ -69,6 +70,8 @@ export async function POST(request: NextRequest) {
         experience: extraction.past_internships?.join(', ') || '',
         technical_projects: extraction.technical_projects?.join(', ') || '',
       });
+      // Refetch to get complete candidate object
+      candidate = await getCandidate(user.email);
     } else {
       // Update candidate with resume data (prioritize resume data, but keep job_type and role_type from onboarding)
       await saveCandidate({
@@ -134,12 +137,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Save resume to resumes table
-    if (candidate.id) {
-      const resumeCount = await getResumeCountForCandidate(candidate.id);
+    if (candidate!.id) {
+      const resumeCount = await getResumeCountForCandidate(candidate!.id);
       const shouldSetAsPrimary = resumeCount === 0;
 
       await createResume({
-        candidate_id: candidate.id,
+        candidate_id: candidate!.id,
         name: `${extraction.name || 'User'} Resume`,
         file_name: fileName,
         resume_path: resumePath,
@@ -156,7 +159,7 @@ export async function POST(request: NextRequest) {
           user.email,
           embedding,
           {
-            name: extraction.name || candidate.name,
+            name: extraction.name || candidate!.name,
             email: user.email,
             skills: extraction.skills?.join(', ') || '',
             location: extraction.location || '',
@@ -172,7 +175,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save matches if available
-    if (resumeData.matches && Array.isArray(resumeData.matches) && candidate.id) {
+    if (resumeData.matches && Array.isArray(resumeData.matches) && candidate!.id) {
       try {
         const startupNames = resumeData.matches.map((m: any) => m.startup?.name || 'Unknown');
         const startupIdMap = await findStartupIdsByNames(startupNames);
@@ -230,7 +233,7 @@ export async function POST(request: NextRequest) {
 
         // Save matches
         if (matchMappings.length > 0) {
-          await saveMatches(candidate.id, matchMappings);
+          await saveMatches(candidate!.id, matchMappings);
         }
       } catch (error) {
         console.error('Failed to save matches:', error);
@@ -239,7 +242,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      candidateId: candidate.id,
+      candidateId: candidate!.id,
     });
   } catch (error) {
     console.error('Exception processing stored resume:', error);

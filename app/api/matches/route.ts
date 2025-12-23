@@ -819,7 +819,7 @@ export async function GET(request: NextRequest) {
 
     // Function to calculate job relevance score based on role preferences
     // Higher score = better match
-    const calculateJobScore = (job: { job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }): number => {
+    const calculateJobScore = (job: { job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }): number => {
       const roleTypes = candidate.role_type || [];
       if (roleTypes.length === 0) return 0; // No preferences, all jobs equal
 
@@ -845,7 +845,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Function to order jobs by role preferences (highest score first)
-    const orderJobsByPreference = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }>): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string }> => {
+    const orderJobsByPreference = (jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }> => {
       if (jobs.length === 0) return [];
       
       // Calculate score for each job and sort
