@@ -42,10 +42,11 @@ export interface StartupInfo {
   tags?: string[];
   founderName?: string; // Full founder name (may include "Dr.", "Prof.", etc.)
   scrapedContext?: string; // Scraped intel/news about the startup
-  // Additional Supabase fields
+  keywords?: string[]; // Keywords about the startup
   batch?: string; // YC batch (e.g., "Summer 2025")
   founderEmails?: string; // Comma-separated founder emails
   founderLinkedIn?: string; // Comma-separated LinkedIn URLs
+  yc_description?: string; // YC description of the startup
 }
 
 export interface MatchContext {
@@ -177,10 +178,25 @@ The difference: The good version shows the candidate understands what the compan
 
 ### THE RULES
 
-**Subject Line:**
-- State exactly what you want in 3-6 words
-- Examples that work: "Summer ${jobTypeShort} at [Company]?" / "ML ${jobTypeShort === 'internship' ? 'intern' : jobTypeShort} - UCSD student" / "[Company] ${jobTypeShort} inquiry"
-- What NOT to do: Clever tricks, fake internal memos, clickbait
+*Subject Line (you have 1 second):**
+Founders scan 50+ emails daily. Your subject must earn the open in under 6 words.
+
+**What works:**
+- Signal you've done homework: "Saw your ${startup.batch || 'YC'} demo" / "Re: your recent funding"
+- Be specific to THEM: "[Product name] + [your relevant skill]" / "Your [specific feature] inspired a project"
+- Name-drop context: "Fellow [University] alum" / "From [Mutual connection/community]"
+
+**Examples:**
+- "Built something for ${startup.name}"
+- "Your [specific tech/feature] approach"
+- "${startup.industry} ${jobTypeShort} - quick intro"
+- "Idea for [specific product area]"
+
+**NEVER:**
+- Generic asks: "[Company] ${jobTypeShort} inquiry" (sounds like 100 other emails)
+- Leading with YOUR credentials: "ML intern - UCSD student" (they don't care yet)
+- Vague questions: "Quick question?" (about what?)
+- Clickbait or fake reply threads: "Re: Our conversation" (you'll get blacklisted)
 
 **The Email Structure:**
 1. ONE sentence: Who you are + what you want
@@ -270,6 +286,8 @@ That's it. Keep it short and make every sentence count.
 - Founder: ${rawFounderName}
 - Industry: ${startup.industry || 'Not specified'}
 - Description: ${startup.description || 'N/A'}
+- YC Description: ${startup.yc_description || 'Not specified'}
+- Keywords: ${startup.keywords?.join(', ') || 'Not specified'}
 - Recent News/Intel: ${scrapedIntel}
 - Tech Stack/Tags: ${startup.tags?.join(', ') || 'Not specified'}
 
@@ -341,10 +359,28 @@ Notice the difference:
 - BAD: Leads with self, credentials, then asks for job
 - GOOD: Leads with genuine interest in their work, mentions experience naturally, asks about THEIR work
 
-### SUBJECT LINE
-- Personal and specific to THEM, not about you
-- Reference something they built, said, or did
-- Examples: "Your approach to [specific feature]" / "Fellow [shared interest] here" / "Tried [product] and had to reach out"
+### SUBJECT LINE (1 second to earn the open)
+
+This persona lives or dies by the subject. It must feel like a peer reaching out, not an applicant.
+
+**The test:** Would a fellow founder/builder send this subject line? If it sounds like a job seeker, rewrite it.
+
+**Patterns that work:**
+- React to something specific: "Your [feature] solved my [problem]"
+- Shared obsession: "Fellow [niche interest] nerd"
+- Genuine reaction: "Had to reach out after trying [product]"
+- Insider reference: "Your [podcast/tweet/blog post] on [topic]"
+
+**Examples:**
+- "Your RAG implementation is clever"
+- "Finally - someone fixing [problem they solve]"
+- "Used ${startup.name} on my project"
+- "Your [specific feature] approach"
+
+**NEVER:**
+- Anything that reveals you want a job in the subject
+- Generic compliments: "Love what you're building" (everyone says this)
+- Fan-speak without specifics: "Big fan of ${startup.name}" (prove it in the subject)
 
 ### EMAIL STRUCTURE
 1. **Open with THEM** - What specifically caught your attention about their work? (1-2 sentences)
@@ -416,6 +452,8 @@ Before generating: Could this email ONLY be sent to this specific company? If yo
 - Founder: ${rawFounderName}
 - Industry: ${startup.industry || 'Not specified'}
 - Description: ${startup.description || 'N/A'}
+- YC Description: ${startup.yc_description || 'Not specified'}
+- Keywords: ${startup.keywords?.join(', ') || 'Not specified'}
 - Recent News/Intel: ${scrapedIntel}
 - What they do: ${startup.description || 'N/A'}
 
@@ -483,20 +521,32 @@ This is the highest-effort approach, but it has the highest hit rate.
 
 ### THE RULES
 
-**Subject Line:**
-- Lead with curiosity or a project idea - NOT a sales pitch
-- The subject should feel like a peer reaching out with a genuine idea, not someone selling a service
-- DO NOT make it sound like an advertisement or a pitch for something they should buy
-- Examples of GOOD subject lines:
-  * "Quick project idea for [specific area]"
-  * "Thought about your [product] - had an idea"
-  * "Project idea: [brief description]"
-  * "Something I built that might interest you"
-- Examples of BAD subject lines (sound like ads/pitches):
-  * "A low-cost solution for [Company]"
-  * "Proposal: [Service] for [Company]"
-  * "Idea: [Thing] - let me build it for you"
-- The subject should make them curious, not feel like they're being sold to
+**Subject Line (1 second - make it count):**
+
+You're leading with value, so the subject must hint at that value without overselling.
+
+**The formula:** [Specific thing] + [Their context] = Curiosity
+
+**What works:**
+- Tease the deliverable: "Prototype for your [specific area]"
+- Show the work exists: "Built a [thing] for ${startup.name}"
+- Reference their pain point: "Re: [problem they likely have]"
+- Be uselessly specific: "Your [feature] + [specific improvement]"
+
+**Examples:**
+- "Mock-up: ${startup.name} [feature idea]"
+- "Found something in your [public repo/docs]"
+- "Draft: [specific deliverable] for ${startup.name}"
+- "Your [tech stack component] - quick idea"
+- "Played with your API, noticed [thing]"
+
+**NEVER:**
+- Pitch language: "Proposal:", "Solution:", "Offering:"
+- Vague value: "Something I built" (what?)
+- Self-focused: "My project for ${startup.name}" (it's about them, not you)
+- Overselling: "Game-changing idea for [Company]" (let them judge)
+
+**The test:** Does it sound like a cold email or like a DM from someone in their Discord/Slack? Aim for the latter.
 
 **The Email Structure:**
 
@@ -593,6 +643,8 @@ The email should be useful to them even if they don't hire you. They should lear
 - Founder: ${rawFounderName}
 - Industry: ${startup.industry || 'Not specified'}
 - Description: ${startup.description || 'N/A'}
+- YC Description: ${startup.yc_description || 'Not specified'}
+- Keywords: ${startup.keywords?.join(', ') || 'Not specified'}
 - Tech Stack/Tags: ${startup.tags?.join(', ') || 'Not specified'}
 - Recent News/Intel: ${scrapedIntel}
 - Website: ${startup.website || 'Not specified'}
