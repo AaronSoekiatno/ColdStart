@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
-import { emailLimitCache } from '@/lib/cache';
+import { emailLimitCache, matchesCache } from '@/lib/cache';
 
 /**
  * Wraps a Supabase query with timeout and retry logic
@@ -105,6 +105,35 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Create cache key based on user email, page, and limit
+    // This ensures each user's paginated results are cached separately
+    const cacheKey = `matches:${user.email}:${page}:${limit}`;
+    
+    // Check cache first to avoid database queries
+    const cached = matchesCache.get<{
+      matches: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasMore: boolean;
+      };
+    }>(cacheKey);
+    
+    if (cached) {
+      console.log(`[Matches API] ✅ Cache HIT for ${cacheKey} - skipping database queries`);
+      return NextResponse.json(cached, {
+        headers: {
+          'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+          'X-Cache-Status': 'HIT',
+          'X-Cache-Key': cacheKey,
+        },
+      });
+    }
+    
+    console.log(`[Matches API] ❌ Cache MISS for ${cacheKey} - fetching from database`);
 
     // Get candidate ID and role preferences
     const candidateResult = await withTimeoutAndRetry<{ id: string; role_type: string[] | null }>(
@@ -283,7 +312,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!allMatches || allMatches.length === 0) {
-      return NextResponse.json({
+      // Cache empty results too to avoid repeated database queries
+      const emptyResponse = {
         matches: [],
         pagination: {
           page,
@@ -291,6 +321,16 @@ export async function GET(request: NextRequest) {
           total: totalCount || 0,
           totalPages: Math.ceil((totalCount || 0) / limit),
           hasMore: false,
+        },
+      };
+      matchesCache.set(cacheKey, emptyResponse);
+      console.log(`[Matches API] 💾 Cached empty response for ${cacheKey}`);
+      
+      return NextResponse.json(emptyResponse, {
+        headers: {
+          'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+          'X-Cache-Status': 'MISS',
+          'X-Cache-Key': cacheKey,
         },
       });
     }
@@ -904,7 +944,8 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil((totalCount || 0) / limit);
     const hasMore = page < totalPages;
 
-    return NextResponse.json({
+    // Build response object
+    const response = {
       matches,
       pagination: {
         page,
@@ -913,10 +954,18 @@ export async function GET(request: NextRequest) {
         totalPages,
         hasMore,
       },
-    }, {
+    };
+
+    // Cache the response for 5 minutes (default TTL from matchesCache)
+    matchesCache.set(cacheKey, response);
+    console.log(`[Matches API] 💾 Cached response for ${cacheKey} - ${matches.length} matches`);
+
+    return NextResponse.json(response, {
       headers: {
         // Cache for 5 minutes on CDN, serve stale for 1 hour while revalidating
         'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+        'X-Cache-Status': 'MISS',
+        'X-Cache-Key': cacheKey,
       },
     });
   } catch (error) {
