@@ -463,8 +463,8 @@ function EnhanceResumePageContent() {
       return newStatuses;
     });
 
-    // Keep the suggestion selected so user can see it was rejected
-    // setSelectedSuggestionId(null);
+    // Close the dropdown when denying
+    setSelectedSuggestionId(null);
   };
 
   const handleSuggestionUndo = (suggestionId: string) => {
@@ -831,7 +831,7 @@ function EnhanceResumePageContent() {
                     </div>
                   ) : (
                     <div className="flex-1 min-h-0 overflow-y-auto">
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-300">
                         {(isPremium ? resumeSuggestions : visibleSuggestions).map((suggestion) => {
                           const isOpen = selectedSuggestionId === suggestion.id;
                           const status = suggestionStatuses[suggestion.id];

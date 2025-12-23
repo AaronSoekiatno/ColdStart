@@ -57,7 +57,6 @@ Return a JSON object with this exact structure:
     "linkedin": "linkedin URL if available (exact as written)",
     "github": "github URL if available (exact as written)"
   },
-  "summary": "Professional summary or objective if present (EXACT TEXT, no rewriting)",
   "experience": [
     {
       "id": "exp-0",
@@ -132,7 +131,6 @@ Remember: This is a LOSSLESS NORMALIZATION. Extract exactly, structure it, but D
 
     return {
       personal: parsed.personal,
-      summary: parsed.summary || '',
       experience: parsed.experience || [],
       education: parsed.education || [],
       projects: parsed.projects || [],
