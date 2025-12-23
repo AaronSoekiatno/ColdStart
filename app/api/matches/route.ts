@@ -889,13 +889,8 @@ export async function GET(request: NextRequest) {
             job_type: job.job_type,
             salary_range: job.salary_range,
             experience_level: job.experience_level,
-            created_at: job.created_at,
+            created_at: (job as any).created_at,
           };
-          console.log('[Matches API] Building jobs array item:', {
-            title: jobData.job_title,
-            created_at: jobData.created_at,
-            has_created_at: !!jobData.created_at
-          });
           return jobData;
         }),
         // Keep 'job' for backward compatibility (first job in ordered list)
@@ -906,13 +901,8 @@ export async function GET(request: NextRequest) {
             job_type: orderedJobs[0].job_type,
             salary_range: orderedJobs[0].salary_range,
             experience_level: orderedJobs[0].experience_level,
-            created_at: orderedJobs[0].created_at,
+            created_at: (orderedJobs[0] as any).created_at,
           };
-          console.log('[Matches API] Building single job object:', {
-            title: jobData.job_title,
-            created_at: jobData.created_at,
-            has_created_at: !!jobData.created_at
-          });
           return jobData;
         })() : null,
       };

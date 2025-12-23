@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
                            user.email?.split('@')[0] || 
                            'User';
       
-      candidate = await saveCandidate({
+      const savedCandidate = await saveCandidate({
         email: user.email,
         name: candidateName,
         skills: '',
@@ -86,6 +86,13 @@ export async function POST(request: NextRequest) {
         years_of_experience: yearsOfExperience,
         onboarding_completed: true,
       });
+      
+      // Fetch the candidate again to get the same structure as getCandidate returns
+      candidate = await getCandidate(user.email);
+      
+      if (!candidate) {
+        throw new Error('Failed to retrieve newly created candidate');
+      }
       
       console.log('Created new candidate during onboarding:', {
         id: candidate.id,

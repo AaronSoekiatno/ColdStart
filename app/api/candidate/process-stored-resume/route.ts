@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     
     if (!candidate) {
       // Create candidate with resume data (shouldn't happen if onboarding completed, but handle it)
-      candidate = await saveCandidate({
+      await saveCandidate({
         email: user.email,
         name: extraction.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
         skills: extraction.skills?.join(', ') || '',
@@ -69,6 +69,13 @@ export async function POST(request: NextRequest) {
         experience: extraction.past_internships?.join(', ') || '',
         technical_projects: extraction.technical_projects?.join(', ') || '',
       });
+      
+      // Fetch the candidate again to get the same structure as getCandidate returns
+      candidate = await getCandidate(user.email);
+      
+      if (!candidate) {
+        throw new Error('Failed to retrieve newly created candidate');
+      }
     } else {
       // Update candidate with resume data (prioritize resume data, but keep job_type and role_type from onboarding)
       await saveCandidate({
@@ -83,6 +90,13 @@ export async function POST(request: NextRequest) {
         job_type: candidate.job_type, // Preserve from onboarding
         role_type: candidate.role_type, // Preserve from onboarding
       });
+      
+      // Fetch the candidate again to get updated data
+      candidate = await getCandidate(user.email);
+      
+      if (!candidate) {
+        throw new Error('Failed to retrieve updated candidate');
+      }
     }
 
     // Upload resume file to Supabase Storage if we have the base64 data
