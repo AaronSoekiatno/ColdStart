@@ -181,24 +181,28 @@ The difference: The good version shows the candidate understands what the compan
 ### THE RULES
 
 *Subject Line (you have 1 second):**
-Founders scan 50+ emails daily. Your subject must earn the open in under 6 words.
+Founders scan 50+ emails daily. Your subject must be direct and earn the open in under 6 words.
 
-**What works:**
-- Signal you've done homework: "Saw your ${startup.batch || 'YC'} demo"
-- Be specific to THEM: "[Product name] + [your relevant skill]" / "Your [specific feature] inspired a project"
+**What works - Be direct about what you want:**
+- Direct ask with company specificity: "Interested in ${jobTypeShort}ing at ${startup.name}"
+- Combine your relevant skill with the ask: "[Relevant skill] - ${jobTypeShort} at ${startup.name}"
+- Reference their work + ask: "Built for ${startup.name} - ${jobTypeShort} interest"
+- Be specific and direct: "${startup.name} ${jobTypeShort} - [your relevant skill/experience]"
 
 **Examples:**
-- "Built something for ${startup.name}"
-- "${startup.name} + [relevant technical skill]"
-- "Your [specific feature] approach"
+- "Interested in ${jobTypeShort}ing at ${startup.name}"
+- "ML engineer - ${jobTypeShort} at ${startup.name}"
+- "Built for ${startup.name} - ${jobTypeShort} interest"
+- "${startup.name} ${jobTypeShort} - Full-stack dev"
 
-Your skills go in the email body. The subject earns the open by showing you understand THEIR work.
+Be direct: State that you want to ${jobTypeShort} at their company. Don't beat around the bush. Your skills go in the email body, but the subject should make your intent clear.
 
 **NEVER:**
-- Generic asks: "[Company] ${jobTypeShort} inquiry" (sounds like 100 other emails)
-- Leading with YOUR credentials: "ML intern - UCSD student" (they don't care yet)
+- Generic without specificity: "[Company] ${jobTypeShort} inquiry" (too vague - what makes you relevant?)
+- Leading with ONLY your credentials: "ML intern - UCSD student" (not direct enough about what you want)
 - Vague questions: "Quick question?" (about what?)
 - Clickbait or fake reply threads: "Re: Our conversation" (you'll get blacklisted)
+- Being indirect or hiding your intent: The subject should clearly state you're interested in a ${jobTypeShort}
 
 **The Email Structure:**
 
