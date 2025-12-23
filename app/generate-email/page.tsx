@@ -345,23 +345,14 @@ function GenerateEmailPageContent() {
     }
   };
 
-  // Sync persona with query param when it changes, but enforce premium restrictions
+  // Sync persona with query param when it changes
   useEffect(() => {
-    console.log(`[Generate Email Page] Persona sync effect - personaParam: '${personaParam}', emailPersona: '${emailPersona}', isPremium: ${isPremium}`);
+    console.log(`[Generate Email Page] Persona sync effect - personaParam: '${personaParam}', emailPersona: '${emailPersona}'`);
     if (personaParam === 'genuine-fan' || personaParam === 'direct-ask' || personaParam === 'value-first') {
-      // Only allow 'genuine-fan' and 'value-first' for premium users
-      if ((personaParam === 'genuine-fan' || personaParam === 'value-first') && !isPremium) {
-        // Free users can't use premium personas - force to 'direct-ask'
-        if (emailPersona !== 'direct-ask') {
-          console.log(`[Generate Email Page] Free user tried to use '${personaParam}', forcing to 'direct-ask'`);
-          setEmailPersona('direct-ask');
-        }
-      } else {
-        // Only update if different to prevent unnecessary re-renders
-        if (emailPersona !== personaParam) {
-          console.log(`[Generate Email Page] Syncing emailPersona from '${emailPersona}' to '${personaParam}'`);
-          setEmailPersona(personaParam as EmailPersona);
-        }
+      // Only update if different to prevent unnecessary re-renders
+      if (emailPersona !== personaParam) {
+        console.log(`[Generate Email Page] Syncing emailPersona from '${emailPersona}' to '${personaParam}'`);
+        setEmailPersona(personaParam as EmailPersona);
       }
     } else {
       // If no valid persona in URL, clear local selection (user must choose)
@@ -370,7 +361,7 @@ function GenerateEmailPageContent() {
         setEmailPersona(null);
       }
     }
-  }, [personaParam, isPremium]); // Removed emailPersona from deps to prevent loops
+  }, [personaParam]); // Removed emailPersona from deps to prevent loops
 
   const handleSendViaMailto = () => {
     if (!founderEmail || !previewSubject || !previewBody) return;
@@ -503,7 +494,39 @@ function GenerateEmailPageContent() {
                     Choose an email style to generate your draft:
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {/* Direct Ask - available to all users */}
+                    {/* Value-First */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        // If switching to a different persona, clear previous content to show loading animation
+                        if (emailPersona !== 'value-first') {
+                          setPreviewSubject(null);
+                          setPreviewBody(null);
+                        }
+                        // Show loading animation immediately
+                        setIsPreviewLoading(true);
+                        setEmailPersona('value-first');
+                        const params = new URLSearchParams(Array.from(searchParams.entries()));
+                        params.set('persona', 'value-first');
+                        const query = params.toString();
+                        router.replace(`/generate-email?${query}`, { scroll: false });
+
+                        await loadEmailPreview('value-first');
+                      }}
+                      className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${emailPersona === 'value-first'
+                            ? 'border-blue-500 bg-blue-50 text-gray-900'
+                            : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
+                        }`}
+                    >
+                      <div className="font-semibold mb-0.5">
+                        Value-First
+                      </div>
+                      <div className="text-[10px] text-gray-600">
+                        Lead with what you can bring to the table.
+                      </div>
+                    </button>
+
+                    {/* Direct Ask */}
                     <button
                       type="button"
                       onClick={async () => {
@@ -537,15 +560,10 @@ function GenerateEmailPageContent() {
                       </div>
                     </button>
 
-                    {/* Genuine Fan - premium */}
+                    {/* Genuine Fan */}
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!isPremium) {
-                          setShowUpgradeModal(true);
-                          return;
-                        }
-
                         // If switching to a different persona, clear previous content to show loading animation
                         if (emailPersona !== 'genuine-fan') {
                           setPreviewSubject(null);
@@ -561,9 +579,7 @@ function GenerateEmailPageContent() {
 
                         await loadEmailPreview('genuine-fan');
                       }}
-                      className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${!isPremium
-                          ? 'border-blue-300 bg-gray-50 text-gray-400'
-                          : emailPersona === 'genuine-fan'
+                      className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${emailPersona === 'genuine-fan'
                             ? 'border-blue-500 bg-blue-50 text-gray-900'
                             : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
                         }`}
@@ -571,47 +587,8 @@ function GenerateEmailPageContent() {
                       <div className="font-semibold mb-0.5">
                         Genuine Fan
                       </div>
-                      <div className={`text-[10px] ${!isPremium ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <div className="text-[10px] text-gray-600">
                         Show authentic interest and personal connection.
-                      </div>
-                    </button>
-
-                    {/* Value-First - premium */}
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!isPremium) {
-                          setShowUpgradeModal(true);
-                          return;
-                        }
-
-                        // If switching to a different persona, clear previous content to show loading animation
-                        if (emailPersona !== 'value-first') {
-                          setPreviewSubject(null);
-                          setPreviewBody(null);
-                        }
-                        // Show loading animation immediately
-                        setIsPreviewLoading(true);
-                        setEmailPersona('value-first');
-                        const params = new URLSearchParams(Array.from(searchParams.entries()));
-                        params.set('persona', 'value-first');
-                        const query = params.toString();
-                        router.replace(`/generate-email?${query}`, { scroll: false });
-
-                        await loadEmailPreview('value-first');
-                      }}
-                      className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${!isPremium
-                          ? 'border-blue-300 bg-gray-50 text-gray-400'
-                          : emailPersona === 'value-first'
-                            ? 'border-blue-500 bg-blue-50 text-gray-900'
-                            : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
-                        }`}
-                    >
-                      <div className="font-semibold mb-0.5">
-                        Value-First
-                      </div>
-                      <div className={`text-[10px] ${!isPremium ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Lead with what you can bring to the table.
                       </div>
                     </button>
                   </div>

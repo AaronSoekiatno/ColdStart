@@ -62,22 +62,16 @@ export async function POST(request: NextRequest) {
     // Check if user is premium
     const isPremium = isSubscribed(candidate);
 
-    // Email persona selection is premium-only feature
-    let emailPersona: EmailPersona = 'direct-ask'; // Default for free users
+    // All users can use any persona
+    let emailPersona: EmailPersona = 'direct-ask'; // Default
     if (persona) {
-      if (!isPremium && persona !== 'direct-ask') {
-        // Free users can only use 'direct-ask' - force it to default
-        emailPersona = 'direct-ask';
-        console.log(`[Email Generation] Free user requested '${persona}', forcing to 'direct-ask'`);
+      // Validate persona value
+      const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan', 'value-first'];
+      if (validPersonas.includes(persona as EmailPersona)) {
+        emailPersona = persona as EmailPersona;
+        console.log(`[Email Generation] Using persona: '${emailPersona}'`);
       } else {
-        // Validate persona value
-        const validPersonas: EmailPersona[] = ['direct-ask', 'genuine-fan', 'value-first'];
-        if (validPersonas.includes(persona as EmailPersona)) {
-          emailPersona = persona as EmailPersona;
-          console.log(`[Email Generation] Using persona: '${emailPersona}' (premium: ${isPremium})`);
-        } else {
-          console.log(`[Email Generation] Invalid persona '${persona}', defaulting to 'direct-ask'`);
-      }
+        console.log(`[Email Generation] Invalid persona '${persona}', defaulting to 'direct-ask'`);
       }
     } else {
       console.log(`[Email Generation] No persona provided, defaulting to 'direct-ask'`);

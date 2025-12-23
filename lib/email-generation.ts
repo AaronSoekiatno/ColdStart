@@ -189,8 +189,16 @@ Founders scan 50+ emails daily. Your subject must earn the open in under 6 words
 **Examples:**
 - "Built something for ${startup.name}"
 - "Your [specific tech/feature] approach"
-- "${startup.industry} ${jobTypeShort} - quick intro"
 - "Idea for [specific product area]"
+
+**CRITICAL: The subject line must reference THEM, not you.**
+
+Extract the core of what they do from the description and put THAT in the subject.
+- If they're a "research lab" → reference research
+- If they do "data labeling" → reference data
+- If they build "X for Y" → reference X or Y
+
+Your skills go in the email body. The subject earns the open by showing you understand THEIR work.
 
 **NEVER:**
 - Generic asks: "[Company] ${jobTypeShort} inquiry" (sounds like 100 other emails)
