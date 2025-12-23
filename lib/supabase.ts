@@ -175,7 +175,30 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
     .upsert(upsertData, {
       onConflict: 'email',
     })
-    .select()
+    .select(`
+      id,
+      email,
+      name,
+      skills,
+      location,
+      education_level,
+      university,
+      experience,
+      technical_projects,
+      objectives,
+      job_type,
+      role_type,
+      years_of_experience,
+      onboarding_completed,
+      resume_latex,
+      structured_resume_data,
+      subscription_tier,
+      subscription_status,
+      stripe_customer_id,
+      stripe_subscription_id,
+      subscription_current_period_end,
+      created_at
+    `)
     .single();
 
   if (error) {

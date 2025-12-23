@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { GoogleAIFileManager } from '@google/generative-ai/server';
 import {
   validateFile,
   extractDocxText,
   extractPdfText,
   isPdfFile,
-  cleanJsonResponse,
   type ResumeExtractionResult,
   type ResumeProcessingResult,
 } from './utils';
 import { upsertCandidate, findMatchingStartups } from '@/lib/pinecone';
-import { saveCandidate, saveMatches, saveStartup, findStartupIdByName, findStartupIdsByNames, getCandidate, getResumeCountForCandidate, createResume } from '@/lib/supabase';
+import { saveCandidate, saveMatches, saveStartup, findStartupIdsByNames, getResumeCountForCandidate, createResume } from '@/lib/supabase';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
@@ -27,7 +25,6 @@ function getGeminiClients() {
   }
   return {
     genAI: new GoogleGenerativeAI(apiKey),
-    fileManager: new GoogleAIFileManager(apiKey),
   };
 }
 
@@ -516,9 +513,9 @@ export async function POST(request: NextRequest) {
           resume_latex: resumeLatex, // Store LaTeX source for editing
           structured_resume_data: structuredResumeData, // Store structured data for template editing
         });
-        candidateId = savedCandidate.id; // Get the UUID
-        subscriptionTier = savedCandidate.subscription_tier || 'free';
-        subscriptionStatus = savedCandidate.subscription_status || 'inactive';
+        candidateId = savedCandidate.id ?? null; // Get the UUID, fix TS type issue
+        subscriptionTier = savedCandidate.subscription_tier ?? 'free';
+        subscriptionStatus = savedCandidate.subscription_status ?? 'inactive';
 
         // Save resume to the new resumes table
         // Use provided resume name, or generate one from candidate name
