@@ -76,7 +76,11 @@
     "send-waitlist": "tsx scripts/send-waitlist-emails.ts",
     "send-waitlist:sendgrid": "tsx scripts/email/sendgrid/sendgrid-send-waitlist-emails.ts",
     "test-email": "tsx scripts/test-email.ts",
-    "test-email:sendgrid": "tsx scripts/email/sendgrid/sendgrid-test-email.ts"
+    "test-email:sendgrid": "tsx scripts/email/sendgrid/sendgrid-test-email.ts",
+    "extract-majors": "tsx scripts/data/extract-candidate-majors.ts",
+    "extract-majors:output": "tsx scripts/data/extract-candidate-majors.ts --output",
+    "extract-majors:populate": "tsx scripts/data/extract-candidate-majors.ts --populate",
+    "extract-majors:populate:dry-run": "tsx scripts/data/extract-candidate-majors.ts --populate --dry-run"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

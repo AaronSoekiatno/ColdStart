@@ -30,10 +30,11 @@ export function guessFounderEmailFromStartup(startup: {
   founder_emails?: string | null;
   website?: string | null;
 }) {
-  // If a real email already exists, use it as-is.
+  // If a real email already exists, use the first one if multiple are present
   if (startup.founder_emails?.trim()) {
+    const emails = startup.founder_emails.split(',').map((e: string) => e.trim()).filter(Boolean);
     return {
-      email: startup.founder_emails.trim(),
+      email: emails[0] || startup.founder_emails.trim(),
       isGuessed: false,
     };
   }

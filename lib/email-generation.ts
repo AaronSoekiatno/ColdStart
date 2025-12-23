@@ -29,6 +29,7 @@ export interface CandidateProfile {
   pastInternships?: string; // Comma-separated string (renamed from past_internships, kept for backwards-compat)
   technicalProjects?: string; // Comma-separated string
   jobType?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
+  major?: string[]; // Array of majors
 }
 
 export interface StartupInfo {
@@ -40,12 +41,14 @@ export interface StartupInfo {
   location?: string;
   website?: string;
   tags?: string[];
-  founderName?: string; // Full founder name (may include "Dr.", "Prof.", etc.)
+  founderName?: string; // The matched founder name for this email (may include "Dr.", "Prof.", etc.)
+  founderNames?: string[]; // All founder names (optional, for reference)
   scrapedContext?: string; // Scraped intel/news about the startup
-  // Additional Supabase fields
+  keywords?: string[]; // Keywords about the startup
   batch?: string; // YC batch (e.g., "Summer 2025")
-  founderEmails?: string; // Comma-separated founder emails
-  founderLinkedIn?: string; // Comma-separated LinkedIn URLs
+  founderEmails?: string[]; // Array of founder emails
+  founderLinkedIn?: string[]; // Array of LinkedIn URLs
+  yc_description?: string; // YC description of the startup
 }
 
 export interface MatchContext {
@@ -177,29 +180,64 @@ The difference: The good version shows the candidate understands what the compan
 
 ### THE RULES
 
-**Subject Line:**
-- State exactly what you want in 3-6 words
-- Examples that work: "Summer ${jobTypeShort} at [Company]?" / "ML ${jobTypeShort === 'internship' ? 'intern' : jobTypeShort} - UCSD student" / "[Company] ${jobTypeShort} inquiry"
-- What NOT to do: Clever tricks, fake internal memos, clickbait
+*Subject Line (you have 1 second):**
+Founders scan 50+ emails daily. Your subject must earn the open in under 6 words.
+
+**What works:**
+- Signal you've done homework: "Saw your ${startup.batch || 'YC'} demo"
+- Be specific to THEM: "[Product name] + [your relevant skill]" / "Your [specific feature] inspired a project"
+
+**Examples:**
+- "Built something for ${startup.name}"
+- "${startup.name} + [relevant technical skill]"
+- "Your [specific feature] approach"
+
+Your skills go in the email body. The subject earns the open by showing you understand THEIR work.
+
+**NEVER:**
+- Generic asks: "[Company] ${jobTypeShort} inquiry" (sounds like 100 other emails)
+- Leading with YOUR credentials: "ML intern - UCSD student" (they don't care yet)
+- Vague questions: "Quick question?" (about what?)
+- Clickbait or fake reply threads: "Re: Our conversation" (you'll get blacklisted)
 
 **The Email Structure:**
-1. ONE sentence: Who you are + what you want
-2. ONE-TWO sentences explaining your relevant experience WITH AN EXPLICIT CONNECTION to the company
-   - Don't just list skills - explain how your experience relates to what THIS company does
-   - Reference the company's product, mission, industry, or tech stack specifically
-   - Show you understand their work and have done something similar or relevant
-   - Bullet points are OPTIONAL - use them only if it improves readability
-   - Keep it concise (1-2 sentences or 2-3 short bullets max)
-3. ONE sentence: The ask
+
+Choose ONE of these opening hooks randomly for each email:
+1. "My name is ${candidate.name}—I'll keep this to 45 seconds:"
+2. "I know you're building fast, so here is the tl;dr on why I can help ${startup.name}:"
+3. "I've been following ${startup.name}'s work on [Specific Feature]. I'll only use three bullets:"
+4. "I'm ${candidate.name}, ${candidate.major && candidate.major.length > 0 ? (() => { const majors = candidate.major.filter(m => m && m.trim()); if (majors.length === 0) return 'a student'; const firstMajor = majors[0]; const article = /^[aeiouAEIOU]/i.test(firstMajor) ? 'an' : 'a'; if (majors.length === 1) return `${article} ${firstMajor} major`; return `${article} ${majors.slice(0, -1).join(', ')} and ${majors[majors.length - 1]} major`; })() : 'a student'}${candidate.university ? ` at ${candidate.university}` : ''}. Here's my 3-bullet pitch:"
+
+**Exactly 3 bullet points required (1 sentence each):**
+- Use time references to show growth: "Started X 2 years ago, now building Y" or "3 years of [relevant experience]"
+- Mix data with progression: "Shipped [Project] to 100 users" or "Over the past year, I've built [X]"
+
+Bullet point 1: Proof of work showing long-term commitment (e.g., "Programming since 8th grade" or "Started learning ML 2 years ago, now deploying models in production")
+
+Bullet point 2: Relevant experience WITH EXPLICIT CONNECTION to the company
+   - Explain how your experience relates to what THIS company does
+   - Reference their product, mission, or tech stack specifically
+   - Show progression: "Started with [beginner project], progressed to [advanced work]"
+
+Bullet point 3: Another relevant qualification connecting to the company, showing evolution
+
+The ask: Choose ONE randomly for each email:
+1. "Want to ${jobTypeShort} for ${startup.name} this [Season] as a ${candidate.jobType}. How?"
+2. "Interested in ${jobTypeShort}ing at ${startup.name} this [Season]. What's the best way to apply?"
+3. "Would love to ${jobTypeShort} for ${startup.name} this [Season]. How can I get started?"
+4. "Looking to ${jobTypeShort} at ${startup.name} this [Season]. What's next?"
+5. "Want to join ${startup.name} as a ${jobTypeShort} this [Season]. How do we make that happen?"
+
+Sign-off: "Thanks, ${candidate.name}"
+
 4. Professional links: Include relevant links (resume, GitHub, portfolio, LinkedIn) after your signature
    - Format: "Resume: [link]" or "GitHub: [link]" on separate lines
    - Only include links that are available in the candidate's profile
 
 **Formatting Requirements:**
-- Bullet points are OPTIONAL - use prose or bullets, whichever fits the content better
-- Keep qualifications concise and scannable
-- Include professional links at the end after your signature (e.g., "Best, [Name]")
-- Only include links that are available in the candidate's profile
+- Use exactly 3 bullet points (1 sentence each)
+- Keep it concise and scannable
+- Include professional links after your signature (only if available in candidate's profile)
 
 That's it. Keep it short and make every sentence count.
 
@@ -252,9 +290,12 @@ That's it. Keep it short and make every sentence count.
 - Always sign with the candidate's name: ${candidate.name}
 
 ### NAMING RULES
+- CRITICAL: Use the EXACT founder name from the "Founder:" field in the DATA INPUTS section above
+- Extract the first name from that founder name for the greeting
 - If founder name has "Dr." or "Prof." → Use it: "Hi Dr. Smith,"
-- Otherwise → First name only: "Hi Alex,"
+- Otherwise → First name only: "Hi Alex," (extract from the founder name provided)
 - NEVER: "Dear Sir/Madam", "To whom it may concern", "Hi [Company] team"
+- NEVER: Use a different founder name than the one provided in DATA INPUTS
 
 ### DATA INPUTS
 
@@ -270,6 +311,8 @@ That's it. Keep it short and make every sentence count.
 - Founder: ${rawFounderName}
 - Industry: ${startup.industry || 'Not specified'}
 - Description: ${startup.description || 'N/A'}
+- YC Description: ${startup.yc_description || 'Not specified'}
+- Keywords: ${startup.keywords?.join(', ') || 'Not specified'}
 - Recent News/Intel: ${scrapedIntel}
 - Tech Stack/Tags: ${startup.tags?.join(', ') || 'Not specified'}
 
@@ -341,10 +384,28 @@ Notice the difference:
 - BAD: Leads with self, credentials, then asks for job
 - GOOD: Leads with genuine interest in their work, mentions experience naturally, asks about THEIR work
 
-### SUBJECT LINE
-- Personal and specific to THEM, not about you
-- Reference something they built, said, or did
-- Examples: "Your approach to [specific feature]" / "Fellow [shared interest] here" / "Tried [product] and had to reach out"
+### SUBJECT LINE (1 second to earn the open)
+
+This persona lives or dies by the subject. It must feel like a peer reaching out, not an applicant.
+
+**The test:** Would a fellow founder/builder send this subject line? If it sounds like a job seeker, rewrite it.
+
+**Patterns that work:**
+- React to something specific: "Your [feature] solved my [problem]"
+- Shared obsession: "Fellow [niche interest] nerd"
+- Genuine reaction: "Had to reach out after trying [product]"
+- Insider reference: "Your [podcast/tweet/blog post] on [topic]"
+
+**Examples:**
+- "Your RAG implementation is clever"
+- "Finally - someone fixing [problem they solve]"
+- "Used ${startup.name} on my project"
+- "Your [specific feature] approach"
+
+**NEVER:**
+- Anything that reveals you want a job in the subject
+- Generic compliments: "Love what you're building" (everyone says this)
+- Fan-speak without specifics: "Big fan of ${startup.name}" (prove it in the subject)
 
 ### EMAIL STRUCTURE
 1. **Open with THEM** - What specifically caught your attention about their work? (1-2 sentences)
@@ -389,7 +450,10 @@ Notice the difference:
 Before generating: Could this email ONLY be sent to this specific company? If you could swap the company name and send it elsewhere, it fails.
 
 ### NAMING RULES
-- First name only: "Hi Alex,"
+- CRITICAL: Use the EXACT founder name from the "Founder:" field in the DATA INPUTS section above
+- Extract the first name from that founder name for the greeting
+- First name only: "Hi Alex," (extract from the founder name provided)
+- NEVER: Use a different founder name than the one provided in DATA INPUTS
 - Exception: Keep "Dr." or "Prof." if present
 
 ### DATA INPUTS
@@ -416,6 +480,8 @@ Before generating: Could this email ONLY be sent to this specific company? If yo
 - Founder: ${rawFounderName}
 - Industry: ${startup.industry || 'Not specified'}
 - Description: ${startup.description || 'N/A'}
+- YC Description: ${startup.yc_description || 'Not specified'}
+- Keywords: ${startup.keywords?.join(', ') || 'Not specified'}
 - Recent News/Intel: ${scrapedIntel}
 - What they do: ${startup.description || 'N/A'}
 
@@ -483,20 +549,32 @@ This is the highest-effort approach, but it has the highest hit rate.
 
 ### THE RULES
 
-**Subject Line:**
-- Lead with curiosity or a project idea - NOT a sales pitch
-- The subject should feel like a peer reaching out with a genuine idea, not someone selling a service
-- DO NOT make it sound like an advertisement or a pitch for something they should buy
-- Examples of GOOD subject lines:
-  * "Quick project idea for [specific area]"
-  * "Thought about your [product] - had an idea"
-  * "Project idea: [brief description]"
-  * "Something I built that might interest you"
-- Examples of BAD subject lines (sound like ads/pitches):
-  * "A low-cost solution for [Company]"
-  * "Proposal: [Service] for [Company]"
-  * "Idea: [Thing] - let me build it for you"
-- The subject should make them curious, not feel like they're being sold to
+**Subject Line (1 second - make it count):**
+
+You're leading with value, so the subject must hint at that value without overselling.
+
+**The formula:** [Specific thing] + [Their context] = Curiosity
+
+**What works:**
+- Tease the deliverable: "Prototype for your [specific area]"
+- Show the work exists: "Built a [thing] for ${startup.name}"
+- Reference their pain point: "Re: [problem they likely have]"
+- Be uselessly specific: "Your [feature] + [specific improvement]"
+
+**Examples:**
+- "Mock-up: ${startup.name} [feature idea]"
+- "Found something in your [public repo/docs]"
+- "Draft: [specific deliverable] for ${startup.name}"
+- "Your [tech stack component] - quick idea"
+- "Played with your API, noticed [thing]"
+
+**NEVER:**
+- Pitch language: "Proposal:", "Solution:", "Offering:"
+- Vague value: "Something I built" (what?)
+- Self-focused: "My project for ${startup.name}" (it's about them, not you)
+- Overselling: "Game-changing idea for [Company]" (let them judge)
+
+**The test:** Does it sound like a cold email or like a DM from someone in their Discord/Slack? Aim for the latter.
 
 **The Email Structure:**
 
@@ -566,9 +644,11 @@ The email should be useful to them even if they don't hire you. They should lear
 - Always sign with the candidate's name: ${candidate.name}
 
 ### NAMING RULES
-- First name unless they have "Dr." or "Prof."
+- CRITICAL: Use the EXACT founder name from the "Founder:" field in the DATA INPUTS section above
+- Extract the first name from that founder name for the greeting
 - If founder name has "Dr." or "Prof." → Use it: "Hi Dr. Smith,"
-- Otherwise → First name only: "Hi Alex,"
+- Otherwise → First name only: "Hi Alex," (extract from the founder name provided)
+- NEVER: Use a different founder name than the one provided in DATA INPUTS
 
 ### DATA INPUTS
 
@@ -593,6 +673,8 @@ The email should be useful to them even if they don't hire you. They should lear
 - Founder: ${rawFounderName}
 - Industry: ${startup.industry || 'Not specified'}
 - Description: ${startup.description || 'N/A'}
+- YC Description: ${startup.yc_description || 'Not specified'}
+- Keywords: ${startup.keywords?.join(', ') || 'Not specified'}
 - Tech Stack/Tags: ${startup.tags?.join(', ') || 'Not specified'}
 - Recent News/Intel: ${scrapedIntel}
 - Website: ${startup.website || 'Not specified'}
