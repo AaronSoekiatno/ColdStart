@@ -124,7 +124,7 @@ export default function MatchesPage() {
         }
 
         const data = await response.json();
-        setMatches(data.matches || []);
+        setMatches(data.items || data.matches || []);
         setPagination(data.pagination);
       } catch (error) {
         console.error('Error initializing matches page:', error);
@@ -136,61 +136,6 @@ export default function MatchesPage() {
 
     initialize();
   }, [router]);
-
-  // Background fetch remaining matches after initial load
-  useEffect(() => {
-    const fetchRemainingMatches = async () => {
-      // Only fetch if we have initial matches and pagination info
-      if (!pagination || !pagination.hasMore || matches.length === 0) {
-        return;
-      }
-
-      console.log('[Matches] Background fetching remaining matches...');
-
-      try {
-        // Fetch all remaining pages
-        const fetchPromises = [];
-
-        for (let page = 2; page <= pagination.totalPages; page++) {
-          fetchPromises.push(
-            fetch(`/api/matches?page=${page}&limit=20`, {
-              credentials: 'include',
-            })
-              .then(async (res) => {
-                if (!res.ok) {
-                  const errorData = await res.json().catch(() => ({ error: 'Failed to fetch matches' }));
-                  throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
-                }
-                return res.json();
-              })
-              .catch((error) => {
-                console.error(`[Matches] Error fetching page ${page}:`, error);
-                // Return empty result for this page so Promise.all doesn't fail
-                return { matches: [], pagination: { hasMore: false } };
-              })
-          );
-        }
-
-        const results = await Promise.all(fetchPromises);
-
-        // Combine all matches
-        const allNewMatches = results.flatMap(result => result.matches || []);
-
-        console.log('[Matches] Background fetch complete. Loaded', allNewMatches.length, 'additional matches');
-
-        // Append to existing matches
-        setMatches(prev => [...prev, ...allNewMatches]);
-      } catch (error) {
-        console.error('[Matches] Error fetching remaining matches:', error);
-        // Silently fail - user already has first 20 matches
-      }
-    };
-
-    // Start background fetch after initial matches are loaded
-    if (matches.length > 0 && pagination?.hasMore) {
-      fetchRemainingMatches();
-    }
-  }, [matches.length > 0, pagination?.hasMore]); // Only run once when we have initial matches
 
   // Reset current match index when matches change
   useEffect(() => {

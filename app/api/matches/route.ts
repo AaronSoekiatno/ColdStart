@@ -110,71 +110,42 @@ export async function GET(request: NextRequest) {
     // Track request timing for egress monitoring
     const requestStart = Date.now();
 
-    // Create cache key based on user email, page, and limit
-    // This ensures each user's paginated results are cached separately
-    const cacheKey = `matches:${user.email}:${page}:${limit}`;
+    // SMART CACHING: Use a single cache key per user for ALL matches
+    // This allows server-side pagination from cached data, reducing Redis commands dramatically
+    const fullCacheKey = `matches:${user.email}:ALL`;
     
-    // Check Redis cache FIRST (persistent across serverless instances)
-    const redisCache = await getCache<{
-      matches: any[];
-      pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPages: number;
-        hasMore: boolean;
-      };
-    }>(cacheKey);
+    // Check Redis cache for full match list
+    const cachedMatches = await getCache<any[]>(fullCacheKey);
     
-    if (redisCache) {
+    if (cachedMatches && Array.isArray(cachedMatches)) {
       const elapsed = Date.now() - requestStart;
-      console.log('[EGRESS MONITOR] REDIS CACHE HIT:', {
+      
+      // Server-side pagination from cached array
+      const { paginateArray } = await import('@/lib/pagination-helper');
+      const paginatedResult = paginateArray(cachedMatches, page, limit);
+      
+      console.log('[Redis Cache] HIT - Serving from cache:', {
         user: user.email,
         page,
-        cacheKey,
-        elapsed: `${elapsed}ms`
+        total: cachedMatches.length,
+        elapsed: `${elapsed}ms`,
+        cacheKey: fullCacheKey,
       });
-      return NextResponse.json(redisCache, {
+      
+      return NextResponse.json(paginatedResult, {
         headers: {
           'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
           'X-Cache-Status': 'HIT-REDIS',
-          'X-Cache-Key': cacheKey,
+          'X-Cache-Key': fullCacheKey,
+          'X-Response-Time': `${elapsed}ms`,
         },
       });
     }
     
-    // Check in-memory cache as fallback
-    const memoryCache = matchesCache.get<{
-      matches: any[];
-      pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPages: number;
-        hasMore: boolean;
-      };
-    }>(cacheKey);
-    
-    if (memoryCache) {
-      const elapsed = Date.now() - requestStart;
-      console.log('[EGRESS MONITOR] MEMORY CACHE HIT:', {
-        user: user.email,
-        page,
-        cacheKey,
-        elapsed: `${elapsed}ms`
-      });
-      // Also populate Redis for next time
-      await setCache(cacheKey, memoryCache, 3600);
-      return NextResponse.json(memoryCache, {
-        headers: {
-          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-          'X-Cache-Status': 'HIT-MEMORY',
-          'X-Cache-Key': cacheKey,
-        },
-      });
-    }
-    
-    console.log('[EGRESS MONITOR] CACHE MISS - Querying database:', { user: user.email, page });
+    console.log('[Redis Cache] MISS - Fetching from database:', { 
+      user: user.email, 
+      cacheKey: fullCacheKey 
+    });
 
     // Get candidate ID and role preferences
     const candidateResult = await withTimeoutAndRetry<{ id: string; role_type: string[] | null }>(
@@ -274,17 +245,17 @@ export async function GET(request: NextRequest) {
       // Continue with totalCount as undefined if it's not a rate limit
     }
 
-    // Get matches for sorting (limit to first 200 to avoid performance issues)
-    // This ensures page 1 users see matches with jobs, while keeping query fast
-    const fetchLimit = Math.max(200, offset + limit);
+    // Get ALL matches for this candidate (no limit)
+    // With smart caching, we fetch all matches once and cache them for 1 hour
+    // This enables full pagination without repeated database queries
     const matchesResult = await withTimeoutAndRetry<Array<{ id: string; score: number; matched_at: string; startup_id: string }>>(
       async () => {
         const result = await supabaseAdmin!
           .from('matches')
           .select('id, score, matched_at, startup_id')
           .eq('candidate_id', candidate.id)
-          .order('score', { ascending: false })
-          .limit(fetchLimit);
+          .order('score', { ascending: false });
+          // No .limit() - fetch ALL matches
         return result;
       },
       15000, // 15 second timeout
@@ -354,23 +325,25 @@ export async function GET(request: NextRequest) {
 
     if (!allMatches || allMatches.length === 0) {
       // Cache empty results too to avoid repeated database queries
+      // Store empty array in Redis with same key structure
+      await setCache(fullCacheKey, [], 43200); // 12 hours TTL
+      
       const emptyResponse = {
-        matches: [],
+        items: [],
         pagination: {
           page,
           limit,
-          total: totalCount || 0,
-          totalPages: Math.ceil((totalCount || 0) / limit),
+          total: 0,
+          totalPages: 0,
           hasMore: false,
         },
       };
-      matchesCache.set(cacheKey, emptyResponse);
       
       return NextResponse.json(emptyResponse, {
         headers: {
           'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
           'X-Cache-Status': 'MISS',
-          'X-Cache-Key': cacheKey,
+          'X-Cache-Key': fullCacheKey,
         },
       });
     }
@@ -1020,34 +993,27 @@ export async function GET(request: NextRequest) {
       return b.score - a.score;
     });
 
-    // Apply pagination AFTER sorting with job prioritization
-    const matches = sortedMatches.slice(offset, offset + limit);
-    
+    // SMART CACHING: Cache the FULL sorted match list in Redis (12-hour TTL)
+    // This allows infinite pagination with only 1 Redis SETEX per user per 12 hours
+    // Matches are updated daily, so 12-hour cache ensures fresh data twice per day
+    console.log('[Redis Cache] Storing full match list:', {
+      user: user.email,
+      totalMatches: sortedMatches.length,
+      cacheKey: fullCacheKey,
+    });
+    await setCache(fullCacheKey, sortedMatches, 43200); // 12 hours TTL
 
-    const totalPages = Math.ceil((totalCount || 0) / limit);
-    const hasMore = page < totalPages;
+    // Server-side pagination from the full list
+    const { paginateArray } = await import('@/lib/pagination-helper');
+    const paginatedResult = paginateArray(sortedMatches, page, limit);
 
-    // Build response object
-    const response = {
-      matches,
-      pagination: {
-        page,
-        limit,
-        total: totalCount || 0,
-        totalPages,
-        hasMore,
-      },
-    };
-
-    // Cache the response for 5 minutes (default TTL from matchesCache)
-    matchesCache.set(cacheKey, response);
-
-    return NextResponse.json(response, {
+    return NextResponse.json(paginatedResult, {
       headers: {
-        // Cache for 5 minutes on CDN, serve stale for 1 hour while revalidating
-        'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+        // Cache for 1 hour on CDN, serve stale for 1 day while revalidating
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
         'X-Cache-Status': 'MISS',
-        'X-Cache-Key': cacheKey,
+        'X-Cache-Key': fullCacheKey,
+        'X-Total-Matches': sortedMatches.length.toString(),
       },
     });
   } catch (error) {
