@@ -45,6 +45,7 @@ export function ResumeCard({
   const [isDeleting, setIsDeleting] = useState(false);
   const [editedName, setEditedName] = useState(resumeName || fileName);
   const [isDownloadingNewResume, setIsDownloadingNewResume] = useState(false);
+  const [isDownloadingOriginal, setIsDownloadingOriginal] = useState(false);
   const [docxText, setDocxText] = useState<string | null>(null);
   const [isLoadingDocx, setIsLoadingDocx] = useState(false);
   const { toast } = useToast();
@@ -256,6 +257,58 @@ export function ResumeCard({
     }
   };
 
+  const handleDownloadOriginal = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!resumeUrl || !resumeId) return;
+
+    setIsDownloadingOriginal(true);
+    try {
+      // Track the download event
+      await fetch('/api/resumes/track-download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          resumeId,
+          downloadType: 'original',
+        }),
+      }).catch((error) => {
+        // Don't block the download if tracking fails
+        console.warn('Failed to track download:', error);
+      });
+
+      // Download the original file
+      const response = await fetch(resumeUrl, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download original resume');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName || 'resume.pdf';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Download original resume error:', error);
+      toast({
+        title: 'Failed to download resume',
+        description: error instanceof Error ? error.message : 'Failed to download file',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloadingOriginal(false);
+    }
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't trigger selection if clicking on buttons or interactive elements
     const target = e.target as HTMLElement;
@@ -360,7 +413,7 @@ export function ResumeCard({
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span>Enhance</span>
           </button>
-          {hasEnhancedVersion && (
+          {hasEnhancedVersion ? (
             <button
               onClick={handleDownloadNewResume}
               disabled={isDownloadingNewResume}
@@ -369,7 +422,16 @@ export function ResumeCard({
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>{isDownloadingNewResume ? 'Downloading...' : 'Download New Resume'}</span>
             </button>
-          )}
+          ) : resumeUrl ? (
+            <button
+              onClick={handleDownloadOriginal}
+              disabled={isDownloadingOriginal}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-blue-400 hover:bg-blue-300 text-white rounded-lg text-xs sm:text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>{isDownloadingOriginal ? 'Downloading...' : 'Download Resume'}</span>
+            </button>
+          ) : null}
         </div>
       </div>
 

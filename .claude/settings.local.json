@@ -20,7 +20,8 @@
       "Bash(chmod:*)",
       "Bash(pip3 install:*)",
       "Bash(timeout 10 python3:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(node --trace-deprecation node_modules/.bin/next dev:*)"
     ],
     "deny": [],
     "ask": []

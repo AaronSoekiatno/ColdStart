@@ -51,6 +51,8 @@ function EnhanceResumePageContent() {
   const [isLoadingScore, setIsLoadingScore] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
 
   // Free users can see 3 suggestions clearly, rest are blurred
   const FREE_SUGGESTION_LIMIT = 3;
@@ -180,7 +182,20 @@ function EnhanceResumePageContent() {
           suggestions
         );
         setStructuredResumeData(updatedData);
-        setHighlightedFields(newHighlighted);
+        
+        // For free users, only highlight the first 3 suggestions
+        const visibleSuggestionsList = isPremium
+          ? suggestions
+          : suggestions.slice(0, FREE_SUGGESTION_LIMIT);
+        
+        const visibleHighlightedPaths = new Set<ResumePath>();
+        visibleSuggestionsList.forEach((s: ResumeSuggestion) => {
+          if (s.patch?.path) {
+            visibleHighlightedPaths.add(s.patch.path);
+          }
+        });
+        
+        setHighlightedFields(visibleHighlightedPaths);
 
         // Set all as 'pending' initially (they're applied but not confirmed)
         const initialStatuses: Record<string, 'pending'> = {};
@@ -223,6 +238,7 @@ function EnhanceResumePageContent() {
     );
     const { updatedData } = applySuggestionsToStructuredData(baseData, activeSuggestions);
 
+    setIsDownloadingPDF(true);
     try {
       const response = await fetch("/api/resumes/export-pdf", {
         method: "POST",
@@ -257,6 +273,8 @@ function EnhanceResumePageContent() {
         description: error instanceof Error ? error.message : "Failed to download PDF",
         variant: "destructive",
       });
+    } finally {
+      setIsDownloadingPDF(false);
     }
   };
 
@@ -545,6 +563,7 @@ function EnhanceResumePageContent() {
   const handleDoneEnhancing = async () => {
     if (showFinishButton) {
       // Second click - redirect to resumes page
+      setIsFinishing(true);
       // Preload matches and images before redirecting
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('justEnhancedResume', 'true');
@@ -790,10 +809,11 @@ function EnhanceResumePageContent() {
                   </span>
                   <Button
                     onClick={handleDownloadPDF}
-                    className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6 cursor-pointer"
+                    disabled={isDownloadingPDF}
+                    className="bg-gray-900 hover:bg-[#498EDC] text-white rounded-md px-6 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Download PDF
+                    {isDownloadingPDF ? "Downloading..." : "Download PDF"}
                   </Button>
                 </div>
               )}
@@ -811,9 +831,14 @@ function EnhanceResumePageContent() {
                     <button
                       type="button"
                       onClick={handleDoneEnhancing}
-                      className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-blue-400 rounded-full hover:bg-blue-300 transition-colors cursor-pointer"
+                      disabled={isFinishing}
+                      className="inline-flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-blue-400 rounded-full hover:bg-blue-300 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                      <span>{showFinishButton ? 'Finish' : 'Done'}</span>
+                      {isFinishing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <span>{showFinishButton ? 'Finish' : 'Done'}</span>
+                      )}
                     </button>
                   )}
                 </div>
@@ -826,7 +851,7 @@ function EnhanceResumePageContent() {
                   ) : resumeSuggestions.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center py-8">
                       <p className="text-sm text-gray-600">
-                        {isDoneEnhancing ? "Ready to Download" : "No suggestions available yet"}
+                        No suggestions available yet
                       </p>
                     </div>
                   ) : (

@@ -209,7 +209,7 @@ export function CheckMatchesBanner() {
               </p>
               <Button
                 onClick={handleViewMatches}
-                className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white text-sm px-6 py-2 h-auto rounded-full"
+                className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white text-sm px-6 py-2 h-auto rounded-full cursor-pointer"
               >
                 View Matches
               </Button>
