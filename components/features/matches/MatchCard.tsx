@@ -6,6 +6,7 @@ import { ExternalLink, Mail, AlertCircle, Bookmark } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
+import { formatJobRecency } from "@/lib/utils";
 
 interface MatchCardProps {
   match: {
@@ -19,6 +20,7 @@ interface MatchCardProps {
       job_type?: string;
       salary_range?: string;
       experience_level?: string;
+      created_at?: string;
     } | null;
     jobs?: Array<{
       job_url?: string;
@@ -26,6 +28,7 @@ interface MatchCardProps {
       job_type?: string;
       salary_range?: string;
       experience_level?: string;
+      created_at?: string;
     }>;
     startup: {
       id?: string;
@@ -91,6 +94,28 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
   }
 
   const startup = match.startup;
+
+  // Check if there are fresh jobs (posted within last 7 days)
+  const hasFreshJobs = useMemo(() => {
+    const jobsToCheck = match.jobs && match.jobs.length > 0 ? match.jobs : (match.job ? [match.job] : []);
+    return jobsToCheck.some(job => {
+      if (!job.created_at) return false;
+      try {
+        const created = new Date(job.created_at);
+        if (isNaN(created.getTime())) return false;
+        const diffDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+        return diffDays <= 7; // Fresh if posted within last 7 days
+      } catch {
+        return false;
+      }
+    });
+  }, [match.jobs, match.job]);
+
+  // Check if this is a stealth opportunity (no job listings)
+  const isStealthOpportunity = useMemo(() => {
+    const hasJobs = (match.jobs && match.jobs.length > 0) || match.job?.job_url;
+    return !hasJobs;
+  }, [match.jobs, match.job]);
 
   // Helper to truncate YC description to first two sentences
   const getTruncatedYcDescription = (text?: string | null): string | null => {
@@ -517,9 +542,29 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             {/* Name, match score, description, and links - aligned with logo */}
             <div className="flex-1 min-w-0 flex flex-col">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 sm:gap-3 mb-1 sm:mb-1.5">
-                <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 break-words leading-tight">
-                  {match.startup.name}
-                </h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-gray-900 break-words leading-tight">
+                    {match.startup.name}
+                  </h2>
+                  {/* Fresh Jobs Badge - Next to company name */}
+                  {hasFreshJobs && (
+                    <div className="relative inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-sm">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse"></div>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight">
+                        Fresh
+                      </span>
+                    </div>
+                  )}
+                  {/* Stealth Opportunity Badge - Next to company name */}
+                  {isStealthOpportunity && (
+                    <div className="relative inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-sm">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white rounded-full animate-pulse"></div>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-tight">
+                        Stealth
+                      </span>
+                    </div>
+                  )}
+                </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-2xl sm:rounded-3xl px-2 py-1 sm:px-3 sm:py-2 shadow-sm w-fit sm:min-w-[120px] flex items-center justify-center flex-shrink-0">
                   <p className="text-xs sm:text-base md:text-lg font-bold text-blue-300 whitespace-nowrap">
                     {Math.min((match.score * 100) + 40, 97).toFixed(0)}%{" "}
@@ -541,7 +586,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                 </p>
               )}
               {/* Website, YC, and Twitter buttons underneath description */}
-              <div className="flex gap-1.5 sm:gap-2 flex-wrap mt-1 sm:-mt-0.5">
+              <div className="flex gap-1.5 sm:gap-2 flex-wrap items-center mt-1 sm:-mt-0.5">
                 {match.startup.website && (
                   <a
                     href={match.startup.website.startsWith('http')
@@ -854,15 +899,32 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
           <div className="space-y-3 sm:space-y-4">
             {/* Use jobs array if available, otherwise fall back to single job for backward compatibility */}
             {match.jobs && match.jobs.length > 0 ? (
-              match.jobs.map((job, index) => (
+              match.jobs.map((job, index) => {
+                const recency = formatJobRecency(job.created_at);
+                console.log('[MatchCard] Rendering job:', {
+                  index,
+                  job_title: job.job_title,
+                  created_at: job.created_at,
+                  has_created_at: !!job.created_at,
+                  recency,
+                  will_render_recency: !!recency
+                });
+                return (
                 <div key={index} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                     {/* Left side: Job Title and Job Details */}
                     <div className="flex-1">
                       <div>
-                        <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-1">
-                          {job.job_title || 'Job Title Not Available'}
-                        </p>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
+                            {job.job_title || 'Job Title Not Available'}
+                          </p>
+                          {recency && (
+                            <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                              {recency}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
                           {job.job_type && (
                             <>
@@ -901,55 +963,75 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             ) : match.job?.job_url ? (
               // Fallback to single job for backward compatibility
-              <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-                  {/* Left side: Job Title and Job Details */}
-                  <div className="flex-1">
-                    <div>
-                      <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900 mb-1">
-                        {match.job.job_title || 'Job Title Not Available'}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
-                        {match.job.job_type && (
-                          <>
-                            <span className="capitalize">{match.job.job_type}</span>
-                            {(match.job.salary_range || match.job.experience_level) && (
-                              <span className="text-gray-400">•</span>
+              (() => {
+                const recency = formatJobRecency(match.job.created_at);
+                console.log('[MatchCard] Rendering single job:', {
+                  job_title: match.job.job_title,
+                  created_at: match.job.created_at,
+                  has_created_at: !!match.job.created_at,
+                  recency,
+                  will_render_recency: !!recency
+                });
+                return (
+                  <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      {/* Left side: Job Title and Job Details */}
+                      <div className="flex-1">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
+                              {match.job.job_title || 'Job Title Not Available'}
+                            </p>
+                            {recency && (
+                              <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                                {recency}
+                              </span>
                             )}
-                          </>
-                        )}
-                        {match.job.salary_range && (
-                          <>
-                            <span>{match.job.salary_range}</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                            {match.job.job_type && (
+                              <>
+                                <span className="capitalize">{match.job.job_type}</span>
+                                {(match.job.salary_range || match.job.experience_level) && (
+                                  <span className="text-gray-400">•</span>
+                                )}
+                              </>
+                            )}
+                            {match.job.salary_range && (
+                              <>
+                                <span>{match.job.salary_range}</span>
+                                {match.job.experience_level && (
+                                  <span className="text-gray-400">•</span>
+                                )}
+                              </>
+                            )}
                             {match.job.experience_level && (
-                              <span className="text-gray-400">•</span>
+                              <span>{match.job.experience_level} preferred</span>
                             )}
-                          </>
-                        )}
-                        {match.job.experience_level && (
-                          <span>{match.job.experience_level} preferred</span>
-                        )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right side: Application Link Button */}
+                      <div className="flex-shrink-0">
+                        <a
+                          href={match.job.job_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span>Apply Now</span>
+                        </a>
                       </div>
                     </div>
                   </div>
-
-                  {/* Right side: Application Link Button */}
-                  <div className="flex-shrink-0">
-                    <a
-                      href={match.job.job_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Apply Now</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
+                );
+              })()
             ) : null}
           </div>
         </div>

@@ -613,7 +613,29 @@ async function enrichStartup(startup: StartupRecord): Promise<boolean> {
 async function getStartupsNeedingEnrichment(limit?: number): Promise<StartupRecord[]> {
   let query = supabase
     .from('startups3')
-    .select('*')
+    .select(`
+      id,
+      name,
+      website,
+      description,
+      techcrunch_article_link,
+      techcrunch_article_content,
+      founder_names,
+      founder_linkedin,
+      funding_amount,
+      round_type,
+      location,
+      industry,
+      job_openings,
+      required_skills,
+      team_size,
+      founder_backgrounds,
+      website_keywords,
+      date,
+      created_at,
+      needs_enrichment,
+      enrichment_status
+    `)
     .eq('needs_enrichment', true)
     .in('enrichment_status', ['pending', 'failed', 'needs_review'])
     .order('created_at', { ascending: true }); // Process oldest first
@@ -716,7 +738,26 @@ async function enrichStartups(limit?: number) {
 async function enrichStartupById(startupId: string) {
   const { data, error } = await supabase
     .from('startups3')
-    .select('*')
+    .select(`
+      id,
+      name,
+      website,
+      description,
+      techcrunch_article_link,
+      techcrunch_article_content,
+      founder_names,
+      founder_linkedin,
+      funding_amount,
+      round_type,
+      location,
+      industry,
+      job_openings,
+      required_skills,
+      team_size,
+      founder_backgrounds,
+      website_keywords,
+      date
+    `)
     .eq('id', startupId)
     .single();
   

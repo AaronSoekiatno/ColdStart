@@ -38,7 +38,7 @@ async function debugInstantMatches() {
   // 2. Get most recent candidate (likely the test user)
   const { data: candidate, error: candidateError } = await supabase
     .from('candidates')
-    .select('*')
+    .select('id, email, job_type, role_type, years_of_experience, created_at')
     .order('created_at', { ascending: false })
     .limit(1)
     .single();

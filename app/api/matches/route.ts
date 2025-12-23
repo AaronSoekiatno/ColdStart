@@ -356,6 +356,7 @@ export async function GET(request: NextRequest) {
       job_type?: string;
       salary_range?: string;
       experience_level?: string;
+      created_at?: string;
     }>> = {};
     const startupsWithJobs = new Set<string>();
     // Track which startups have jobs with startup_id set (vs linked by company name)
@@ -377,11 +378,12 @@ export async function GET(request: NextRequest) {
           job_type: string | null;
           salary_range: string | null;
           experience_level: string | null;
+          created_at: string | null;
         }>>(
           async () => {
             const result = await supabaseAdmin!
               .from('jobs')
-              .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level')
+              .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level, created_at')
               .in('startup_id', batch)
               .not('job_url', 'is', null);
             return result;
@@ -425,18 +427,26 @@ export async function GET(request: NextRequest) {
 
       // Process all fetched jobs
       if (allJobs.length > 0) {
+        console.log('[Matches API] Processing', allJobs.length, 'jobs with startup_id');
         for (const job of allJobs) {
           if (job.startup_id) {
             if (!jobsByStartupId[job.startup_id]) {
               jobsByStartupId[job.startup_id] = [];
             }
-            jobsByStartupId[job.startup_id].push({
+            const jobData = {
               job_title: job.job_title,
               job_url: job.job_url,
               job_type: job.job_type || undefined,
               salary_range: job.salary_range || undefined,
               experience_level: job.experience_level || undefined,
+              created_at: job.created_at || undefined,
+            };
+            console.log('[Matches API] Job data:', {
+              title: jobData.job_title,
+              created_at: jobData.created_at,
+              has_created_at: !!jobData.created_at
             });
+            jobsByStartupId[job.startup_id].push(jobData);
             startupsWithJobs.add(job.startup_id);
             startupsWithDirectJobLinks.add(job.startup_id); // Track direct links
           }
@@ -705,11 +715,12 @@ export async function GET(request: NextRequest) {
         job_type: string | null;
         salary_range: string | null;
         experience_level: string | null;
+        created_at: string | null;
       }>>(
         async () => {
           const result = await supabaseAdmin!
             .from('jobs')
-            .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
+            .select('company_name, job_title, job_url, job_type, salary_range, experience_level, created_at')
             .is('startup_id', null)
             .not('job_url', 'is', null)
             .limit(300); // Reduced from 1000 to save egress
@@ -739,13 +750,20 @@ export async function GET(request: NextRequest) {
                   if (!jobsByStartupId[partialMatchStartupId]) {
                     jobsByStartupId[partialMatchStartupId] = [];
                   }
-                  jobsByStartupId[partialMatchStartupId].push({
+                  const jobData = {
                     job_title: job.job_title,
                     job_url: job.job_url,
                     job_type: job.job_type || undefined,
                     salary_range: job.salary_range || undefined,
                     experience_level: job.experience_level || undefined,
+                    created_at: job.created_at || undefined,
+                  };
+                  console.log('[Matches API] Unlinked job (partial match):', {
+                    title: jobData.job_title,
+                    created_at: jobData.created_at,
+                    has_created_at: !!jobData.created_at
                   });
+                  jobsByStartupId[partialMatchStartupId].push(jobData);
                   startupsWithJobs.add(partialMatchStartupId);
                 }
                 break;
@@ -756,13 +774,20 @@ export async function GET(request: NextRequest) {
             if (!jobsByStartupId[matchingStartupId]) {
               jobsByStartupId[matchingStartupId] = [];
             }
-            jobsByStartupId[matchingStartupId].push({
+            const jobData = {
               job_title: job.job_title,
               job_url: job.job_url,
               job_type: job.job_type || undefined,
               salary_range: job.salary_range || undefined,
               experience_level: job.experience_level || undefined,
+              created_at: job.created_at || undefined,
+            };
+            console.log('[Matches API] Unlinked job (exact match):', {
+              title: jobData.job_title,
+              created_at: jobData.created_at,
+              has_created_at: !!jobData.created_at
             });
+            jobsByStartupId[matchingStartupId].push(jobData);
             startupsWithJobs.add(matchingStartupId);
           }
         }
@@ -857,21 +882,39 @@ export async function GET(request: NextRequest) {
         matched_at: m.matched_at,
         startup: startup,
         has_job_listings: orderedJobs.length > 0,
-        jobs: orderedJobs.map(job => ({
-          job_title: job.job_title,
-          job_url: job.job_url,
-          job_type: job.job_type,
-          salary_range: job.salary_range,
-          experience_level: job.experience_level,
-        })),
+        jobs: orderedJobs.map(job => {
+          const jobData = {
+            job_title: job.job_title,
+            job_url: job.job_url,
+            job_type: job.job_type,
+            salary_range: job.salary_range,
+            experience_level: job.experience_level,
+            created_at: job.created_at,
+          };
+          console.log('[Matches API] Building jobs array item:', {
+            title: jobData.job_title,
+            created_at: jobData.created_at,
+            has_created_at: !!jobData.created_at
+          });
+          return jobData;
+        }),
         // Keep 'job' for backward compatibility (first job in ordered list)
-        job: orderedJobs.length > 0 ? {
-          job_title: orderedJobs[0].job_title,
-          job_url: orderedJobs[0].job_url,
-          job_type: orderedJobs[0].job_type,
-          salary_range: orderedJobs[0].salary_range,
-          experience_level: orderedJobs[0].experience_level,
-        } : null,
+        job: orderedJobs.length > 0 ? (() => {
+          const jobData = {
+            job_title: orderedJobs[0].job_title,
+            job_url: orderedJobs[0].job_url,
+            job_type: orderedJobs[0].job_type,
+            salary_range: orderedJobs[0].salary_range,
+            experience_level: orderedJobs[0].experience_level,
+            created_at: orderedJobs[0].created_at,
+          };
+          console.log('[Matches API] Building single job object:', {
+            title: jobData.job_title,
+            created_at: jobData.created_at,
+            has_created_at: !!jobData.created_at
+          });
+          return jobData;
+        })() : null,
       };
     });
     
