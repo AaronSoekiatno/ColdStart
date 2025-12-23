@@ -206,12 +206,21 @@ export async function GET(request: NextRequest) {
       // If no candidate record exists, this is likely a new sign-up
       isNewSignUpMagicLink = !candidate;
 
-      // Send welcome email for new signups (non-blocking)
-      if (isNewSignUpMagicLink && magicLinkUser.email) {
+      // Create/update email preferences - opt into marketing emails (consent given by continuing)
+      // This applies to both new signups and existing users signing in via magic link
+      if (magicLinkUser.email) {
         try {
           // Opt user into marketing emails since they consented by continuing
           await getOrCreateEmailPreferences(magicLinkUser.email, { marketingOptIn: true });
-          
+        } catch (error) {
+          // Log error but don't block auth flow
+          console.error('[Auth Callback] Error updating email preferences:', error);
+        }
+      }
+
+      // Send welcome email for new signups (non-blocking)
+      if (isNewSignUpMagicLink && magicLinkUser.email) {
+        try {
           // Extract first name from user metadata
           const firstName = extractFirstName(magicLinkUser.user_metadata, magicLinkUser.email);
           
