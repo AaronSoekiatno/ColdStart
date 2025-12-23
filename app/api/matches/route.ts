@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
 import { emailLimitCache, matchesCache } from '@/lib/cache';
+import { getCache, setCache } from '@/lib/redis-cache';
 
 /**
  * Wraps a Supabase query with timeout and retry logic
@@ -106,12 +107,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Track request timing for egress monitoring
+    const requestStart = Date.now();
+
     // Create cache key based on user email, page, and limit
     // This ensures each user's paginated results are cached separately
     const cacheKey = `matches:${user.email}:${page}:${limit}`;
     
-    // Check cache first to avoid database queries
-    const cached = matchesCache.get<{
+    // Check Redis cache FIRST (persistent across serverless instances)
+    const redisCache = await getCache<{
       matches: any[];
       pagination: {
         page: number;
@@ -122,15 +126,55 @@ export async function GET(request: NextRequest) {
       };
     }>(cacheKey);
     
-    if (cached) {
-      return NextResponse.json(cached, {
+    if (redisCache) {
+      const elapsed = Date.now() - requestStart;
+      console.log('[EGRESS MONITOR] REDIS CACHE HIT:', {
+        user: user.email,
+        page,
+        cacheKey,
+        elapsed: `${elapsed}ms`
+      });
+      return NextResponse.json(redisCache, {
         headers: {
-          'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
-          'X-Cache-Status': 'HIT',
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+          'X-Cache-Status': 'HIT-REDIS',
           'X-Cache-Key': cacheKey,
         },
       });
     }
+    
+    // Check in-memory cache as fallback
+    const memoryCache = matchesCache.get<{
+      matches: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasMore: boolean;
+      };
+    }>(cacheKey);
+    
+    if (memoryCache) {
+      const elapsed = Date.now() - requestStart;
+      console.log('[EGRESS MONITOR] MEMORY CACHE HIT:', {
+        user: user.email,
+        page,
+        cacheKey,
+        elapsed: `${elapsed}ms`
+      });
+      // Also populate Redis for next time
+      await setCache(cacheKey, memoryCache, 3600);
+      return NextResponse.json(memoryCache, {
+        headers: {
+          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+          'X-Cache-Status': 'HIT-MEMORY',
+          'X-Cache-Key': cacheKey,
+        },
+      });
+    }
+    
+    console.log('[EGRESS MONITOR] CACHE MISS - Querying database:', { user: user.email, page });
 
     // Get candidate ID and role preferences
     const candidateResult = await withTimeoutAndRetry<{ id: string; role_type: string[] | null }>(
