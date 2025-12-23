@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, Bookmark, Mail } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { ChevronDown, ChevronUp, Bookmark, Mail, X } from 'lucide-react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { MatchCard } from './MatchCard';
+import { splitFounderNames } from '@/lib/clean-founder-names';
 
 interface SavedMatchCardProps {
   match: {
@@ -45,6 +47,10 @@ interface SavedMatchCardProps {
 
 export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSaved = true }: SavedMatchCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [showFounderDropdown, setShowFounderDropdown] = useState(false);
+  const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const getCompanyLogo = () => {
     return match.startup?.company_logo || null;
@@ -54,9 +60,75 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
   // Match the score calculation from MatchCard (score * 100 + 40, capped at 97)
   const matchScore = Math.min((match.score * 100) + 40, 97).toFixed(0);
 
-  const handleContactFounder = () => {
-    // Navigate to generate email page with startup info
-    window.location.href = `/generate-email?startupId=${match.startup?.id}&startupName=${encodeURIComponent(match.startup?.name || '')}`;
+  // Parse founder data similar to MatchCard
+  const founderData = useMemo(() => {
+    const startup = match.startup;
+    if (!startup) return { founderNames: [], founderEmails: [] };
+
+    const founderNames = splitFounderNames(startup.founder_names, startup.name);
+    const founderEmails = startup.founder_emails
+      ? startup.founder_emails.split(',').map(email => email.trim())
+      : [];
+
+    return { founderNames, founderEmails };
+  }, [match.startup]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setShowFounderDropdown(false);
+      }
+    };
+
+    if (showFounderDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showFounderDropdown]);
+
+  const handleContactFounder = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // If no founders, expand card to show full details
+    if (founderData.founderNames.length === 0) {
+      setIsExpanded(true);
+      return;
+    }
+
+    // If only one founder with email, navigate directly
+    if (founderData.founderNames.length === 1 && founderData.founderEmails[0]) {
+      const params = new URLSearchParams();
+      params.append('startupId', match.startup?.id || '');
+      params.append('matchScore', match.score.toString());
+      params.append('founderEmail', founderData.founderEmails[0]);
+      router.push(`/generate-email?${params.toString()}`);
+      return;
+    }
+
+    // Show dropdown for multiple founders
+    setShowFounderDropdown(true);
+  };
+
+  const handleSelectFounder = (index: number) => {
+    const founderEmail = founderData.founderEmails[index];
+    if (!founderEmail) {
+      // If no email, expand card to show full details
+      setIsExpanded(true);
+      setShowFounderDropdown(false);
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.append('startupId', match.startup?.id || '');
+    params.append('matchScore', match.score.toString());
+    params.append('founderEmail', founderEmail);
+    router.push(`/generate-email?${params.toString()}`);
   };
 
   return (
@@ -112,14 +184,62 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
 
         {/* Contact Founder Button - Hidden when expanded */}
         {!isExpanded && (
-          <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex-shrink-0 relative" onClick={(e) => e.stopPropagation()}>
             <button
+              ref={buttonRef}
               onClick={handleContactFounder}
               className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
             >
               <Mail className="w-4 h-4" />
               <span>Contact Founder</span>
             </button>
+
+            {/* Founder Selection Dropdown */}
+            {showFounderDropdown && founderData.founderNames.length > 0 && (
+              <div
+                ref={dropdownRef}
+                className="absolute right-0 top-full mt-2 z-50 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[200px] max-w-[280px] max-h-[300px] overflow-y-auto"
+              >
+                <div className="p-2 border-b border-gray-200 flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-700">Select a founder</p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowFounderDropdown(false);
+                    }}
+                    className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="w-3 h-3 text-gray-500" />
+                  </button>
+                </div>
+                <div className="py-1">
+                  {founderData.founderNames.map((name, index) => {
+                    const hasEmail = !!founderData.founderEmails[index];
+                    return (
+                      <button
+                        key={index}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectFounder(index);
+                        }}
+                        disabled={!hasEmail}
+                        className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                          hasEmail
+                            ? 'text-gray-900 cursor-pointer'
+                            : 'text-gray-400 cursor-not-allowed opacity-60'
+                        }`}
+                      >
+                        <div className="font-medium">{name}</div>
+                        {!hasEmail && (
+                          <div className="text-xs text-gray-500 mt-0.5">No email available</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -540,7 +540,8 @@ export async function GET(request: NextRequest) {
                 .not('name', 'is', null)
                 .not('industry', 'is', null)
                 .not('location', 'is', null)
-                .not('batch', 'is', null);
+                .not('batch', 'is', null)
+                .not('founder_emails', 'is', null);
               return result;
             },
             15000, // 15 second timeout
