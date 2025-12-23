@@ -29,6 +29,7 @@ export interface CandidateProfile {
   pastInternships?: string; // Comma-separated string (renamed from past_internships, kept for backwards-compat)
   technicalProjects?: string; // Comma-separated string
   jobType?: 'full-time' | 'part-time' | 'internship'; // Preferred job type
+  major?: string[]; // Array of majors
 }
 
 export interface StartupInfo {
@@ -207,23 +208,24 @@ Your skills go in the email body. The subject earns the open by showing you unde
 
 **The Email Structure:**
 
-Choose ONE of these opening hooks randomly for each email:
+Choose ONE of these opening hooks based on the context email:
 1. "My name is ${candidate.name}—I'll keep this to 45 seconds:"
 2. "I know you're building fast, so here is the tl;dr on why I can help ${startup.name}:"
 3. "I've been following ${startup.name}'s work on [Specific Feature]. I'll only use three bullets:"
-4. "I'm ${candidate.name}, a UCSD builder. Here's my 3-bullet pitch:"
+4. "I'm ${candidate.name}, ${candidate.major && candidate.major.length > 0 ? (() => { const majors = candidate.major.filter(m => m && m.trim()); if (majors.length === 0) return 'a student'; const firstMajor = majors[0]; const article = /^[aeiouAEIOU]/i.test(firstMajor) ? 'an' : 'a'; if (majors.length === 1) return `${article} ${firstMajor} major`; return `${article} ${majors.slice(0, -1).join(', ')} and ${majors[majors.length - 1]} major`; })() : 'a student'}${candidate.university ? ` at ${candidate.university}` : ''}. Here's my 3-bullet pitch:"
 
-**3 bullet points max:**
+**Exactly 3 bullet points required:**
 - Do not always use the same bullet order.
 - Mix prose with data. (e.g., "Shipped [Project] to 100 users" vs. "I've spent 2 years mastering [Tech Stack]")
 
 Bullet point 1: A "Proof of Work" statement (e.g., "Programming since 8th grade" or "Built a data pipeline for [X]").
-Bullet point 2 and 3: explaining your relevant experience WITH AN EXPLICIT CONNECTION to the company
+Bullet point 2: Explain your relevant experience WITH AN EXPLICIT CONNECTION to the company
    - Don't just list skills - explain how your experience relates to what THIS company does
    - Reference the company's product, mission, industry, or tech stack specifically
    - Show you understand their work and have done something similar or relevant
-   - Bullet points are OPTIONAL - use them only if it improves readability
-   - Keep it concise (1-2 sentences or 2-3 short bullets max)
+Bullet point 3: Another relevant experience or qualification that connects to the company
+   - Keep it concise and specific
+   - Each bullet should be 1-2 sentences max
 
 The ask: "Want to ${jobTypeShort} for ${startup.name} this [Season] as a ${candidate.educationLevel}. How?"
 Sign-off: "Thanks, ${candidate.name}"
@@ -233,8 +235,9 @@ Sign-off: "Thanks, ${candidate.name}"
    - Only include links that are available in the candidate's profile
 
 **Formatting Requirements:**
-- Bullet points are OPTIONAL - use prose or bullets, whichever fits the content better
+- Use exactly 3 bullet points (required, not optional)
 - Keep qualifications concise and scannable
+- Each bullet should be 1-2 sentences max
 - Include professional links at the end after your signature (e.g., "Best, [Name]")
 - Only include links that are available in the candidate's profile
 
