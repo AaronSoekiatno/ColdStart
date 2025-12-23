@@ -275,31 +275,8 @@ export async function saveStartup(startup: StartupRow) {
   
   // FIRST: Check if startup already exists in Supabase
   const { data: existing, error: fetchError } = await client
-    .from('startups')
-    .select(`
-      id,
-      name,
-      industry,
-      description,
-      round_type,
-      funding_stage,
-      funding_amount,
-      location,
-      website,
-      keywords,
-      tags,
-      founder_emails,
-      founder_names,
-      founder_linkedin,
-      batch,
-      date_raised,
-      yc_link,
-      company_logo,
-      business_type,
-      team_size,
-      hiring_roles,
-      created_at
-    `)
+    .from('startups3')
+    .select('*')
     .eq('id', startup.id)
     .single();
 
@@ -309,14 +286,14 @@ export async function saveStartup(startup: StartupRow) {
   }
 
   // Build the data object, merging with existing data to preserve founder info
-  // Note: startups table uses 'round_type' instead of 'funding_stage'
+  // Note: startups3 doesn't have 'round_type' column, so we skip it
   const dataToInsert: any = {
     id: startup.id,
     // Use provided values, or fall back to existing, or use defaults
     name: startup.name || existing?.name || 'Unknown',
     industry: startup.industry !== undefined ? startup.industry : (existing?.industry || ''),
     description: startup.description !== undefined ? startup.description : (existing?.description || ''),
-    round_type: startup.funding_stage !== undefined ? startup.funding_stage : (startup.round_type !== undefined ? startup.round_type : (existing?.round_type || '')),
+    // Skip round_type - startups3 table doesn't have this column
     funding_amount: startup.funding_amount !== undefined ? startup.funding_amount : (existing?.funding_amount || ''),
     location: startup.location !== undefined ? startup.location : (existing?.location || ''),
     website: startup.website !== undefined ? startup.website : (existing?.website || ''),
@@ -370,7 +347,7 @@ export async function saveStartup(startup: StartupRow) {
   // Use upsert with onConflict to ensure only one row per startup ID
   // This prevents duplicates and updates existing rows
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .upsert(dataToInsert, {
       onConflict: 'id',
     })
@@ -398,29 +375,8 @@ export async function getStartup(id: string) {
   const client = supabaseAdmin || supabase;
   
   const { data, error } = await client
-    .from('startups')
-    .select(`
-      id,
-      name,
-      industry,
-      description,
-      round_type,
-      funding_amount,
-      location,
-      website,
-      keywords,
-      founder_emails,
-      founder_names,
-      founder_linkedin,
-      batch,
-      date_raised,
-      yc_link,
-      company_logo,
-      business_type,
-      team_size,
-      hiring_roles,
-      created_at
-    `)
+    .from('startups3')
+    .select('*')
     .eq('id', id)
     .single();
 
@@ -442,31 +398,8 @@ export async function getStartupByName(name: string) {
   
   // Use case-insensitive search
   const { data, error } = await client
-    .from('startups')
-    .select(`
-      id,
-      name,
-      industry,
-      description,
-      round_type,
-      funding_stage,
-      funding_amount,
-      location,
-      website,
-      keywords,
-      tags,
-      founder_emails,
-      founder_names,
-      founder_linkedin,
-      batch,
-      date_raised,
-      yc_link,
-      company_logo,
-      business_type,
-      team_size,
-      hiring_roles,
-      created_at
-    `)
+    .from('startups3')
+    .select('*')
     .ilike('name', name)
     .limit(1)
     .single();
@@ -496,7 +429,7 @@ export async function findStartupIdByName(name: string): Promise<string | null> 
 
   // Case-insensitive search for existing startup
   const { data, error } = await client
-    .from('startups')
+    .from('startups3')
     .select('id')
     .ilike('name', name.trim())
     .limit(1)

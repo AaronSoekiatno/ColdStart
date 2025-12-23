@@ -2,7 +2,7 @@
 
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { ExternalLink, Mail, AlertCircle } from "lucide-react";
+import { ExternalLink, Mail, AlertCircle, Bookmark } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
@@ -47,6 +47,7 @@ interface MatchCardProps {
       company_logo?: string;
       yc_link?: string;
       company_twitter_url?: string;
+      keywords?: string;
       founders?: Array<{
         id: string;
         name: string;
@@ -61,9 +62,10 @@ interface MatchCardProps {
   };
   isPremium?: boolean;
   userEmail?: string;
+  initialIsSaved?: boolean;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false }: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -80,6 +82,9 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   // Track manual tab clicks to prevent scroll handler from overriding
   const manualTabClickRef = useRef<{ tab: 'company' | 'apply'; timestamp: number } | null>(null);
+  // Track if match is saved - initialize with prop if provided
+  const [isSaved, setIsSaved] = useState(initialIsSaved);
+  const [isSaving, setIsSaving] = useState(false);
 
   if (!match.startup) {
     return null;
@@ -263,6 +268,78 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
     }
   };
 
+  const handleSaveToggle = async () => {
+    if (isSaving) return;
+
+    // Optimistic update - update UI immediately
+    const previousSavedState = isSaved;
+    setIsSaved(!isSaved);
+    setIsSaving(true);
+
+    try {
+      if (previousSavedState) {
+        // Unsave the match
+        const response = await fetch(`/api/matches/saved?matchId=${match.id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          // Revert on failure
+          setIsSaved(previousSavedState);
+          console.error('Failed to unsave match');
+        }
+      } else {
+        // Save the match
+        const response = await fetch('/api/matches/saved', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ matchId: match.id }),
+        });
+
+        if (!response.ok && response.status !== 409) {
+          // Revert on failure (except for 409 which means already saved)
+          setIsSaved(previousSavedState);
+          console.error('Failed to save match');
+        }
+      }
+    } catch (error) {
+      // Revert on error
+      setIsSaved(previousSavedState);
+      console.error('Error toggling save status:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
+  // Check if match is saved on component mount (only if initialIsSaved not provided)
+  useEffect(() => {
+    // If initialIsSaved is provided and true, skip the API check
+    if (initialIsSaved === true) {
+      setIsSaved(true);
+      return;
+    }
+
+    const checkIfSaved = async () => {
+      try {
+        const response = await fetch(`/api/matches/saved/check?matchId=${match.id}`, {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setIsSaved(data.isSaved);
+        }
+      } catch (error) {
+        console.error('Error checking if match is saved:', error);
+      }
+    };
+
+    checkIfSaved();
+  }, [match.id, initialIsSaved]);
 
   // Update active tab based on scroll position
   useEffect(() => {
@@ -358,12 +435,26 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
               </button>
             )}
           </div>
-          {/* Contact Founder Button - Right aligned */}
+          {/* Save and Contact Founder Buttons - Right aligned */}
           {match.startup.id && (
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                className={`flex items-center justify-center gap-1.5 rounded-md md:rounded-lg border px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition shadow-sm cursor-pointer ${
+                  isSaved
+                    ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                    : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+                }`}
+                onClick={handleSaveToggle}
+                disabled={isSaving}
+                aria-label={isSaved ? "Unsave match" : "Save match"}
+              >
+                <Bookmark className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isSaved ? 'fill-current' : ''}`} />
+                <span className="hidden sm:inline">{isSaved ? 'Saved' : 'Save'}</span>
+              </button>
+              <button
+                type="button"
+                className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
                 onClick={() => {
                   if (match.startup?.id) {
                     // Check if a founder is selected
@@ -441,6 +532,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
               {match.startup.description && (
                 <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-1.5 sm:mb-2 break-words leading-relaxed line-clamp-2 sm:line-clamp-none">
                   {match.startup.description}
+                </p>
+              )}
+              {/* Keywords */}
+              {match.startup.keywords && (
+                <p className="text-xs sm:text-sm text-gray-500 mb-1.5 sm:mb-2 break-words leading-relaxed">
+                  {match.startup.keywords.split(',').map(keyword => keyword.trim()).join(' • ')}
                 </p>
               )}
               {/* Website, YC, and Twitter buttons underneath description */}
@@ -796,7 +893,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                         href={job.job_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                        className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
                       >
                         <ExternalLink className="w-4 h-4" />
                         <span>Apply Now</span>
@@ -845,7 +942,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '' }: MatchC
                       href={match.job.job_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer"
+                      className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
                     >
                       <ExternalLink className="w-4 h-4" />
                       <span>Apply Now</span>

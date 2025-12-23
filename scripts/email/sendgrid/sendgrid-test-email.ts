@@ -20,7 +20,7 @@ const EMAIL_SUBJECT =
 // Plain-text personal message (no HTML template)
 const EMAIL_TEXT = process.env.WAITLIST_EMAIL_TEXT || `Hey there,
 
-You signed up for the Hermes waitlist a little while ago. I'm Robert, a founder of Hermes, and I've been building a simple way for students to reach YC founders directly with smarter, more targeted cold emails.
+You signed up for the Hermes waitlist a little while ago. I'm Robert, a founder of Hermes, and I've been building a simple way for students to reach YC founders directly with smarter, more personal cold emails.
 
 Hermes is now live, and I'd love for you to try it and tell me what feels confusing or missing.
 
@@ -35,10 +35,7 @@ If you have 1–2 minutes, just hit reply and share:
 Best,
 Robert
 
-Hermes
-
-If you don't want to hear about Hermes anymore, you can unsubscribe here:
-${APP_URL}/unsubscribe?email={{email}}
+Hermes.ai
 `;
 
 async function main() {

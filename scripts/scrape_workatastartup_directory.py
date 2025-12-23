@@ -5,17 +5,37 @@ then scrape jobs for each company using ycombinator-scraper.
 import os
 import sys
 import re
+from pathlib import Path
 import requests  # pyright: ignore[reportMissingModuleSource]
 from typing import List, Optional
 from dotenv import load_dotenv  # pyright: ignore[reportMissingImports]
 
 # Load environment variables FIRST
-# Try .env.local first (Next.js default), then .env
-env_loaded = load_dotenv('.env.local') or load_dotenv('.env') or load_dotenv()
-if env_loaded:
-    print("✅ Environment variables loaded")
-else:
+# Find project root (parent of script's directory) and look for .env.local there
+script_dir = Path(__file__).parent.absolute()
+project_root = script_dir.parent  # Go up one level from yc_companies/ to root
+
+# Try multiple locations: project root first, then current directory
+env_paths = [
+    project_root / '.env.local',
+    project_root / '.env',
+    script_dir / '.env.local',
+    script_dir / '.env',
+    Path('.env.local'),  # Current working directory
+    Path('.env'),  # Current working directory
+]
+
+env_loaded = False
+for env_path in env_paths:
+    if env_path.exists():
+        env_loaded = load_dotenv(env_path)
+        if env_loaded:
+            print(f"✅ Environment variables loaded from: {env_path}")
+            break
+
+if not env_loaded:
     print("⚠️  No .env file found - using system environment variables")
+    print(f"   Checked paths: {[str(p) for p in env_paths if p.exists() or str(p).endswith('.env.local')]}")
 
 # Set up credentials for ycombinator-scraper library BEFORE importing
 # The library expects login_username and login_password environment variables
@@ -47,6 +67,7 @@ from selenium.webdriver.chrome.service import Service  # pyright: ignore[reportM
 from selenium.common.exceptions import InvalidSessionIdException, WebDriverException  # pyright: ignore[reportMissingImports]
 from webdriver_manager.chrome import ChromeDriverManager  # type: ignore[import-untyped]
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import partial
 import time
 import threading
 
@@ -276,18 +297,43 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
         print(f"   📄 Navigating to filtered page (0-50 employees, seed & small, created_desc): {url}...")
         driver.get(url)
         time.sleep(5)  # Wait for page to load with filters
-        
-        # Verify the URL still has the correct filters
+
+        # Verify filters are active by checking page content (URL may not reflect filters due to React routing)
         current_url = driver.current_url
-        print(f"   ✅ Final URL: {current_url}")
-        if "companySize=seed" in current_url and "companySize=small" in current_url and "sortBy=created_desc" in current_url:
-            print(f"   ✅ Confirmed: Filters are active (seed & small companies, 0-50 employees, created_desc)")
-        else:
-            print(f"   ⚠️  Warning: Filters may not be active. Expected seed & small & created_desc, got: {current_url}")
-            print(f"   🔄 Re-navigating to ensure filters are applied...")
-            driver.get(url)
-            time.sleep(5)
-        
+        print(f"   📍 Current URL: {current_url}")
+
+        # Check for filter chips or startup count on the page to verify filters are working
+        filters_verified = False
+        try:
+            page_text = driver.find_element(By.TAG_NAME, "body").text
+            # Look for filter indicators in page content
+            has_people_filter = "1 - 10 people" in page_text or "11 - 50 people" in page_text or "people" in page_text.lower()
+            has_startup_count = "matching startups" in page_text.lower()
+
+            if has_people_filter and has_startup_count:
+                # Extract the startup count
+                import re
+                count_match = re.search(r'Showing (\d+) matching startups', page_text)
+                if count_match:
+                    startup_count = int(count_match.group(1))
+                    print(f"   ✅ Filters verified: Found {startup_count} matching startups")
+                    filters_verified = True
+                else:
+                    print(f"   ✅ Filters appear to be active (found filter chips)")
+                    filters_verified = True
+        except Exception as e:
+            print(f"   ⚠️  Could not verify filters from page content: {e}")
+
+        # Fallback: check URL if page content check failed
+        if not filters_verified:
+            if "companySize=seed" in current_url or "companySize=small" in current_url:
+                print(f"   ✅ Filters confirmed via URL parameters")
+                filters_verified = True
+            else:
+                print(f"   ⚠️  Warning: Could not verify filters. Re-navigating...")
+                driver.get(url)
+                time.sleep(5)
+
         # Wait for page to fully load
         print("   ⏳ Waiting for page to fully load...")
         time.sleep(3)
@@ -360,6 +406,7 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
                         company_name = None
                         batch = None
                         job_count = None
+                        startup_id = None  # No startup_id available during directory scraping
                         
                         try:
                             # First, try to get company name from link text
@@ -427,34 +474,12 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
                         seen_urls.add(company_url)
                         seen_slugs.add(slug)
                         
-                        # Save company to Supabase startups3 table immediately (incremental save during scrolling)
-                        startup_id = None
-                        if supabase_client:
-                            try:
-                                # Save to database (find or create) - this checks for duplicates in DB
-                                startup_id = find_or_create_startup(company_name, supabase_client, batch, None)
-                                
-                                if startup_id:
-                                    # Count as saved (even if it was already in DB)
-                                    companies_saved_to_db += 1
-                                    
-                                    # Update with company URL (job_listing field) if we have it
-                                    if company_url:
-                                        try:
-                                            supabase_client.table("startups3").update({
-                                                "job_listing": company_url
-                                            }).eq("id", startup_id).execute()
-                                            # Log occasionally for progress tracking
-                                            if companies_saved_to_db % 50 == 0:
-                                                print(f"      💾 Saved {companies_saved_to_db} companies to startups table so far...")
-                                        except Exception as e:
-                                            # Log error but continue
-                                            if companies_saved_to_db % 100 == 0:  # Only log occasionally
-                                                print(f"      ⚠️  Error updating job_listing for {company_name}: {e}")
-                            except Exception as e:
-                                # Log error but continue - we'll still add to list
-                                if companies_saved_to_db % 100 == 0:  # Only log occasionally
-                                    print(f"      ⚠️  Error saving company {company_name} to DB: {e}")
+                        # NOTE: Startup creation is intentionally SKIPPED here
+                        # Jobs will be saved with company_name only, and a separate script
+                        # will create/match startups later to avoid duplicate entries
+                        companies_saved_to_db += 1
+                        if companies_saved_to_db % 50 == 0:
+                            print(f"      📋 Discovered {companies_saved_to_db} companies so far...")
                         
                         company_links.append({
                             "company_url": company_url,
@@ -488,18 +513,54 @@ def get_company_urls_from_directory(limit: Optional[int] = None, supabase_client
                     print(f"   ⚠️  Warning: Found {len(company_links)} companies, which exceeds expected ~1060. Stopping to prevent infinite loop.")
                     break
                 
-                # Scroll down
-                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(1.5)  # Wait for new content to load
-                
+                # Try to find and click "Load More" or "Show More" button first
+                try:
+                    load_more_button = driver.find_element(By.XPATH,
+                        "//button[contains(text(), 'Load') or contains(text(), 'More') or contains(text(), 'Show more')] | "
+                        "//a[contains(text(), 'Load') or contains(text(), 'More')] | "
+                        "//div[contains(@class, 'load-more') or contains(@class, 'show-more')]//button"
+                    )
+                    if load_more_button and load_more_button.is_displayed():
+                        print(f"      📎 Found 'Load More' button, clicking...")
+                        load_more_button.click()
+                        time.sleep(2)  # Wait for content to load
+                except:
+                    pass  # No load more button, continue with scroll
+
+                # Scroll down using smooth scroll for better lazy-loading trigger
+                driver.execute_script("""
+                    window.scrollTo({
+                        top: document.body.scrollHeight,
+                        behavior: 'smooth'
+                    });
+                """)
+                time.sleep(2)  # Wait longer for new content to load (was 1.5)
+
+                # Also try scrolling within the main content area (in case it's a scrollable container)
+                try:
+                    driver.execute_script("""
+                        const containers = document.querySelectorAll('[class*="scroll"], [class*="list"], main, [role="main"]');
+                        containers.forEach(c => {
+                            if (c.scrollHeight > c.clientHeight) {
+                                c.scrollTo(0, c.scrollHeight);
+                            }
+                        });
+                    """)
+                except:
+                    pass
+
                 # Check if page height changed
                 try:
                     new_height = driver.execute_script("return document.body.scrollHeight")
                     total_scrolls += 1
-                    
+
+                    # Also check if number of company elements increased
+                    current_company_count = len(driver.find_elements(By.XPATH, "//a[contains(@href, '/companies/')]"))
+
                     if new_height == last_height:
                         scroll_attempts += 1
-                        if scroll_attempts >= 3:
+                        # Give more attempts (5 instead of 3) since some sites are slow
+                        if scroll_attempts >= 5:
                             print(f"   ✅ Finished scrolling after {total_scrolls} attempts (page height stable)")
                             break
                     else:
@@ -1273,15 +1334,17 @@ def find_or_create_startup(company_name: str, supabase_client: Client, batch: Op
         return None
 
 
-def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None, driver=None, supabase_client: Optional[Client] = None, scraper_instance: Optional[Scraper] = None) -> int:
+def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None, driver=None, supabase_client: Optional[Client] = None, scraper_instance: Optional[Scraper] = None, update_mode: bool = False, dry_run: bool = False) -> int:
     """Scrape jobs for a company and save to database.
-    
+
     Args:
         company_info: Dict with company_url, company_name, batch
         limit: Optional limit on number of jobs to scrape
         driver: Optional Selenium driver for full description extraction (if None, creates one)
         supabase_client: Optional Supabase client (if None, uses global)
         scraper_instance: Optional Scraper instance (if None, uses global)
+        update_mode: If True, update existing jobs and mark missing ones as inactive
+        dry_run: If True, show what would be done without modifying database
     """
     # Use provided clients or fall back to globals
     if supabase_client is None:
@@ -1395,10 +1458,11 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 if isinstance(tag, str) and (tag.startswith('S') or tag.startswith('W')):
                     batch = tag
                     break
-        
-        # Find or create startup
-        startup_id = find_or_create_startup(company_name, supabase_client, batch, company_description)
-        
+
+        # NOTE: Startup creation is intentionally SKIPPED here
+        # Jobs will be saved with company_name only (no startup_id)
+        # A separate script will create/match startups later to avoid duplicate entries
+
         # Get jobs - the library uses these exact field names:
         # - job_data: List[JobData] (full job objects)
         # - company_job_links: List[str] (job URLs)
@@ -1537,7 +1601,12 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
             return 0  # Return 0 if no jobs found
         
         print(f"   📋 Processing {len(jobs)} jobs for {company_name}...")
-        
+
+        # Track which jobs we see during scraping (for marking inactive later in update mode)
+        # Use separate sets for titles and URLs to allow flexible matching
+        scraped_job_titles = set()  # Set of job titles
+        scraped_job_urls = set()    # Set of job URLs (non-empty only)
+
         saved_count = 0
         for idx, job in enumerate(jobs, 1):
             print(f"   📋 Processing job {idx}/{len(jobs)}...")
@@ -1616,22 +1685,6 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                         print(f"            - '{match.strip()}'")
                 else:
                     print(f"         ⚠️  No 'Interview Process' section found in description")
-                
-                # Save full description to file for inspection (first job only)
-                if idx == 1:
-                    debug_file = f"debug_job_description_{company_name.replace(' ', '_')}_{idx}.txt"
-                    try:
-                        with open(debug_file, 'w', encoding='utf-8') as f:
-                            f.write(f"Job URL: {job_url}\n")
-                            f.write(f"Job Title: {job_title}\n")
-                            f.write(f"Description Length: {len(description)} characters\n")
-                            f.write(f"{'='*80}\n")
-                            f.write("FULL DESCRIPTION:\n")
-                            f.write(f"{'='*80}\n")
-                            f.write(description)
-                        print(f"         💾 Saved full description to: {debug_file}")
-                    except Exception as e:
-                        print(f"         ⚠️  Could not save debug file: {e}")
             else:
                 print(f"      ⚠️  No description found in job data!")
             tags = job_dict.get("job_tags")  # Nested list: [[tag1, tag2, ...]]
@@ -1759,7 +1812,7 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                     "job_title": job_title,
                     "job_type": job_type,  # Extracted from tags (e.g., "Full-time", "Internship")
                     "location": location,  # Extracted from tags (e.g., "Munich, BY, DE")
-                    # job_url intentionally omitted - leaving as null in database
+                    "job_url": job_url,  # Job URL for deduplication and update mode
                     "company_tagline": company_description,
                     "company_about": company_about,  # Extracted from description "About [Company]" section
                     "salary_range": salary_range,
@@ -1777,30 +1830,156 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 # Remove None values
                 db_job = {k: v for k, v in db_job.items() if v is not None}
 
-                # Check if exists - use company_name and job_title for uniqueness (job_url not saved)
-                check = supabase_client.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).limit(1).execute()
+                # Track this job as seen (for inactive marking later)
+                # Track both title and URL separately for flexible matching
+                scraped_job_titles.add(db_job["job_title"])
+                if db_job.get("job_url"):
+                    scraped_job_urls.add(db_job["job_url"])
 
-                if not check.data:
-                    try:
-                        result = supabase_client.table("jobs").insert(db_job).execute()
-                        saved_count += 1
-                        print(f"   ✅ Saved job #{saved_count} to jobs table: {db_job['job_title']}")
-                        if result.data:
-                            print(f"      📝 Inserted job ID: {result.data[0].get('id', 'N/A')}")
-                    except Exception as insert_error:
-                        print(f"   ❌ ERROR inserting job into database: {insert_error}")
-                        print(f"      Job data: {list(db_job.keys())}")
-                        import traceback
-                        traceback.print_exc()
-                        # Continue to next job instead of breaking
+                if update_mode:
+                    # Update mode: Check if job exists and update is_active, or insert new
+                    # First try exact match (all three fields)
+                    check = supabase_client.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).eq("job_url", db_job.get("job_url")).limit(1).execute()
+                    
+                    # If not found and we have a job_url, try matching by title + company only
+                    # (in case job_url was added/updated)
+                    if not check.data and db_job.get("job_url"):
+                        check = supabase_client.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).is_("job_url", "null").limit(1).execute()
+                    
+                    # If still not found, try matching by title + company only (for jobs with different URLs)
+                    if not check.data:
+                        check = supabase_client.table("jobs").select("id, job_url").eq("company_name", company_name).eq("job_title", db_job["job_title"]).limit(1).execute()
+                        if check.data:
+                            # Found by title - use this match (job_url might differ, that's okay)
+                            check = supabase_client.table("jobs").select("id").eq("id", check.data[0]["id"]).execute()
+
+                    if check.data:
+                        # Job exists - only update is_active to true
+                        job_id = check.data[0]["id"]
+                        if dry_run:
+                            print(f"   [DRY RUN] Would mark job as active: {db_job['job_title']}")
+                        else:
+                            try:
+                                supabase_client.table("jobs").update({"is_active": True}).eq("id", job_id).execute()
+                                saved_count += 1
+                                print(f"   🔄 Updated job #{saved_count} (marked active): {db_job['job_title']}")
+                            except Exception as update_error:
+                                print(f"   ❌ ERROR updating job: {update_error}")
+                                import traceback
+                                traceback.print_exc()
+                    else:
+                        # Job doesn't exist - insert new with is_active=true
+                        db_job["is_active"] = True
+                        if dry_run:
+                            print(f"   [DRY RUN] Would insert new job: {db_job['job_title']}")
+                            print(f"             Location: {db_job.get('location', 'N/A')}")
+                            print(f"             URL: {db_job.get('job_url', 'N/A')[:80] if db_job.get('job_url') else 'N/A'}")
+                        else:
+                            try:
+                                result = supabase_client.table("jobs").insert(db_job).execute()
+                                saved_count += 1
+                                print(f"   ✅ Inserted new job #{saved_count}: {db_job['job_title']}")
+                                if result.data:
+                                    print(f"      📝 Job ID: {result.data[0].get('id', 'N/A')}")
+                            except Exception as insert_error:
+                                print(f"   ❌ ERROR inserting job: {insert_error}")
+                                print(f"      Job data: {list(db_job.keys())}")
+                                import traceback
+                                traceback.print_exc()
                 else:
-                    print(f"   ⏭️  Skipped (exists): {db_job['job_title']}")
+                    # Normal mode: insert new, skip existing (original behavior)
+                    check = supabase_client.table("jobs").select("id").eq("company_name", company_name).eq("job_title", db_job["job_title"]).limit(1).execute()
+
+                    if not check.data:
+                        if dry_run:
+                            print(f"   [DRY RUN] Would insert job: {db_job['job_title']}")
+                        else:
+                            try:
+                                result = supabase_client.table("jobs").insert(db_job).execute()
+                                saved_count += 1
+                                print(f"   ✅ Saved job #{saved_count} to jobs table: {db_job['job_title']}")
+                                if result.data:
+                                    print(f"      📝 Inserted job ID: {result.data[0].get('id', 'N/A')}")
+                            except Exception as insert_error:
+                                print(f"   ❌ ERROR inserting job into database: {insert_error}")
+                                print(f"      Job data: {list(db_job.keys())}")
+                                import traceback
+                                traceback.print_exc()
+                    else:
+                        print(f"   ⏭️  Skipped (exists): {db_job['job_title']}")
             except Exception as e:
                 print(f"   ❌ Error processing job {idx}: {e}")
                 import traceback
                 traceback.print_exc()
                 # Continue to next job
-        
+
+        # Mark jobs as inactive if they're no longer on the website (update mode only)
+        if update_mode:
+            try:
+                # Get all currently active jobs for this company from database
+                existing_jobs_result = supabase_client.table("jobs")\
+                    .select("id, job_title, job_url")\
+                    .eq("company_name", company_name)\
+                    .eq("is_active", True)\
+                    .execute()
+
+                existing_jobs = existing_jobs_result.data if existing_jobs_result.data else []
+
+                print(f"\n   📊 Inactive check: {len(existing_jobs)} active jobs in DB, {len(scraped_job_titles)} titles scraped, {len(scraped_job_urls)} URLs scraped")
+
+                # Find jobs that exist in DB but weren't scraped (no longer on website)
+                # A job is considered "still active" if EITHER:
+                # 1. Its job_title matches a scraped job title, OR
+                # 2. Its job_url matches a scraped job URL (when URL exists)
+                jobs_to_deactivate = []
+                for job in existing_jobs:
+                    job_title = job.get("job_title", "")
+                    job_url = job.get("job_url")
+
+                    # Check if this job was found in scraping (by title OR by URL)
+                    title_matches = job_title in scraped_job_titles
+                    url_matches = job_url and job_url in scraped_job_urls
+
+                    if not title_matches and not url_matches:
+                        # Job wasn't found by title or URL - mark for deactivation
+                        jobs_to_deactivate.append(job)
+                        print(f"      ⚠️  Not found: '{job_title}' (URL: {job_url[:50] if job_url else 'None'}...)")
+                    else:
+                        # Debug: show why job is still considered active
+                        match_reason = "title" if title_matches else "URL"
+                        print(f"      ✓ Still active (matched by {match_reason}): '{job_title}'")
+
+                if jobs_to_deactivate:
+                    if dry_run:
+                        print(f"\n   [DRY RUN] Would mark {len(jobs_to_deactivate)} jobs as inactive:")
+                        for job in jobs_to_deactivate[:5]:  # Show first 5
+                            print(f"             - {job['job_title']}")
+                        if len(jobs_to_deactivate) > 5:
+                            print(f"             ... and {len(jobs_to_deactivate) - 5} more")
+                    else:
+                        # Mark jobs as inactive
+                        deactivated_count = 0
+                        for job in jobs_to_deactivate:
+                            try:
+                                supabase_client.table("jobs")\
+                                    .update({"is_active": False})\
+                                    .eq("id", job["id"])\
+                                    .execute()
+                                deactivated_count += 1
+                            except Exception as deactivate_error:
+                                print(f"   ⚠️  Error deactivating job {job['job_title']}: {deactivate_error}")
+
+                        print(f"   ❌ Marked {deactivated_count} jobs as inactive (no longer on website)")
+                else:
+                    if not dry_run:
+                        print(f"   ℹ️  No jobs to mark inactive (all existing jobs still active)")
+
+            except Exception as inactive_check_error:
+                print(f"   ⚠️  Error checking for inactive jobs: {inactive_check_error}")
+                import traceback
+                traceback.print_exc()
+                # Don't fail the entire scrape if inactive-marking fails
+
         print(f"   ✅ Total: {saved_count} new jobs saved to jobs table from {len(jobs)} jobs found")
         if saved_count == 0 and len(jobs) > 0:
             print(f"   ⚠️  WARNING: Found {len(jobs)} jobs but saved 0! All may have been duplicates or errors occurred.")
@@ -1820,20 +1999,25 @@ def scrape_and_save_company_jobs(company_info: dict, limit: Optional[int] = None
                 pass
 
 
-def process_company_parallel(company_info: dict) -> tuple:
+def process_company_parallel(company_info: dict, update_mode: bool = False, dry_run: bool = False) -> tuple:
     """Wrapper function to process a company with thread-local resources.
-    
+
+    Args:
+        company_info: Dict with company information
+        update_mode: If True, update existing jobs and mark missing ones as inactive
+        dry_run: If True, show what would be done without modifying database
+
     Returns:
         tuple: (company_name, jobs_saved, error_message)
     """
     company_name = company_info["company_name"]
-    
+
     # Create thread-local Supabase client
     thread_supabase = create_client(supabase_url, supabase_key)
-    
+
     # Create thread-local scraper instance
     thread_scraper = Scraper()
-    
+
     # Create thread-local Selenium driver
     chrome_options = Options()
     chrome_options.add_argument("--headless")
@@ -1842,15 +2026,17 @@ def process_company_parallel(company_info: dict) -> tuple:
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
-    
+
     thread_driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-    
+
     try:
         jobs_saved = scrape_and_save_company_jobs(
-            company_info, 
-            driver=thread_driver, 
+            company_info,
+            driver=thread_driver,
             supabase_client=thread_supabase,
-            scraper_instance=thread_scraper
+            scraper_instance=thread_scraper,
+            update_mode=update_mode,
+            dry_run=dry_run
         )
         return (company_name, jobs_saved, None)
     except Exception as e:
@@ -1862,198 +2048,264 @@ def process_company_parallel(company_info: dict) -> tuple:
         thread_driver.quit()
 
 
+def scrape_jobs_incrementally(limit: Optional[int] = None, batch_size: int = 10, dry_run: bool = False):
+    """
+    Scroll through directory and scrape jobs incrementally.
+    Saves jobs immediately as companies are discovered - no separate startup creation.
+
+    Args:
+        limit: Max number of companies to process
+        batch_size: Number of companies to process before continuing to scroll
+        dry_run: If True, don't modify database
+    """
+    print("🔍 Starting incremental job scraping...")
+
+    # Setup Selenium
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+
+    # Stats
+    total_companies = 0
+    total_new_jobs = 0
+    total_existing_jobs = 0
+    total_inactive_jobs = 0
+
+    try:
+        # Login
+        print("🔐 Logging in...")
+        base_url = "https://www.workatastartup.com/companies"
+        driver.get(base_url)
+        time.sleep(3)
+
+        email = os.getenv("WORKATASTARTUP_EMAIL")
+        password = os.getenv("WORKATASTARTUP_PASSWORD")
+
+        if email and password:
+            try:
+                # Check if already logged in
+                try:
+                    driver.find_element(By.XPATH, "//a[contains(text(), 'My profile') or contains(text(), 'Inbox')]")
+                    print("   ✅ Already logged in")
+                except:
+                    # Need to login
+                    login_link = driver.find_element(By.XPATH, "//a[contains(@href, 'authenticate') or contains(text(), 'Log In')]")
+                    login_link.click()
+                    time.sleep(2)
+
+                    email_field = driver.find_element(By.NAME, "username")
+                    password_field = driver.find_element(By.NAME, "password")
+                    email_field.send_keys(email)
+                    password_field.send_keys(password)
+
+                    submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+                    submit_button.click()
+                    time.sleep(5)
+                    print("   ✅ Logged in")
+            except Exception as e:
+                print(f"   ⚠️  Login failed: {e}")
+
+        # Navigate to filtered page
+        url = "https://www.workatastartup.com/companies?companySize=seed&companySize=small&demographic=any&hasEquity=any&hasSalary=any&industry=any&interviewProcess=any&layout=list-compact&sortBy=created_desc&tab=any&usVisaNotRequired=any"
+        print(f"📄 Navigating to directory (seed & small, newest first)...")
+        driver.get(url)
+        time.sleep(5)
+
+        # Tracking
+        seen_urls = set()
+        pending_companies = []
+        last_height = driver.execute_script("return document.body.scrollHeight")
+        scroll_attempts = 0
+        max_scroll_attempts = 5
+
+        print("\n📜 Scrolling and processing companies incrementally...")
+
+        while True:
+            # Extract company links from current view
+            try:
+                links = driver.find_elements(By.XPATH, "//a[contains(@href, '/companies/')]")
+            except:
+                links = []
+
+            for link in links:
+                try:
+                    href = link.get_attribute("href")
+                    if not href or '/companies/' not in href:
+                        continue
+
+                    company_url = href.split('?')[0].rstrip('/')
+
+                    # Skip /website URLs - these are redirect links, not company pages
+                    if company_url.endswith('/website'):
+                        continue
+
+                    if company_url in seen_urls:
+                        continue
+
+                    # Extract slug
+                    match = re.search(r'/companies/([^/?]+)', company_url)
+                    if not match:
+                        continue
+
+                    slug = match.group(1).lower()
+                    if not slug or len(slug) < 2 or slug == 'companies':
+                        continue
+
+                    seen_urls.add(company_url)
+
+                    # Get company name from link text or slug
+                    if link.text:
+                        company_name = link.text.strip()
+                    else:
+                        # Clean up slug-based name - remove trailing numbers (like "tempo-2" -> "tempo")
+                        slug_parts = slug.split('-')
+                        if len(slug_parts) > 1 and slug_parts[-1].isdigit():
+                            slug_parts = slug_parts[:-1]
+                        company_name = ' '.join(word.capitalize() for word in slug_parts) if slug_parts else slug.replace('-', ' ').title()
+                    # Clean up
+                    company_name = re.sub(r'\s*\([SW]\d{2}\).*$', '', company_name).strip()
+                    company_name = re.sub(r'\s*See all.*$', '', company_name, flags=re.IGNORECASE).strip()
+                    company_name = re.sub(r'\s*\d+\s*jobs?.*$', '', company_name, flags=re.IGNORECASE).strip()
+
+                    if company_name and len(company_name) > 1:
+                        pending_companies.append({
+                            "company_url": company_url,
+                            "company_name": company_name
+                        })
+                except:
+                    continue
+
+            # Process batch if we have enough or if scrolling is done
+            should_process = len(pending_companies) >= batch_size
+            scrolling_done = scroll_attempts >= max_scroll_attempts
+
+            if should_process or (scrolling_done and pending_companies):
+                batch = pending_companies[:batch_size]
+                pending_companies = pending_companies[batch_size:]
+
+                print(f"\n{'='*60}")
+                print(f"📦 Processing batch of {len(batch)} companies")
+                print("=" * 60)
+
+                for company in batch:
+                    if limit and total_companies >= limit:
+                        break
+
+                    total_companies += 1
+                    print(f"\n[{total_companies}] {company['company_name']}")
+
+                    # Create a separate driver for job scraping to not lose scroll position
+                    job_driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+
+                    try:
+                        result = scrape_and_save_company_jobs(
+                            company,
+                            driver=job_driver,
+                            supabase_client=supabase,
+                            scraper_instance=scraper,
+                            update_mode=True,
+                            dry_run=dry_run
+                        )
+                        total_new_jobs += result
+                    except Exception as e:
+                        print(f"   ❌ Error: {e}")
+                    finally:
+                        job_driver.quit()
+
+                if limit and total_companies >= limit:
+                    print(f"\n⏹️  Reached limit of {limit} companies")
+                    break
+
+            # Check if scrolling is done
+            if scrolling_done and not pending_companies:
+                print(f"\n✅ Finished - no new companies after {max_scroll_attempts} scroll attempts")
+                break
+
+            # Scroll down
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
+
+            new_height = driver.execute_script("return document.body.scrollHeight")
+            if new_height == last_height:
+                scroll_attempts += 1
+            else:
+                scroll_attempts = 0
+            last_height = new_height
+
+            if limit and total_companies >= limit:
+                break
+
+        # Summary
+        print(f"\n{'='*60}")
+        print("📊 Summary")
+        print("=" * 60)
+        print(f"   Companies processed: {total_companies}")
+        print(f"   Jobs saved: {total_new_jobs}")
+
+        if dry_run:
+            print("\n⚠️  DRY RUN - No changes were made")
+        else:
+            print("\n✅ Done! Run link_jobs_to_startups.py to create/link startups")
+
+    finally:
+        driver.quit()
+
+    return total_companies, total_new_jobs
+
+
 def main():
     """Main function."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="Scrape jobs from workatastartup.com directory",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Test mode: process 1 company
+  # Test mode: process 5 companies
   python scrape_workatastartup_directory.py --test
-  
-  # Process 5 companies in batches of 5 (1 batch)
-  python scrape_workatastartup_directory.py --limit 5
-  
-  # Process all companies in batches of 5
-  python scrape_workatastartup_directory.py --batch-size 5
-  
-  # Process 20 companies in batches of 5 (4 batches)
-  python scrape_workatastartup_directory.py --limit 20 --batch-size 5
+
+  # Process 20 companies
+  python scrape_workatastartup_directory.py --limit 20
+
+  # Preview changes without saving
+  python scrape_workatastartup_directory.py --dry-run --limit 5
         """
     )
     parser.add_argument("--limit", type=int, help="Limit total number of companies to process (default: all)")
-    parser.add_argument("--test", action="store_true", help="Test mode: process 1 company")
-    parser.add_argument("--batch-size", type=int, default=5, help="Number of companies to process per batch (default: 5)")
-    parser.add_argument("--skip-existing", action="store_true", default=True, help="Skip companies that already have jobs (default: True)")
-    parser.add_argument("--no-skip-existing", dest="skip_existing", action="store_false", help="Process all companies even if they already have jobs (overrides --skip-existing)")
-    parser.add_argument("--workers", type=int, default=8, help="Number of parallel workers (default: 8)")
-    parser.add_argument("--skip-directory", action="store_true", help="Skip directory scraping and get companies from startups3 table instead")
-    
+    parser.add_argument("--test", action="store_true", help="Test mode: process 5 companies")
+    parser.add_argument("--batch-size", type=int, default=10, help="Companies to process per scroll batch (default: 10)")
+    parser.add_argument("--dry-run", action="store_true", help="Preview changes without modifying database")
+
     args = parser.parse_args()
-    
-    # Determine limit
-    if args.test:
-        limit = 1
-        batch_size = 1
-        num_workers = 1  # Test mode: sequential
-    else:
-        limit = args.limit
-        batch_size = args.batch_size
-        num_workers = args.workers
-    
-    print("🚀 Starting workatastartup.com scraper...")
-    if args.test:
-        print("🧪 Test mode: processing 1 company")
-    else:
-        print(f"📦 Batch processing: {batch_size} companies per batch")
-        print(f"⚡ Parallel processing: {num_workers} workers")
-        if args.skip_existing:
-            print("⏭️  Skipping companies that already have jobs")
-    
-    # Get companies - either from directory scraping or from database
-    if args.skip_directory:
-        print("📋 Getting companies from startups3 table (skipping directory scraping)...")
-        try:
-            # Get companies from startups3 table with pagination to prevent excessive egress
-            # Default to 1000 max if no limit specified to avoid fetching entire table
-            query_limit = limit if limit else 1000
-            
-            print(f"   📊 Fetching up to {query_limit} startups from database...")
-            result = supabase.table("startups3").select("id, name, batch").limit(query_limit).execute()
-            
-            if not result.data:
-                print("⚠️  No companies found in startups3 table")
-                return
-            
-            print(f"   ✅ Retrieved {len(result.data)} startups from database (~{len(result.data) * 50} bytes)")
-            
-            companies = []
-            for startup in result.data:
-                company_name = startup.get("name", "")
-                if not company_name:
-                    continue
-                
-                # Convert company name to slug format (basic conversion)
-                import re
-                slug = re.sub(r'[^\w\s-]', '', company_name.lower())
-                slug = re.sub(r'[-\s]+', '-', slug).strip('-')
-                company_url = f"https://www.workatastartup.com/companies/{slug}"
-                
-                companies.append({
-                    "company_url": company_url,
-                    "company_name": company_name,
-                    "batch": startup.get("batch"),
-                    "job_count": None,
-                    "startup_id": startup.get("id")
-                })
-            
-            print(f"✅ Prepared {len(companies)} companies for processing")
-        except Exception as e:
-            print(f"❌ Error getting companies from database: {e}")
-            import traceback
-            traceback.print_exc()
-            return
-    else:
-        # Get company URLs from directory (saves to Supabase incrementally as we scroll)
-        # Get all companies first (or up to limit)
-        companies = get_company_urls_from_directory(limit, supabase_client=supabase)
-        
-        if not companies:
-            print("⚠️  No companies found")
-            return
-        
-        print(f"\n📊 Found {len(companies)} companies to process")
-    
-    # Filter out companies that already have jobs if skip_existing is enabled
-    if args.skip_existing:
-        print("\n🔍 Checking for existing jobs...")
-        companies_to_process = []
-        skipped_count = 0
-        for company in companies:
-            if company_has_jobs(company["company_name"]):
-                print(f"   ⏭️  Skipping {company['company_name']} (already has jobs)")
-                skipped_count += 1
-            else:
-                companies_to_process.append(company)
-        print(f"   ✅ {len(companies_to_process)} companies to process, {skipped_count} skipped")
-        companies = companies_to_process
-    
-    if not companies:
-        print("⚠️  No new companies to process")
-        return
-    
-    # Process companies in batches
-    total_jobs = 0
-    total_companies_processed = 0
-    
-    for batch_start in range(0, len(companies), batch_size):
-        batch_end = min(batch_start + batch_size, len(companies))
-        batch_companies = companies[batch_start:batch_end]
-        batch_num = (batch_start // batch_size) + 1
-        total_batches = (len(companies) + batch_size - 1) // batch_size
-        
-        print(f"\n{'='*80}")
-        print(f"📦 Batch {batch_num}/{total_batches}: Processing companies {batch_start + 1}-{batch_end} of {len(companies)}")
-        print(f"{'='*80}")
-        
-        batch_jobs = 0
-        
-        # Process companies in parallel (or sequentially in test mode)
-        if num_workers == 1:
-            # Sequential processing (test mode)
-            for idx, company in enumerate(batch_companies, 1):
-                print(f"\n[{batch_num}-{idx}/{len(batch_companies)}] Processing: {company['company_name']}")
-                company_name, jobs_saved, error = process_company_parallel(company)
-                if error:
-                    print(f"   ❌ Error processing {company_name}: {error}")
-                else:
-                    batch_jobs += jobs_saved
-                    total_jobs += jobs_saved
-                    total_companies_processed += 1
-        else:
-            # Parallel processing
-            print(f"⚡ Processing {len(batch_companies)} companies with {num_workers} workers...")
-            with ThreadPoolExecutor(max_workers=num_workers) as executor:
-                # Submit all companies to the executor
-                future_to_company = {executor.submit(process_company_parallel, company): company 
-                                   for company in batch_companies}
-                
-                # Process completed tasks as they finish
-                completed = 0
-                for future in as_completed(future_to_company):
-                    company = future_to_company[future]
-                    completed += 1
-                    try:
-                        # Timeout of 10 minutes per company (600 seconds)
-                        # This prevents the script from hanging indefinitely if a worker thread gets stuck
-                        company_name, jobs_saved, error = future.result(timeout=600)
-                        if error:
-                            print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ❌ {company_name}: {error}")
-                        else:
-                            print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ✅ {company_name}: {jobs_saved} jobs saved")
-                            batch_jobs += jobs_saved
-                            total_jobs += jobs_saved
-                            total_companies_processed += 1
-                    except TimeoutError:
-                        print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ⏱️  {company['company_name']}: Timed out after 10 minutes")
-                    except Exception as e:
-                        print(f"\n[{batch_num}-{completed}/{len(batch_companies)}] ❌ {company['company_name']}: Unexpected error: {e}")
-                        import traceback
-                        traceback.print_exc()
-        
-        print(f"\n✅ Batch {batch_num} complete: {batch_jobs} jobs from {len(batch_companies)} companies")
-        
-        # If not test mode and not the last batch, add a small delay
-        if not args.test and batch_end < len(companies):
-            print("⏸️  Pausing 2 seconds before next batch...")
-            time.sleep(2)
-    
-    print(f"\n{'='*80}")
-    print(f"✅ Complete! Scraped {total_jobs} total jobs from {total_companies_processed} companies")
-    print(f"{'='*80}")
+
+    # Determine settings
+    limit = 5 if args.test else args.limit
+    batch_size = args.batch_size
+    dry_run = args.dry_run
+
+    print("=" * 60)
+    print("🚀 Work at a Startup Job Scraper")
+    print("=" * 60)
+    print("   Mode: INCREMENTAL (scroll + save jobs immediately)")
+    print("   ✅ New jobs will be inserted")
+    print("   ✅ Existing jobs will be marked as active")
+    print("   ✅ Missing jobs will be marked as inactive")
+    if dry_run:
+        print("   👁️  DRY RUN: No database changes will be made")
+    if limit:
+        print(f"   Limit: {limit} companies")
+    print(f"   Batch size: {batch_size} companies per scroll batch")
+    print()
+
+    # Run the incremental scraper
+    scrape_jobs_incrementally(limit=limit, batch_size=batch_size, dry_run=dry_run)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,70 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
-import { emailLimitCache } from '@/lib/cache';
+import { emailLimitCache, matchesCache } from '@/lib/cache';
+
+/**
+ * Wraps a Supabase query with timeout and retry logic
+ * @param queryFn - Function that returns a Supabase query promise
+ * @param timeoutMs - Timeout in milliseconds (default: 15000)
+ * @param maxRetries - Maximum number of retries (default: 2)
+ * @returns Promise with data and error
+ */
+async function withTimeoutAndRetry<T>(
+  queryFn: () => Promise<{ data: T | null; error: any }>,
+  timeoutMs: number = 15000,
+  maxRetries: number = 2
+): Promise<{ data: T | null; error: any }> {
+  let lastError: any = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Create timeout promise
+      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`Query timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+      });
+
+      // Race between query and timeout
+      const result = await Promise.race([queryFn(), timeoutPromise]);
+      return result;
+    } catch (error: any) {
+      lastError = error;
+      const errorMessage = error?.message || String(error);
+      
+      // Check if it's a timeout or connection error
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError') ||
+                       errorMessage.includes('ECONNRESET') ||
+                       errorMessage.includes('ETIMEDOUT');
+      
+      // Check if it's a rate limit (don't retry these)
+      const isRateLimit = errorMessage.includes('rate limit') || 
+                         errorMessage.includes('quota') ||
+                         errorMessage.includes('429') ||
+                         error?.code === 'PGRST301' ||
+                         error?.code === 'PGRST116';
+      
+      // Don't retry on rate limits or if we've exhausted retries
+      if (isRateLimit || attempt >= maxRetries) {
+        return { data: null, error: error };
+      }
+      
+      // For timeouts/connection errors, wait before retrying
+      if (isTimeout && attempt < maxRetries) {
+        const delayMs = (attempt + 1) * 1000; // Exponential backoff: 1s, 2s
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        continue;
+      }
+      
+      // For other errors, return immediately
+      return { data: null, error: error };
+    }
+  }
+  
+  return { data: null, error: lastError };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,14 +106,62 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get candidate ID and role preferences
-    const { data: candidate } = await supabaseAdmin
-      .from('candidates')
-      .select('id, role_type')
-      .eq('email', user.email)
-      .single();
+    // Create cache key based on user email, page, and limit
+    // This ensures each user's paginated results are cached separately
+    const cacheKey = `matches:${user.email}:${page}:${limit}`;
+    
+    // Check cache first to avoid database queries
+    const cached = matchesCache.get<{
+      matches: any[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+        hasMore: boolean;
+      };
+    }>(cacheKey);
+    
+    if (cached) {
+      console.log(`[Matches API] ✅ Cache HIT for ${cacheKey} - skipping database queries`);
+      return NextResponse.json(cached, {
+        headers: {
+          'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+          'X-Cache-Status': 'HIT',
+          'X-Cache-Key': cacheKey,
+        },
+      });
+    }
+    
+    console.log(`[Matches API] ❌ Cache MISS for ${cacheKey} - fetching from database`);
 
-    if (!candidate) {
+    // Get candidate ID and role preferences
+    const candidateResult = await withTimeoutAndRetry<{ id: string; role_type: string[] | null }>(
+      async () => {
+        const result = await supabaseAdmin!
+          .from('candidates')
+          .select('id, role_type')
+          .eq('email', user.email)
+          .single();
+        return result;
+      },
+      10000, // 10 second timeout
+      1 // 1 retry
+    );
+    const { data: candidate, error: candidateError } = candidateResult;
+
+    if (candidateError || !candidate) {
+      const errorMessage = candidateError?.message || '';
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
+      if (isTimeout) {
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
+        );
+      }
+      
       return NextResponse.json(
         { error: 'Candidate not found' },
         { status: 404 }
@@ -58,10 +169,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count
-    let { count: totalCount, error: countError } = await supabaseAdmin
-      .from('matches')
-      .select('id', { count: 'exact', head: true })
-      .eq('candidate_id', candidate.id);
+    // Count queries return { count, error } not { data, error }
+    let totalCount: number | null = null;
+    let countError: any = null;
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout after 10000ms')), 10000);
+      });
+      
+      const countQuery = supabaseAdmin!
+        .from('matches')
+        .select('id', { count: 'exact', head: true })
+        .eq('candidate_id', candidate.id);
+      
+      const result = await Promise.race([countQuery, timeoutPromise]);
+      totalCount = (result as any).count ?? null;
+      countError = (result as any).error ?? null;
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error);
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
+      if (isTimeout) {
+        console.error('[Matches API] Timeout getting match count:', error);
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
+        );
+      }
+      countError = error;
+    }
 
     // Check for Supabase rate limit/quota errors
     if (countError) {
@@ -73,6 +210,9 @@ export async function GET(request: NextRequest) {
                          countError.code === 'PGRST301' || // PostgREST rate limit
                          countError.code === 'PGRST116'; // Not found (might be rate limit related)
       
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
       if (isRateLimit) {
         console.error('[Matches API] Supabase rate limit/quota exceeded on count query:', countError);
         return NextResponse.json(
@@ -82,6 +222,12 @@ export async function GET(request: NextRequest) {
           },
           { status: 429 }
         );
+      } else if (isTimeout) {
+        console.error('[Matches API] Timeout getting match count:', countError);
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
+        );
       }
       console.warn('[Matches API] Error getting match count (non-rate-limit):', countError);
       // Continue with totalCount as undefined if it's not a rate limit
@@ -90,12 +236,20 @@ export async function GET(request: NextRequest) {
     // Get matches for sorting (limit to first 200 to avoid performance issues)
     // This ensures page 1 users see matches with jobs, while keeping query fast
     const fetchLimit = Math.max(200, offset + limit);
-    let { data: allMatches, error: matchError } = await supabaseAdmin
-      .from('matches')
-      .select('id, score, matched_at, startup_id')
-      .eq('candidate_id', candidate.id)
-      .order('score', { ascending: false })
-      .limit(fetchLimit);
+    const matchesResult = await withTimeoutAndRetry<Array<{ id: string; score: number; matched_at: string; startup_id: string }>>(
+      async () => {
+        const result = await supabaseAdmin!
+          .from('matches')
+          .select('id, score, matched_at, startup_id')
+          .eq('candidate_id', candidate.id)
+          .order('score', { ascending: false })
+          .limit(fetchLimit);
+        return result;
+      },
+      15000, // 15 second timeout
+      1 // 1 retry
+    );
+    let { data: allMatches, error: matchError } = matchesResult;
 
     if (matchError) {
       const errorMessage = matchError.message || '';
@@ -106,6 +260,9 @@ export async function GET(request: NextRequest) {
                          matchError.code === 'PGRST301' ||
                          matchError.code === 'PGRST116';
       
+      const isTimeout = errorMessage.includes('timeout') || 
+                       errorMessage.includes('ConnectTimeoutError');
+      
       if (isRateLimit) {
         console.error('[Matches API] Supabase rate limit/quota exceeded on matches query:', matchError);
         return NextResponse.json(
@@ -114,6 +271,12 @@ export async function GET(request: NextRequest) {
             rateLimit: true 
           },
           { status: 429 }
+        );
+      } else if (isTimeout) {
+        console.error('[Matches API] Timeout loading matches:', matchError);
+        return NextResponse.json(
+          { error: 'Database connection timeout. Please try again.' },
+          { status: 504 }
         );
       }
       
@@ -149,7 +312,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!allMatches || allMatches.length === 0) {
-      return NextResponse.json({
+      // Cache empty results too to avoid repeated database queries
+      const emptyResponse = {
         matches: [],
         pagination: {
           page,
@@ -157,6 +321,16 @@ export async function GET(request: NextRequest) {
           total: totalCount || 0,
           totalPages: Math.ceil((totalCount || 0) / limit),
           hasMore: false,
+        },
+      };
+      matchesCache.set(cacheKey, emptyResponse);
+      console.log(`[Matches API] 💾 Cached empty response for ${cacheKey}`);
+      
+      return NextResponse.json(emptyResponse, {
+        headers: {
+          'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+          'X-Cache-Status': 'MISS',
+          'X-Cache-Key': cacheKey,
         },
       });
     }
@@ -188,32 +362,69 @@ export async function GET(request: NextRequest) {
     const startupsWithDirectJobLinks = new Set<string>();
     
     if (startupIds.length > 0) {
-      // Fetch jobs with startup_id
-      const { data: allJobs, error: jobsError } = await supabaseAdmin
-        .from('jobs')
-        .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level')
-        .in('startup_id', startupIds)
-        .not('job_url', 'is', null);
-
-      if (jobsError) {
-        const errorMessage = jobsError.message || '';
-        const isRateLimit = errorMessage.includes('rate limit') || 
-                           errorMessage.includes('quota') || 
-                           errorMessage.includes('429') ||
-                           errorMessage.includes('too many requests') ||
-                           jobsError.code === 'PGRST301' ||
-                           jobsError.code === 'PGRST116';
+      // Fetch jobs with startup_id - batch queries to avoid Supabase limits
+      // Supabase has limits on .in() queries (typically ~100-200 items)
+      const BATCH_SIZE = 100;
+      const allJobs: any[] = [];
+      
+      for (let i = 0; i < startupIds.length; i += BATCH_SIZE) {
+        const batch = startupIds.slice(i, i + BATCH_SIZE);
+        const jobsResult = await withTimeoutAndRetry<Array<{
+          startup_id: string;
+          company_name: string;
+          job_title: string;
+          job_url: string;
+          job_type: string | null;
+          salary_range: string | null;
+          experience_level: string | null;
+        }>>(
+          async () => {
+            const result = await supabaseAdmin!
+              .from('jobs')
+              .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level')
+              .in('startup_id', batch)
+              .not('job_url', 'is', null);
+            return result;
+          },
+          15000, // 15 second timeout
+          2 // 2 retries
+        );
+        const { data: batchJobs, error: jobsError } = jobsResult;
         
-        if (isRateLimit) {
-          console.error('[Matches API] Supabase rate limit/quota exceeded on jobs query:', jobsError);
-          // Continue without jobs rather than failing completely
-          // Jobs are optional, so we'll return matches without job data
-        } else {
-          console.warn('[Matches API] Error fetching jobs (non-rate-limit):', jobsError);
+        if (jobsError) {
+          const errorMessage = jobsError.message || '';
+          const isRateLimit = errorMessage.includes('rate limit') || 
+                             errorMessage.includes('quota') || 
+                             errorMessage.includes('429') ||
+                             errorMessage.includes('too many requests') ||
+                             jobsError.code === 'PGRST301' ||
+                             jobsError.code === 'PGRST116';
+          
+          const isTimeout = errorMessage.includes('timeout') || 
+                           errorMessage.includes('ConnectTimeoutError') ||
+                           errorMessage.includes('ECONNRESET');
+          
+          if (isRateLimit) {
+            console.error('[Matches API] Supabase rate limit/quota exceeded on jobs query:', jobsError);
+            // Continue without jobs rather than failing completely
+          } else if (isTimeout) {
+            console.warn(`[Matches API] Timeout fetching jobs batch ${i / BATCH_SIZE + 1}, skipping batch`);
+            // Continue without this batch
+          } else {
+            console.warn(`[Matches API] Error fetching jobs batch ${i / BATCH_SIZE + 1}:`, jobsError.message);
+          }
+        } else if (batchJobs) {
+          allJobs.push(...batchJobs);
+        }
+        
+        // Small delay between batches to avoid overwhelming Supabase
+        if (i + BATCH_SIZE < startupIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
 
-      if (!jobsError && allJobs) {
+      // Process all fetched jobs
+      if (allJobs.length > 0) {
         for (const job of allJobs) {
           if (job.startup_id) {
             if (!jobsByStartupId[job.startup_id]) {
@@ -259,6 +470,7 @@ export async function GET(request: NextRequest) {
         company_logo?: string;
         yc_link?: string;
         company_twitter_url?: string;
+        keywords?: string;
         founders?: Array<{
           id: string;
           name: string;
@@ -273,16 +485,93 @@ export async function GET(request: NextRequest) {
     > = {};
 
     if (startupIds.length > 0) {
-      const { data: startupRows, error: startupsError } = await supabaseAdmin
-        .from('startups')
-        .select(`
-          id, name, industry, location, yc_description, team_size,
-          funding_amount, website, founder_emails,
-          founder_names, founder_linkedin, founder_twitter_urls,
-          founder_backgrounds, founders_pfp, batch, description,
-          company_logo, yc_link, company_twitter_url
-        `)
-        .in('id', startupIds);
+      // Batch queries to avoid Supabase limits on .in() queries
+      // Supabase typically limits .in() to ~100-200 items
+      const BATCH_SIZE = 100;
+      const startupRows: any[] = [];
+      let startupsError: any = null;
+      
+        for (let i = 0; i < startupIds.length; i += BATCH_SIZE) {
+          const batch = startupIds.slice(i, i + BATCH_SIZE);
+          const startupsResult = await withTimeoutAndRetry<Array<{
+            id: string;
+            name: string;
+            industry: string;
+            location: string;
+            yc_description?: string;
+            team_size?: string;
+            funding_amount?: string;
+            website: string;
+            founder_emails?: string;
+            founder_names?: string;
+            founder_linkedin?: string;
+            founder_twitter_urls?: string;
+            founder_backgrounds?: string;
+            founders_pfp?: string;
+            batch?: string;
+            description?: string;
+            company_logo?: string;
+            yc_link?: string;
+            company_twitter_url?: string;
+            keywords?: string;
+          }>>(
+            async () => {
+              const result = await supabaseAdmin!
+                .from('startups3')
+                .select(`
+                  id, name, industry, location, yc_description, team_size,
+                  funding_amount, website, founder_emails,
+                  founder_names, founder_linkedin, founder_twitter_urls,
+                  founder_backgrounds, founders_pfp, batch, description,
+                  company_logo, yc_link, company_twitter_url, keywords
+                `)
+                .in('id', batch)
+                // Filter out startups with null values in critical fields at database level
+                .not('name', 'is', null)
+                .not('industry', 'is', null)
+                .not('location', 'is', null)
+                .not('batch', 'is', null);
+              return result;
+            },
+            15000, // 15 second timeout
+            2 // 2 retries
+          );
+          const { data: batchStartups, error: batchError } = startupsResult;
+            // Note: We'll filter description and founder fields in code since they need OR logic
+        
+        if (batchError) {
+          const errorMessage = batchError.message || '';
+          const isRateLimit = errorMessage.includes('rate limit') || 
+                             errorMessage.includes('quota') || 
+                             errorMessage.includes('429') ||
+                             errorMessage.includes('too many requests') ||
+                             batchError.code === 'PGRST301' ||
+                             batchError.code === 'PGRST116';
+          
+          const isTimeout = errorMessage.includes('timeout') || 
+                           errorMessage.includes('ConnectTimeoutError') ||
+                           errorMessage.includes('ECONNRESET');
+          
+          if (isRateLimit) {
+            console.error(`[Matches API] Supabase rate limit on startups batch ${i / BATCH_SIZE + 1}:`, batchError);
+            startupsError = batchError;
+            break; // Stop processing batches on rate limit
+          } else if (isTimeout) {
+            console.warn(`[Matches API] Timeout fetching startups batch ${i / BATCH_SIZE + 1}, skipping batch`);
+            // Continue without this batch rather than failing completely
+          } else {
+            console.error(`[Matches API] Error fetching startups batch ${i / BATCH_SIZE + 1}:`, batchError.message);
+            startupsError = batchError;
+          }
+        } else if (batchStartups) {
+          startupRows.push(...batchStartups);
+        }
+        
+        // Small delay between batches to avoid overwhelming Supabase
+        if (i + BATCH_SIZE < startupIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
 
       if (startupsError) {
         const errorMessage = startupsError.message || '';
@@ -308,45 +597,36 @@ export async function GET(request: NextRequest) {
       }
       
       if (!startupsError && startupRows) {
-        console.log(`[Matches API] Found ${startupRows.length} startups for ${startupIds.length} startup IDs`);
-        // Fetch founders from founders table for all startups
-        const { data: foundersRows, error: foundersError } = await supabaseAdmin
-          .from('founders')
-          .select('id, startup_id, name, email, role, linkedin_url, twitter_url, background')
-          .in('startup_id', startupIds)
-          .order('created_at', { ascending: true });
-
-        // Group founders by startup_id and map profile pictures
-        const foundersByStartupId: Record<string, Array<{
-          id: string;
-          name: string;
-          email?: string;
-          role?: string;
-          linkedin_url?: string;
-          twitter_url?: string;
-          background?: string;
-          profile_picture?: string;
-        }>> = {};
-
-        if (!foundersError && foundersRows) {
-          for (const founder of foundersRows) {
-            if (!foundersByStartupId[founder.startup_id]) {
-              foundersByStartupId[founder.startup_id] = [];
-            }
-            foundersByStartupId[founder.startup_id].push({
-              id: founder.id,
-              name: founder.name,
-              email: founder.email ?? undefined,
-              role: founder.role ?? undefined,
-              linkedin_url: founder.linkedin_url ?? undefined,
-              twitter_url: founder.twitter_url ?? undefined,
-              background: founder.background ?? undefined,
-              // profile_picture will be mapped below from founders_pfp array
-            });
-          }
-        }
-
+        // Founders data is stored in startups3 columns, not a separate table
+        // Parse founder data from comma-separated columns in startups3
         for (const s of startupRows) {
+          // Parse founder names (comma-separated)
+          const founderNames = s.founder_names 
+            ? s.founder_names.split(',').map((n: string) => n.trim()).filter((n: string) => n)
+            : [];
+          
+          // Parse founder emails (comma-separated)
+          const founderEmails = s.founder_emails
+            ? s.founder_emails.split(',').map((e: string) => e.trim()).filter((e: string) => e)
+            : [];
+          
+          // Parse founder backgrounds (comma-separated)
+          const founderBackgrounds = s.founder_backgrounds
+            ? s.founder_backgrounds.split(',').map((b: string) => b.trim()).filter((b: string) => b)
+            : [];
+          
+          // Parse founder LinkedIn URLs (comma-separated)
+          const founderLinkedIn = s.founder_linkedin
+            ? s.founder_linkedin.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+            : [];
+          
+          // Parse founder Twitter URLs (comma-separated)
+          const founderTwitter = s.founder_twitter_urls
+            ? (Array.isArray(s.founder_twitter_urls) 
+                ? s.founder_twitter_urls.map((t: any) => String(t).trim()).filter((t: string) => t)
+                : String(s.founder_twitter_urls).split(',').map((t: string) => t.trim()).filter((t: string) => t))
+            : [];
+          
           // Parse founders_pfp array (could be array or comma-separated string)
           const foundersPfpArray: string[] = s.founders_pfp
             ? Array.isArray(s.founders_pfp)
@@ -354,12 +634,30 @@ export async function GET(request: NextRequest) {
               : String(s.founders_pfp).split(',').map((url: string) => url.trim()).filter((url: string) => url && url !== '')
             : [];
 
-          // Map profile pictures to founders by index
-          const founders = foundersByStartupId[s.id] || [];
-          const foundersWithPfp = founders.map((founder, index) => ({
-            ...founder,
-            profile_picture: foundersPfpArray[index] || undefined,
-          }));
+          // Build founders array from parsed data
+          // Match by index across all arrays
+          const maxFounders = Math.max(
+            founderNames.length,
+            founderEmails.length,
+            founderBackgrounds.length,
+            founderLinkedIn.length,
+            founderTwitter.length
+          );
+          
+          const founders = [];
+          for (let i = 0; i < maxFounders; i++) {
+            if (founderNames[i]) {
+              founders.push({
+                id: `${s.id}-founder-${i}`, // Generate a unique ID
+                name: founderNames[i],
+                email: founderEmails[i] || undefined,
+                background: founderBackgrounds[i] || undefined,
+                linkedin_url: founderLinkedIn[i] || undefined,
+                twitter_url: founderTwitter[i] || undefined,
+                profile_picture: foundersPfpArray[i] || undefined,
+              });
+            }
+          }
 
           startupsById[s.id] = {
             id: s.id,
@@ -381,7 +679,8 @@ export async function GET(request: NextRequest) {
             company_logo: s.company_logo ?? undefined,
             yc_link: s.yc_link ?? undefined,
             company_twitter_url: s.company_twitter_url ?? undefined,
-            founders: foundersWithPfp,
+            keywords: s.keywords ?? undefined,
+            founders: founders,
           };
         }
       }
@@ -399,12 +698,27 @@ export async function GET(request: NextRequest) {
       // Fetch a reasonable number of unlinked jobs (limit to avoid performance issues)
       // OPTIMIZATION: Reduced from 1000 to 300 to cut egress by ~70%
       // We'll filter in code for case-insensitive matching
-      const { data: unlinkedJobs, error: unlinkedJobsError } = await supabaseAdmin
-        .from('jobs')
-        .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
-        .is('startup_id', null)
-        .not('job_url', 'is', null)
-        .limit(300); // Reduced from 1000 to save egress
+      const unlinkedJobsResult = await withTimeoutAndRetry<Array<{
+        company_name: string;
+        job_title: string;
+        job_url: string;
+        job_type: string | null;
+        salary_range: string | null;
+        experience_level: string | null;
+      }>>(
+        async () => {
+          const result = await supabaseAdmin!
+            .from('jobs')
+            .select('company_name, job_title, job_url, job_type, salary_range, experience_level')
+            .is('startup_id', null)
+            .not('job_url', 'is', null)
+            .limit(300); // Reduced from 1000 to save egress
+          return result;
+        },
+        10000, // 10 second timeout
+        1 // 1 retry
+      );
+      const { data: unlinkedJobs, error: unlinkedJobsError } = unlinkedJobsResult;
 
       if (!unlinkedJobsError && unlinkedJobs) {
         for (const job of unlinkedJobs) {
@@ -455,29 +769,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // NOW sort matches: prioritize those with job listings
-    // Do this AFTER all job linking is complete (both direct and by company name)
-    // Prioritize startups with direct job links (startup_id) over those linked by company name
-    const sortedMatches = [...allMatches].sort((a, b) => {
-      const aHasDirectJobs = a.startup_id ? startupsWithDirectJobLinks.has(a.startup_id) : false;
-      const bHasDirectJobs = b.startup_id ? startupsWithDirectJobLinks.has(b.startup_id) : false;
-      const aHasJobs = a.startup_id ? startupsWithJobs.has(a.startup_id) : false;
-      const bHasJobs = b.startup_id ? startupsWithJobs.has(b.startup_id) : false;
-
-      // First priority: startups with direct job links (startup_id set)
-      if (aHasDirectJobs && !bHasDirectJobs) return -1;
-      if (!aHasDirectJobs && bHasDirectJobs) return 1;
-
-      // Second priority: startups with jobs (either direct or linked by company name)
-      if (aHasJobs && !bHasJobs) return -1;
-      if (!aHasJobs && bHasJobs) return 1;
-
-      // Then by score (already sorted from query, but ensure it's maintained)
-      return b.score - a.score;
-    });
-
-    // Apply pagination AFTER sorting
-    const rawMatches = sortedMatches.slice(offset, offset + limit);
+    // Don't paginate yet - we need to load job data for all matches first,
+    // then sort with job prioritization, then paginate
+    // This ensures startups with jobs appear first across all pages
 
     // Role matching patterns for ordering jobs by role preferences
     const rolePatterns: { [key: string]: string[] } = {
@@ -547,10 +841,13 @@ export async function GET(request: NextRequest) {
     };
 
     // Join matches with startup data and add job data
+    // Use allMatches (not rawMatches) so we can sort by jobs before paginating
     // Filter out matches where startup data is missing (these won't display properly)
-    const matchesWithStartups = rawMatches.map((m) => {
+    const matchesWithStartups = allMatches.map((m) => {
       const startup = startupsById[m.startup_id] ?? null;
       const allJobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
+      
+      
       // Order jobs by role preference
       const orderedJobs = orderJobsByPreference(allJobs);
 
@@ -578,23 +875,77 @@ export async function GET(request: NextRequest) {
       };
     });
     
-    // Filter out matches with null startups and log if any were filtered
-    const matches = matchesWithStartups.filter((match) => {
+    // Filter out matches with null startups or incomplete data FIRST
+    // Only show startups that have all required fields (no null values)
+    const completeMatches = matchesWithStartups.filter((match) => {
       if (match.startup === null) {
-        console.warn(`[Matches API] Filtering out match ${match.id} - startup data not found for startup_id`);
         return false;
       }
+      
+      const startup = match.startup;
+      
+      // Check for null/empty values in critical fields
+      // Description is required (either description or yc_description)
+      const hasDescription = (startup.description && startup.description.trim()) || 
+                            (startup.yc_description && startup.yc_description.trim());
+      
+      // Batch is required
+      const hasBatch = startup.batch && startup.batch.trim();
+      
+      // Founder information is required (either founder_names or founders array)
+      const hasFounders = (startup.founder_names && startup.founder_names.trim()) || 
+                         (startup.founders && startup.founders.length > 0);
+      
+      // Basic required fields
+      const hasName = startup.name && startup.name.trim();
+      const hasIndustry = startup.industry && startup.industry.trim();
+      const hasLocation = startup.location && startup.location.trim();
+      
+      // Check if all required fields are present
+      const isComplete = hasDescription && hasBatch && hasFounders && hasName && hasIndustry && hasLocation;
+      
+      if (!isComplete) {
+        const missingFields = [];
+        if (!hasDescription) missingFields.push('description');
+        if (!hasBatch) missingFields.push('batch');
+        if (!hasFounders) missingFields.push('founders');
+        if (!hasName) missingFields.push('name');
+        if (!hasIndustry) missingFields.push('industry');
+        if (!hasLocation) missingFields.push('location');
+        
+        return false;
+      }
+      
       return true;
     });
     
-    if (matchesWithStartups.length > matches.length) {
-      console.warn(`[Matches API] Filtered out ${matchesWithStartups.length - matches.length} matches due to missing startup data`);
-    }
+    // NOW sort: prioritize startups with jobs, then by score
+    // This ensures users see job opportunities first, while still respecting match quality
+    const sortedMatches = [...completeMatches].sort((a, b) => {
+      // First, prioritize startups with jobs
+      const aHasJobs = a.has_job_listings && a.jobs && a.jobs.length > 0;
+      const bHasJobs = b.has_job_listings && b.jobs && b.jobs.length > 0;
+      
+      if (aHasJobs && !bHasJobs) {
+        return -1; // a comes first (has jobs)
+      }
+      if (!aHasJobs && bHasJobs) {
+        return 1; // b comes first (has jobs)
+      }
+      
+      // If both have jobs or both don't have jobs, sort by score
+      return b.score - a.score;
+    });
+
+    // Apply pagination AFTER sorting with job prioritization
+    const matches = sortedMatches.slice(offset, offset + limit);
+    
 
     const totalPages = Math.ceil((totalCount || 0) / limit);
     const hasMore = page < totalPages;
 
-    return NextResponse.json({
+    // Build response object
+    const response = {
       matches,
       pagination: {
         page,
@@ -603,10 +954,18 @@ export async function GET(request: NextRequest) {
         totalPages,
         hasMore,
       },
-    }, {
+    };
+
+    // Cache the response for 5 minutes (default TTL from matchesCache)
+    matchesCache.set(cacheKey, response);
+    console.log(`[Matches API] 💾 Cached response for ${cacheKey} - ${matches.length} matches`);
+
+    return NextResponse.json(response, {
       headers: {
         // Cache for 5 minutes on CDN, serve stale for 1 hour while revalidating
         'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
+        'X-Cache-Status': 'MISS',
+        'X-Cache-Key': cacheKey,
       },
     });
   } catch (error) {
@@ -789,24 +1148,59 @@ async function findInstantMatches(candidate: any, limit: number): Promise<any[]>
 
     // Group by startup and create unique matches
     const startupIds = new Set<string>();
-    const matchesToInsert: any[] = [];
+    const uniqueStartupIds: string[] = [];
 
+    // First, collect unique startup IDs from jobs
     for (const job of jobs) {
       if (job.startup_id && !startupIds.has(job.startup_id)) {
         startupIds.add(job.startup_id);
-        
+        uniqueStartupIds.push(job.startup_id);
+      }
+    }
+
+    if (uniqueStartupIds.length === 0) return [];
+
+    // Validate that these startup IDs actually exist in startups3
+    const { data: validStartups, error: validationError } = await supabaseAdmin
+      .from('startups3')
+      .select('id')
+      .in('id', uniqueStartupIds);
+
+    if (validationError) {
+      console.error('Error validating startup IDs:', validationError);
+      return [];
+    }
+
+    // Create a set of valid startup IDs
+    const validStartupIdSet = new Set((validStartups || []).map(s => s.id));
+    
+    // Filter out invalid startup IDs and create matches
+    const matchesToInsert: any[] = [];
+    const invalidStartupIds: string[] = [];
+
+    for (const startupId of uniqueStartupIds) {
+      if (validStartupIdSet.has(startupId)) {
         matchesToInsert.push({
           candidate_id: candidate.id,
-          startup_id: job.startup_id,
+          startup_id: startupId,
           score: 0.85, // High default score for exact role match
           matched_at: new Date().toISOString()
         });
 
         if (matchesToInsert.length >= limit * 2) break; // Stop when we have enough
+      } else {
+        invalidStartupIds.push(startupId);
       }
     }
 
-    if (matchesToInsert.length === 0) return [];
+    if (invalidStartupIds.length > 0) {
+      console.warn(`[Instant Matches] Skipped ${invalidStartupIds.length} invalid startup IDs that don't exist in startups3:`, invalidStartupIds.slice(0, 5));
+    }
+
+    if (matchesToInsert.length === 0) {
+      console.log('[Instant Matches] No valid matches to insert after validation');
+      return [];
+    }
 
     console.log(`Persisting ${matchesToInsert.length} instant matches to DB...`);
 
@@ -833,4 +1227,5 @@ async function findInstantMatches(candidate: any, limit: number): Promise<any[]>
     return [];
   }
 }
+
 
