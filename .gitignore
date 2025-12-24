@@ -18,3 +18,6 @@ nul
 *.pem
 secrets/
 .secrets
+
+# macOS
+.DS_Store
