@@ -16,6 +16,7 @@ interface JakesResumeTemplateProps {
   upgradeCount?: number; // Number of locked/blurred suggestions
   onUpgradeClick?: () => void; // Open upgrade modal
 }
+//deploy
 
 export function JakesResumeTemplate({
   data,
