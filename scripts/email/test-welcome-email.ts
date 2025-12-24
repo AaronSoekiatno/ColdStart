@@ -242,7 +242,6 @@ Robert<br><br>
 
 <a href="${unsubscribeLink}">Unsubscribe</a><br>
 
-
 <a href="${APP_URL}">Hermes</a><br>`;
 
     // Plain text version (fallback)
@@ -261,7 +260,7 @@ Robert
 
 Unsubscribe: ${unsubscribeLink}
 
-Hermes: ${APP_URL}';
+Hermes: ${APP_URL}`;
 
 
     // Send email directly using SendGrid
