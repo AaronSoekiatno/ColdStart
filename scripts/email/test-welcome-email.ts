@@ -230,12 +230,12 @@ async function sendWelcomeEmail(
     // HTML version
     const emailBodyHTML = `Hi ${userFirstName},<br><br>
 
-We built Hermes because we realized the job market is broken.<br><br>
+My name is Robert and i am a cofounder of Hermes. We built Hermes because we realized the job market is broken.<br><br>
 
-<strong>3 things to do to 10x ur chances of getting a job:</strong><br>
-• <strong>Upload your resume:</strong> Our agent matches you with the right teams to maximize your chances.<br>
-• <strong>Find Hidden Roles:</strong> find "FRESH" job postings before everyone else does<br>
-• <strong>Send Emails:</strong> Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.<br><br>
+<strong>Heres 3 things to do to 10x ur chances of getting a job:</strong><br>
+&nbsp;&nbsp;&nbsp;&nbsp;• <strong>Upload your resume:</strong> Our agent matches you with the right teams to maximize your chances.<br>
+&nbsp;&nbsp;&nbsp;&nbsp;• <strong>Find Hidden Roles:</strong> find "FRESH" job postings before everyone else does<br>
+&nbsp;&nbsp;&nbsp;&nbsp;• <strong>Send Emails:</strong> Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.<br><br>
 
 Best,<br>
 Robert<br><br>
@@ -247,13 +247,12 @@ Robert<br><br>
     // Plain text version (fallback)
     const emailBodyText = `Hi ${userFirstName},
 
-We built Hermes because we realized the job market is broken.
+My name is Robert and i am a cofounder of Hermes. We built Hermes because we realized the job market is broken.
 
-We're here to help you discover hidden roles at hot startups and reach out directly to the founders.
-3 things to do to 10x ur chances of getting a job:
-• Upload your resume: Our agent matches you with the right teams to maximize your chances.
-• Find Hidden Roles: find "FRESH" job postings before everyone else does
-• Send Emails: Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.
+Heres 3 things to do to 10x ur chances of getting a job:
+    • Upload your resume: Our agent matches you with the right teams to maximize your chances.
+    • Find Hidden Roles: find "FRESH" job postings before everyone else does
+    • Send Emails: Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.
 
 Best,
 Robert
