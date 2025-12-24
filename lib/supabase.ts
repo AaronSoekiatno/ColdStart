@@ -202,7 +202,7 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
     experience: candidate.experience,
     technical_projects: candidate.technical_projects,
     objectives: candidate.objectives,
-    job_type: normalizedJobType,
+    job_type: normalizedJobType || candidate.job_type, // Fallback to original if normalization returns null
     role_type: candidate.role_type,
     years_of_experience: candidate.years_of_experience,
     onboarding_completed: candidate.onboarding_completed,

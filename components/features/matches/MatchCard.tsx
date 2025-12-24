@@ -499,6 +499,20 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                       const errorMsg = "Please select a founder first";
                       setFounderSelectionError(errorMsg);
                       onFounderError?.(errorMsg);
+
+                      // Auto-scroll to founders section with offset for sticky header
+                      const foundersSection = document.querySelector('[data-section="founders"]');
+                      if (foundersSection) {
+                        const headerOffset = 140; // Account for sticky header
+                        const elementPosition = foundersSection.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                        window.scrollTo({
+                          top: offsetPosition,
+                          behavior: 'smooth'
+                        });
+                      }
+
                       return;
                     }
 

@@ -80,11 +80,6 @@ export async function GET(request: NextRequest) {
     const cachedCandidate = await getCache<any>(cacheKey);
 
     if (cachedCandidate) {
-      console.log('[Candidate Info] Cache HIT:', {
-        user: user.email,
-        cacheKey,
-      });
-
       return NextResponse.json(cachedCandidate, {
         headers: {
           'Cache-Control': 'private, max-age=300',

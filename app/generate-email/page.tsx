@@ -29,6 +29,7 @@ function GenerateEmailPageContent() {
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewBody, setPreviewBody] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
+  const [resolvedFounderEmail, setResolvedFounderEmail] = useState<string | null>(founderEmail);
   type EmailPersona = 'direct-ask' | 'genuine-fan' | 'value-first';
   // Initialize emailPersona from URL param if valid, otherwise no selection yet
   const [emailPersona, setEmailPersona] = useState<EmailPersona | null>(() => {
@@ -95,10 +96,42 @@ function GenerateEmailPageContent() {
         console.error('Error fetching premium status:', error);
       }
 
+      // If no founderEmail in URL, check if there's exactly 1 founder and use that email
+      if (!founderEmail && startupId) {
+        try {
+          const { data: startupData, error: startupError } = await supabase
+            .from('startups3')
+            .select('founder_emails')
+            .eq('id', startupId)
+            .single();
+
+          if (!startupError && startupData?.founder_emails) {
+            const founderEmails = startupData.founder_emails
+              .split(',')
+              .map((email: string) => email.trim())
+              .filter((email: string) => email);
+            
+            // If there's exactly 1 founder with an email, use it
+            if (founderEmails.length === 1) {
+              setResolvedFounderEmail(founderEmails[0]);
+              // Update URL to include the founder email
+              const params = new URLSearchParams(Array.from(searchParams.entries()));
+              params.set('founderEmail', founderEmails[0]);
+              router.replace(`/generate-email?${params.toString()}`, { scroll: false });
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching startup data:', error);
+        }
+      } else if (founderEmail) {
+        // If founderEmail is in URL, use it
+        setResolvedFounderEmail(founderEmail);
+      }
+
       // Don't try to load here - let the main useEffect handle it
       // This useEffect is just for auth and premium status
     });
-  }, [router, startupId]);
+  }, [router, startupId, founderEmail, searchParams]);
 
 
   const loadEmailPreview = async (overridePersona?: EmailPersona) => {
@@ -156,7 +189,7 @@ function GenerateEmailPageContent() {
 
       // Use streaming endpoint
       console.log(`[Email Preview] Requesting email generation with persona: '${currentPersona}' (from URL param: '${personaParam}', state: '${emailPersona}') for startupId: ${startupId}`);
-      console.log(`[Email Preview] Founder email from URL: '${founderEmail}'`);
+      console.log(`[Email Preview] Founder email: '${resolvedFounderEmail || 'none'}'`);
       const response = await fetch("/api/send-email/preview-stream", {
         method: 'POST',
         headers: {
@@ -167,7 +200,7 @@ function GenerateEmailPageContent() {
           startupId,
           matchScore,
           persona: currentPersona,
-          founderEmail: founderEmail || undefined,
+          founderEmail: resolvedFounderEmail || undefined,
         }),
       });
 
@@ -366,7 +399,7 @@ function GenerateEmailPageContent() {
   }, [personaParam]); // Removed emailPersona from deps to prevent loops
 
   const handleSendViaMailto = () => {
-    if (!founderEmail || !previewSubject || !previewBody) return;
+    if (!resolvedFounderEmail || !previewSubject || !previewBody) return;
 
     try {
       // URL encode the subject and body for mailto
@@ -374,7 +407,7 @@ function GenerateEmailPageContent() {
       const encodedBody = encodeURIComponent(previewBody);
 
       // Create mailto URL
-      const mailtoUrl = `mailto:${founderEmail}?subject=${encodedSubject}&body=${encodedBody}`;
+      const mailtoUrl = `mailto:${resolvedFounderEmail}?subject=${encodedSubject}&body=${encodedBody}`;
 
       // Open in new browser tab
       window.open(mailtoUrl, '_blank');
@@ -409,7 +442,7 @@ function GenerateEmailPageContent() {
           subject: previewSubject,
           body: previewBody,
           matchScore,
-          founderEmail: founderEmail || undefined,
+          founderEmail: resolvedFounderEmail || undefined,
         }),
       });
 
@@ -457,7 +490,7 @@ function GenerateEmailPageContent() {
                   <div className="flex items-center gap-3">
                     <Button
                       onClick={handleSendViaMailto}
-                      disabled={!founderEmail || isPreviewLoading || !previewSubject || !previewBody}
+                      disabled={!resolvedFounderEmail || isPreviewLoading || !previewSubject || !previewBody}
                       className="bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer rounded-md px-4"
                     >
                       <span className="flex items-center gap-2">
@@ -597,17 +630,17 @@ function GenerateEmailPageContent() {
                 </div>
 
                 <div className="flex-1 flex flex-col space-y-4 min-h-0">
-                  {founderEmail && (
+                  {resolvedFounderEmail && (
                     <div className="space-y-1.5 flex-shrink-0">
                       <label className="text-xs text-gray-700 block">To:</label>
                       <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
                         <span className="text-sm text-gray-900 font-medium flex-1">
-                          {founderEmail}
+                          {resolvedFounderEmail}
                         </span>
                         <button
                           onClick={async () => {
                             try {
-                              await navigator.clipboard.writeText(founderEmail);
+                              await navigator.clipboard.writeText(resolvedFounderEmail);
                               toast({
                                 title: "Copied!",
                                 description: "Founder email copied to clipboard.",
@@ -764,7 +797,7 @@ function GenerateEmailPageContent() {
       <BugReportModal
         open={showFeedbackModal}
         onOpenChange={setShowFeedbackModal}
-        bouncedEmail={founderEmail || undefined}
+        bouncedEmail={resolvedFounderEmail || undefined}
         startupId={startupId || undefined}
       />
     </div>
