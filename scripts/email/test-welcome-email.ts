@@ -218,43 +218,58 @@ async function sendWelcomeEmail(
       userFirstName = extractFirstName(userMetadata, email);
     }
 
-    // Get app URL for unsubscribe link
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
+    // Get app URL for unsubscribe link (normalize to remove trailing slash)
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co').replace(/\/+$/, '');
+    const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
+    const privacyLink = `${APP_URL}/privacy`;
+    const termsLink = `${APP_URL}/terms`;
 
     // Build email subject
     const subject = `Hey ${userFirstName} - welcome to Hermes`;
 
-    // Build email body with message
-    const emailBody = `Hi ${userFirstName},
+    // HTML version
+    const emailBodyHTML = `Hi ${userFirstName},<br><br>
 
-We built Hermes because we realized the job market is broken. 
+We built Hermes because we realized the job market is broken.<br><br>
 
-We're here to help you discover hidden roles at hot startups and reach out directly to the founders. 
-One thing to do today: Upload your resume so our agent can start matching you with companies and use that to write your outreach for you.
+<strong>3 things to do to 10x ur chances of getting a job:</strong><br>
+• <strong>Upload your resume:</strong> Our agent matches you with the right teams to maximize your chances.<br>
+• <strong>Find Hidden Roles:</strong> find "FRESH" job postings before everyone else does<br>
+• <strong>Send Emails:</strong> Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.<br><br>
+
+Best,<br>
+Robert<br><br>
+
+<a href="${unsubscribeLink}">Unsubscribe</a><br>
+
+
+<a href="${APP_URL}">Hermes</a><br>`;
+
+    // Plain text version (fallback)
+    const emailBodyText = `Hi ${userFirstName},
+
+We built Hermes because we realized the job market is broken.
+
+We're here to help you discover hidden roles at hot startups and reach out directly to the founders.
+3 things to do to 10x ur chances of getting a job:
+• Upload your resume: Our agent matches you with the right teams to maximize your chances.
+• Find Hidden Roles: find "FRESH" job postings before everyone else does
+• Send Emails: Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.
 
 Best,
-Robert`;
-
-    // Build email footer with compliance requirements
-    const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
-    
-    const footer = `
-
----
-You're receiving this email because you signed up for Hermes.
+Robert
 
 Unsubscribe: ${unsubscribeLink}
 
-Privacy Policy: ${APP_URL}/privacy
-Terms of Service: ${APP_URL}/terms
+Hermes: ${APP_URL}';
 
-Hermes
-${APP_URL}`;
-
-    const fullTextContent = emailBody + footer;
 
     // Send email directly using SendGrid
     initSendGrid();
+
+    // Debug: Log subject to verify new content
+    console.log(`[DEBUG] Subject: ${subject}`);
+    console.log(`[DEBUG] Email body preview: ${emailBodyText.substring(0, 100)}...`);
 
     const from =
       process.env.SENDGRID_FROM_EMAIL ||
@@ -267,10 +282,17 @@ ${APP_URL}`;
         name: process.env.SENDGRID_FROM_NAME || 'Robert Flores',
       },
       subject,
-      text: fullTextContent,
+      html: emailBodyHTML,
+      text: emailBodyText,
       categories: ['welcome'],
       customArgs: {
         category: 'welcome',
+      },
+      // Add List-Unsubscribe header for better inbox placement (RFC compliance)
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeLink}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-Auto-Response-Suppress': 'All', // Suppress auto-responses for transactional emails
       },
       trackingSettings: {
         clickTracking: {

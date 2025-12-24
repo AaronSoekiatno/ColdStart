@@ -230,26 +230,52 @@ export async function sendWelcomeEmail(
     // Get app URL for unsubscribe link (normalize to remove trailing slash)
     const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co').replace(/\/+$/, '');
 
-    // Build email subject - more personal
-    const subject = `From the founder`;
+    // Build email subject
+    const subject = `Hey ${userFirstName} - welcome to Hermes`;
 
-    // Build email body - simple, personal, conversational (like the Roy example)
+    // Build email body
     const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
+    const privacyLink = `${APP_URL}/privacy`;
+    const termsLink = `${APP_URL}/terms`;
     
-    const emailBody = `Hey ${userFirstName},
+    // HTML version
+    const emailBodyHTML = `Hi ${userFirstName},<br><br>
 
-Robert here. What brought you to Hermes?
+We built Hermes because we realized the job market is broken.<br><br>
 
-If you haven't gotten the chance to try it, upload your resume so our agent can start matching you with companies and write your outreach for you.
+We're here to help you discover hidden roles at hot startups and reach out directly to the founders.<br>
+<strong>3 things to do to 10x ur chances of getting a job:</strong><br>
+• <strong>Upload your resume:</strong> Our agent matches you with the right teams to maximize your chances.<br>
+• <strong>Find Hidden Roles:</strong> find "FRESH" job postings before everyone else does<br>
+• <strong>Send Emails:</strong> Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.<br><br>
 
-If you have any issues or questions, just hit reply. Let me know how I can help.
+Best,<br>
+Robert<br><br>
+
+<a href="${unsubscribeLink}">Unsubscribe</a><br>
+
+<a href="${APP_URL}">Hermes</a><br>`;
+
+    // Plain text version (fallback)
+    const emailBodyText = `Hi ${userFirstName},
+
+We built Hermes because we realized the job market is broken.
+
+We're here to help you discover hidden roles at hot startups and reach out directly to the founders.
+3 things to do to 10x ur chances of getting a job:
+• Upload your resume: Our agent matches you with the right teams to maximize your chances.
+• Find Hidden Roles: find "FRESH" job postings before everyone else does
+• Send Emails: Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.
 
 Best,
 Robert
 
-Unsubscribe: ${unsubscribeLink}`;
+Unsubscribe: ${unsubscribeLink}
+Privacy Policy: ${privacyLink}
+Terms of Service: ${termsLink}
 
-    const fullTextContent = emailBody;
+Hermes: ${APP_URL}
+${APP_URL}`;
 
     // Send email directly using SendGrid (not reusing sendWaitlistEmail to set correct category)
     getSendGridClient();
@@ -265,7 +291,8 @@ Unsubscribe: ${unsubscribeLink}`;
         name: process.env.SENDGRID_FROM_NAME || 'Robert Flores',
       },
       subject,
-      text: fullTextContent,
+      html: emailBodyHTML,
+      text: emailBodyText,
       // Category for welcome emails (transactional)
       categories: ['welcome'],
       customArgs: {
