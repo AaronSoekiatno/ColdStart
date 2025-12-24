@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
-import { setCache } from '@/lib/redis-cache';
+import { setCache, deleteCache } from '@/lib/redis-cache';
 import { normalizeJobType } from '@/lib/normalize-candidate-data';
 
 export async function POST(request: NextRequest) {
@@ -75,6 +75,11 @@ export async function POST(request: NextRequest) {
       await setCache(cacheKey, freshCandidate, 86400); // 24 hours
       console.log('[Update Job Type] Cache updated proactively:', cacheKey);
     }
+
+    // Invalidate matches cache since job filtering will change
+    const matchesCacheKey = `matches:${user.email}:ALL`;
+    await deleteCache(matchesCacheKey);
+    console.log('[Update Job Type] Invalidated matches cache:', matchesCacheKey);
 
     return NextResponse.json({ success: true, jobType: normalizedJobType });
   } catch (error) {

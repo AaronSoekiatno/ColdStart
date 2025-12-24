@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate, saveCandidate } from '@/lib/supabase';
 import { sendWelcomeEmail, extractFirstName } from '@/lib/sendgrid';
+import { deleteCache } from '@/lib/redis-cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -155,6 +156,11 @@ export async function POST(request: NextRequest) {
         );
       }
     }
+
+    // Invalidate matches cache since job_type and years_of_experience affect filtering
+    const matchesCacheKey = `matches:${user.email}:ALL`;
+    await deleteCache(matchesCacheKey);
+    console.log('[Complete Onboarding] Invalidated matches cache:', matchesCacheKey);
 
     return NextResponse.json({ 
       success: true, 
