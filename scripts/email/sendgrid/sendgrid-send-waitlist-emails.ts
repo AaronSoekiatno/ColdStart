@@ -9,13 +9,83 @@
  *   npm run send-waitlist:sendgrid -- --resend-failed        # Retry emails that previously failed
  */
 
-import { resolve } from 'path';
+// Load .env.local file FIRST - This MUST happen before any other imports
+// that might transitively import supabase.ts
+import { resolve, join } from 'path';
+import { existsSync, readFileSync } from 'fs';
 import { config } from 'dotenv';
-// Load .env.local file
-config({ path: resolve(process.cwd(), '.env.local') });
 
+// Load .env.local file from project root
+// Try multiple paths to find .env.local
+const currentDir = process.cwd();
+const possiblePaths = [
+  join(currentDir, '.env.local'),                    // Current directory
+  join(currentDir, '..', '.env.local'),              // Parent directory
+  join(currentDir, '..', '..', '.env.local'),        // Two levels up
+  join(currentDir, '..', '..', '..', '.env.local'),  // Three levels up
+];
+
+let envLoaded = false;
+let loadedPath = '';
+for (const envPath of possiblePaths) {
+  const resolvedPath = resolve(envPath);
+  
+  // Check if file exists
+  if (!existsSync(resolvedPath)) {
+    continue;
+  }
+  
+  // Try to load it
+  const result = config({ path: resolvedPath });
+  if (result.parsed && Object.keys(result.parsed).length > 0) {
+    console.log(`✅ Environment variables loaded from: ${resolvedPath}`);
+    envLoaded = true;
+    loadedPath = resolvedPath;
+    break;
+  }
+}
+
+if (!envLoaded) {
+  console.error('❌ No environment variables loaded!');
+  console.error(`   Checked paths:`);
+  possiblePaths.forEach(p => {
+    const resolved = resolve(p);
+    const exists = existsSync(resolved);
+    console.error(`     - ${resolved} ${exists ? '(exists)' : '(not found)'}`);
+  });
+  console.error(`   Current working directory: ${currentDir}`);
+  console.error(`   Please ensure .env.local exists in the project root.`);
+  process.exit(1);
+}
+
+// Verify critical environment variables are loaded before importing modules
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+if (!supabaseUrl || supabaseUrl.trim() === '') {
+  console.error('❌ NEXT_PUBLIC_SUPABASE_URL is not set or is empty after loading .env.local');
+  console.error(`   Loaded from: ${loadedPath}`);
+  
+  // Try to read the file and show what's in it
+  try {
+    const fileContent = readFileSync(loadedPath, 'utf-8');
+    const hasVar = fileContent.includes('NEXT_PUBLIC_SUPABASE_URL');
+    console.error(`   File contains NEXT_PUBLIC_SUPABASE_URL: ${hasVar ? 'YES' : 'NO'}`);
+    if (hasVar) {
+      const lines = fileContent.split('\n');
+      const varLine = lines.find(l => l.includes('NEXT_PUBLIC_SUPABASE_URL'));
+      console.error(`   Line found: ${varLine?.trim()}`);
+    }
+  } catch (e) {
+    console.error(`   Could not read file: ${e}`);
+  }
+  
+  console.error(`   Current SUPABASE env vars: ${Object.keys(process.env).filter(k => k.includes('SUPABASE')).join(', ') || 'none'}`);
+  process.exit(1);
+}
+
+// Now import modules that depend on environment variables
+// Note: We'll dynamically import sendNewsletterEmail inside main() to avoid
+// loading lib/supabase.ts before env vars are set
 import { createClient } from '@supabase/supabase-js';
-import { sendNewsletterEmail } from '../../../lib/sendgrid';
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -59,6 +129,10 @@ interface WaitlistEntry {
 }
 
 async function main() {
+  // Dynamically import sendNewsletterEmail AFTER env vars are verified
+  // This prevents lib/supabase.ts from loading before env vars are set
+  const { sendNewsletterEmail } = await import('../../../lib/sendgrid');
+  
   // Validate environment variables
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -104,7 +178,9 @@ async function main() {
     query = query.eq('sent_status', 'failed');
   } else {
     // Fetch emails that haven't been sent yet
-    query = query.or('sent_status.is.null,sent_status.eq.pending');
+    // Only get entries where sent_status is NULL (never sent) or NULL sent_at
+    // Exclude 'pending' to avoid duplicates if script was interrupted
+    query = query.or('sent_status.is.null,sent_at.is.null');
   }
 
   const { data: waitlistEntries, error: fetchError } = await query;
@@ -152,14 +228,35 @@ async function main() {
       continue;
     }
 
+    // Double-check this entry hasn't been sent already (race condition protection)
+    // Re-fetch the entry to ensure sent_at is still null
+    const { data: currentEntry } = await supabaseAdmin
+      .from('waitlist')
+      .select('sent_at, sent_status')
+      .eq('id', entry.id)
+      .single();
+    
+    if (currentEntry?.sent_at) {
+      console.log(`${progress} ⏭️  Skipping ${entry.email} - already sent at ${currentEntry.sent_at}`);
+      skippedCount++;
+      continue;
+    }
+
     // Replace email placeholder in unsubscribe link (text-only)
     const textContent = EMAIL_TEXT.replace(/\{\{email\}\}/g, encodeURIComponent(entry.email));
 
-    // Update status to 'pending' before sending
-    await supabaseAdmin
+    // Update status to 'pending' before sending (atomic update to prevent race conditions)
+    const { error: pendingError } = await supabaseAdmin
       .from('waitlist')
       .update({ sent_status: 'pending' })
-      .eq('id', entry.id);
+      .eq('id', entry.id)
+      .is('sent_at', null); // Only update if sent_at is still null
+    
+    if (pendingError) {
+      console.error(`${progress} ⚠️  Failed to set pending status for ${entry.email}:`, pendingError);
+      skippedCount++;
+      continue;
+    }
 
     // Send newsletter email (checks marketing_emails_enabled preference)
     const result = await sendNewsletterEmail(
