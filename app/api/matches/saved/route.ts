@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
+import { deleteCache } from '@/lib/redis-cache';
 
 // GET: Fetch all saved matches for the authenticated user
 export async function GET(req: NextRequest) {
@@ -331,6 +332,12 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[Save Match POST] Successfully saved match:', { savedMatchId: data?.id, matchId });
+    
+    // Invalidate cache so next fetch gets fresh data
+    const cacheKey = `saved_matches:${user.email}:ALL`;
+    await deleteCache(cacheKey);
+    console.log('[Save Match POST] Invalidated cache:', cacheKey);
+    
     return NextResponse.json({
       success: true,
       savedMatch: data,
@@ -396,6 +403,11 @@ export async function DELETE(req: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Invalidate cache so next fetch gets fresh data
+    const cacheKey = `saved_matches:${user.email}:ALL`;
+    await deleteCache(cacheKey);
+    console.log('[Unsave Match DELETE] Invalidated cache:', cacheKey);
 
     return NextResponse.json({
       success: true,
