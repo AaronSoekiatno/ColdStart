@@ -124,7 +124,7 @@ export default function MatchesPage() {
         }
 
         const data = await response.json();
-        setMatches(data.matches || []);
+        setMatches(data.items || data.matches || []);
         setPagination(data.pagination);
       } catch (error) {
         console.error('Error initializing matches page:', error);
@@ -137,60 +137,51 @@ export default function MatchesPage() {
     initialize();
   }, [router]);
 
-  // Background fetch remaining matches after initial load
+  // Fetch next page when user is approaching the end of current matches
   useEffect(() => {
-    const fetchRemainingMatches = async () => {
-      // Only fetch if we have initial matches and pagination info
-      if (!pagination || !pagination.hasMore || matches.length === 0) {
+    const fetchNextPage = async () => {
+      // Only fetch if:
+      // 1. We have pagination info
+      // 2. There's more data to fetch
+      // 3. User is within 5 matches of the end
+      // 4. We're not already loading
+      if (!pagination || !pagination.hasMore || isLoading) {
         return;
       }
 
-      console.log('[Matches] Background fetching remaining matches...');
+      const remainingMatches = matches.length - currentMatchIndex;
+      if (remainingMatches > 5) {
+        return; // Still far from the end
+      }
+
+      console.log('[Matches] Fetching next page:', pagination.page + 1);
 
       try {
-        // Fetch all remaining pages
-        const fetchPromises = [];
+        const nextPage = pagination.page + 1;
+        const response = await fetch(`/api/matches?page=${nextPage}&limit=20`, {
+          credentials: 'include',
+        });
 
-        for (let page = 2; page <= pagination.totalPages; page++) {
-          fetchPromises.push(
-            fetch(`/api/matches?page=${page}&limit=20`, {
-              credentials: 'include',
-            })
-              .then(async (res) => {
-                if (!res.ok) {
-                  const errorData = await res.json().catch(() => ({ error: 'Failed to fetch matches' }));
-                  throw new Error(errorData.error || `HTTP error! status: ${res.status}`);
-                }
-                return res.json();
-              })
-              .catch((error) => {
-                console.error(`[Matches] Error fetching page ${page}:`, error);
-                // Return empty result for this page so Promise.all doesn't fail
-                return { matches: [], pagination: { hasMore: false } };
-              })
-          );
+        if (!response.ok) {
+          console.error('[Matches] Failed to fetch next page');
+          return;
         }
 
-        const results = await Promise.all(fetchPromises);
+        const data = await response.json();
+        const newMatches = data.items || data.matches || [];
 
-        // Combine all matches
-        const allNewMatches = results.flatMap(result => result.matches || []);
+        // Append new matches to existing ones
+        setMatches(prev => [...prev, ...newMatches]);
+        setPagination(data.pagination);
 
-        console.log('[Matches] Background fetch complete. Loaded', allNewMatches.length, 'additional matches');
-
-        // Append to existing matches
-        setMatches(prev => [...prev, ...allNewMatches]);
+        console.log('[Matches] Loaded page', nextPage, '- Added', newMatches.length, 'matches');
       } catch (error) {
-        console.error('[Matches] Error fetching remaining matches:', error);
-        // Silently fail - user already has first 20 matches
+        console.error('[Matches] Error fetching next page:', error);
       }
     };
 
-    // Start background fetch after initial matches are loaded
-    if (matches.length > 0 && pagination?.hasMore) {
-      fetchRemainingMatches();
-    }
-  }, [matches.length > 0, pagination?.hasMore]); // Only run once when we have initial matches
+    fetchNextPage();
+  }, [currentMatchIndex, matches.length, pagination, isLoading]);
 
   // Reset current match index when matches change
   useEffect(() => {
