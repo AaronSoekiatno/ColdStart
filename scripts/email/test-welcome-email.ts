@@ -234,19 +234,14 @@ async function sendWelcomeEmail(
 
     // HTML version
     const emailBodyHTML = `Hi ${userFirstName},<br><br>
-
 My name is Robert and I am a cofounder of Hermes. We built Hermes because we realized the job market is broken.<br><br>
-
 <strong>Heres 3 things to do to 10x ur chances of getting a job:</strong><br>
 &nbsp;&nbsp;&nbsp;&nbsp;• <strong>Upload your resume:</strong> Our agent matches you with the right teams to maximize your chances.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;• <strong>Find Hidden Roles:</strong> find "FRESH" job postings before everyone else does<br>
 &nbsp;&nbsp;&nbsp;&nbsp;• <strong>Send Emails:</strong> Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.<br><br>
-
 Best,<br>
 Robert<br><br>
-
 <a href="${unsubscribeLink}">Unsubscribe</a><br>
-
 <a href="${APP_URL}">Hermes</a><br>`;
 
     // Plain text version (fallback)
