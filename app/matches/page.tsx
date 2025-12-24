@@ -56,6 +56,7 @@ export default function MatchesPage() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [savedMatchIds, setSavedMatchIds] = useState<string[]>([]); // Store all saved match IDs
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -126,6 +127,20 @@ export default function MatchesPage() {
         const data = await response.json();
         setMatches(data.items || data.matches || []);
         setPagination(data.pagination);
+
+        // Fetch saved match IDs in batch (replaces 40+ individual calls)
+        try {
+          const savedResponse = await fetch('/api/matches/saved/all', {
+            credentials: 'include',
+          });
+          if (savedResponse.ok) {
+            const savedData = await savedResponse.json();
+            setSavedMatchIds(savedData.matchIds || []);
+            console.log('[Matches] Loaded saved match IDs:', savedData.matchIds?.length || 0);
+          }
+        } catch (error) {
+          console.error('[Matches] Error loading saved match IDs:', error);
+        }
       } catch (error) {
         console.error('Error initializing matches page:', error);
         setHasError(true);
@@ -310,6 +325,7 @@ export default function MatchesPage() {
                     match={visibleMatches[currentMatchIndex]}
                     isPremium={isPremium}
                     userEmail={user?.email || ''}
+                    initialIsSaved={savedMatchIds.includes(visibleMatches[currentMatchIndex].id)}
                   />
                 </div>
               )}

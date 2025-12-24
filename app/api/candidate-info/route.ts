@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getCache, setCache } from '@/lib/redis-cache';
 
 /**
  * Wraps a Supabase query with timeout
@@ -74,6 +75,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Try Redis cache first (event-driven caching with 24-hour TTL)
+    const cacheKey = `candidate_info:${user.email}`;
+    const cachedCandidate = await getCache<any>(cacheKey);
+
+    if (cachedCandidate) {
+      console.log('[Candidate Info] Cache HIT:', {
+        user: user.email,
+        cacheKey,
+      });
+
+      return NextResponse.json(cachedCandidate, {
+        headers: {
+          'Cache-Control': 'private, max-age=300',
+          'X-Cache-Status': 'HIT',
+        },
+      });
+    }
+
+    // Cache miss - fetch from database
+    console.log('[Candidate Info] Cache MISS:', {
+      user: user.email,
+      cacheKey,
+    });
+
     // Get candidate info from candidates table - explicitly selecting subscription fields
     // Note: experience_level and salary_range are in the jobs table, not candidates table
     // Store in const so TypeScript knows it's not null inside the callback
@@ -136,11 +161,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Cache for 24 hours (ultra-static data, updated proactively on events)
+    await setCache(cacheKey, candidate, 86400);
+    console.log('[Candidate Info] Cached for 24 hours:', {
+      user: user.email,
+      cacheKey,
+    });
+
     return NextResponse.json(candidate, {
       headers: {
         // Private cache (browser only, not CDN) for 5 minutes
         // User-specific data that doesn't change frequently
         'Cache-Control': 'private, max-age=300',
+        'X-Cache-Status': 'MISS',
       },
     });
   } catch (error) {
