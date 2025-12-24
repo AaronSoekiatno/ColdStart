@@ -233,3 +233,29 @@ export function normalizeUniversityName(school: string | null | undefined): stri
   return titleCased;
 }
 
+/**
+ * Normalize job type to lowercase with hyphens
+ * Converts variations to: full-time, part-time, or internship
+ */
+export function normalizeJobType(jobType: string | null | undefined): string | null {
+  if (!jobType) return null;
+
+  const normalized = jobType.toLowerCase().trim();
+
+  switch (normalized) {
+    case 'full-time':
+    case 'fulltime':
+    case 'full time':
+      return 'full-time';
+    case 'part-time':
+    case 'parttime':
+    case 'part time':
+      return 'part-time';
+    case 'internship':
+    case 'intern':
+      return 'internship';
+    default:
+      console.warn(`Unknown job type: ${jobType}, defaulting to null`);
+      return null;
+  }
+}

@@ -110,9 +110,33 @@ export async function GET(request: NextRequest) {
     // Track request timing for egress monitoring
     const requestStart = Date.now();
 
-    // Create cache key based on user email, page, and limit
-    // This ensures each user's paginated results are cached separately
-    const cacheKey = `matches:${user.email}:${page}:${limit}`;
+    // Get candidate preferences first to include in cache key
+    // This ensures cache is invalidated when job_type or years_of_experience changes
+    const candidatePrefsResult = await withTimeoutAndRetry<{ 
+      id: string; 
+      role_type: string[] | null;
+      job_type: string | null;
+      years_of_experience: string | null;
+    }>(
+      async () => {
+        const result = await supabaseAdmin!
+          .from('candidates')
+          .select('id, role_type, job_type, years_of_experience')
+          .eq('email', user.email)
+          .single();
+        return result;
+      },
+      10000,
+      1
+    );
+    const { data: candidatePrefs } = candidatePrefsResult;
+    
+    // Create cache key based on user email, page, limit, and preferences
+    // This ensures cache is invalidated when job_type or years_of_experience changes
+    const prefsHash = candidatePrefs 
+      ? `${candidatePrefs.job_type || 'none'}:${candidatePrefs.years_of_experience || 'none'}`
+      : 'none:none';
+    const cacheKey = `matches:${user.email}:${page}:${limit}:${prefsHash}`;
     
     // Check Redis cache FIRST (persistent across serverless instances)
     const redisCache = await getCache<{
@@ -176,20 +200,9 @@ export async function GET(request: NextRequest) {
     
     console.log('[EGRESS MONITOR] CACHE MISS - Querying database:', { user: user.email, page });
 
-    // Get candidate ID and role preferences
-    const candidateResult = await withTimeoutAndRetry<{ id: string; role_type: string[] | null }>(
-      async () => {
-        const result = await supabaseAdmin!
-          .from('candidates')
-          .select('id, role_type')
-          .eq('email', user.email)
-          .single();
-        return result;
-      },
-      10000, // 10 second timeout
-      1 // 1 retry
-    );
-    const { data: candidate, error: candidateError } = candidateResult;
+    // Use candidate preferences already fetched for cache key
+    const candidate = candidatePrefs;
+    const candidateError = candidatePrefsResult.error;
 
     if (candidateError || !candidate) {
       const errorMessage = candidateError?.message || '';
@@ -834,6 +847,174 @@ export async function GET(request: NextRequest) {
     // then sort with job prioritization, then paginate
     // This ensures startups with jobs appear first across all pages
 
+    // Helper function to parse years of experience from candidate
+    // Handles exact values: 'no-experience', 'less-than-1', '1-2', '2-5', '5-10', '10-plus'
+    // Also handles legacy formats like "0-1", "1-2", "3-5", "5+"
+    const parseCandidateYearsOfExperience = (yearsStr: string | null | undefined): number | null => {
+      if (!yearsStr) return null;
+      
+      const trimmed = yearsStr.trim().toLowerCase();
+      
+      // Handle exact values from onboarding
+      if (trimmed === 'no-experience') return 0;
+      if (trimmed === 'less-than-1') return 0; // Less than 1 year = 0
+      if (trimmed === '1-2') return 2;
+      if (trimmed === '2-5') return 5;
+      if (trimmed === '5-10') return 10;
+      if (trimmed === '10-plus') return 10;
+      
+      // Handle "5+" format (legacy)
+      if (trimmed.endsWith('+')) {
+        const num = parseInt(trimmed.slice(0, -1));
+        return isNaN(num) ? null : num;
+      }
+      
+      // Handle "0-1", "1-2", "3-5" format (legacy)
+      const rangeMatch = trimmed.match(/^(\d+)(?:-(\d+))?$/);
+      if (rangeMatch) {
+        const max = rangeMatch[2] ? parseInt(rangeMatch[2]) : parseInt(rangeMatch[1]);
+        return isNaN(max) ? null : max;
+      }
+      
+      // Try to parse as single number (e.g., "0", "1", "5")
+      const num = parseInt(trimmed);
+      return isNaN(num) ? null : num;
+    };
+
+    // Helper function to parse maximum required years from job experience_level
+    // Handles formats like "Entry level", "1-2 years", "3+ years", "Senior", etc.
+    const parseJobExperienceLevel = (experienceLevel: string | null | undefined): number | null => {
+      if (!experienceLevel) return null;
+      
+      const lower = experienceLevel.toLowerCase().trim();
+      
+      // Handle "Any", "Any experience", "No experience required" - no experience needed
+      if (lower.includes('any') && (lower.includes('experience') || lower.includes('new grad') || lower.includes('grad'))) {
+        return 0;
+      }
+      if (lower.includes('no experience') || lower.includes('experience not required')) {
+        return 0;
+      }
+      
+      // Handle "Entry level", "Entry", "New grad", "New graduate"
+      if (lower.includes('entry') || lower.includes('new grad') || lower.includes('new graduate')) {
+        return 0;
+      }
+      
+      // Handle "1-2 years", "3-5 years" format (must check before single number)
+      const rangeMatch = lower.match(/(\d+)(?:\s*-\s*(\d+))?\s*years?/);
+      if (rangeMatch) {
+        const max = rangeMatch[2] ? parseInt(rangeMatch[2]) : parseInt(rangeMatch[1]);
+        return isNaN(max) ? null : max;
+      }
+      
+      // Handle "3+ years", "5+ years" format
+      const plusMatch = lower.match(/(\d+)\+\s*years?/);
+      if (plusMatch) {
+        const num = parseInt(plusMatch[1]);
+        return isNaN(num) ? null : num;
+      }
+      
+      // Handle single number like "2 years", "5 years" (but not if it's part of a range we already matched)
+      const singleMatch = lower.match(/(\d+)\s*years?/);
+      if (singleMatch) {
+        const num = parseInt(singleMatch[1]);
+        return isNaN(num) ? null : num;
+      }
+      
+      // Handle "Junior" (typically 0-2 years)
+      if (lower.includes('junior')) {
+        return 2;
+      }
+      
+      // Handle "Associate" (typically 1-3 years)
+      if (lower.includes('associate')) {
+        return 3;
+      }
+      
+      // Handle "Mid", "Mid-level" (typically 2-5 years)
+      if (lower.includes('mid')) {
+        return 5;
+      }
+      
+      // Handle "Senior", "Lead" (typically 5-7 years)
+      if (lower.includes('senior') || lower.includes('lead')) {
+        return 7;
+      }
+      
+      // Handle "Principal", "Staff" (typically 7-10+ years, but we'll be conservative)
+      if (lower.includes('principal') || lower.includes('staff')) {
+        return 10; // High number to allow most candidates
+      }
+      
+      return null;
+    };
+
+    // Filter jobs by job_type based on candidate preferences
+    // Candidate values are: 'full-time', 'part-time', 'internship'
+    const filterJobsByType = (
+      jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>,
+      candidateJobType: string | null | undefined
+    ): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }> => {
+      if (!candidateJobType) return jobs; // No filtering if candidate hasn't set preference
+      
+      const normalizedCandidateType = candidateJobType.toLowerCase().trim();
+      
+      return jobs.filter(job => {
+        if (!job.job_type) return true; // Include jobs without job_type
+        
+        const normalizedJobType = job.job_type.toLowerCase().trim();
+        
+        if (normalizedCandidateType === 'full-time') {
+          // Full-time candidates only see full-time jobs
+          // Check for exact match or variations (but avoid false positives like "not full-time")
+          return normalizedJobType === 'full-time' || 
+                 normalizedJobType === 'fulltime' ||
+                 (normalizedJobType.startsWith('full-time') && !normalizedJobType.includes('not') && !normalizedJobType.includes('non')) ||
+                 (normalizedJobType.startsWith('fulltime') && !normalizedJobType.includes('not') && !normalizedJobType.includes('non'));
+        } else if (normalizedCandidateType === 'part-time' || normalizedCandidateType === 'internship') {
+          // Part-time/internship candidates can see: internship, part-time, and contract jobs only
+          // Handle variations in job postings
+          return normalizedJobType === 'internship' ||
+                 normalizedJobType === 'intern' ||
+                 normalizedJobType.startsWith('internship') ||
+                 normalizedJobType.startsWith('intern') ||
+                 normalizedJobType === 'part-time' ||
+                 normalizedJobType === 'parttime' ||
+                 normalizedJobType.startsWith('part-time') ||
+                 normalizedJobType.startsWith('parttime') ||
+                 normalizedJobType.includes('contract');
+        }
+        
+        // Unknown candidate job_type, show all
+        return true;
+      });
+    };
+
+    // Filter jobs by experience_level based on candidate years of experience
+    const filterJobsByExperience = (
+      jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>,
+      candidateYearsOfExperience: string | null | undefined
+    ): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }> => {
+      if (!candidateYearsOfExperience) return jobs; // No filtering if candidate hasn't set preference
+      
+      const candidateMaxYears = parseCandidateYearsOfExperience(candidateYearsOfExperience);
+      if (candidateMaxYears === null) return jobs; // Can't parse, show all
+      
+      // Candidates with no experience or less than 1 year can see all jobs (including 1+ years)
+      if (candidateMaxYears === 0) return jobs;
+      
+      return jobs.filter(job => {
+        if (!job.experience_level) return true; // Include jobs without experience_level
+        
+        const jobMaxYears = parseJobExperienceLevel(job.experience_level);
+        if (jobMaxYears === null) return true; // Can't parse, include it
+        
+        // Only show jobs where required experience <= candidate's experience
+        return jobMaxYears <= candidateMaxYears;
+      });
+    };
+
     // Role matching patterns for ordering jobs by role preferences
     const rolePatterns: { [key: string]: string[] } = {
       'pm': ['product manager', 'pm', 'product lead', 'product owner', 'product'],
@@ -906,10 +1087,16 @@ export async function GET(request: NextRequest) {
     // Filter out matches where startup data is missing (these won't display properly)
     const matchesWithStartups = allMatches.map((m) => {
       const startup = startupsById[m.startup_id] ?? null;
-      const allJobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
+      let allJobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
       
+      // Apply server-side filtering based on candidate preferences
+      // Filter by job_type first
+      allJobs = filterJobsByType(allJobs, candidate?.job_type);
       
-      // Order jobs by role preference
+      // Then filter by experience_level
+      allJobs = filterJobsByExperience(allJobs, candidate?.years_of_experience);
+      
+      // Order jobs by role preference (after filtering)
       const orderedJobs = orderJobsByPreference(allJobs);
 
       return {
@@ -1041,6 +1228,9 @@ export async function GET(request: NextRequest) {
 
     // Cache the response for 5 minutes (default TTL from matchesCache)
     matchesCache.set(cacheKey, response);
+    
+    // Also cache in Redis for persistence across serverless instances
+    await setCache(cacheKey, response, 3600);
 
     return NextResponse.json(response, {
       headers: {
@@ -1158,23 +1348,19 @@ async function findInstantMatches(candidate: any, limit: number): Promise<any[]>
 
     // Filter by job type if specified
     if (jobType) {
-      // Map 'full-time'/etc to 'fulltime' if needed, or query both
-      // The jobs table seems to use 'fulltime' based on scraper
-      // Candidate table uses 'full-time'
-      // Map 'full-time'/etc to database values
-      // DB has 'Full-time' and 'Contract' (title case)
-      // Frontend sends 'full-time', 'part-time', 'internship'
-      
+      // Jobs table may have various formats (Full-time, fulltime, etc.)
+      // Candidates table uses lowercase: 'full-time', 'part-time', 'internship'
+      // Use case-insensitive matching to handle all variations
+
       if (jobType === 'full-time') {
-         query = query.ilike('job_type', '%Full-time%');
+         query = query.ilike('job_type', '%full%time%');
       } else if (jobType === 'part-time') {
-         query = query.ilike('job_type', '%Part-time%');
+         query = query.ilike('job_type', '%part%time%');
       } else if (jobType === 'internship') {
-         // Database currently doesn't seem to have explicit 'Internship' type in checked sample
-         // but logic should search for it or look in title as fallback
-         query = query.or(`job_type.ilike.%Intern%,job_title.ilike.%Intern%`);
+         // Search for internship in both job_type and job_title
+         query = query.or(`job_type.ilike.%intern%,job_title.ilike.%intern%`);
       } else {
-         const normalizedJobType = jobType.replace('-', ' '); 
+         const normalizedJobType = jobType.replace('-', ' ');
          query = query.ilike('job_type', `%${normalizedJobType}%`);
       }
     }

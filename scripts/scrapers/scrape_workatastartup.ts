@@ -941,10 +941,20 @@ export async function scrapeWorkAtAStartup(limit: number = 50): Promise<JobListi
                 }
               }
               
-              // Extract job type
+              // Extract job type (normalize to lowercase with hyphens)
               const jobTypeMatch = text.match(/(Full-time|Part-time|Contract|Internship|fulltime|parttime|contract|internship)/i);
               if (jobTypeMatch) {
-                job.jobType = jobTypeMatch[1].toLowerCase().replace('-', '');
+                const rawType = jobTypeMatch[1].toLowerCase();
+                // Normalize to lowercase with hyphens: full-time, part-time, contract, internship
+                if (rawType.includes('full') || rawType === 'fulltime') {
+                  job.jobType = 'full-time';
+                } else if (rawType.includes('part') || rawType === 'parttime') {
+                  job.jobType = 'part-time';
+                } else if (rawType.includes('intern')) {
+                  job.jobType = 'internship';
+                } else if (rawType.includes('contract')) {
+                  job.jobType = 'contract';
+                }
               }
               
               // Extract visa requirements

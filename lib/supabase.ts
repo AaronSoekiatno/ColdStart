@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
-import { normalizeName, normalizeEducationLevel, normalizeUniversityName } from './normalize-candidate-data';
+import { normalizeName, normalizeEducationLevel, normalizeUniversityName, normalizeJobType } from './normalize-candidate-data';
 
 // Supabase configuration
 // These environment variables should be set in .env.local
@@ -163,6 +163,7 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
   const normalizedName = normalizeName(candidate.name);
   const normalizedEducationLevel = normalizeEducationLevel(candidate.education_level);
   const normalizedUniversity = normalizeUniversityName(candidate.university);
+  const normalizedJobType = normalizeJobType(candidate.job_type);
 
   // Extract major from structured_resume_data if present and not explicitly provided
   let extractedMajor: string[] | undefined = candidate.major;
@@ -201,7 +202,7 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
     experience: candidate.experience,
     technical_projects: candidate.technical_projects,
     objectives: candidate.objectives,
-    job_type: candidate.job_type,
+    job_type: normalizedJobType,
     role_type: candidate.role_type,
     years_of_experience: candidate.years_of_experience,
     onboarding_completed: candidate.onboarding_completed,
