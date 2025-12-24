@@ -216,6 +216,7 @@ interface EmailPreferencesEntry {
   unsubscribe_token: string | null;
   marketing_emails_enabled: boolean;
   unsubscribed_at: string | null;
+  created_at: string | null;
   lead_campaign_status: 'pending' | 'sent' | 'failed' | null;
   lead_campaign_sent_at: string | null;
   lead_campaign_error: string | null;
@@ -274,29 +275,51 @@ async function main() {
 
   const leadEmails = waitlistLeads.map(w => w.email);
 
-  // Now fetch email_preferences for these leads with proper filters
-  let query = supabaseAdmin
-    .from('email_preferences')
-    .select('email, unsubscribe_token, marketing_emails_enabled, unsubscribed_at, lead_campaign_status, lead_campaign_sent_at, lead_campaign_error')
-    .in('email', leadEmails)
-    .eq('marketing_emails_enabled', true)
-    .is('unsubscribed_at', null)
-    .order('created_at', { ascending: true });
+  // Batch queries to avoid Supabase limits on .in() queries (PostgREST limit is ~100-200 items)
+  const BATCH_SIZE = 100;
+  const allEntries: EmailPreferencesEntry[] = [];
 
-  if (resendFailed) {
-    // Only fetch failed emails
-    query = query.eq('lead_campaign_status', 'failed');
-  } else {
-    // Fetch emails that haven't been sent yet
-    query = query.or('lead_campaign_status.is.null,lead_campaign_status.eq.pending');
+  console.log(`📊 Fetching email preferences for ${leadEmails.length} lead emails (batched into chunks of ${BATCH_SIZE})...`);
+
+  for (let i = 0; i < leadEmails.length; i += BATCH_SIZE) {
+    const emailBatch = leadEmails.slice(i, i + BATCH_SIZE);
+    
+    // Build query for this batch
+    let query = supabaseAdmin
+      .from('email_preferences')
+      .select('email, unsubscribe_token, marketing_emails_enabled, unsubscribed_at, created_at, lead_campaign_status, lead_campaign_sent_at, lead_campaign_error')
+      .in('email', emailBatch)
+      .eq('marketing_emails_enabled', true)
+      .is('unsubscribed_at', null);
+
+    if (resendFailed) {
+      // Only fetch failed emails
+      query = query.eq('lead_campaign_status', 'failed');
+    } else {
+      // Fetch emails that haven't been sent yet
+      query = query.or('lead_campaign_status.is.null,lead_campaign_status.eq.pending');
+    }
+
+    const { data: batchEntries, error: batchError } = await query;
+
+    if (batchError) {
+      console.error(`❌ Error fetching email preferences batch ${Math.floor(i / BATCH_SIZE) + 1}:`, batchError);
+      process.exit(1);
+    }
+
+    if (batchEntries && batchEntries.length > 0) {
+      allEntries.push(...(batchEntries as EmailPreferencesEntry[]));
+    }
   }
 
-  const { data: entries, error: fetchError } = await query;
+  // Sort all entries by created_at after batching
+  const entries = allEntries.sort((a, b) => {
+    const aDate = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const bDate = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return aDate - bDate;
+  });
 
-  if (fetchError) {
-    console.error('❌ Error fetching email preferences:', fetchError);
-    process.exit(1);
-  }
+  const fetchError = null; // No error if we got here
 
   if (!entries || entries.length === 0) {
     console.log('✅ No emails to send!');
