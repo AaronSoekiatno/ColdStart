@@ -314,23 +314,54 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
         if (!response.ok) {
           // Revert on failure
           setIsSaved(previousSavedState);
-          console.error('Failed to unsave match');
+          let errorData: any = {};
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = { message: await response.text().catch(() => 'Unknown error') };
+          }
+          console.error('Failed to unsave match:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData,
+            matchId: match.id,
+          });
         }
       } else {
         // Save the match
+        if (!match.id) {
+          console.error('Cannot save match: match.id is missing');
+          setIsSaved(previousSavedState);
+          return;
+        }
+
         const response = await fetch('/api/matches/saved', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           credentials: 'include',
-          body: JSON.stringify({ matchId: match.id }),
+          body: JSON.stringify({ 
+            matchId: match.id,
+            startupId: match.startup?.id, // Include startup_id as fallback
+          }),
         });
 
         if (!response.ok && response.status !== 409) {
           // Revert on failure (except for 409 which means already saved)
           setIsSaved(previousSavedState);
-          console.error('Failed to save match');
+          let errorData: any = {};
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = { message: await response.text().catch(() => 'Unknown error') };
+          }
+          console.error('Failed to save match:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData,
+            matchId: match.id,
+          });
         }
       }
     } catch (error) {
@@ -460,7 +491,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               </button>
               <button
                 type="button"
-                className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
+                className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px] animate-pulse-subtle"
                 onClick={() => {
                   if (match.startup?.id) {
                     // Check if a founder is selected
@@ -730,8 +761,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
       {/* Founders Section */}
       {founderNames.length > 0 && (
-        <div className="mt-4 sm:mt-6 md:mt-8">
-          <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+        <div className="mt-4 sm:mt-6 md:mt-8" data-section="founders">
+          <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4 flex-wrap gap-2">
             <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
             <div className="flex items-center gap-1.5 sm:gap-2">
               {founderSelectionError && (
@@ -742,6 +773,24 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               </p>
             </div>
           </div>
+
+          {/* Value Proposition Banner */}
+          <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-sm">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-gray-900 mb-1">
+                  Reach out to founders directly
+                </h4>
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  Generate a personalized email based on your background and this company's work. Skip the job board and start a conversation.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
             {/* Founder Cards - one for each founder */}
             {founderNames.map((founderName, index) => {
@@ -914,14 +963,6 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             {match.jobs && match.jobs.length > 0 ? (
               match.jobs.map((job, index) => {
                 const recency = formatJobRecency(job.created_at);
-                console.log('[MatchCard] Rendering job:', {
-                  index,
-                  job_title: job.job_title,
-                  created_at: job.created_at,
-                  has_created_at: !!job.created_at,
-                  recency,
-                  will_render_recency: !!recency
-                });
                 return (
                   <div key={index} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -932,11 +973,6 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                             <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
                               {job.job_title || 'Job Title Not Available'}
                             </p>
-                            {recency && (
-                              <span className="text-xs sm:text-sm text-gray-500 font-normal">
-                                {recency}
-                              </span>
-                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
                             {job.job_type && (
@@ -962,13 +998,18 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                         </div>
                       </div>
 
-                      {/* Right side: Application Link Button */}
-                      <div className="flex-shrink-0">
+                      {/* Right side: Recency and Application Link Button */}
+                      <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                        {recency && (
+                          <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                            {recency}
+                          </span>
+                        )}
                         <a
                           href={job.job_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
+                          className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span>Apply Now</span>
@@ -982,13 +1023,6 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               // Fallback to single job for backward compatibility
               (() => {
                 const recency = formatJobRecency(match.job.created_at);
-                console.log('[MatchCard] Rendering single job:', {
-                  job_title: match.job.job_title,
-                  created_at: match.job.created_at,
-                  has_created_at: !!match.job.created_at,
-                  recency,
-                  will_render_recency: !!recency
-                });
                 return (
                   <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -999,11 +1033,6 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                             <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
                               {match.job.job_title || 'Job Title Not Available'}
                             </p>
-                            {recency && (
-                              <span className="text-xs sm:text-sm text-gray-500 font-normal">
-                                {recency}
-                              </span>
-                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
                             {match.job.job_type && (
@@ -1029,13 +1058,18 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                         </div>
                       </div>
 
-                      {/* Right side: Application Link Button */}
-                      <div className="flex-shrink-0">
+                      {/* Right side: Recency and Application Link Button */}
+                      <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                        {recency && (
+                          <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                            {recency}
+                          </span>
+                        )}
                         <a
                           href={match.job.job_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
+                          className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span>Apply Now</span>

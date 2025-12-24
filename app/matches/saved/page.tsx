@@ -50,30 +50,11 @@ export default function SavedMatchesPage() {
 
   const hasMatches = matches.length > 0;
 
-  // Load saved match IDs on mount
+  // Automatically mark all matches as saved since we're on the saved page
   useEffect(() => {
-    const loadSavedMatchIds = async () => {
-      const savedIds = new Set<string>();
-      for (const match of matches) {
-        try {
-          const response = await fetch(`/api/matches/saved/check?matchId=${match.id}`, {
-            credentials: 'include',
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.isSaved) {
-              savedIds.add(match.id);
-            }
-          }
-        } catch (error) {
-          console.error('Error checking saved status:', error);
-        }
-      }
-      setSavedMatchIds(savedIds);
-    };
-
     if (matches.length > 0) {
-      loadSavedMatchIds();
+      const allMatchIds = new Set(matches.map(m => m.id));
+      setSavedMatchIds(allMatchIds);
     }
   }, [matches]);
 

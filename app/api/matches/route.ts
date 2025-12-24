@@ -118,28 +118,47 @@ export async function GET(request: NextRequest) {
     const cachedMatches = await getCache<any[]>(fullCacheKey);
     
     if (cachedMatches && Array.isArray(cachedMatches)) {
-      const elapsed = Date.now() - requestStart;
+      // Validate cache - check if jobs have created_at field (indicates cache was created after filtering was added)
+      const sampleMatch = cachedMatches.find((m: any) => m.jobs && m.jobs.length > 0);
+      const cacheHasProperStructure = sampleMatch?.jobs?.some((job: any) => 
+        job.created_at !== undefined
+      ) ?? false;
       
-      // Server-side pagination from cached array
-      const { paginateArray } = await import('@/lib/pagination-helper');
-      const paginatedResult = paginateArray(cachedMatches, page, limit);
+      // Check if cache has jobs but they don't have created_at, it's definitely stale
+      const hasJobsWithoutCreatedAt = sampleMatch?.jobs?.some((job: any) => 
+        !job.created_at
+      ) ?? false;
       
-      console.log('[Redis Cache] HIT - Serving from cache:', {
-        user: user.email,
-        page,
-        total: cachedMatches.length,
-        elapsed: `${elapsed}ms`,
-        cacheKey: fullCacheKey,
-      });
-      
-      return NextResponse.json(paginatedResult, {
-        headers: {
-          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-          'X-Cache-Status': 'HIT-REDIS',
-          'X-Cache-Key': fullCacheKey,
-          'X-Response-Time': `${elapsed}ms`,
-        },
-      });
+      if (hasJobsWithoutCreatedAt || (!cacheHasProperStructure && cachedMatches.length > 0)) {
+        // Cache is stale - invalidate it immediately
+        const { deleteCache } = await import('@/lib/redis-cache');
+        await deleteCache(fullCacheKey);
+        // Continue to fetch fresh data below
+      } else {
+        // Cache looks good, use it
+        const elapsed = Date.now() - requestStart;
+        
+        // Server-side pagination from cached array
+        const { paginateArray } = await import('@/lib/pagination-helper');
+        const paginatedResult = paginateArray(cachedMatches, page, limit);
+        
+        console.log('[Redis Cache] HIT - Serving from cache:', {
+          user: user.email,
+          page,
+          total: cachedMatches.length,
+          elapsed: `${elapsed}ms`,
+          cacheKey: fullCacheKey,
+        });
+        
+        return NextResponse.json(paginatedResult, {
+          headers: {
+            'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+            'X-Cache-Status': 'HIT-REDIS',
+            'X-Cache-Key': fullCacheKey,
+            'X-Response-Time': `${elapsed}ms`,
+          },
+        });
+      }
     }
     
     console.log('[Redis Cache] MISS - Fetching from database:', { 
@@ -1054,6 +1073,17 @@ export async function GET(request: NextRequest) {
     const matchesWithStartups = allMatches.map((m) => {
       const startup = startupsById[m.startup_id] ?? null;
       let allJobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
+      
+      // Deduplicate jobs by job_url (in case same job was added via startup_id and company_name matching)
+      const seenJobUrls = new Set<string>();
+      allJobs = allJobs.filter(job => {
+        if (!job.job_url) return false;
+        if (seenJobUrls.has(job.job_url)) {
+          return false; // Duplicate
+        }
+        seenJobUrls.add(job.job_url);
+        return true;
+      });
       
       // Apply server-side filtering based on candidate preferences
       // Filter by job_type first

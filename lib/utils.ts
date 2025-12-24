@@ -11,10 +11,7 @@ export function cn(...inputs: ClassValue[]) {
  * @returns Formatted string or null if date is invalid/missing
  */
 export function formatJobRecency(createdAt: string | undefined): string | null {
-  console.log('[formatJobRecency] Called with:', { createdAt, type: typeof createdAt });
-  
   if (!createdAt) {
-    console.log('[formatJobRecency] No createdAt provided, returning null');
     return null;
   }
 
@@ -22,15 +19,8 @@ export function formatJobRecency(createdAt: string | undefined): string | null {
     const now = new Date();
     const created = new Date(createdAt);
     
-    console.log('[formatJobRecency] Parsed dates:', {
-      now: now.toISOString(),
-      created: created.toISOString(),
-      isValid: !isNaN(created.getTime())
-    });
-    
     // Check if date is valid
     if (isNaN(created.getTime())) {
-      console.log('[formatJobRecency] Invalid date, returning null');
       return null;
     }
 
@@ -39,13 +29,6 @@ export function formatJobRecency(createdAt: string | undefined): string | null {
     const diffMinutes = Math.floor(diffSeconds / 60);
     const diffHours = Math.floor(diffMinutes / 60);
     const diffDays = Math.floor(diffHours / 24);
-
-    console.log('[formatJobRecency] Time differences:', {
-      diffMs,
-      diffMinutes,
-      diffHours,
-      diffDays
-    });
 
     let result: string | null = null;
 
@@ -77,7 +60,6 @@ export function formatJobRecency(createdAt: string | undefined): string | null {
       }
     }
 
-    console.log('[formatJobRecency] Returning result:', result);
     return result;
   } catch (error) {
     console.error('[formatJobRecency] Error formatting job recency:', error);
