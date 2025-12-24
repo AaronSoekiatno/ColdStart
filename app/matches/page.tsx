@@ -137,6 +137,52 @@ export default function MatchesPage() {
     initialize();
   }, [router]);
 
+  // Fetch next page when user is approaching the end of current matches
+  useEffect(() => {
+    const fetchNextPage = async () => {
+      // Only fetch if:
+      // 1. We have pagination info
+      // 2. There's more data to fetch
+      // 3. User is within 5 matches of the end
+      // 4. We're not already loading
+      if (!pagination || !pagination.hasMore || isLoading) {
+        return;
+      }
+
+      const remainingMatches = matches.length - currentMatchIndex;
+      if (remainingMatches > 5) {
+        return; // Still far from the end
+      }
+
+      console.log('[Matches] Fetching next page:', pagination.page + 1);
+
+      try {
+        const nextPage = pagination.page + 1;
+        const response = await fetch(`/api/matches?page=${nextPage}&limit=20`, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          console.error('[Matches] Failed to fetch next page');
+          return;
+        }
+
+        const data = await response.json();
+        const newMatches = data.items || data.matches || [];
+
+        // Append new matches to existing ones
+        setMatches(prev => [...prev, ...newMatches]);
+        setPagination(data.pagination);
+
+        console.log('[Matches] Loaded page', nextPage, '- Added', newMatches.length, 'matches');
+      } catch (error) {
+        console.error('[Matches] Error fetching next page:', error);
+      }
+    };
+
+    fetchNextPage();
+  }, [currentMatchIndex, matches.length, pagination, isLoading]);
+
   // Reset current match index when matches change
   useEffect(() => {
     if (visibleMatches.length > 0 && currentMatchIndex >= visibleMatches.length) {
