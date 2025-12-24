@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
     const preferences = await getEmailPreferences(email);
 
     if (!preferences) {
+      console.error('[Unsubscribe] Email preferences not found:', { email });
       return NextResponse.json(
         { 
           success: false, 
@@ -55,6 +56,12 @@ export async function GET(request: NextRequest) {
 
     // Validate token matches
     if (preferences.unsubscribe_token !== token) {
+      console.error('[Unsubscribe] Token mismatch:', { 
+        email, 
+        providedToken: token?.substring(0, 10) + '...', 
+        storedToken: preferences.unsubscribe_token?.substring(0, 10) + '...',
+        tokensMatch: preferences.unsubscribe_token === token
+      });
       return NextResponse.json(
         { 
           success: false, 
@@ -63,6 +70,8 @@ export async function GET(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    console.log('[Unsubscribe] Token validated successfully:', { email });
 
     // Check if already unsubscribed
     if (preferences.unsubscribed_at) {
@@ -77,7 +86,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Update preferences to unsubscribe
-    const { error: updateError } = await supabaseAdmin
+    const { data: updateData, error: updateError } = await supabaseAdmin
       .from('email_preferences')
       .update({
         welcome_emails_enabled: false,
@@ -85,7 +94,8 @@ export async function GET(request: NextRequest) {
         unsubscribed_at: new Date().toISOString(),
       })
       .eq('email', email)
-      .eq('unsubscribe_token', token); // Double-check token matches
+      .eq('unsubscribe_token', token) // Double-check token matches
+      .select();
 
     if (updateError) {
       console.error('[Unsubscribe] Error updating preferences:', updateError);
@@ -97,6 +107,24 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // Verify the update actually affected a row
+    if (!updateData || updateData.length === 0) {
+      console.error('[Unsubscribe] Update query did not affect any rows:', { email, token });
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Failed to process unsubscribe request. No matching record found.' 
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log('[Unsubscribe] Successfully updated preferences:', { 
+      email, 
+      unsubscribed_at: updateData[0].unsubscribed_at,
+      welcome_emails_enabled: updateData[0].welcome_emails_enabled 
+    });
 
     return NextResponse.json(
       { 

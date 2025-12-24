@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,17 +15,7 @@ function UnsubscribePageContent() {
   const [message, setMessage] = useState("");
   const [canResubscribe, setCanResubscribe] = useState(false);
 
-  // If email and token are in URL, auto-process unsubscribe
-  useEffect(() => {
-    const urlEmail = searchParams.get("email");
-    const urlToken = searchParams.get("token");
-    
-    if (urlEmail && urlToken && status === "idle") {
-      handleUnsubscribe(urlEmail, urlToken);
-    }
-  }, [searchParams]);
-
-  const handleUnsubscribe = async (emailToUnsubscribe: string, tokenToValidate: string) => {
+  const handleUnsubscribe = useCallback(async (emailToUnsubscribe: string, tokenToValidate: string) => {
     if (!emailToUnsubscribe || !tokenToValidate) {
       setStatus("error");
       setMessage("Please provide both email and token.");
@@ -61,7 +51,17 @@ function UnsubscribePageContent() {
       setStatus("error");
       setMessage("An error occurred while processing your request. Please try again later.");
     }
-  };
+  }, []);
+
+  // If email and token are in URL, auto-process unsubscribe
+  useEffect(() => {
+    const urlEmail = searchParams.get("email");
+    const urlToken = searchParams.get("token");
+    
+    if (urlEmail && urlToken && status === "idle") {
+      handleUnsubscribe(urlEmail, urlToken);
+    }
+  }, [searchParams, status, handleUnsubscribe]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

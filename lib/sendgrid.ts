@@ -228,7 +228,12 @@ export async function sendWelcomeEmail(
     }
 
     // Get app URL for unsubscribe link (normalize to remove trailing slash)
-    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co').replace(/\/+$/, '');
+    // Use localhost in development, otherwise use NEXT_PUBLIC_APP_URL or production URL
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL 
+      ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '')
+      : process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3000'
+        : 'https://joinhermes.co';
 
     // Build email subject
     const subject = `Hey ${userFirstName} - welcome to Hermes`;
@@ -404,7 +409,12 @@ export async function sendNewsletterEmail(
     }
 
     // Get app URL for unsubscribe link (normalize to remove trailing slash)
-    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co').replace(/\/+$/, '');
+    // Use localhost in development, otherwise use NEXT_PUBLIC_APP_URL or production URL
+    const APP_URL = process.env.NEXT_PUBLIC_APP_URL 
+      ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '')
+      : process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3000'
+        : 'https://joinhermes.co';
     const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
 
     // Add unsubscribe link to email content if not already present

@@ -1088,7 +1088,16 @@ export async function getOrCreateEmailPreferences(
       throw new Error(`Failed to update email preferences: ${error.message}`);
     }
     
+    if (!data) {
+      throw new Error('Failed to update email preferences: No data returned from update');
+    }
+    
     preferences = data;
+  }
+  
+  // At this point, preferences should never be null
+  if (!preferences) {
+    throw new Error('Failed to get or create email preferences');
   }
   
   return preferences;
