@@ -343,30 +343,10 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
   };
 
 
-  // Check if match is saved on component mount (only if initialIsSaved not provided)
+  // Initialize saved state from prop (no more individual API calls!)
   useEffect(() => {
-    // If initialIsSaved is provided and true, skip the API check
-    if (initialIsSaved === true) {
-      setIsSaved(true);
-      return;
-    }
-
-    const checkIfSaved = async () => {
-      try {
-        const response = await fetch(`/api/matches/saved/check?matchId=${match.id}`, {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setIsSaved(data.isSaved);
-        }
-      } catch (error) {
-        console.error('Error checking if match is saved:', error);
-      }
-    };
-
-    checkIfSaved();
-  }, [match.id, initialIsSaved]);
+    setIsSaved(initialIsSaved);
+  }, [initialIsSaved]);
 
   // Update active tab based on scroll position
   useEffect(() => {
@@ -444,8 +424,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             <button
               onClick={() => scrollToSection(companySectionRef, 'company')}
               className={`px-2 py-1 sm:px-4 sm:py-2 text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'company'
-                  ? 'text-gray-900 border-blue-500'
-                  : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
+                ? 'text-gray-900 border-blue-500'
+                : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
                 }`}
             >
               Company
@@ -454,8 +434,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               <button
                 onClick={() => scrollToSection(applicationSectionRef, 'apply')}
                 className={`px-2 py-1 sm:px-4 sm:py-2 text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'apply'
-                    ? 'text-gray-900 border-blue-500'
-                    : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
+                  ? 'text-gray-900 border-blue-500'
+                  : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
                   }`}
               >
                 Apply
@@ -467,11 +447,10 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                className={`flex items-center justify-center gap-1.5 rounded-md md:rounded-lg border px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition shadow-sm cursor-pointer ${
-                  isSaved
+                className={`flex items-center justify-center gap-1.5 rounded-md md:rounded-lg border px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition shadow-sm cursor-pointer ${isSaved
                     ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
                     : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
-                }`}
+                  }`}
                 onClick={handleSaveToggle}
                 disabled={isSaving}
                 aria-label={isSaved ? "Unsave match" : "Save match"}
@@ -513,7 +492,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
                     // Clear any error and proceed
                     setFounderSelectionError(null);
-                onFounderError?.(null);
+                    onFounderError?.(null);
                     onFounderError?.(null);
                     const params = new URLSearchParams();
                     params.append('startupId', match.startup.id);
@@ -803,8 +782,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                 <div
                   key={index}
                   className={`bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border p-2.5 sm:p-4 md:p-5 cursor-pointer transition-all ${isSelected
-                      ? 'border-blue-300 border-2 bg-blue-50'
-                      : 'border-gray-100 hover:border-gray-200'
+                    ? 'border-blue-300 border-2 bg-blue-50'
+                    : 'border-gray-100 hover:border-gray-200'
                     }`}
                   onClick={handleCardClick}
                 >
@@ -944,59 +923,59 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                   will_render_recency: !!recency
                 });
                 return (
-                <div key={index} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-                    {/* Left side: Job Title and Job Details */}
-                    <div className="flex-1">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
-                            {job.job_title || 'Job Title Not Available'}
-                          </p>
-                          {recency && (
-                            <span className="text-xs sm:text-sm text-gray-500 font-normal">
-                              {recency}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
-                          {job.job_type && (
-                            <>
-                              <span className="capitalize">{job.job_type}</span>
-                              {(job.salary_range || job.experience_level) && (
-                                <span className="text-gray-400">•</span>
-                              )}
-                            </>
-                          )}
-                          {job.salary_range && (
-                            <>
-                              <span>{job.salary_range}</span>
-                              {job.experience_level && (
-                                <span className="text-gray-400">•</span>
-                              )}
-                            </>
-                          )}
-                          {job.experience_level && (
-                            <span>{job.experience_level} preferred</span>
-                          )}
+                  <div key={index} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      {/* Left side: Job Title and Job Details */}
+                      <div className="flex-1">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
+                              {job.job_title || 'Job Title Not Available'}
+                            </p>
+                            {recency && (
+                              <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                                {recency}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                            {job.job_type && (
+                              <>
+                                <span className="capitalize">{job.job_type}</span>
+                                {(job.salary_range || job.experience_level) && (
+                                  <span className="text-gray-400">•</span>
+                                )}
+                              </>
+                            )}
+                            {job.salary_range && (
+                              <>
+                                <span>{job.salary_range}</span>
+                                {job.experience_level && (
+                                  <span className="text-gray-400">•</span>
+                                )}
+                              </>
+                            )}
+                            {job.experience_level && (
+                              <span>{job.experience_level} preferred</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Right side: Application Link Button */}
-                    <div className="flex-shrink-0">
-                      <a
-                        href={job.job_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Apply Now</span>
-                      </a>
+                      {/* Right side: Application Link Button */}
+                      <div className="flex-shrink-0">
+                        <a
+                          href={job.job_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span>Apply Now</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               })
             ) : match.job?.job_url ? (
