@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
+import { setCache } from '@/lib/redis-cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,6 +57,19 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to update job type' },
         { status: 500 }
       );
+    }
+
+    // Proactively update cache with fresh data
+    const { data: freshCandidate } = await supabaseAdmin
+      .from('candidates')
+      .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills')
+      .eq('email', user.email)
+      .single();
+
+    if (freshCandidate) {
+      const cacheKey = `candidate_info:${user.email}`;
+      await setCache(cacheKey, freshCandidate, 86400); // 24 hours
+      console.log('[Update Job Type] Cache updated proactively:', cacheKey);
     }
 
     return NextResponse.json({ success: true, jobType });
