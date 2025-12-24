@@ -147,8 +147,25 @@ export async function GET(request: NextRequest) {
       cacheKey: fullCacheKey 
     });
 
-    // Use candidate preferences already fetched for cache key
-    const candidate = candidatePrefs;
+    // Get candidate preferences for filtering (id, job_type, years_of_experience, role_type)
+    const candidatePrefsResult = await withTimeoutAndRetry<{ 
+      id: string; 
+      role_type: string[] | null;
+      job_type: string | null;
+      years_of_experience: string | null;
+    }>(
+      async () => {
+        const result = await supabaseAdmin!
+          .from('candidates')
+          .select('id, role_type, job_type, years_of_experience')
+          .eq('email', user.email)
+          .single();
+        return result;
+      },
+      10000,
+      1
+    );
+    const { data: candidate } = candidatePrefsResult;
     const candidateError = candidatePrefsResult.error;
 
     if (candidateError || !candidate) {
