@@ -227,40 +227,29 @@ export async function sendWelcomeEmail(
       userFirstName = extractFirstName(userMetadata, email);
     }
 
-    // Get app URL for unsubscribe link
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
+    // Get app URL for unsubscribe link (normalize to remove trailing slash)
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co').replace(/\/+$/, '');
 
-    // Build email subject
-    const subject = `Hey ${userFirstName} - welcome to Hermes`;
+    // Build email subject - more personal
+    const subject = `From the founder`;
 
-    // Build email body with message
-    const emailBody = `Hi ${userFirstName},
-
-We built Hermes because we realized the job market is broken. 
-
-We're here to help you discover hidden roles at hot startups and reach out directly to the founders. 
-One thing to do today: Upload your resume so our agent can start matching you with companies and use that to write your outreach for you.
-
-Best,
-Robert`;
-
-    // Build email footer with compliance requirements
+    // Build email body - simple, personal, conversational (like the Roy example)
     const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
     
-    const footer = `
+    const emailBody = `Hey ${userFirstName},
 
----
-You're receiving this email because you signed up for Hermes.
+Robert here. What brought you to Hermes?
 
-Unsubscribe: ${unsubscribeLink}
+If you haven't gotten the chance to try it, upload your resume so our agent can start matching you with companies and write your outreach for you.
 
-Privacy Policy: ${APP_URL}/privacy
-Terms of Service: ${APP_URL}/terms
+If you have any issues or questions, just hit reply. Let me know how I can help.
 
-Hermes
-${APP_URL}`;
+Best,
+Robert
 
-    const fullTextContent = emailBody + footer;
+Unsubscribe: ${unsubscribeLink}`;
+
+    const fullTextContent = emailBody;
 
     // Send email directly using SendGrid (not reusing sendWaitlistEmail to set correct category)
     getSendGridClient();
@@ -282,6 +271,12 @@ ${APP_URL}`;
       customArgs: {
         category: 'welcome',
       },
+      // Add List-Unsubscribe header for better inbox placement (RFC compliance)
+      headers: {
+        'List-Unsubscribe': `<${unsubscribeLink}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-Auto-Response-Suppress': 'All', // Suppress auto-responses for transactional emails
+      },
       // Disable click tracking so links are not rewritten to SendGrid tracking URLs
       trackingSettings: {
         clickTracking: {
@@ -290,6 +285,14 @@ ${APP_URL}`;
         },
         openTracking: {
           enable: false,
+        },
+      },
+      // Mail settings to help with deliverability
+      mailSettings: {
+        // Don't bypass list management (we want to respect unsubscribes)
+        // But enable footer suppression since we handle unsubscribe manually
+        footer: {
+          enable: false, // We're adding our own footer
         },
       },
     } as sgMail.MailDataRequired;
@@ -380,8 +383,8 @@ export async function sendNewsletterEmail(
       };
     }
 
-    // Get app URL for unsubscribe link
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co';
+    // Get app URL for unsubscribe link (normalize to remove trailing slash)
+    const APP_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://joinhermes.co').replace(/\/+$/, '');
     const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
 
     // Add unsubscribe link to email content if not already present
