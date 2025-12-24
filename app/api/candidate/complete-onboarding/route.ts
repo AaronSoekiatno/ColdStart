@@ -103,6 +103,16 @@ export async function POST(request: NextRequest) {
         jobType,
         roleTypes,
       });
+
+      // Upgrade user_type from 'lead' to 'user' in waitlist table when onboarding is completed
+      // This ensures they receive user campaigns instead of lead campaigns
+      if (supabaseAdmin) {
+        await supabaseAdmin
+          .from('waitlist')
+          .update({ user_type: 'user' })
+          .eq('email', user.email.toLowerCase().trim())
+          .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
+      }
     } else {
       // Update existing candidate's job_type and role_type
       await saveCandidate({
@@ -131,6 +141,16 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    }
+
+    // Upgrade user_type from 'lead' to 'user' in waitlist table when onboarding is completed
+    // This ensures they receive user campaigns instead of lead campaigns
+    if (supabaseAdmin) {
+      await supabaseAdmin
+        .from('waitlist')
+        .update({ user_type: 'user' })
+        .eq('email', user.email.toLowerCase().trim())
+        .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
     }
 
     return NextResponse.json({ 

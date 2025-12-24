@@ -49,6 +49,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Upgrade user_type from 'lead' to 'user' in waitlist table when onboarding is completed
+    // This ensures they receive user campaigns instead of lead campaigns
+    await supabaseAdmin
+      .from('waitlist')
+      .update({ user_type: 'user' })
+      .eq('email', user.email.toLowerCase().trim())
+      .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Exception marking onboarding complete:', error);
