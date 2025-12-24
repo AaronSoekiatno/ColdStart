@@ -246,7 +246,7 @@ export async function sendWelcomeEmail(
     // HTML version
     const emailBodyHTML = `Hi ${userFirstName},<br><br>
 
-My name is Robert and i am a cofounder of Hermes. We built Hermes because we realized the job market is broken.<br><br>
+My name is Robert and I am a cofounder of Hermes. We built Hermes because we realized the job market is broken.<br><br>
 
 <strong>Heres 3 things to do to 10x ur chances of getting a job:</strong><br>
 &nbsp;&nbsp;&nbsp;&nbsp;• <strong>Upload your resume:</strong> Our agent matches you with the right teams to maximize your chances.<br>
@@ -263,7 +263,7 @@ Robert<br><br>
     // Plain text version (fallback)
     const emailBodyText = `Hi ${userFirstName},
 
-My name is Robert and i am a cofounder of Hermes. We built Hermes because we realized the job market is broken.
+My name is Robert and I am a cofounder of Hermes. We built Hermes because we realized the job market is broken.
 
 Heres 3 things to do to 10x ur chances of getting a job:
     • Upload your resume: Our agent matches you with the right teams to maximize your chances.
