@@ -153,6 +153,14 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
         window.sessionStorage.setItem('postAuthRedirect', '/matches');
       }
 
+      // Opt user into marketing emails (consent given by continuing - non-blocking)
+      fetch('/api/email-preferences/opt-in', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(error => {
+        console.error('Failed to opt user into marketing emails:', error);
+      });
+
       onOpenChange(false);
 
       // Clear form
@@ -253,7 +261,7 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
             <a href="/privacy" className="underline hover:text-white/60">
               Privacy Policy
             </a>{" "}
-            and agree to get occasional product updates and promotional emails.
+            and consent to us sending you emails.
           </p>
         </div>
       </DialogContent>
