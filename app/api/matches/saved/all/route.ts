@@ -41,12 +41,31 @@ export async function GET(req: NextRequest) {
         cacheKey,
       });
 
+      // For cached data, we still need to fetch startup_ids
+      // (cache only stores match_ids, not startup_ids)
+      let cachedStartupIds: string[] = [];
+      if (cachedIds.length > 0) {
+        const { data: matches, error: matchesError } = await supabase
+          .from('matches')
+          .select('id, startup_id')
+          .in('id', cachedIds);
+        
+        if (!matchesError && matches) {
+          cachedStartupIds = matches
+            .map(m => m.startup_id)
+            .filter((id): id is string => !!id);
+        }
+      }
+
       return NextResponse.json({
         matchIds: cachedIds,
+        startupIds: cachedStartupIds,
         cached: true,
       }, {
         headers: {
-          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+          'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+          'Pragma': 'no-cache',
+          'Expires': '0',
           'X-Cache-Status': 'HIT',
         },
       });
@@ -74,6 +93,26 @@ export async function GET(req: NextRequest) {
     // Extract match IDs
     const matchIds = savedMatches?.map(sm => sm.match_id) || [];
 
+    // Also get startup_ids for these matches (to handle match ID changes)
+    // This allows frontend to check by startup_id instead of match_id
+    let startupIds: string[] = [];
+    if (matchIds.length > 0) {
+      const { data: matches, error: matchesError } = await supabase
+        .from('matches')
+        .select('id, startup_id')
+        .in('id', matchIds);
+      
+      if (!matchesError && matches) {
+        startupIds = matches
+          .map(m => m.startup_id)
+          .filter((id): id is string => !!id);
+        console.log('[Saved Matches Cache] Fetched startup_ids for saved matches:', {
+          matchCount: matchIds.length,
+          startupCount: startupIds.length,
+        });
+      }
+    }
+
     // Cache for 1 hour (will be invalidated on save/unsave)
     await setCache(cacheKey, matchIds, 3600);
 
@@ -85,10 +124,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       matchIds,
+      startupIds, // Also return startup_ids so frontend can check by startup
       cached: false,
     }, {
       headers: {
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+        'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+        'Pragma': 'no-cache',
+        'Expires': '0',
         'X-Cache-Status': 'MISS',
       },
     });

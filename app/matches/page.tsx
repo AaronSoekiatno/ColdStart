@@ -19,6 +19,22 @@ interface MatchRecord {
     job_title?: string;
     job_type?: string;
   } | null;
+  jobs?: Array<{
+    job_url?: string;
+    job_title?: string;
+    job_type?: string;
+    salary_range?: string;
+    experience_level?: string;
+    created_at?: string;
+  }>;
+  alsoConsider?: Array<{
+    job_url?: string;
+    job_title?: string;
+    job_type?: string;
+    salary_range?: string;
+    experience_level?: string;
+    created_at?: string;
+  }>;
   startup: {
     id?: string;
     name: string;
@@ -56,7 +72,8 @@ export default function MatchesPage() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [isPremium, setIsPremium] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [savedMatchIds, setSavedMatchIds] = useState<string[]>([]); // Store all saved match IDs
+  const [savedMatchIds, setSavedMatchIds] = useState<string[]>([]); // Store all saved match IDs from Supabase
+  const [savedStartupIds, setSavedStartupIds] = useState<string[]>([]); // Store all saved startup IDs (to handle match ID changes)
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -70,6 +87,20 @@ export default function MatchesPage() {
     return 0;
   }, []);
 
+  // Calculate initialIsSaved for current match - memoized to ensure it updates when savedMatchIds changes
+  // Check by both match_id (for exact match) and startup_id (to handle match ID changes)
+  const currentMatchIsSaved = useMemo(() => {
+    if (!visibleMatches[currentMatchIndex]) return false;
+    const matchId = visibleMatches[currentMatchIndex].id;
+    const startupId = visibleMatches[currentMatchIndex].startup?.id;
+    
+    // Check by match_id first (exact match)
+    const isSavedByMatchId = savedMatchIds.includes(matchId);
+    // Also check by startup_id (handles cases where match ID changed but startup is still saved)
+    const isSavedByStartupId = startupId ? savedStartupIds.includes(startupId) : false;
+    return isSavedByMatchId || isSavedByStartupId;
+  }, [visibleMatches, currentMatchIndex, savedMatchIds, savedStartupIds]);
+
   // Handle navigation
   const handleNextMatch = () => {
     setCurrentMatchIndex((prev) => Math.min(visibleMatches.length - 1, prev + 1));
@@ -77,6 +108,29 @@ export default function MatchesPage() {
 
   const handlePreviousMatch = () => {
     setCurrentMatchIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  // Function to fetch saved match IDs from Supabase (source of truth)
+  const fetchSavedMatchIds = async () => {
+    try {
+      // Add cache-busting query parameter to ensure fresh data
+      const cacheBuster = `?t=${Date.now()}`;
+      const savedResponse = await fetch(`/api/matches/saved/all${cacheBuster}`, {
+        credentials: 'include',
+        cache: 'no-store', // Always fetch fresh data from Supabase
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+        },
+      });
+      if (savedResponse.ok) {
+        const savedData = await savedResponse.json();
+        setSavedMatchIds(savedData.matchIds || []);
+        setSavedStartupIds(savedData.startupIds || []);
+      }
+    } catch (error) {
+      console.error('[MatchesPage] Error loading saved match IDs:', error);
+    }
   };
 
   // Load initial data
@@ -129,18 +183,7 @@ export default function MatchesPage() {
         setPagination(data.pagination);
 
         // Fetch saved match IDs in batch (replaces 40+ individual calls)
-        try {
-          const savedResponse = await fetch('/api/matches/saved/all', {
-            credentials: 'include',
-          });
-          if (savedResponse.ok) {
-            const savedData = await savedResponse.json();
-            setSavedMatchIds(savedData.matchIds || []);
-            console.log('[Matches] Loaded saved match IDs:', savedData.matchIds?.length || 0);
-          }
-        } catch (error) {
-          console.error('[Matches] Error loading saved match IDs:', error);
-        }
+        await fetchSavedMatchIds();
       } catch (error) {
         console.error('Error initializing matches page:', error);
         setHasError(true);
@@ -151,6 +194,29 @@ export default function MatchesPage() {
 
     initialize();
   }, [router]);
+
+  // Refetch saved match IDs when page becomes visible again (e.g., browser back button, tab switch)
+  // Always refetch from Supabase to ensure UI reflects actual saved state
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        // Debounce: Wait 500ms before refetching to ensure any pending saves complete
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          // Always refetch from Supabase - this is the source of truth
+          fetchSavedMatchIds(false);
+        }, 500);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user]);
 
   // Fetch next page when user is approaching the end of current matches
   useEffect(() => {
@@ -325,7 +391,20 @@ export default function MatchesPage() {
                     match={visibleMatches[currentMatchIndex]}
                     isPremium={isPremium}
                     userEmail={user?.email || ''}
-                    initialIsSaved={savedMatchIds.includes(visibleMatches[currentMatchIndex].id)}
+                    initialIsSaved={currentMatchIsSaved}
+                    onSaveToggle={(matchId, isSaved) => {
+                      // Optimistically update parent state for immediate UI feedback
+                      // The actual state will be synced from Supabase on next refetch
+                      if (isSaved) {
+                        setSavedMatchIds(prev => {
+                          // Avoid duplicates
+                          if (prev.includes(matchId)) return prev;
+                          return [...prev, matchId];
+                        });
+                      } else {
+                        setSavedMatchIds(prev => prev.filter(id => id !== matchId));
+                      }
+                    }}
                   />
                 </div>
               )}

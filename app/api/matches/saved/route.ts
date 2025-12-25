@@ -366,31 +366,70 @@ export async function GET(req: NextRequest) {
     const filterJobsByExperience = (
       jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>,
       candidateYearsOfExperience: string | null | undefined
-    ): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }> => {
-      if (!candidateYearsOfExperience) return jobs;
+    ): { 
+      filtered: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>;
+      alsoConsider: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>;
+    } => {
+      if (!candidateYearsOfExperience) {
+        return { filtered: jobs, alsoConsider: [] };
+      }
       const candidateMaxYears = parseCandidateYearsOfExperience(candidateYearsOfExperience);
-      if (candidateMaxYears === null) return jobs;
-      
-      // Candidates with no experience or less than 1 year can ONLY see entry-level jobs
-      // (jobs with experience_level = 0, like "Any (new grads ok)", "Entry level", etc.)
-      if (candidateMaxYears === 0) {
-        return jobs.filter(job => {
-          if (!job.experience_level) return false; // Exclude jobs without experience_level for 0-year candidates
-          
-          const jobMaxYears = parseJobExperienceLevel(job.experience_level);
-          if (jobMaxYears === null) return false; // Can't parse, exclude it for safety
-          
-          // Only show entry-level jobs (0 years required)
-          return jobMaxYears === 0;
-        });
+      if (candidateMaxYears === null) {
+        return { filtered: jobs, alsoConsider: [] };
       }
       
-      return jobs.filter(job => {
-        if (!job.experience_level) return true; // Include jobs without experience_level for candidates with experience
+      // For candidates with no experience, show entry-level (0) + jobs requiring 1-2 years
+      if (candidateMaxYears === 0) {
+        const filtered: typeof jobs = [];
+        const alsoConsider: typeof jobs = [];
+        
+        jobs.forEach(job => {
+          if (!job.experience_level) {
+            alsoConsider.push(job);
+            return;
+          }
+          
+          const jobMaxYears = parseJobExperienceLevel(job.experience_level);
+          if (jobMaxYears === null) {
+            alsoConsider.push(job);
+            return;
+          }
+          
+          // Show entry-level (0) and jobs requiring up to 2 years
+          if (jobMaxYears <= 2) {
+            filtered.push(job);
+          } else {
+            alsoConsider.push(job);
+          }
+        });
+        
+        return { filtered, alsoConsider };
+      }
+      
+      // For candidates with 1+ years experience, keep strict filtering
+      const filtered: typeof jobs = [];
+      const alsoConsider: typeof jobs = [];
+      
+      jobs.forEach(job => {
+        if (!job.experience_level) {
+          filtered.push(job);
+          return;
+        }
+        
         const jobMaxYears = parseJobExperienceLevel(job.experience_level);
-        if (jobMaxYears === null) return true; // Can't parse, include it
-        return jobMaxYears <= candidateMaxYears;
+        if (jobMaxYears === null) {
+          filtered.push(job);
+          return;
+        }
+        
+        if (jobMaxYears <= candidateMaxYears) {
+          filtered.push(job);
+        } else {
+          alsoConsider.push(job);
+        }
       });
+      
+      return { filtered, alsoConsider };
     };
 
     const rolePatterns: { [key: string]: string[] } = {
@@ -479,11 +518,12 @@ export async function GET(req: NextRequest) {
         // Filter by job_type first
         allJobs = filterJobsByType(allJobs, candidate?.job_type);
         
-        // Then filter by experience_level
-        allJobs = filterJobsByExperience(allJobs, candidate?.years_of_experience);
+        // Then filter by experience_level (returns filtered and alsoConsider)
+        const { filtered: filteredJobs, alsoConsider: alsoConsiderJobs } = filterJobsByExperience(allJobs, candidate?.years_of_experience);
         
         // Order jobs by role preference (after filtering)
-        const orderedJobs = orderJobsByPreference(allJobs);
+        const orderedJobs = orderJobsByPreference(filteredJobs);
+        const orderedAlsoConsider = orderJobsByPreference(alsoConsiderJobs);
         
         return {
           id: matchesData.id,
@@ -491,6 +531,7 @@ export async function GET(req: NextRequest) {
           matched_at: matchesData.matched_at,
           has_job_listings: orderedJobs.length > 0,
           jobs: orderedJobs.length > 0 ? orderedJobs : undefined,
+          alsoConsider: orderedAlsoConsider.length > 0 ? orderedAlsoConsider : [],
           // Keep 'job' for backward compatibility (first job in ordered list)
           job: orderedJobs.length > 0 ? orderedJobs[0] : null,
           startup: startups3Data,

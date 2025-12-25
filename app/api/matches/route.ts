@@ -977,38 +977,76 @@ export async function GET(request: NextRequest) {
     };
 
     // Filter jobs by experience_level based on candidate years of experience
+    // Returns both filtered jobs (matching criteria) and alsoConsider jobs (outside criteria)
     const filterJobsByExperience = (
       jobs: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>,
       candidateYearsOfExperience: string | null | undefined
-    ): Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }> => {
-      if (!candidateYearsOfExperience) return jobs; // No filtering if candidate hasn't set preference
-      
-      const candidateMaxYears = parseCandidateYearsOfExperience(candidateYearsOfExperience);
-      if (candidateMaxYears === null) return jobs; // Can't parse, show all
-      
-      // Candidates with no experience or less than 1 year can ONLY see entry-level jobs
-      // (jobs with experience_level = 0, like "Any (new grads ok)", "Entry level", etc.)
-      if (candidateMaxYears === 0) {
-        return jobs.filter(job => {
-          if (!job.experience_level) return false; // Exclude jobs without experience_level for 0-year candidates
-          
-          const jobMaxYears = parseJobExperienceLevel(job.experience_level);
-          if (jobMaxYears === null) return false; // Can't parse, exclude it for safety
-          
-          // Only show entry-level jobs (0 years required)
-          return jobMaxYears === 0;
-        });
+    ): { 
+      filtered: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>;
+      alsoConsider: Array<{ job_title: string; job_url: string; job_type?: string; salary_range?: string; experience_level?: string; created_at?: string }>;
+    } => {
+      if (!candidateYearsOfExperience) {
+        return { filtered: jobs, alsoConsider: [] }; // No filtering if candidate hasn't set preference
       }
       
-      return jobs.filter(job => {
-        if (!job.experience_level) return true; // Include jobs without experience_level for candidates with experience
+      const candidateMaxYears = parseCandidateYearsOfExperience(candidateYearsOfExperience);
+      if (candidateMaxYears === null) {
+        return { filtered: jobs, alsoConsider: [] }; // Can't parse, show all
+      }
+      
+      // For candidates with no experience, show entry-level (0) + jobs requiring 1-2 years
+      if (candidateMaxYears === 0) {
+        const filtered: typeof jobs = [];
+        const alsoConsider: typeof jobs = [];
+        
+        jobs.forEach(job => {
+          if (!job.experience_level) {
+            alsoConsider.push(job); // Jobs without experience_level go to alsoConsider
+            return;
+          }
+          
+          const jobMaxYears = parseJobExperienceLevel(job.experience_level);
+          if (jobMaxYears === null) {
+            alsoConsider.push(job); // Can't parse, go to alsoConsider
+            return;
+          }
+          
+          // Show entry-level (0) and jobs requiring up to 2 years
+          if (jobMaxYears <= 2) {
+            filtered.push(job);
+          } else {
+            alsoConsider.push(job);
+          }
+        });
+        
+        return { filtered, alsoConsider };
+      }
+      
+      // For candidates with 1+ years experience, keep strict filtering
+      const filtered: typeof jobs = [];
+      const alsoConsider: typeof jobs = [];
+      
+      jobs.forEach(job => {
+        if (!job.experience_level) {
+          filtered.push(job); // Include jobs without experience_level for candidates with experience
+          return;
+        }
         
         const jobMaxYears = parseJobExperienceLevel(job.experience_level);
-        if (jobMaxYears === null) return true; // Can't parse, include it
+        if (jobMaxYears === null) {
+          filtered.push(job); // Can't parse, include it
+          return;
+        }
         
         // Only show jobs where required experience <= candidate's experience
-        return jobMaxYears <= candidateMaxYears;
+        if (jobMaxYears <= candidateMaxYears) {
+          filtered.push(job);
+        } else {
+          alsoConsider.push(job);
+        }
       });
+      
+      return { filtered, alsoConsider };
     };
 
     // Role matching patterns for ordering jobs by role preferences
@@ -1100,11 +1138,12 @@ export async function GET(request: NextRequest) {
       // Filter by job_type first
       allJobs = filterJobsByType(allJobs, candidate?.job_type);
       
-      // Then filter by experience_level
-      allJobs = filterJobsByExperience(allJobs, candidate?.years_of_experience);
+      // Then filter by experience_level (returns filtered and alsoConsider)
+      const { filtered: filteredJobs, alsoConsider: alsoConsiderJobs } = filterJobsByExperience(allJobs, candidate?.years_of_experience);
       
       // Order jobs by role preference (after filtering)
-      const orderedJobs = orderJobsByPreference(allJobs);
+      const orderedJobs = orderJobsByPreference(filteredJobs);
+      const orderedAlsoConsider = orderJobsByPreference(alsoConsiderJobs);
 
       return {
         id: m.id,
@@ -1130,6 +1169,25 @@ export async function GET(request: NextRequest) {
           };
           return jobData;
         }),
+        // Add alsoConsider jobs
+        alsoConsider: orderedAlsoConsider.length > 0 ? orderedAlsoConsider.map(job => {
+          const jobData: {
+            job_title: string;
+            job_url: string;
+            job_type?: string;
+            salary_range?: string;
+            experience_level?: string;
+            created_at?: string;
+          } = {
+            job_title: job.job_title,
+            job_url: job.job_url,
+            job_type: job.job_type,
+            salary_range: job.salary_range,
+            experience_level: job.experience_level,
+            created_at: (job as any).created_at,
+          };
+          return jobData;
+        }) : [],
         // Keep 'job' for backward compatibility (first job in ordered list)
         job: orderedJobs.length > 0 ? (() => {
           const jobData: {

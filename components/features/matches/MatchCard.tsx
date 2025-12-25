@@ -2,7 +2,7 @@
 
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { ExternalLink, Mail, AlertCircle, Bookmark } from "lucide-react";
+import { ExternalLink, Mail, AlertCircle, Bookmark, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
@@ -23,6 +23,14 @@ interface MatchCardProps {
       created_at?: string;
     } | null;
     jobs?: Array<{
+      job_url?: string;
+      job_title?: string;
+      job_type?: string;
+      salary_range?: string;
+      experience_level?: string;
+      created_at?: string;
+    }>;
+    alsoConsider?: Array<{
       job_url?: string;
       job_title?: string;
       job_type?: string;
@@ -68,9 +76,10 @@ interface MatchCardProps {
   initialIsSaved?: boolean;
   initialFounderError?: string | null;
   onFounderError?: (error: string | null) => void;
+  onSaveToggle?: (matchId: string, isSaved: boolean) => void;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError, onSaveToggle }: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -89,6 +98,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
   const manualTabClickRef = useRef<{ tab: 'company' | 'apply'; timestamp: number } | null>(null);
   // Track if match is saved - initialize with prop if provided
   const [isSaved, setIsSaved] = useState(initialIsSaved);
+  const [showAlsoConsider, setShowAlsoConsider] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   if (!match.startup) {
@@ -300,8 +310,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
     // Optimistic update - update UI immediately
     const previousSavedState = isSaved;
-    setIsSaved(!isSaved);
+    const newSavedState = !isSaved;
+    setIsSaved(newSavedState);
     setIsSaving(true);
+    
+    // Immediately notify parent to update savedMatchIds (optimistic update)
+    onSaveToggle?.(match.id, newSavedState);
 
     try {
       if (previousSavedState) {
@@ -312,8 +326,9 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
         });
 
         if (!response.ok) {
-          // Revert on failure
+          // Revert on failure - revert both local state and parent state
           setIsSaved(previousSavedState);
+          onSaveToggle?.(match.id, previousSavedState);
           let errorData: any = {};
           try {
             errorData = await response.json();
@@ -327,6 +342,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             matchId: match.id,
           });
         }
+        // Note: onSaveToggle was already called optimistically, no need to call again
       } else {
         // Save the match
         if (!match.id) {
@@ -348,8 +364,9 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
         });
 
         if (!response.ok && response.status !== 409) {
-          // Revert on failure (except for 409 which means already saved)
+          // Revert on failure (except for 409 which means already saved) - revert both local and parent state
           setIsSaved(previousSavedState);
+          onSaveToggle?.(match.id, previousSavedState);
           let errorData: any = {};
           try {
             errorData = await response.json();
@@ -363,10 +380,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             matchId: match.id,
           });
         }
+        // Note: onSaveToggle was already called optimistically, no need to call again on success
       }
     } catch (error) {
-      // Revert on error
+      // Revert on error - revert both local and parent state
       setIsSaved(previousSavedState);
+      onSaveToggle?.(match.id, previousSavedState);
       console.error('Error toggling save status:', error);
     } finally {
       setIsSaving(false);
@@ -374,7 +393,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
   };
 
 
-  // Initialize saved state from prop (no more individual API calls!)
+  // Always sync saved state with prop - prop is the source of truth from Supabase
+  // This ensures the bookmark icon reflects the actual saved state in the database
   useEffect(() => {
     setIsSaved(initialIsSaved);
   }, [initialIsSaved]);
@@ -1094,6 +1114,84 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                 );
               })()
             ) : null}
+            
+            {/* Also Consider dropdown */}
+            {match.alsoConsider && match.alsoConsider.length > 0 && (
+              <div className="mt-4 sm:mt-5">
+                <button
+                  onClick={() => setShowAlsoConsider(!showAlsoConsider)}
+                  className="flex items-center justify-between w-full text-left text-sm sm:text-base font-semibold text-gray-700 hover:text-gray-900 transition mb-3 sm:mb-4"
+                >
+                  <span>Also Consider ({match.alsoConsider.length})</span>
+                  <ChevronDown 
+                    className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${showAlsoConsider ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                
+                {showAlsoConsider && (
+                  <div className="space-y-3 sm:space-y-4">
+                    {match.alsoConsider.map((job, index) => {
+                      const recency = formatJobRecency(job.created_at);
+                      return (
+                        <div key={index} className="bg-gray-50 rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5 opacity-90">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                            {/* Left side: Job Title and Job Details */}
+                            <div className="flex-1">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
+                                    {job.job_title || 'Job Title Not Available'}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                                  {job.job_type && (
+                                    <>
+                                      <span className="capitalize">{job.job_type}</span>
+                                      {(job.salary_range || job.experience_level) && (
+                                        <span className="text-gray-400">•</span>
+                                      )}
+                                    </>
+                                  )}
+                                  {job.salary_range && (
+                                    <>
+                                      <span>{job.salary_range}</span>
+                                      {job.experience_level && (
+                                        <span className="text-gray-400">•</span>
+                                      )}
+                                    </>
+                                  )}
+                                  {job.experience_level && (
+                                    <span>{job.experience_level} preferred</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right side: Recency and Application Link Button */}
+                            <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                              {recency && (
+                                <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                                  {recency}
+                                </span>
+                              )}
+                              <a
+                                href={job.job_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                <span>Apply Now</span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1115,9 +1213,10 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
 // Use a custom comparison function to ensure re-renders when match changes
 export const MatchCard = memo(MatchCardComponent, (prevProps, nextProps) => {
-  // Only prevent re-render if match ID is the same
+  // Only prevent re-render if match ID is the same AND initialIsSaved hasn't changed
   return prevProps.match.id === nextProps.match.id &&
     prevProps.isPremium === nextProps.isPremium &&
-    prevProps.userEmail === nextProps.userEmail;
+    prevProps.userEmail === nextProps.userEmail &&
+    prevProps.initialIsSaved === nextProps.initialIsSaved;
 });
 
