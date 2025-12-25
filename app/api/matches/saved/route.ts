@@ -370,11 +370,25 @@ export async function GET(req: NextRequest) {
       if (!candidateYearsOfExperience) return jobs;
       const candidateMaxYears = parseCandidateYearsOfExperience(candidateYearsOfExperience);
       if (candidateMaxYears === null) return jobs;
-      if (candidateMaxYears === 0) return jobs;
+      
+      // Candidates with no experience or less than 1 year can ONLY see entry-level jobs
+      // (jobs with experience_level = 0, like "Any (new grads ok)", "Entry level", etc.)
+      if (candidateMaxYears === 0) {
+        return jobs.filter(job => {
+          if (!job.experience_level) return false; // Exclude jobs without experience_level for 0-year candidates
+          
+          const jobMaxYears = parseJobExperienceLevel(job.experience_level);
+          if (jobMaxYears === null) return false; // Can't parse, exclude it for safety
+          
+          // Only show entry-level jobs (0 years required)
+          return jobMaxYears === 0;
+        });
+      }
+      
       return jobs.filter(job => {
-        if (!job.experience_level) return true;
+        if (!job.experience_level) return true; // Include jobs without experience_level for candidates with experience
         const jobMaxYears = parseJobExperienceLevel(job.experience_level);
-        if (jobMaxYears === null) return true;
+        if (jobMaxYears === null) return true; // Can't parse, include it
         return jobMaxYears <= candidateMaxYears;
       });
     };
