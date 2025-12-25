@@ -206,7 +206,7 @@ export default function MatchesPage() {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           // Always refetch from Supabase - this is the source of truth
-          fetchSavedMatchIds(false);
+          fetchSavedMatchIds();
         }, 500);
       }
     };
