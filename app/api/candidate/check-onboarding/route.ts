@@ -38,7 +38,7 @@ export async function GET() {
     // Check if candidate exists and has completed onboarding
     const { data: candidate, error } = await supabaseAdmin
       .from('candidates')
-      .select('job_type, role_type, onboarding_completed')
+      .select('job_type, role_type, objectives, years_of_experience, onboarding_completed')
       .eq('email', user.email)
       .single();
 
@@ -47,11 +47,29 @@ export async function GET() {
       return NextResponse.json({ needsOnboarding: true });
     }
 
-    // If job_type, role_type is null/empty, OR onboarding_completed is not true, they need onboarding
+    // Check if all required onboarding fields are present and valid
+    const hasJobType = candidate.job_type && 
+                       typeof candidate.job_type === 'string' && 
+                       candidate.job_type.trim() !== '';
+    
+    const hasRoleType = candidate.role_type && 
+                       Array.isArray(candidate.role_type) && 
+                       candidate.role_type.length > 0;
+    
+    const hasObjectives = candidate.objectives && 
+                         Array.isArray(candidate.objectives) && 
+                         candidate.objectives.length > 0;
+    
+    const hasYearsOfExperience = candidate.years_of_experience && 
+                                typeof candidate.years_of_experience === 'string' && 
+                                candidate.years_of_experience.trim() !== '';
+    
+    const onboardingCompleted = candidate.onboarding_completed === true;
+
+    // If any required field is missing OR onboarding_completed is not true, they need onboarding
     return NextResponse.json({
-      needsOnboarding: !candidate.job_type || !candidate.role_type || 
-                       (Array.isArray(candidate.role_type) && candidate.role_type.length === 0) ||
-                       candidate.onboarding_completed !== true,
+      needsOnboarding: !hasJobType || !hasRoleType || !hasObjectives || 
+                       !hasYearsOfExperience || !onboardingCompleted,
     });
   } catch (error) {
     console.error('Exception checking onboarding status:', error);
