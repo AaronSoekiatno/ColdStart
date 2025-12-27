@@ -11,6 +11,7 @@ interface GitHubRepository {
   description: string | null;
   language: string | null;
   languages_url: string;
+  languages?: Record<string, number> | null; // Language usage data from GitHub API
   topics: string[];
   private: boolean;
   fork: boolean;
@@ -269,6 +270,14 @@ export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
     const forceRefresh = requestUrl.searchParams.get('refresh') === 'true';
     const includePrivate = requestUrl.searchParams.get('include_private') !== 'false';
+
+    // Check if database connection is available
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Database connection not available' },
+        { status: 500 }
+      );
+    }
 
     // Check if we have recent data (within last hour) and user doesn't want refresh
     if (!forceRefresh && candidate.github_username) {

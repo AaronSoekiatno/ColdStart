@@ -313,6 +313,11 @@ export async function getCandidate(email: string) {
       stripe_customer_id,
       stripe_subscription_id,
       subscription_current_period_end,
+      github_access_token,
+      github_refresh_token,
+      github_username,
+      github_connected_at,
+      github_token_expires_at,
       created_at
     `)
     .eq('email', email)
