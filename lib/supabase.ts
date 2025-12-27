@@ -86,6 +86,11 @@ export interface CandidateRow {
   subscription_status?: 'active' | 'inactive' | 'canceled' | 'past_due' | 'trialing'; // Subscription status
   subscription_current_period_end?: string; // ISO timestamp of when subscription period ends
   major?: string[]; // Array of majors extracted from education history
+  github_access_token?: string; // GitHub OAuth access token
+  github_refresh_token?: string; // GitHub OAuth refresh token
+  github_username?: string; // GitHub username
+  github_connected_at?: string; // Timestamp when GitHub was connected
+  github_token_expires_at?: string; // Timestamp when GitHub token expires
   created_at?: string;
 }
 
