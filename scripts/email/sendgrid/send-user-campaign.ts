@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Script to send user campaign emails to active users (user_type='user') via SendGrid
+ * Script to send user campaign emails to all authenticated users via SendGrid
  * 
- * This campaign targets users who are active on the platform.
+ * This campaign targets all users who have authenticated accounts (from candidates table).
  * Goal: Drive re-engagement and encourage return visits.
  * 
  * Usage:
@@ -251,23 +251,29 @@ async function main() {
     console.log(`📊 Limiting to ${limit} emails\n`);
   }
 
-  // First, get all user emails from waitlist table
-  const { data: waitlistUsers, error: waitlistError } = await supabaseAdmin
-    .from('waitlist')
+  // Get all authenticated user emails from candidates table
+  // This includes ALL candidates regardless of activity status (onboarding, subscription, etc.)
+  console.log('📋 Fetching all authenticated user emails from candidates table...');
+  const { data: allCandidates, error: candidatesError } = await supabaseAdmin
+    .from('candidates')
     .select('email')
-    .eq('user_type', 'user');
+    .not('email', 'is', null);
 
-  if (waitlistError) {
-    console.error('❌ Error fetching waitlist users:', waitlistError);
+  if (candidatesError) {
+    console.error('❌ Error fetching candidates:', candidatesError);
     process.exit(1);
   }
 
-  if (!waitlistUsers || waitlistUsers.length === 0) {
-    console.log('✅ No active users found in waitlist!');
+  if (!allCandidates || allCandidates.length === 0) {
+    console.log('✅ No candidates found!');
     process.exit(0);
   }
 
-  const userEmails = waitlistUsers.map(w => w.email);
+  const userEmails = allCandidates
+    .map(c => c.email)
+    .filter((email): email is string => email !== null && email !== undefined && email.trim() !== '');
+
+  console.log(`   Found ${userEmails.length} authenticated user(s)\n`);
 
   // Batch queries to avoid Supabase limits on .in() queries (PostgREST limit is ~100-200 items)
   const BATCH_SIZE = 100;
