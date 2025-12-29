@@ -77,9 +77,10 @@ interface MatchCardProps {
   initialFounderError?: string | null;
   onFounderError?: (error: string | null) => void;
   onSaveToggle?: (matchId: string, isSaved: boolean) => void;
+  currentIndex?: number;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError, onSaveToggle }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError, onSaveToggle, currentIndex = 0 }: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -563,10 +564,13 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                     params.append('startupId', match.startup.id);
                     params.append('matchScore', match.score.toString());
                     params.append('founderEmail', founderEmails[selectedFounderIndex]);
+                    params.append('returnIndex', currentIndex.toString());
                     console.log('[MatchCard] Navigating with params:', {
                       founderEmail: founderEmails[selectedFounderIndex],
                       fullParams: params.toString(),
                     });
+                    // Store current index in sessionStorage as backup
+                    sessionStorage.setItem('matchesCurrentIndex', currentIndex.toString());
                     router.push(`/generate-email?${params.toString()}`);
                   }
                 }}

@@ -133,6 +133,19 @@ export default function MatchesPage() {
     }
   };
 
+  // Restore current match index from sessionStorage on mount
+  useEffect(() => {
+    const storedIndex = sessionStorage.getItem('matchesCurrentIndex');
+    if (storedIndex) {
+      const index = parseInt(storedIndex, 10);
+      if (!isNaN(index) && index >= 0) {
+        setCurrentMatchIndex(index);
+      }
+      // Clear it after reading to avoid stale state
+      sessionStorage.removeItem('matchesCurrentIndex');
+    }
+  }, []);
+
   // Load initial data
   useEffect(() => {
     const initialize = async () => {
@@ -392,6 +405,7 @@ export default function MatchesPage() {
                     isPremium={isPremium}
                     userEmail={user?.email || ''}
                     initialIsSaved={currentMatchIsSaved}
+                    currentIndex={currentMatchIndex}
                     onSaveToggle={(matchId, isSaved) => {
                       // Optimistically update parent state for immediate UI feedback
                       // The actual state will be synced from Supabase on next refetch

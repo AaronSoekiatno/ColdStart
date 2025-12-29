@@ -514,7 +514,22 @@ function GenerateEmailPageContent() {
                       )}
                     </Button>
                     <button
-                      onClick={() => router.push('/matches')}
+                      onClick={() => {
+                        const returnIndex = searchParams.get('returnIndex');
+                        if (returnIndex) {
+                          // Store in sessionStorage before navigating
+                          sessionStorage.setItem('matchesCurrentIndex', returnIndex);
+                          router.push('/matches');
+                        } else {
+                          // Fallback: try to get from sessionStorage
+                          const storedIndex = sessionStorage.getItem('matchesCurrentIndex');
+                          if (storedIndex) {
+                            router.push('/matches');
+                          } else {
+                            router.push('/matches');
+                          }
+                        }
+                      }}
                       className="p-2 rounded-md hover:bg-gray-100 transition-colors text-gray-600 hover:text-gray-900 cursor-pointer"
                       aria-label="Close and return to matches"
                       title="Close"
