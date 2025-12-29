@@ -20,18 +20,13 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
       <div className="max-w-5xl mx-auto text-center">
         {/* Main Headline */}
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-ivy tracking-tight mb-4 leading-tight text-white drop-shadow-lg">
-          The Marketplace for
+          Land Jobs at Top Startups
           <br />
-          <span className="text-white">Top Startup Talent</span>
+          <span className="text-white">while you sleep</span>
         </h1>
-        
-        {/* Subtitle */}
-        <p className="text-lg lg:text-xl text-white/80 mt-6 mb-12 leading-normal drop-shadow-sm">
-          Connecting ambitious candidates with innovative startups through AI-powered matching
-        </p>
 
         {/* CTA Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12">
           <Button
             onClick={onGetStarted}
             size="lg"
@@ -47,6 +42,21 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
           >
             I represent a company
           </Button>
+        </div>
+
+        {/* Value Proposition */}
+        <div className="mt-24 relative">
+          {/* Foreground Text */}
+          <div className="relative z-10 space-y-2">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight leading-tight text-white drop-shadow-md">
+              Your AI agent networks
+              <br />
+              with 2000+ YC founders
+            </h2>
+            <p className="text-xl md:text-2xl text-white mt-4 drop-shadow-sm">
+              Personalized outreach. Land Interviews. Get Actual Offers.
+            </p>
+          </div>
         </div>
       </div>
     </section>
