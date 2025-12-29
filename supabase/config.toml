@@ -126,7 +126,9 @@ additional_redirect_urls = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "https://localhost:3000",
-  "https://127.0.0.1:3000"
+  "https://127.0.0.1:3000",
+  "http://localhost:3000/api/auth/github/callback",
+  "http://127.0.0.1:3000/api/auth/github/callback"
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -281,6 +283,21 @@ enabled = false
 client_id = ""
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
 secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+# Overrides the default auth redirectUrl.
+redirect_uri = ""
+# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
+# or any other third-party OIDC providers.
+url = ""
+# If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
+skip_nonce_check = false
+# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
+email_optional = false
+
+[auth.external.github]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
 # Overrides the default auth redirectUrl.
 redirect_uri = ""
 # Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,

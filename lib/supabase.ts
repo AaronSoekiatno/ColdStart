@@ -91,6 +91,7 @@ export interface CandidateRow {
   github_username?: string; // GitHub username
   github_connected_at?: string; // Timestamp when GitHub was connected
   github_token_expires_at?: string; // Timestamp when GitHub token expires
+  beta_access?: boolean; // Whether user has beta testing cohort access
   created_at?: string;
 }
 
