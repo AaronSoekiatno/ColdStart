@@ -311,7 +311,7 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
             <a href="/privacy" className="underline hover:text-white/60">
               Privacy Policy
             </a>{" "}
-            and agree to get occasional product updates and promotional emails.
+            and consent to us sending you emails.
           </p>
 
           {/* Sign in link */}

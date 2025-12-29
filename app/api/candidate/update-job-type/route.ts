@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin } from '@/lib/supabase';
+import { setCache, deleteCache } from '@/lib/redis-cache';
+import { normalizeJobType } from '@/lib/normalize-candidate-data';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +32,10 @@ export async function POST(request: NextRequest) {
 
     const { jobType } = await request.json();
 
-    if (!jobType || !['full-time', 'part-time', 'internship'].includes(jobType)) {
+    // Normalize the job type to lowercase
+    const normalizedJobType = normalizeJobType(jobType);
+
+    if (!normalizedJobType) {
       return NextResponse.json(
         { error: 'Invalid job type. Must be full-time, part-time, or internship' },
         { status: 400 }
@@ -47,7 +52,7 @@ export async function POST(request: NextRequest) {
     // Update the candidate's job_type
     const { error: updateError } = await supabaseAdmin
       .from('candidates')
-      .update({ job_type: jobType })
+      .update({ job_type: normalizedJobType })
       .eq('email', user.email);
 
     if (updateError) {
@@ -58,7 +63,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, jobType });
+    // Proactively update cache with fresh data
+    const { data: freshCandidate } = await supabaseAdmin
+      .from('candidates')
+      .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills')
+      .eq('email', user.email)
+      .single();
+
+    if (freshCandidate) {
+      const cacheKey = `candidate_info:${user.email}`;
+      await setCache(cacheKey, freshCandidate, 86400); // 24 hours
+      console.log('[Update Job Type] Cache updated proactively:', cacheKey);
+    }
+
+    // Invalidate matches cache since job filtering will change
+    const matchesCacheKey = `matches:${user.email}:ALL`;
+    await deleteCache(matchesCacheKey);
+    console.log('[Update Job Type] Invalidated matches cache:', matchesCacheKey);
+
+    return NextResponse.json({ success: true, jobType: normalizedJobType });
   } catch (error) {
     console.error('Exception updating job type:', error);
     return NextResponse.json(

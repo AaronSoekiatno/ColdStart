@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
           },
         ],
         mode: 'subscription',
+        allow_promotion_codes: true,
         subscription_data: {
           trial_period_days: PRODUCT_CONFIG.PREMIUM.trialPeriodDays,
         },
@@ -210,6 +211,7 @@ export async function POST(request: NextRequest) {
             },
           ],
           mode: 'subscription',
+          allow_promotion_codes: true,
           subscription_data: {
             trial_period_days: PRODUCT_CONFIG.PREMIUM.trialPeriodDays,
           },

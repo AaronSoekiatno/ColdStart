@@ -2,7 +2,7 @@
 
 import { memo, useRef, useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { ExternalLink, Mail, AlertCircle, Bookmark } from "lucide-react";
+import { ExternalLink, Mail, AlertCircle, Bookmark, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { splitFounderNames } from "@/lib/clean-founder-names";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
@@ -23,6 +23,14 @@ interface MatchCardProps {
       created_at?: string;
     } | null;
     jobs?: Array<{
+      job_url?: string;
+      job_title?: string;
+      job_type?: string;
+      salary_range?: string;
+      experience_level?: string;
+      created_at?: string;
+    }>;
+    alsoConsider?: Array<{
       job_url?: string;
       job_title?: string;
       job_type?: string;
@@ -68,9 +76,10 @@ interface MatchCardProps {
   initialIsSaved?: boolean;
   initialFounderError?: string | null;
   onFounderError?: (error: string | null) => void;
+  onSaveToggle?: (matchId: string, isSaved: boolean) => void;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError, onSaveToggle }: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -89,6 +98,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
   const manualTabClickRef = useRef<{ tab: 'company' | 'apply'; timestamp: number } | null>(null);
   // Track if match is saved - initialize with prop if provided
   const [isSaved, setIsSaved] = useState(initialIsSaved);
+  const [showAlsoConsider, setShowAlsoConsider] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   if (!match.startup) {
@@ -300,8 +310,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
     // Optimistic update - update UI immediately
     const previousSavedState = isSaved;
-    setIsSaved(!isSaved);
+    const newSavedState = !isSaved;
+    setIsSaved(newSavedState);
     setIsSaving(true);
+    
+    // Immediately notify parent to update savedMatchIds (optimistic update)
+    onSaveToggle?.(match.id, newSavedState);
 
     try {
       if (previousSavedState) {
@@ -312,30 +326,66 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
         });
 
         if (!response.ok) {
-          // Revert on failure
+          // Revert on failure - revert both local state and parent state
           setIsSaved(previousSavedState);
-          console.error('Failed to unsave match');
+          onSaveToggle?.(match.id, previousSavedState);
+          let errorData: any = {};
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = { message: await response.text().catch(() => 'Unknown error') };
+          }
+          console.error('Failed to unsave match:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData,
+            matchId: match.id,
+          });
         }
+        // Note: onSaveToggle was already called optimistically, no need to call again
       } else {
         // Save the match
+        if (!match.id) {
+          console.error('Cannot save match: match.id is missing');
+          setIsSaved(previousSavedState);
+          return;
+        }
+
         const response = await fetch('/api/matches/saved', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           credentials: 'include',
-          body: JSON.stringify({ matchId: match.id }),
+          body: JSON.stringify({ 
+            matchId: match.id,
+            startupId: match.startup?.id, // Include startup_id as fallback
+          }),
         });
 
         if (!response.ok && response.status !== 409) {
-          // Revert on failure (except for 409 which means already saved)
+          // Revert on failure (except for 409 which means already saved) - revert both local and parent state
           setIsSaved(previousSavedState);
-          console.error('Failed to save match');
+          onSaveToggle?.(match.id, previousSavedState);
+          let errorData: any = {};
+          try {
+            errorData = await response.json();
+          } catch {
+            errorData = { message: await response.text().catch(() => 'Unknown error') };
+          }
+          console.error('Failed to save match:', {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData,
+            matchId: match.id,
+          });
         }
+        // Note: onSaveToggle was already called optimistically, no need to call again on success
       }
     } catch (error) {
-      // Revert on error
+      // Revert on error - revert both local and parent state
       setIsSaved(previousSavedState);
+      onSaveToggle?.(match.id, previousSavedState);
       console.error('Error toggling save status:', error);
     } finally {
       setIsSaving(false);
@@ -343,30 +393,11 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
   };
 
 
-  // Check if match is saved on component mount (only if initialIsSaved not provided)
+  // Always sync saved state with prop - prop is the source of truth from Supabase
+  // This ensures the bookmark icon reflects the actual saved state in the database
   useEffect(() => {
-    // If initialIsSaved is provided and true, skip the API check
-    if (initialIsSaved === true) {
-      setIsSaved(true);
-      return;
-    }
-
-    const checkIfSaved = async () => {
-      try {
-        const response = await fetch(`/api/matches/saved/check?matchId=${match.id}`, {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setIsSaved(data.isSaved);
-        }
-      } catch (error) {
-        console.error('Error checking if match is saved:', error);
-      }
-    };
-
-    checkIfSaved();
-  }, [match.id, initialIsSaved]);
+    setIsSaved(initialIsSaved);
+  }, [initialIsSaved]);
 
   // Update active tab based on scroll position
   useEffect(() => {
@@ -444,8 +475,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             <button
               onClick={() => scrollToSection(companySectionRef, 'company')}
               className={`px-2 py-1 sm:px-4 sm:py-2 text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'company'
-                  ? 'text-gray-900 border-blue-500'
-                  : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
+                ? 'text-gray-900 border-blue-500'
+                : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
                 }`}
             >
               Company
@@ -454,8 +485,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               <button
                 onClick={() => scrollToSection(applicationSectionRef, 'apply')}
                 className={`px-2 py-1 sm:px-4 sm:py-2 text-sm font-medium transition-colors border-b-2 cursor-pointer ${activeTab === 'apply'
-                    ? 'text-gray-900 border-blue-500'
-                    : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
+                  ? 'text-gray-900 border-blue-500'
+                  : 'text-gray-700 hover:text-gray-900 border-transparent hover:border-blue-300'
                   }`}
               >
                 Apply
@@ -467,11 +498,10 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             <div className="flex-shrink-0 flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
-                className={`flex items-center justify-center gap-1.5 rounded-md md:rounded-lg border px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition shadow-sm cursor-pointer ${
-                  isSaved
+                className={`flex items-center justify-center gap-1.5 rounded-md md:rounded-lg border px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition shadow-sm cursor-pointer ${isSaved
                     ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
                     : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
-                }`}
+                  }`}
                 onClick={handleSaveToggle}
                 disabled={isSaving}
                 aria-label={isSaved ? "Unsave match" : "Save match"}
@@ -481,7 +511,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               </button>
               <button
                 type="button"
-                className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
+                className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px] animate-pulse-subtle"
                 onClick={() => {
                   if (match.startup?.id) {
                     // Check if a founder is selected
@@ -489,6 +519,20 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                       const errorMsg = "Please select a founder first";
                       setFounderSelectionError(errorMsg);
                       onFounderError?.(errorMsg);
+
+                      // Auto-scroll to founders section with offset for sticky header
+                      const foundersSection = document.querySelector('[data-section="founders"]');
+                      if (foundersSection) {
+                        const headerOffset = 140; // Account for sticky header
+                        const elementPosition = foundersSection.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+                        window.scrollTo({
+                          top: offsetPosition,
+                          behavior: 'smooth'
+                        });
+                      }
+
                       return;
                     }
 
@@ -513,7 +557,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
                     // Clear any error and proceed
                     setFounderSelectionError(null);
-                onFounderError?.(null);
+                    onFounderError?.(null);
                     onFounderError?.(null);
                     const params = new URLSearchParams();
                     params.append('startupId', match.startup.id);
@@ -751,8 +795,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
       {/* Founders Section */}
       {founderNames.length > 0 && (
-        <div className="mt-4 sm:mt-6 md:mt-8">
-          <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4">
+        <div className="mt-4 sm:mt-6 md:mt-8" data-section="founders">
+          <div className="flex items-center justify-between mb-2 sm:mb-3 md:mb-4 flex-wrap gap-2">
             <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left">Active Founders</h3>
             <div className="flex items-center gap-1.5 sm:gap-2">
               {founderSelectionError && (
@@ -763,6 +807,24 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               </p>
             </div>
           </div>
+
+          {/* Value Proposition Banner */}
+          <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg shadow-sm">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-gray-900 mb-1">
+                  Reach out to founders directly
+                </h4>
+                <p className="text-xs text-gray-700 leading-relaxed">
+                  Generate a personalized email based on your background and this company's work. Skip the job board and start a conversation.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
             {/* Founder Cards - one for each founder */}
             {founderNames.map((founderName, index) => {
@@ -803,8 +865,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                 <div
                   key={index}
                   className={`bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border p-2.5 sm:p-4 md:p-5 cursor-pointer transition-all ${isSelected
-                      ? 'border-blue-300 border-2 bg-blue-50'
-                      : 'border-gray-100 hover:border-gray-200'
+                    ? 'border-blue-300 border-2 bg-blue-50'
+                    : 'border-gray-100 hover:border-gray-200'
                     }`}
                   onClick={handleCardClick}
                 >
@@ -935,81 +997,66 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             {match.jobs && match.jobs.length > 0 ? (
               match.jobs.map((job, index) => {
                 const recency = formatJobRecency(job.created_at);
-                console.log('[MatchCard] Rendering job:', {
-                  index,
-                  job_title: job.job_title,
-                  created_at: job.created_at,
-                  has_created_at: !!job.created_at,
-                  recency,
-                  will_render_recency: !!recency
-                });
                 return (
-                <div key={index} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-                    {/* Left side: Job Title and Job Details */}
-                    <div className="flex-1">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
-                            {job.job_title || 'Job Title Not Available'}
-                          </p>
-                          {recency && (
-                            <span className="text-xs sm:text-sm text-gray-500 font-normal">
-                              {recency}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
-                          {job.job_type && (
-                            <>
-                              <span className="capitalize">{job.job_type}</span>
-                              {(job.salary_range || job.experience_level) && (
-                                <span className="text-gray-400">•</span>
-                              )}
-                            </>
-                          )}
-                          {job.salary_range && (
-                            <>
-                              <span>{job.salary_range}</span>
-                              {job.experience_level && (
-                                <span className="text-gray-400">•</span>
-                              )}
-                            </>
-                          )}
-                          {job.experience_level && (
-                            <span>{job.experience_level} preferred</span>
-                          )}
+                  <div key={index} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                      {/* Left side: Job Title and Job Details */}
+                      <div className="flex-1">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
+                              {job.job_title || 'Job Title Not Available'}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                            {job.job_type && (
+                              <>
+                                <span className="capitalize">{job.job_type}</span>
+                                {(job.salary_range || job.experience_level) && (
+                                  <span className="text-gray-400">•</span>
+                                )}
+                              </>
+                            )}
+                            {job.salary_range && (
+                              <>
+                                <span>{job.salary_range}</span>
+                                {job.experience_level && (
+                                  <span className="text-gray-400">•</span>
+                                )}
+                              </>
+                            )}
+                            {job.experience_level && (
+                              <span>{job.experience_level} preferred</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Right side: Application Link Button */}
-                    <div className="flex-shrink-0">
-                      <a
-                        href={job.job_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        <span>Apply Now</span>
-                      </a>
+                      {/* Right side: Recency and Application Link Button */}
+                      <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                        {recency && (
+                          <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                            {recency}
+                          </span>
+                        )}
+                        <a
+                          href={job.job_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span>Apply Now</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
-                </div>
                 );
               })
             ) : match.job?.job_url ? (
               // Fallback to single job for backward compatibility
               (() => {
                 const recency = formatJobRecency(match.job.created_at);
-                console.log('[MatchCard] Rendering single job:', {
-                  job_title: match.job.job_title,
-                  created_at: match.job.created_at,
-                  has_created_at: !!match.job.created_at,
-                  recency,
-                  will_render_recency: !!recency
-                });
                 return (
                   <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
@@ -1020,11 +1067,6 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                             <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
                               {match.job.job_title || 'Job Title Not Available'}
                             </p>
-                            {recency && (
-                              <span className="text-xs sm:text-sm text-gray-500 font-normal">
-                                {recency}
-                              </span>
-                            )}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
                             {match.job.job_type && (
@@ -1050,13 +1092,18 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                         </div>
                       </div>
 
-                      {/* Right side: Application Link Button */}
-                      <div className="flex-shrink-0">
+                      {/* Right side: Recency and Application Link Button */}
+                      <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                        {recency && (
+                          <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                            {recency}
+                          </span>
+                        )}
                         <a
                           href={match.job.job_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center justify-center gap-2 rounded-md md:rounded-xl bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-4 py-2 sm:px-5 sm:py-2.5 text-sm sm:text-base font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[140px] sm:min-w-[160px]"
+                          className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span>Apply Now</span>
@@ -1067,6 +1114,84 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                 );
               })()
             ) : null}
+            
+            {/* Also Consider dropdown */}
+            {match.alsoConsider && match.alsoConsider.length > 0 && (
+              <div className="mt-4 sm:mt-5">
+                <button
+                  onClick={() => setShowAlsoConsider(!showAlsoConsider)}
+                  className="flex items-center justify-between w-full text-left text-sm sm:text-base font-semibold text-gray-700 hover:text-gray-900 transition mb-3 sm:mb-4"
+                >
+                  <span>Also Consider ({match.alsoConsider.length})</span>
+                  <ChevronDown 
+                    className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${showAlsoConsider ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                
+                {showAlsoConsider && (
+                  <div className="space-y-3 sm:space-y-4">
+                    {match.alsoConsider.map((job, index) => {
+                      const recency = formatJobRecency(job.created_at);
+                      return (
+                        <div key={index} className="bg-gray-50 rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-5 opacity-90">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                            {/* Left side: Job Title and Job Details */}
+                            <div className="flex-1">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                  <p className="text-sm sm:text-base md:text-lg font-bold text-gray-900">
+                                    {job.job_title || 'Job Title Not Available'}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-600">
+                                  {job.job_type && (
+                                    <>
+                                      <span className="capitalize">{job.job_type}</span>
+                                      {(job.salary_range || job.experience_level) && (
+                                        <span className="text-gray-400">•</span>
+                                      )}
+                                    </>
+                                  )}
+                                  {job.salary_range && (
+                                    <>
+                                      <span>{job.salary_range}</span>
+                                      {job.experience_level && (
+                                        <span className="text-gray-400">•</span>
+                                      )}
+                                    </>
+                                  )}
+                                  {job.experience_level && (
+                                    <span>{job.experience_level} preferred</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Right side: Recency and Application Link Button */}
+                            <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                              {recency && (
+                                <span className="text-xs sm:text-sm text-gray-500 font-normal">
+                                  {recency}
+                                </span>
+                              )}
+                              <a
+                                href={job.job_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                <span>Apply Now</span>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1088,9 +1213,10 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
 // Use a custom comparison function to ensure re-renders when match changes
 export const MatchCard = memo(MatchCardComponent, (prevProps, nextProps) => {
-  // Only prevent re-render if match ID is the same
+  // Only prevent re-render if match ID is the same AND initialIsSaved hasn't changed
   return prevProps.match.id === nextProps.match.id &&
     prevProps.isPremium === nextProps.isPremium &&
-    prevProps.userEmail === nextProps.userEmail;
+    prevProps.userEmail === nextProps.userEmail &&
+    prevProps.initialIsSaved === nextProps.initialIsSaved;
 });
 

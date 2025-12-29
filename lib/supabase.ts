@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
-import { normalizeName, normalizeEducationLevel, normalizeUniversityName } from './normalize-candidate-data';
+import { normalizeName, normalizeEducationLevel, normalizeUniversityName, normalizeJobType } from './normalize-candidate-data';
 
 // Supabase configuration
 // These environment variables should be set in .env.local
@@ -86,6 +86,11 @@ export interface CandidateRow {
   subscription_status?: 'active' | 'inactive' | 'canceled' | 'past_due' | 'trialing'; // Subscription status
   subscription_current_period_end?: string; // ISO timestamp of when subscription period ends
   major?: string[]; // Array of majors extracted from education history
+  github_access_token?: string; // GitHub OAuth access token
+  github_refresh_token?: string; // GitHub OAuth refresh token
+  github_username?: string; // GitHub username
+  github_connected_at?: string; // Timestamp when GitHub was connected
+  github_token_expires_at?: string; // Timestamp when GitHub token expires
   created_at?: string;
 }
 
@@ -163,6 +168,7 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
   const normalizedName = normalizeName(candidate.name);
   const normalizedEducationLevel = normalizeEducationLevel(candidate.education_level);
   const normalizedUniversity = normalizeUniversityName(candidate.university);
+  const normalizedJobType = normalizeJobType(candidate.job_type);
 
   // Extract major from structured_resume_data if present and not explicitly provided
   let extractedMajor: string[] | undefined = candidate.major;
@@ -201,7 +207,7 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
     experience: candidate.experience,
     technical_projects: candidate.technical_projects,
     objectives: candidate.objectives,
-    job_type: candidate.job_type,
+    job_type: normalizedJobType || candidate.job_type, // Fallback to original if normalization returns null
     role_type: candidate.role_type,
     years_of_experience: candidate.years_of_experience,
     onboarding_completed: candidate.onboarding_completed,
@@ -307,6 +313,11 @@ export async function getCandidate(email: string) {
       stripe_customer_id,
       stripe_subscription_id,
       subscription_current_period_end,
+      github_access_token,
+      github_refresh_token,
+      github_username,
+      github_connected_at,
+      github_token_expires_at,
       created_at
     `)
     .eq('email', email)
@@ -998,4 +1009,192 @@ export async function setPrimaryResume(candidateId: string, resumeId: string) {
   }
 
   return data;
+}
+
+// ==================== EMAIL PREFERENCES FUNCTIONS ====================
+
+export interface EmailPreferencesRow {
+  email: string;
+  welcome_emails_enabled: boolean;
+  marketing_emails_enabled: boolean;
+  unsubscribed_at: string | null;
+  unsubscribe_token: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Get email preferences for a user
+ * @param email - User email address
+ * @returns Email preferences or null if not found
+ */
+export async function getEmailPreferences(email: string): Promise<EmailPreferencesRow | null> {
+  const client = supabaseAdmin || supabase;
+  
+  const { data, error } = await client
+    .from('email_preferences')
+    .select('*')
+    .eq('email', email)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get email preferences: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Generate a secure unsubscribe token for an email
+ * @param email - User email address
+ * @returns Cryptographically secure random token
+ */
+export function generateUnsubscribeToken(email: string): string {
+  // Use crypto for secure random token generation
+  const crypto = require('crypto');
+  // Generate 32 bytes of random data and convert to hex (64 character string)
+  return crypto.randomBytes(32).toString('hex');
+}
+
+/**
+ * Create email preferences for a new user
+ * Defaults: welcome_emails_enabled = true, marketing_emails_enabled = false
+ * @param email - User email address
+ * @param options - Optional preferences
+ * @param options.marketingOptIn - If true, opts user into marketing emails (default: false)
+ * @returns Created email preferences
+ */
+export async function createEmailPreferences(
+  email: string,
+  options?: { marketingOptIn?: boolean }
+): Promise<EmailPreferencesRow> {
+  if (!supabaseAdmin) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. Cannot create email preferences without admin access.');
+  }
+
+  const unsubscribeToken = generateUnsubscribeToken(email);
+
+  const { data, error } = await supabaseAdmin
+    .from('email_preferences')
+    .insert({
+      email,
+      welcome_emails_enabled: true,
+      marketing_emails_enabled: options?.marketingOptIn ?? false,
+      unsubscribe_token: unsubscribeToken,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create email preferences: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Check if welcome email can be sent to a user
+ * Returns true if:
+ * - User has preferences and welcome_emails_enabled is true
+ * - User has no preferences (defaults to allowing welcome emails)
+ * Returns false if:
+ * - User has unsubscribed (unsubscribed_at is not null)
+ * - User has explicitly disabled welcome emails
+ * @param email - User email address
+ * @returns true if welcome email can be sent, false otherwise
+ */
+export async function checkCanSendWelcomeEmail(email: string): Promise<boolean> {
+  const preferences = await getEmailPreferences(email);
+  
+  // If no preferences exist, default to allowing welcome emails (opt-in by default for new signups)
+  if (!preferences) {
+    return true;
+  }
+
+  // If user has unsubscribed globally, don't send
+  if (preferences.unsubscribed_at) {
+    return false;
+  }
+
+  // Check if welcome emails are enabled
+  return preferences.welcome_emails_enabled;
+}
+
+/**
+ * Check if newsletter/marketing email can be sent to a user
+ * Returns true if:
+ * - User has preferences and marketing_emails_enabled is true
+ * Returns false if:
+ * - User has no preferences (defaults to opt-out for marketing)
+ * - User has unsubscribed (unsubscribed_at is not null)
+ * - User has explicitly disabled marketing emails
+ * @param email - User email address
+ * @returns true if newsletter email can be sent, false otherwise
+ */
+export async function checkCanSendNewsletterEmail(email: string): Promise<boolean> {
+  const preferences = await getEmailPreferences(email);
+  
+  // If no preferences exist, default to NOT sending marketing emails (opt-in required)
+  if (!preferences) {
+    return false;
+  }
+
+  // If user has unsubscribed globally, don't send
+  if (preferences.unsubscribed_at) {
+    return false;
+  }
+
+  // Check if marketing emails are enabled
+  return preferences.marketing_emails_enabled;
+}
+
+/**
+ * Get or create email preferences for a user
+ * If preferences don't exist, creates them with defaults
+ * @param email - User email address
+ * @param options - Optional preferences
+ * @param options.marketingOptIn - If true, opts user into marketing emails (default: false)
+ * @returns Email preferences (existing or newly created)
+ */
+export async function getOrCreateEmailPreferences(
+  email: string,
+  options?: { marketingOptIn?: boolean }
+): Promise<EmailPreferencesRow> {
+  let preferences = await getEmailPreferences(email);
+  
+  if (!preferences) {
+    preferences = await createEmailPreferences(email, options);
+  } else if (options?.marketingOptIn && !preferences.marketing_emails_enabled) {
+    // Update existing preferences to opt-in to marketing if requested
+    if (!supabaseAdmin) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set. Cannot update email preferences without admin access.');
+    }
+    
+    const { data, error } = await supabaseAdmin
+      .from('email_preferences')
+      .update({ marketing_emails_enabled: true })
+      .eq('email', email)
+      .select()
+      .single();
+    
+    if (error) {
+      throw new Error(`Failed to update email preferences: ${error.message}`);
+    }
+    
+    if (!data) {
+      throw new Error('Failed to update email preferences: No data returned from update');
+    }
+    
+    preferences = data;
+  }
+  
+  // At this point, preferences should never be null
+  if (!preferences) {
+    throw new Error('Failed to get or create email preferences');
+  }
+  
+  return preferences;
 }

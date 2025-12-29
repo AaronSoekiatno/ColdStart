@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import ResumeUpload from "@/app/components/ResumeUpload";
+import dynamic from "next/dynamic";
+
+// Lazy load ResumeUpload only when needed (step 6)
+const ResumeUpload = dynamic(() => import("@/app/components/ResumeUpload"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center p-8">
+      <div className="text-gray-500">Loading...</div>
+    </div>
+  ),
+});
 // import { ResumeUploadModal } from \"@/components/modals/ResumeUploadModal\";
 
 type ObjectiveType = 'internship' | 'startup' | 'network' | 'improve-application' | 'sf-scene';
@@ -60,7 +70,7 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
   const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>([]);
@@ -68,9 +78,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showStatistic, setShowStatistic] = useState(false);
+  const [githubConnected, setGithubConnected] = useState(false);
   // const [showResumeUpload, setShowResumeUpload] = useState(false);
 
-  const handleObjectiveSelect = (objective: ObjectiveType) => {
+  const handleObjectiveSelect = useCallback((objective: ObjectiveType) => {
     setSelectedObjectives(prev => {
       if (prev.includes(objective)) {
         return prev.filter(o => o !== objective);
@@ -78,24 +89,83 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
         return [...prev, objective];
       }
     });
-  };
+  }, []);
 
-  const handleStatisticContinue = () => {
+  const handleStatisticContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(6);
+      setStep(6); // Resume upload step
       setIsTransitioning(false);
-    }, 300);
+    }, 200); // Reduced from 300ms to 200ms
+  }, []);
+
+  // Check for GitHub connection status from URL params
+  useEffect(() => {
+    if (typeof window !== 'undefined' && open) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const stepParam = urlParams.get('step');
+      
+      if (urlParams.get('github_connected') === 'true') {
+        setGithubConnected(true);
+        // If step is specified, navigate to that step
+        if (stepParam) {
+          const stepNum = parseInt(stepParam, 10);
+          if (stepNum >= 1 && stepNum <= 8) {
+            setStep(stepNum as typeof step);
+          }
+        }
+        // Clean up URL params
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      } else if (urlParams.get('github_error')) {
+        // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
+        if (stepParam) {
+          const stepNum = parseInt(stepParam, 10);
+          if (stepNum >= 1 && stepNum <= 8) {
+            setStep(stepNum as typeof step);
+          }
+        } else {
+          // Default to step 7 if no step specified
+          setStep(7);
+        }
+        // Clean up URL params
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [open]);
+
+  const handleGithubConnect = () => {
+    // Redirect to GitHub OAuth connection
+    const currentUrl = window.location.origin;
+    const redirectUrl = `${currentUrl}/onboarding`;
+    window.location.href = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectUrl)}&step=7`;
   };
 
-  const handleObjectiveContinue = () => {
+  const handleGithubSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(8); // Choice screen
+      setIsTransitioning(false);
+    }, 200); // Reduced from 300ms to 200ms
+  }, []);
+
+  const handleGithubContinue = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(8); // Choice screen
+      setIsTransitioning(false);
+    }, 200); // Reduced from 300ms to 200ms
+  }, []);
+
+  const handleObjectiveContinue = useCallback(() => {
     if (selectedObjectives.length === 0) return;
     setIsTransitioning(true);
     setTimeout(() => {
       setStep(2);
       setIsTransitioning(false);
-    }, 300);
-  };
+    }, 200); // Reduced from 300ms to 200ms
+  }, [selectedObjectives.length]);
 
   useEffect(() => {
     if (step === 5) {
@@ -106,16 +176,16 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
     }
   }, [step]);
 
-  const handleJobTypeSelect = (jobType: JobType) => {
+  const handleJobTypeSelect = useCallback((jobType: JobType) => {
     setSelectedJobType(jobType);
     setIsTransitioning(true);
     setTimeout(() => {
       setStep(3);
       setIsTransitioning(false);
-    }, 300);
-  };
+    }, 200); // Reduced from 300ms to 200ms
+  }, []);
 
-  const handleRoleTypeSelect = (roleType: RoleType) => {
+  const handleRoleTypeSelect = useCallback((roleType: RoleType) => {
     setSelectedRoleTypes(prev => {
       if (prev.includes(roleType)) {
         return prev.filter(r => r !== roleType);
@@ -123,20 +193,20 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
         return [...prev, roleType];
       }
     });
-  };
+  }, []);
 
-  const handleRolesContinue = () => {
+  const handleRolesContinue = useCallback(() => {
     if (selectedRoleTypes.length === 0) return;
     setIsTransitioning(true);
     setTimeout(() => {
       setStep(4);
       setIsTransitioning(false);
-    }, 300);
-  };
+    }, 200); // Reduced from 300ms to 200ms
+  }, [selectedRoleTypes.length]);
 
-  const handleYOESelect = (yoe: YearsOfExperience) => {
+  const handleYOESelect = useCallback((yoe: YearsOfExperience) => {
     setSelectedYOE(yoe);
-  };
+  }, []);
 
   const handleYOEContinue = async () => {
     if (!selectedJobType || selectedRoleTypes.length === 0 || selectedObjectives.length === 0 || !selectedYOE) return;
@@ -177,7 +247,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
           setStep(5); // Go to Statistic screen
           setIsSubmitting(false);
           setIsTransitioning(false);
-        }, 300);
+        }, 200);
       } else {
         throw new Error('Unexpected response from server');
       }
@@ -223,33 +293,29 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
             <DialogHeader>
               <div className="mb-8">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 1 ? 'bg-[#498EDC]' : 'bg-gray-200'
-                    }`} />
-                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 2 ? 'bg-[#498EDC]' : 'bg-gray-200'
-                    }`} />
-                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 3 ? 'bg-[#498EDC]' : 'bg-gray-200'
-                    }`} />
-                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 4 ? 'bg-[#498EDC]' : 'bg-gray-200'
-                    }`} />
-                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 5 ? 'bg-[#498EDC]' : 'bg-gray-200'
-                    }`} />
-                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 6 ? 'bg-[#498EDC]' : 'bg-gray-200'
-                    }`} />
-                  <div className={`h-2 w-10 rounded-full transition-all duration-500 ${step >= 7 ? 'bg-[#498EDC]' : 'bg-gray-200'
-                    }`} />
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((stepNum) => (
+                    <div
+                      key={stepNum}
+                      className={`h-2 w-10 rounded-full transition-colors duration-300 ${
+                        step >= stepNum ? 'bg-[#498EDC]' : 'bg-gray-200'
+                      }`}
+                    />
+                  ))}
                 </div>
                 <p className="text-center text-gray-500 text-sm">
-                  Step {step} of 7
+                  Step {step} of 8
                 </p>
               </div>
             </DialogHeader>
 
             <div className="relative min-h-[450px]">
+              {/* Conditionally render only the current step to improve performance */}
               {/* Step 5: Statistic Screen (Moved from Step 1) */}
+              {step === 5 && (
               <div
-                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 5 && !isTransitioning
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 -translate-x-4 pointer-events-none absolute inset-0'
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
                   }`}
               >
                 <div className="text-center space-y-8">
@@ -291,7 +357,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                       setTimeout(() => {
                         setStep(4);
                         setIsTransitioning(false);
-                      }, 300);
+                      }, 200);
                     }}
                     variant="outline"
                     className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm py-6 text-lg"
@@ -306,12 +372,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </Button>
                 </div>
               </div>
+              )}
 
               {/* Step 1: Objectives (Moved from Step 2) */}
+              {step === 1 && (
               <div
-                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 1 && !isTransitioning
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 -translate-x-4 pointer-events-none absolute inset-0'
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
                   }`}
               >
                 <div className="text-center">
@@ -349,12 +417,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </Button>
                 </div>
               </div>
+              )}
 
               {/* Step 2: Job Type (Moved from Step 3) */}
+              {step === 2 && (
               <div
-                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 2 && !isTransitioning
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 -translate-x-4 pointer-events-none absolute inset-0'
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
                   }`}
               >
                 <div className="text-center">
@@ -408,7 +478,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                       setTimeout(() => {
                         setStep(1);
                         setIsTransitioning(false);
-                      }, 300);
+                      }, 200);
                     }}
                     variant="outline"
                     className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
@@ -417,12 +487,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </Button>
                 </div>
               </div>
+              )}
 
               {/* Step 3: Role Type (Moved from Step 4) */}
+              {step === 3 && (
               <div
-                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 3 && !isTransitioning
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 translate-x-4 pointer-events-none absolute inset-0'
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
                   }`}
               >
                 <div className="text-center">
@@ -457,7 +529,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                       setTimeout(() => {
                         setStep(2);
                         setIsTransitioning(false);
-                      }, 300);
+                      }, 200);
                     }}
                     variant="outline"
                     className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
@@ -473,12 +545,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </Button>
                 </div>
               </div>
+              )}
 
               {/* Step 4: Years of Experience (Moved from Step 5) */}
+              {step === 4 && (
               <div
-                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 4 && !isTransitioning
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 translate-x-4 pointer-events-none absolute inset-0'
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
                   }`}
               >
                 <div className="text-center">
@@ -512,7 +586,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                       setTimeout(() => {
                         setStep(3);
                         setIsTransitioning(false);
-                      }, 300);
+                      }, 200);
                     }}
                     variant="outline"
                     className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
@@ -528,12 +602,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </Button>
                 </div>
               </div>
+              )}
 
               {/* Step 6: Mandatory Resume Upload */}
+              {step === 6 && (
               <div
-                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 6 && !isTransitioning
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 translate-x-4 pointer-events-none absolute inset-0'
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
                   }`}
               >
                 <div className="text-center mb-8">
@@ -549,12 +625,12 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   {/* Embedded Resume Upload Component */}
                   <ResumeUpload
                     onSuccess={() => {
-                      // Advance to Step 7 (Choice Screen)
+                      // Advance to Step 7 (GitHub Connection)
                       setIsTransitioning(true);
                       setTimeout(() => {
                         setStep(7);
                         setIsTransitioning(false);
-                      }, 300);
+                      }, 200);
                     }}
                   // Note: onUpgradeRequired handled by ResumeUpload locally or we can add handler if needed
                   // For onboarding, we typically expect users to be allowed to upload.
@@ -568,7 +644,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                       setTimeout(() => {
                         setStep(5);
                         setIsTransitioning(false);
-                      }, 300);
+                      }, 200);
                     }}
                     variant="outline"
                     className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
@@ -577,12 +653,108 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </Button>
                 </div>
               </div>
+              )}
 
-              {/* Step 7: Choice Screen (Matches vs Enhance) */}
+              {/* Step 7: GitHub Connection (Optional) */}
+              {step === 7 && (
               <div
-                className={`space-y-6 transition-all duration-500 ease-in-out ${step === 7 && !isTransitioning
-                  ? 'opacity-100 translate-x-0'
-                  : 'opacity-0 translate-x-4 pointer-events-none absolute inset-0'
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
+                  }`}
+              >
+                <div className="text-center mb-8">
+                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                    Connect your GitHub
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 mt-2 text-lg">
+                    {githubConnected 
+                      ? 'Your GitHub account has been connected successfully!'
+                      : 'Connect your GitHub to help us find better matches based on your projects and contributions.'}
+                  </DialogDescription>
+                </div>
+
+                {githubConnected ? (
+                  <div className="max-w-md mx-auto mt-8">
+                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
+                      <div className="text-green-600 text-4xl mb-4">✓</div>
+                      <p className="text-green-800 font-semibold text-lg mb-2">
+                        GitHub Connected Successfully
+                      </p>
+                      <p className="text-green-700 text-sm">
+                        We'll use your repository data to improve your matches.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-w-md mx-auto mt-8">
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-8 text-center">
+                      <div className="mb-6">
+                        <svg
+                          className="w-16 h-16 mx-auto text-gray-700"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.737 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-gray-700 mb-6">
+                        Connect your GitHub account to help us understand your coding experience and find better startup matches.
+                      </p>
+                      <Button
+                        onClick={handleGithubConnect}
+                        className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
+                      >
+                        Connect GitHub
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-4 mt-6">
+                  <Button
+                    onClick={() => {
+                      setIsTransitioning(true);
+                      setTimeout(() => {
+                        setStep(6);
+                        setIsTransitioning(false);
+                      }, 200);
+                    }}
+                    variant="outline"
+                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                  >
+                    Back
+                  </Button>
+                  {githubConnected ? (
+                    <Button
+                      onClick={handleGithubContinue}
+                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                    >
+                      Continue
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleGithubSkip}
+                      variant="outline"
+                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                    >
+                      Skip for now
+                    </Button>
+                  )}
+                </div>
+              </div>
+              )}
+
+              {/* Step 8: Choice Screen (Matches vs Enhance) */}
+              {step === 8 && (
+              <div
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
                   }`}
               >
                 <div className="text-center mb-8">
@@ -642,6 +814,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </div>
         </DialogContent>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate, saveCandidate } from '@/lib/supabase';
+import { sendWelcomeEmail, extractFirstName } from '@/lib/sendgrid';
+import { deleteCache } from '@/lib/redis-cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -113,6 +115,28 @@ export async function POST(request: NextRequest) {
           .eq('email', user.email.toLowerCase().trim())
           .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
       }
+
+      // Send welcome email after onboarding completion (non-blocking)
+      // This ensures users get the welcome email even if they complete onboarding before the auth callback runs
+      try {
+        const firstName = candidate.name?.split(' ')[0]?.trim() || 
+                         extractFirstName(user.user_metadata, user.email);
+        
+        sendWelcomeEmail(user.email, firstName, user.user_metadata)
+          .then((result) => {
+            if (result.success) {
+              console.log(`[Onboarding] Welcome email sent to ${user.email}`);
+            } else {
+              console.warn(`[Onboarding] Failed to send welcome email to ${user.email}:`, result.error);
+            }
+          })
+          .catch((error) => {
+            console.error(`[Onboarding] Error sending welcome email to ${user.email}:`, error);
+          });
+      } catch (error) {
+        // Log error but don't block onboarding completion
+        console.error('[Onboarding] Error setting up welcome email:', error);
+      }
     } else {
       // Update existing candidate's job_type and role_type
       await saveCandidate({
@@ -152,6 +176,11 @@ export async function POST(request: NextRequest) {
         .eq('email', user.email.toLowerCase().trim())
         .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
     }
+
+    // Invalidate matches cache since job_type and years_of_experience affect filtering
+    const matchesCacheKey = `matches:${user.email}:ALL`;
+    await deleteCache(matchesCacheKey);
+    console.log('[Complete Onboarding] Invalidated matches cache:', matchesCacheKey);
 
     return NextResponse.json({ 
       success: true, 

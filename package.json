@@ -80,6 +80,8 @@
     "backfill-candidates-waitlist": "tsx scripts/email/backfill-candidates-to-waitlist.ts",
     "test-email": "tsx scripts/test-email.ts",
     "test-email:sendgrid": "tsx scripts/email/sendgrid/sendgrid-test-email.ts",
+    "test-welcome-email": "tsx scripts/email/test-welcome-email.ts",
+    "backfill-email-preferences": "tsx scripts/email/backfill-email-preferences.ts",
     "extract-majors": "tsx scripts/data/extract-candidate-majors.ts",
     "extract-majors:output": "tsx scripts/data/extract-candidate-majors.ts --output",
     "extract-majors:populate": "tsx scripts/data/extract-candidate-majors.ts --populate",

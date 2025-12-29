@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, Bookmark, Mail, X, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, Bookmark, Mail, X } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { MatchCard } from './MatchCard';
@@ -95,6 +95,7 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
 
   const handleContactFounder = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
 
     // If no founders, expand card to show full details
     if (founderData.founderNames.length === 0) {
@@ -103,41 +104,46 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
       return;
     }
 
-    // If only one founder with email, navigate directly
-    if (founderData.founderNames.length === 1 && founderData.founderEmails[0]) {
-      setFounderSelectionError(null);
-      const params = new URLSearchParams();
-      params.append('startupId', match.startup?.id || '');
-      params.append('matchScore', match.score.toString());
-      params.append('founderEmail', founderData.founderEmails[0]);
-      router.push(`/generate-email?${params.toString()}`);
-      return;
-    }
-
-    // If multiple founders
-    if (founderData.founderNames.length > 1) {
-      // If dropdown is already open, show error (user clicked without selecting)
-      if (showFounderDropdown) {
-        setFounderSelectionError("Please select a founder first");
+    // If only one founder, use that founder's email directly
+    if (founderData.founderNames.length === 1) {
+      const founderEmail = founderData.founderEmails[0];
+      if (founderEmail) {
+        setFounderSelectionError(null);
+        const params = new URLSearchParams();
+        params.append('startupId', match.startup?.id || '');
+        params.append('matchScore', match.score.toString());
+        params.append('founderEmail', founderEmail);
+        router.push(`/generate-email?${params.toString()}`);
+        return;
+      } else {
+        // No email for single founder, expand card
+        setIsExpanded(true);
+        setFounderSelectionError(null);
         return;
       }
-      // Otherwise, open the dropdown
-      setShowFounderDropdown(true);
+    }
+
+    // If multiple founders, toggle dropdown
+    if (founderData.founderNames.length > 1) {
+      setShowFounderDropdown(!showFounderDropdown);
       setFounderSelectionError(null);
     }
   };
 
   const handleSelectFounder = (index: number) => {
     const founderEmail = founderData.founderEmails[index];
+    // Close dropdown immediately
+    setShowFounderDropdown(false);
     // Clear error when a founder is selected
     setFounderSelectionError(null);
+    
     if (!founderEmail) {
       // If no email, expand card to show full details
       setIsExpanded(true);
-      setShowFounderDropdown(false);
       return;
     }
 
+    // Navigate to generate email page
     const params = new URLSearchParams();
     params.append('startupId', match.startup?.id || '');
     params.append('matchScore', match.score.toString());
@@ -150,7 +156,12 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
       {/* Compact Card Header */}
       <div
         className="p-4 flex items-center gap-4 cursor-pointer"
-        onClick={() => {
+        onClick={(e) => {
+          // Don't expand if clicking on the contact founder button area or dropdown
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-contact-founder]') || target.closest('[data-founder-dropdown]')) {
+            return;
+          }
           setIsExpanded(!isExpanded);
           // Clear error when collapsing the card
           if (isExpanded) {
@@ -201,10 +212,23 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
 
         {/* Contact Founder Button - Hidden when expanded */}
         {!isExpanded && (
-          <div className="flex-shrink-0 relative" onClick={(e) => e.stopPropagation()}>
+          <div 
+            className="flex-shrink-0 relative"
+            data-contact-founder
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <button
               ref={buttonRef}
-              onClick={handleContactFounder}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleContactFounder(e);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
               className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
             >
               <Mail className="w-4 h-4" />
@@ -212,10 +236,13 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
             </button>
 
             {/* Founder Selection Dropdown */}
-            {showFounderDropdown && founderData.founderNames.length > 0 && (
+            {showFounderDropdown && founderData.founderNames.length > 1 && (
               <div
                 ref={dropdownRef}
-                className="absolute right-0 top-full mt-2 z-50 bg-white rounded-lg shadow-lg border border-gray-200 min-w-[200px] max-w-[280px] max-h-[300px] overflow-y-auto"
+                data-founder-dropdown
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-2 z-[100] bg-white rounded-lg shadow-lg border border-gray-200 min-w-[200px] max-w-[280px] max-h-[300px] overflow-y-auto"
               >
                 <div className="p-2 border-b border-gray-200 flex items-center justify-between">
                   <p className="text-xs font-semibold text-gray-700">Select a founder</p>
@@ -240,7 +267,14 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
                         key={index}
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleSelectFounder(index);
+                          e.preventDefault();
+                          if (hasEmail) {
+                            handleSelectFounder(index);
+                          }
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
                         }}
                         disabled={!hasEmail}
                         className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
@@ -262,17 +296,8 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
           </div>
         )}
 
-        {/* Error Message and Saved Button */}
+        {/* Saved Button */}
         <div className="flex-shrink-0 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          {/* Error Message - shown to the left of save button */}
-          {founderSelectionError && (
-            <div className="flex items-center gap-1.5">
-              <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-600 flex-shrink-0" />
-              <p className="text-xs sm:text-sm text-red-600 font-medium whitespace-nowrap">
-                {founderSelectionError}
-              </p>
-            </div>
-          )}
           <button
             onClick={onToggleSave}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
