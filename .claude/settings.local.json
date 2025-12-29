@@ -21,7 +21,9 @@
       "Bash(pip3 install:*)",
       "Bash(timeout 10 python3:*)",
       "Bash(ls:*)",
-      "Bash(node --trace-deprecation node_modules/.bin/next dev:*)"
+      "Bash(node --trace-deprecation node_modules/.bin/next dev:*)",
+      "Bash(echo:*)",
+      "Bash(pip3 list:*)"
     ],
     "deny": [],
     "ask": []

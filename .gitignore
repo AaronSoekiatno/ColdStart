@@ -19,6 +19,12 @@ nul
 secrets/
 .secrets
 
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
 # macOS
 .DS_Store
 .vercel
