@@ -10,7 +10,6 @@ import { UniversityCarousel } from "@/components/landing/StartupsCarousel";
 import { AIAgentSection } from "@/components/landing/AIAgentSection";
 import { StartupLogoDeck } from "@/components/landing/StartupLogoDeck";
 import { DemoMatchCard } from "@/components/features/matches/DemoMatchCard";
-import { FounderDataSection } from "@/components/landing/FounderDataSection";
 import { NewHowItWorks } from "@/components/landing/NewHowItWorks";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { Footer } from "@/components/layout/Footer";
@@ -583,7 +582,6 @@ export function NewLandingPage() {
           <AIAgentSection />
           <NewHowItWorks />
           <StartupLogoDeck />
-          <FounderDataSection />
           <DemoMatchCard />
           <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />
         </div>
