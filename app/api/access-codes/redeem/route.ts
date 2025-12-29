@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if the code matches the hardcoded access code (case-insensitive)
-    const VALID_ACCESS_CODE = 'hermBeta25';
+    const VALID_ACCESS_CODE = 'hermes25top';
     if (normalizedCode.toLowerCase() !== VALID_ACCESS_CODE.toLowerCase()) {
       return NextResponse.json(
         { error: 'Invalid access code. Please check and try again.' },

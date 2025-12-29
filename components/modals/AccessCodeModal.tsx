@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,22 +12,41 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Ticket, Sparkles, Loader2, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 interface AccessCodeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
+  onSignUpRequested?: () => void;
 }
 
-export const AccessCodeModal = ({ open, onOpenChange, onSuccess }: AccessCodeModalProps) => {
+export const AccessCodeModal = ({ open, onOpenChange, onSuccess, onSignUpRequested }: AccessCodeModalProps) => {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
+
+  // Check authentication when modal opens
+  useEffect(() => {
+    if (open) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        setIsAuthenticated(!!user);
+      });
+    }
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check authentication before submitting
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      // Don't submit if not authenticated - error message will be shown
+      return;
+    }
     
     if (!code.trim()) {
       toast({
@@ -123,6 +142,13 @@ export const AccessCodeModal = ({ open, onOpenChange, onSuccess }: AccessCodeMod
 
         {!isSuccess && (
           <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+            {!isAuthenticated && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-red-600 text-center font-medium">
+                  Please sign up or sign in before entering your access code.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Input
                 type="text"
@@ -130,8 +156,8 @@ export const AccessCodeModal = ({ open, onOpenChange, onSuccess }: AccessCodeMod
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 className="text-center text-lg font-mono tracking-widest uppercase h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-black"
-                disabled={isLoading}
-                autoFocus
+                disabled={isLoading || !isAuthenticated}
+                autoFocus={isAuthenticated}
                 maxLength={20}
               />
               <p className="text-xs text-black text-center">
@@ -141,8 +167,8 @@ export const AccessCodeModal = ({ open, onOpenChange, onSuccess }: AccessCodeMod
 
             <Button
               type="submit"
-              disabled={isLoading || !code.trim()}
-              className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg transition-all duration-200"
+              disabled={isLoading || !code.trim() || !isAuthenticated}
+              className="w-full h-11 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>

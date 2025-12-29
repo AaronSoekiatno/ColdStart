@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Lazy load ResumeUpload only when needed (step 6)
@@ -126,7 +127,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
           }
         } else {
           // Default to step 7 if no step specified
-          setStep(7);
+          setStep(7 as typeof step);
         }
         // Clean up URL params
         const newUrl = window.location.pathname;
@@ -310,6 +311,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
 
             <div className="relative min-h-[450px]">
               {/* Conditionally render only the current step to improve performance */}
+              
               {/* Step 5: Statistic Screen (Moved from Step 1) */}
               {step === 5 && (
               <div

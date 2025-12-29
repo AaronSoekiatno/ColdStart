@@ -18,7 +18,6 @@ import { SignUpModal } from "@/components/modals/SignUpModal";
 import { ResumeUploadModal } from "@/components/modals/ResumeUploadModal";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
 import { OnboardingModal } from "@/components/modals/OnboardingModal";
-import { AccessCodeModal } from "@/components/modals/AccessCodeModal";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import {
@@ -41,7 +40,6 @@ export function NewLandingPage() {
   const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showAccessCode, setShowAccessCode] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -262,12 +260,6 @@ export function NewLandingPage() {
                 >
                   Premium
                 </button>
-                <button
-                  onClick={() => setShowAccessCode(true)}
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md cursor-pointer bg-gradient-to-r from-purple-500/60 to-blue-500/60 hover:from-purple-500/80 hover:to-blue-500/80 px-3 py-1 rounded-full border border-white/20"
-                >
-                  Access Code
-                </button>
               </>
             ) : null}
           </nav>
@@ -276,15 +268,6 @@ export function NewLandingPage() {
           <div className="flex items-center gap-2 sm:gap-3">
             {!user ? (
               <>
-                {/* Access Code Button */}
-                <Button
-                  onClick={() => setShowAccessCode(true)}
-                  className={`rounded-full px-3 sm:px-4 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-gradient-to-r from-purple-500/80 to-blue-500/80 hover:from-purple-600/90 hover:to-blue-600/90 border border-white/20 transition-all duration-300 ${isScrolled ? 'hidden sm:flex' : 'flex'
-                    }`}
-                >
-                  <span className="hidden sm:inline">Access Code</span>
-                  <span className="sm:hidden">Code</span>
-                </Button>
                 {/* Sign In Button - Hidden when scrolled on mobile */}
                 <Button
                   onClick={() => setShowSignIn(true)}
@@ -423,15 +406,6 @@ export function NewLandingPage() {
                 className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Premium
-              </button>
-              <button
-                onClick={() => {
-                  setShowAccessCode(true);
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Access Code
               </button>
               <div className="border-t border-gray-200 my-2"></div>
               <div className="px-3 py-2 text-xs text-gray-500 truncate">{user.email}</div>
@@ -650,21 +624,6 @@ export function NewLandingPage() {
         onDismiss={() => setShowPremiumModal(false)}
         customTitle="Our Premium Plan"
         isPremium={isPremium}
-      />
-      <AccessCodeModal
-        open={showAccessCode}
-        onOpenChange={setShowAccessCode}
-        onSuccess={() => {
-          // Refresh premium status after successful code redemption
-          if (userEmail) {
-            fetch('/api/candidate-info', { credentials: 'include' })
-              .then(res => res.json())
-              .then(candidateInfo => {
-                setIsPremium(isSubscribed(candidateInfo));
-              })
-              .catch(console.error);
-          }
-        }}
       />
     </div>
   );
