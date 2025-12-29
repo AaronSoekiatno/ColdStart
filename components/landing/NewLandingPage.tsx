@@ -5,13 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/landing/NewHero";
-import { ProblemSection } from "@/components/landing/ProblemSection";
 import { TrustBadge } from "@/components/shared/TrustBadge";
 import { UniversityCarousel } from "@/components/landing/StartupsCarousel";
 import { AIAgentSection } from "@/components/landing/AIAgentSection";
 import { StartupLogoDeck } from "@/components/landing/StartupLogoDeck";
 import { DemoMatchCard } from "@/components/features/matches/DemoMatchCard";
-import { FounderDataSection } from "@/components/landing/FounderDataSection";
 import { NewHowItWorks } from "@/components/landing/NewHowItWorks";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { Footer } from "@/components/layout/Footer";
@@ -576,7 +574,6 @@ export function NewLandingPage() {
             <NewHero onGetStarted={handleGetStarted} />
             <TrustBadge />
             <UniversityCarousel />
-            <ProblemSection />
           </div>
         </div>
 
@@ -585,7 +582,6 @@ export function NewLandingPage() {
           <AIAgentSection />
           <NewHowItWorks />
           <StartupLogoDeck />
-          <FounderDataSection />
           <DemoMatchCard />
           <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />
         </div>

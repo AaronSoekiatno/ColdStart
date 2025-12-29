@@ -98,12 +98,20 @@ interface StartupLogo {
   company_logo?: string;
 }
 
+interface StartupWithFounders {
+  id: string;
+  name: string;
+  founders_pfp: string[];
+  founder_names: string[];
+}
+
 export function NewHowItWorks() {
   const [activeStep, setActiveStep] = useState(0);
   const sectionRef = useRef<HTMLDivElement>(null);
   const scrollableRef = useRef<HTMLDivElement>(null);
   const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [matchingLogos, setMatchingLogos] = useState<StartupLogo[]>([]);
+  const [foundersData, setFoundersData] = useState<StartupWithFounders[]>([]);
 
   // Fetch startup logos for AI Matching preview
   useEffect(() => {
@@ -121,6 +129,24 @@ export function NewHowItWorks() {
       }
     }
     fetchLogos();
+  }, []);
+
+  // Fetch founder profile pictures for Step 3 preview
+  useEffect(() => {
+    async function fetchFounders() {
+      try {
+        const response = await fetch("/api/startups/founders-pfp");
+        if (response.ok) {
+          const data = await response.json();
+          // Shuffle and take first 4 startups with founders
+          const shuffled = (data.startups || []).sort(() => 0.5 - Math.random());
+          setFoundersData(shuffled.slice(0, 4));
+        }
+      } catch (err) {
+        console.error("Error fetching founder profile pictures:", err);
+      }
+    }
+    fetchFounders();
   }, []);
 
   const steps: Step[] = [
@@ -150,13 +176,13 @@ export function NewHowItWorks() {
     },
     {
       number: "03",
-      title: "Personalize Email",
+      title: "Get Introduced to Founders",
       description:
-        "We craft highly personalized outreach emails using real founder data, company insights, and your specific qualifications.",
+        "We introduce you directly to founders and companies that are actively hiring. No more cold applications—get warm intros to decision makers at top startups.",
       icon: (
         <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} 
-            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       ),
     },
@@ -403,7 +429,7 @@ export function NewHowItWorks() {
                       </div>
                     </div>
 
-                    {/* Step 3: Personalize Email */}
+                    {/* Step 3: Get Introduced to Founders */}
                     <div
                       className={`absolute inset-4 sm:inset-6 lg:inset-8 transition-all duration-700 ${
                         activeStep === 2
@@ -416,13 +442,74 @@ export function NewHowItWorks() {
                           {steps[2].icon}
                         </div>
                         <div className="text-center px-2">
-                          <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-1 sm:mb-2">Personalized Outreach</h3>
+                          <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-1 sm:mb-2">Warm Introductions</h3>
                           <p className="text-gray-400 text-xs sm:text-sm max-w-sm">
-                            AI crafts unique emails using founder data and your background
+                            Get introduced directly to founders at companies that are actively hiring
                           </p>
                         </div>
-                        {/* Animated typing email preview */}
-                        <TypingEmailPreview isActive={activeStep === 2} />
+                        {/* Founder/Company cards preview */}
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-xs lg:max-w-md mx-auto">
+                          {foundersData.length > 0 ? (
+                            foundersData.map((startup, index) => {
+                              const firstPfp = startup.founders_pfp?.[0];
+                              const firstName = startup.founder_names?.[0] || startup.name;
+                              const initial = firstName.charAt(0).toUpperCase();
+                              
+                              return (
+                                <div
+                                  key={startup.id}
+                                  className="bg-gray-800 border border-gray-700 rounded-lg p-3 sm:p-4 flex flex-col items-center space-y-2 hover:border-green-500/50 transition-all duration-300"
+                                >
+                                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center relative">
+                                    {firstPfp ? (
+                                      <Image
+                                        src={`/api/image-proxy?url=${encodeURIComponent(firstPfp)}`}
+                                        alt={firstName}
+                                        width={40}
+                                        height={40}
+                                        className="w-full h-full object-cover"
+                                        unoptimized
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                          const fallback = target.parentElement?.querySelector('.pfp-fallback') as HTMLElement;
+                                          if (fallback) fallback.style.display = 'flex';
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div className="pfp-fallback absolute inset-0 flex items-center justify-center" style={{ display: firstPfp ? 'none' : 'flex' }}>
+                                      <span className="text-white text-xs sm:text-sm font-semibold">{initial}</span>
+                                    </div>
+                                  </div>
+                                  <div className="text-center">
+                                    <div className="text-gray-300 text-[10px] sm:text-xs font-medium truncate w-full max-w-[80px]">
+                                      {firstName.split(' ')[0]}
+                                    </div>
+                                    <div className="text-gray-500 text-[9px] sm:text-[10px]">
+                                      {startup.name.split(' ')[0]}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            // Fallback placeholders while loading
+                            [1, 2, 3, 4].map((i) => (
+                              <div
+                                key={i}
+                                className="bg-gray-800 border border-gray-700 rounded-lg p-3 sm:p-4 flex flex-col items-center space-y-2"
+                              >
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center">
+                                  <div className="w-full h-full bg-gray-700 rounded-full animate-pulse"></div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-gray-500 text-[10px] sm:text-xs font-medium h-3 w-12 bg-gray-700 rounded animate-pulse"></div>
+                                  <div className="text-gray-600 text-[9px] sm:text-[10px] h-2 w-10 bg-gray-700 rounded animate-pulse mt-1"></div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
                       </div>
                     </div>
 

@@ -106,6 +106,16 @@ export async function POST(request: NextRequest) {
         roleTypes,
       });
 
+      // Upgrade user_type from 'lead' to 'user' in waitlist table when onboarding is completed
+      // This ensures they receive user campaigns instead of lead campaigns
+      if (supabaseAdmin) {
+        await supabaseAdmin
+          .from('waitlist')
+          .update({ user_type: 'user' })
+          .eq('email', user.email.toLowerCase().trim())
+          .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
+      }
+
       // Send welcome email after onboarding completion (non-blocking)
       // This ensures users get the welcome email even if they complete onboarding before the auth callback runs
       try {
@@ -155,6 +165,16 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+    }
+
+    // Upgrade user_type from 'lead' to 'user' in waitlist table when onboarding is completed
+    // This ensures they receive user campaigns instead of lead campaigns
+    if (supabaseAdmin) {
+      await supabaseAdmin
+        .from('waitlist')
+        .update({ user_type: 'user' })
+        .eq('email', user.email.toLowerCase().trim())
+        .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
     }
 
     // Invalidate matches cache since job_type and years_of_experience affect filtering

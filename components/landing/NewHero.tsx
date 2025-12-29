@@ -4,9 +4,16 @@ import { Button } from "@/components/ui/button";
 
 interface NewHeroProps {
   onGetStarted: () => void;
+  onCompanyClick?: () => void;
 }
 
-export function NewHero({ onGetStarted }: NewHeroProps) {
+export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
+  const handleCompanyClick = () => {
+    // Navigate to companies page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/companies';
+    }
+  };
 
   return (
     <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
@@ -18,15 +25,22 @@ export function NewHero({ onGetStarted }: NewHeroProps) {
           <span className="text-white">while you sleep</span>
         </h1>
 
-        {/* CTA Button */}
-        <div className="mt-12">
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12">
           <Button
             onClick={onGetStarted}
-            variant="outline"
             size="lg"
-            className="rounded-full px-8 py-6 text-base font-medium border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-300 text-white"
+            className="rounded-full px-8 py-6 text-base font-medium bg-white text-[#498EDC] hover:bg-white/90 transition-all duration-300 shadow-xl hover:shadow-2xl"
           >
             Get Started
+          </Button>
+          <Button
+            onClick={handleCompanyClick}
+            variant="outline"
+            size="lg"
+            className="rounded-full px-8 py-6 text-base font-medium border-2 border-white bg-white/20 backdrop-blur-md text-white hover:bg-white/30 hover:border-white transition-all duration-300 shadow-lg"
+          >
+            I represent a company
           </Button>
         </div>
 

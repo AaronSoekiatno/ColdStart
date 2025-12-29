@@ -29,7 +29,7 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as fs from 'fs';
 import * as csv from 'csv-parse/sync';
-import { processImagesInParallel } from './utils/image-storage';
+import { processImagesInParallel } from '../utils-yc/image-storage';
 
 // Types
 interface YCCompany {
