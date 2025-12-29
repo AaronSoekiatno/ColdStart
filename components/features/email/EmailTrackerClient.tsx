@@ -272,7 +272,12 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
       {/* Tabs */}
       <div className="flex gap-6 mb-6 border-b border-gray-200">
         <button
-          onClick={() => setActiveTab('sent')}
+          onClick={() => {
+            setActiveTab('sent');
+            // Reset manage mode when switching tabs
+            setIsManageMode(false);
+            setSelectedEmailIds(new Set());
+          }}
           className={`pb-3 px-1 font-medium transition-colors relative cursor-pointer ${
             activeTab === 'sent'
               ? 'text-gray-900'
@@ -285,7 +290,12 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
           )}
         </button>
         <button
-          onClick={() => setActiveTab('archived')}
+          onClick={() => {
+            setActiveTab('archived');
+            // Reset manage mode when switching tabs
+            setIsManageMode(false);
+            setSelectedEmailIds(new Set());
+          }}
           className={`pb-3 px-1 font-medium transition-colors relative cursor-pointer ${
             activeTab === 'archived'
               ? 'text-gray-900'
@@ -299,51 +309,53 @@ export function EmailTrackerClient({ sentEmails }: EmailTrackerClientProps) {
         </button>
       </div>
 
-      {/* Manage Emails Controls */}
-      <div className="mb-4 flex items-center gap-4">
-        {!isManageMode ? (
-          <button
-            onClick={() => {
-              setIsManageMode(true);
-            }}
-            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
-          >
-            <Mail className="h-4 w-4" />
-            Manage emails
-          </button>
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={displayedEmails.length > 0 && selectedEmailIds.size === displayedEmails.length}
-                onChange={toggleSelectAll}
-                className="w-4 h-4 text-blue-300 bg-gray-100 border-gray-300 rounded focus:ring-blue-300 cursor-pointer"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                {selectedEmailIds.size} Email{selectedEmailIds.size !== 1 ? 's' : ''} Selected
-              </span>
-            </div>
-            <button
-              onClick={archiveSelectedEmails}
-              disabled={selectedEmailIds.size === 0}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300 rounded-lg"
-            >
-              <Archive className="h-4 w-4" />
-              Archive
-            </button>
+      {/* Manage Emails Controls - only show in Sent tab */}
+      {activeTab === 'sent' && (
+        <div className="mb-4 flex items-center gap-4">
+          {!isManageMode ? (
             <button
               onClick={() => {
-                setIsManageMode(false);
-                setSelectedEmailIds(new Set());
+                setIsManageMode(true);
               }}
-              className="flex items-center justify-center w-6 h-6 text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
             >
-              <X className="h-4 w-4" />
+              <Mail className="h-4 w-4" />
+              Manage emails
             </button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={displayedEmails.length > 0 && selectedEmailIds.size === displayedEmails.length}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 text-blue-300 bg-gray-100 border-gray-300 rounded focus:ring-blue-300 cursor-pointer"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  {selectedEmailIds.size} Email{selectedEmailIds.size !== 1 ? 's' : ''} Selected
+                </span>
+              </div>
+              <button
+                onClick={archiveSelectedEmails}
+                disabled={selectedEmailIds.size === 0}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border border-gray-300 rounded-lg"
+              >
+                <Archive className="h-4 w-4" />
+                Archive
+              </button>
+              <button
+                onClick={() => {
+                  setIsManageMode(false);
+                  setSelectedEmailIds(new Set());
+                }}
+                className="flex items-center justify-center w-6 h-6 text-gray-700 hover:text-gray-900 transition-colors cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Email list */}
       {displayedEmails.length === 0 ? (

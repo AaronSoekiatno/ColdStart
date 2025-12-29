@@ -108,6 +108,9 @@ export default async function TrackerPage() {
       throw new Error(`Failed to load startups: ${startupsError.message}`);
     }
 
+    console.log('[Tracker] Startup IDs needed:', startupIds);
+    console.log('[Tracker] Startups fetched:', startupRows?.length || 0);
+
     for (const s of startupRows ?? []) {
       startupsById[s.id] = {
         id: s.id,
