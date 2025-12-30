@@ -640,6 +640,7 @@ export function NewLandingPage() {
           window.location.href = "/matches";
         }}
         skipResumeUpload={false}
+        isTopCandidatesRoute={isTopCandidatesRoute}
       />
       <SignInModal
         open={showSignIn}
