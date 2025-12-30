@@ -125,10 +125,8 @@ export async function GET(request: NextRequest) {
             updateData.github_username = githubUsername;
           }
 
-          // Calculate token expiry (GitHub tokens typically expire in 8 hours, but we'll set a conservative 7 hours)
-          const expiresAt = new Date();
-          expiresAt.setHours(expiresAt.getHours() + 7);
-          updateData.github_token_expires_at = expiresAt.toISOString();
+          // Note: GitHub OAuth tokens don't expire unless revoked by the user
+          // We don't set an expiry - the token remains valid until the user disconnects
 
           const { error: updateError } = await supabaseAdmin
             .from('candidates')

@@ -9,9 +9,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Loader2, Plus, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Plus, Search } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Lazy load ResumeUpload only when needed (step 6)
@@ -93,43 +93,47 @@ interface OnboardingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete?: () => void;
+  skipResumeUpload?: boolean; // If true, skip step 6 (resume upload)
 }
 
-export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingModalProps) {
-  // Check URL for test step parameter (for development/testing)
-  const getInitialStep = (): 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => {
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const testStep = urlParams.get('test_step');
-      if (testStep) {
-        const stepNum = parseInt(testStep, 10);
-        if (stepNum >= 1 && stepNum <= 9) {
-          console.log('[OnboardingModal] Starting at test step:', stepNum);
-          return stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
-        }
-      }
-    }
-    return 1;
-  };
-
-  // Check if we're in test mode (for development/testing)
-  const isTestMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('test_step') !== null;
-
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>(getInitialStep());
-  const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>(isTestMode ? ['internship'] : []);
-  const [selectedJobType, setSelectedJobType] = useState<JobType | null>(isTestMode ? 'full-time' : null);
-  const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>(isTestMode ? ['SWE', 'Frontend'] : []);
-  const [selectedYOE, setSelectedYOE] = useState<YearsOfExperience | null>(isTestMode ? '1-2' : null);
+export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
+  // Step type depends on whether we skip resume upload (includes step 9 for choice screen)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>(1);
+  const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
+  const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
+  const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>([]);
+  const [selectedYOE, setSelectedYOE] = useState<YearsOfExperience | null>(null);
+  const [hasBetaAccess, setHasBetaAccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showStatistic, setShowStatistic] = useState(false);
-  const [githubConnected, setGithubConnected] = useState(isTestMode);
+  const [githubConnected, setGithubConnected] = useState(false);
   // GitHub repos state
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
   // const [showResumeUpload, setShowResumeUpload] = useState(false);
+
+  // Check if user has beta access
+  useEffect(() => {
+    if (open) {
+      const checkBetaAccess = async () => {
+        try {
+          const response = await fetch('/api/candidate-info', {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setHasBetaAccess(data.beta_access === true);
+          }
+        } catch (error) {
+          console.error('Error checking beta access:', error);
+        }
+      };
+      checkBetaAccess();
+    }
+  }, [open]);
 
   // Filter repos based on search query
   const filteredRepos = useMemo(() => {
@@ -161,10 +165,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
   const handleStatisticContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
+      if (skipResumeUpload) {
+        setStep(7); // Skip to GitHub connection if resume upload is skipped
+      } else {
       setStep(6); // Resume upload step
+      }
       setIsTransitioning(false);
     }, 200); // Reduced from 300ms to 200ms
-  }, []);
+  }, [skipResumeUpload]);
 
   // Check for GitHub connection status from URL params
   useEffect(() => {
@@ -189,11 +197,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
         if (stepParam === '7') {
           console.log('[OnboardingModal] Advancing from step 7 to step 8 (repo selection)');
           setStep(8); // Advance to repo selection after successful GitHub connection
-        } else if (stepParam) {
+        } else         if (stepParam) {
           const stepNum = parseInt(stepParam, 10);
           if (stepNum >= 1 && stepNum <= 9) {
             console.log('[OnboardingModal] Setting step to:', stepNum);
-            setStep(stepNum as typeof step);
+            setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
           }
         }
         // Clean up URL params
@@ -205,7 +213,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
         if (stepParam) {
           const stepNum = parseInt(stepParam, 10);
           if (stepNum >= 1 && stepNum <= 9) {
-            setStep(stepNum as typeof step);
+            setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
           }
         } else {
           // Default to step 7 if no step specified
@@ -515,7 +523,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
             <DialogHeader>
               <div className="mb-8">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((stepNum) => (
+                  {(skipResumeUpload ? [1, 2, 3, 4, 5, 7, 8, 9] : [1, 2, 3, 4, 5, 6, 7, 8, 9]).map((stepNum) => (
                     <div
                       key={stepNum}
                       className={`h-2 w-8 rounded-full transition-colors duration-300 ${
@@ -525,13 +533,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   ))}
                 </div>
                 <p className="text-center text-gray-500 text-sm">
-                  Step {step} of 9
+                  Step {skipResumeUpload && step >= 7 && step < 9 ? step - 1 : step} of {skipResumeUpload ? 8 : 9}
                 </p>
               </div>
             </DialogHeader>
 
             <div className="relative min-h-[450px]">
               {/* Conditionally render only the current step to improve performance */}
+              
               {/* Step 5: Statistic Screen (Moved from Step 1) */}
               {step === 5 && (
               <div
@@ -942,7 +951,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                     onClick={() => {
                       setIsTransitioning(true);
                       setTimeout(() => {
-                        setStep(6);
+                        if (skipResumeUpload) {
+                          setStep(5); // Go back to statistic screen
+                        } else {
+                          setStep(6); // Go back to resume upload
+                        }
                         setIsTransitioning(false);
                       }, 200);
                     }}
@@ -996,9 +1009,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   <div className="text-center py-8">
                     <p className="text-gray-600">No repositories found. You can add them later from your profile.</p>
                   </div>
-                ) : (
+                ) : hasBetaAccess ? (
                   <>
-                    {/* Search bar */}
+                    {/* Enhanced UI for beta users: Search bar */}
                     <div className="relative mb-4">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
@@ -1099,6 +1112,85 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                       )}
                     </div>
                   </>
+                ) : (
+                  // Simple UI for non-beta users
+                  <div className="space-y-4 max-h-[60vh] overflow-y-auto px-2 py-2">
+                    {githubRepos.map((repo) => {
+                      const selection = repoSelections.get(repo.github_repo_id);
+                      const isSelected = selection?.is_selected || false;
+                      const selectedCategories = selection?.category_tags || [];
+
+                      return (
+                        <div
+                          key={repo.github_repo_id}
+                          onClick={() => handleRepoToggle(repo.github_repo_id)}
+                          className={`border-2 rounded-xl p-5 transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-[#498EDC] bg-blue-50'
+                              : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              id={`repo-${repo.github_repo_id}`}
+                              checked={isSelected}
+                              onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-gray-900 block truncate">
+                                {repo.name}
+                                {repo.is_private && (
+                                  <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                                    Private
+                                  </span>
+                                )}
+                              </div>
+                              {repo.description && (
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                  {repo.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                {repo.language && (
+                                  <span className="flex items-center gap-1">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    {repo.language}
+                                  </span>
+                                )}
+                                {repo.stargazers_count > 0 && (
+                                  <span>{repo.stargazers_count} stars</span>
+                                )}
+                              </div>
+
+                              {/* Category Tags - Show all role types instead of just selected ones */}
+                              {isSelected && (
+                                <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
+                                  <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {ROLE_OPTIONS.map((roleOption) => (
+                                      <button
+                                        key={roleOption.value}
+                                        onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
+                                        className={`px-2 py-1 text-xs rounded-full transition-all ${
+                                          selectedCategories.includes(roleOption.value)
+                                            ? 'bg-[#498EDC] text-white'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                      >
+                                        {roleOption.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
 
                 <div className="flex gap-4 mt-6">
@@ -1145,7 +1237,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                     You're all set!
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 mt-2 text-lg">
-                    Your resume has been uploaded successfully.
+                    {skipResumeUpload 
+                      ? "Your profile has been set up successfully."
+                      : "Your resume has been uploaded successfully."}
                   </DialogDescription>
                 </div>
 

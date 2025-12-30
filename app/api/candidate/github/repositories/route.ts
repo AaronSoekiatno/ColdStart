@@ -234,17 +234,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if token is expired
-    if (candidate.github_token_expires_at) {
-      const expiresAt = new Date(candidate.github_token_expires_at);
-      const now = new Date();
-      if (expiresAt < now) {
-        return NextResponse.json(
-          { error: 'GitHub token expired. Please reconnect your GitHub account.' },
-          { status: 401 }
-        );
-      }
-    }
+    // Note: GitHub OAuth tokens don't expire unless revoked
+    // If the token is invalid, the GitHub API call will fail and we handle that error below
 
     const requestUrl = new URL(request.url);
     const forceRefresh = requestUrl.searchParams.get('refresh') === 'true';

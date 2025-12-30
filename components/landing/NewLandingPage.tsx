@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/landing/NewHero";
@@ -33,6 +33,8 @@ import { Button } from "@/components/ui/button";
 export function NewLandingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const isTopCandidatesRoute = pathname === '/topcandidates';
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -276,18 +278,22 @@ export function NewLandingPage() {
                 >
                   Email Tracker
                 </Link>
-                <Link
-                  href="/resumes"
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
-                >
-                  Resumes
-                </Link>
-                <button
-                  onClick={handlePremiumClick}
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md cursor-pointer"
-                >
-                  Premium
-                </button>
+                {!isTopCandidatesRoute && (
+                  <Link
+                    href="/resumes"
+                    className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
+                  >
+                    Resumes
+                  </Link>
+                )}
+                {!isTopCandidatesRoute && (
+                  <button
+                    onClick={handlePremiumClick}
+                    className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md cursor-pointer"
+                  >
+                    Premium
+                  </button>
+                )}
               </>
             ) : null}
           </nav>
@@ -320,12 +326,14 @@ export function NewLandingPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        className="cursor-pointer"
-                        onSelect={handlePremiumClick}
-                      >
-                        Premium Plan
-                      </DropdownMenuItem>
+                      {!isTopCandidatesRoute && (
+                        <DropdownMenuItem
+                          className="cursor-pointer"
+                          onSelect={handlePremiumClick}
+                        >
+                          Premium Plan
+                        </DropdownMenuItem>
+                      )}
                       {isPremium && (
                         <DropdownMenuItem
                           className="cursor-pointer"
@@ -419,22 +427,26 @@ export function NewLandingPage() {
               >
                 Email Tracker
               </Link>
-              <Link
-                href="/resumes"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Resumes
-              </Link>
-              <button
-                onClick={() => {
-                  handlePremiumClick();
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Premium
-              </button>
+              {!isTopCandidatesRoute && (
+                <Link
+                  href="/resumes"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Resumes
+                </Link>
+              )}
+              {!isTopCandidatesRoute && (
+                <button
+                  onClick={() => {
+                    handlePremiumClick();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Premium
+                </button>
+              )}
               <div className="border-t border-gray-200 my-2"></div>
               <div className="px-3 py-2 text-xs text-gray-500 truncate">{user.email}</div>
               {isPremium && (
@@ -627,6 +639,7 @@ export function NewLandingPage() {
           // After onboarding, redirect to matches
           window.location.href = "/matches";
         }}
+        skipResumeUpload={false}
       />
       <SignInModal
         open={showSignIn}
