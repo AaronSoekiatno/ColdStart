@@ -56,6 +56,16 @@ export function NewLandingPage() {
       if (!session?.user) return;
       if (typeof window === "undefined") return;
 
+      // Check if this is a GitHub connection flow - if so, don't interfere
+      const urlParams = new URLSearchParams(window.location.search);
+      const isGitHubConnection = urlParams.get('github_connected') === 'true';
+
+      if (isGitHubConnection) {
+        // Let the GitHub redirect handler (separate useEffect) handle this
+        console.log('[Landing] Skipping onboarding check - GitHub connection flow');
+        return;
+      }
+
       // Check if user has completed onboarding
       try {
         const response = await fetch('/api/candidate/check-onboarding', {
@@ -168,6 +178,24 @@ export function NewLandingPage() {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Handle GitHub OAuth redirect - check for github_connected param
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const githubConnected = urlParams.get('github_connected');
+      const stepParam = urlParams.get('step');
+
+      console.log('[Landing] GitHub redirect detected:', { githubConnected, stepParam, url: window.location.href });
+
+      if (githubConnected === 'true') {
+        console.log('[Landing] Opening onboarding modal for GitHub connection');
+        // Open onboarding modal when GitHub connection is successful
+        setShowOnboarding(true);
+        // The OnboardingModal will handle the step navigation internally
+      }
+    }
   }, []);
 
   const handleGetStarted = () => {

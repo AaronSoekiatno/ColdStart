@@ -9,6 +9,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Plus, Search } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Lazy load ResumeUpload only when needed (step 6)
@@ -26,6 +29,29 @@ type ObjectiveType = 'internship' | 'startup' | 'network' | 'improve-application
 type JobType = 'full-time' | 'part-time' | 'internship';
 type RoleType = 'PM' | 'SWE' | 'SDE' | 'ML' | 'AI' | 'Data Science' | 'DevOps' | 'Frontend' | 'Backend' | 'Full Stack' | 'Mobile' | 'Security' | 'QA' | 'Design' | 'Product Design' | 'Other';
 type YearsOfExperience = 'no-experience' | 'less-than-1' | '1-2' | '2-5' | '5-10' | '10-plus';
+
+interface GitHubRepo {
+  id: string;
+  github_repo_id: number;
+  name: string;
+  full_name: string;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  languages: Record<string, number> | null;
+  topics: string[];
+  is_private: boolean;
+  stargazers_count: number;
+  forks_count: number;
+  is_selected: boolean;
+  category_tags: RoleType[];
+}
+
+interface RepoSelection {
+  github_repo_id: number;
+  is_selected: boolean;
+  category_tags: RoleType[];
+}
 
 const OBJECTIVE_OPTIONS: Array<{ value: ObjectiveType; label: string }> = [
   { value: 'internship', label: 'Find my next internship' },
@@ -70,16 +96,57 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
-  const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
-  const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
-  const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>([]);
-  const [selectedYOE, setSelectedYOE] = useState<YearsOfExperience | null>(null);
+  // Check URL for test step parameter (for development/testing)
+  const getInitialStep = (): 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const testStep = urlParams.get('test_step');
+      if (testStep) {
+        const stepNum = parseInt(testStep, 10);
+        if (stepNum >= 1 && stepNum <= 9) {
+          console.log('[OnboardingModal] Starting at test step:', stepNum);
+          return stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+        }
+      }
+    }
+    return 1;
+  };
+
+  // Check if we're in test mode (for development/testing)
+  const isTestMode = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('test_step') !== null;
+
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>(getInitialStep());
+  const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>(isTestMode ? ['internship'] : []);
+  const [selectedJobType, setSelectedJobType] = useState<JobType | null>(isTestMode ? 'full-time' : null);
+  const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>(isTestMode ? ['SWE', 'Frontend'] : []);
+  const [selectedYOE, setSelectedYOE] = useState<YearsOfExperience | null>(isTestMode ? '1-2' : null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showStatistic, setShowStatistic] = useState(false);
-  const [githubConnected, setGithubConnected] = useState(false);
+  const [githubConnected, setGithubConnected] = useState(isTestMode);
+  // GitHub repos state
+  const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
+  const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
+  const [isLoadingRepos, setIsLoadingRepos] = useState(false);
+  const [repoSearchQuery, setRepoSearchQuery] = useState('');
   // const [showResumeUpload, setShowResumeUpload] = useState(false);
+
+  // Filter repos based on search query
+  const filteredRepos = useMemo(() => {
+    if (!repoSearchQuery.trim()) return githubRepos;
+    const query = repoSearchQuery.toLowerCase();
+    return githubRepos.filter(repo =>
+      repo.name.toLowerCase().includes(query) ||
+      repo.description?.toLowerCase().includes(query) ||
+      repo.language?.toLowerCase().includes(query) ||
+      repo.topics?.some(topic => topic.toLowerCase().includes(query))
+    );
+  }, [githubRepos, repoSearchQuery]);
+
+  // Role options for repo tagging (excluding "Other")
+  const REPO_TAG_OPTIONS = useMemo(() =>
+    ROLE_OPTIONS.filter(option => option.value !== 'Other'),
+  []);
 
   const handleObjectiveSelect = useCallback((objective: ObjectiveType) => {
     setSelectedObjectives(prev => {
@@ -104,13 +171,28 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
     if (typeof window !== 'undefined' && open) {
       const urlParams = new URLSearchParams(window.location.search);
       const stepParam = urlParams.get('step');
-      
-      if (urlParams.get('github_connected') === 'true') {
+      const githubConnected = urlParams.get('github_connected');
+
+      console.log('[OnboardingModal] Checking URL params:', {
+        open,
+        githubConnected,
+        stepParam,
+        currentStep: step,
+        url: window.location.href
+      });
+
+      if (githubConnected === 'true') {
+        console.log('[OnboardingModal] GitHub connected! Setting up step navigation');
         setGithubConnected(true);
-        // If step is specified, navigate to that step
-        if (stepParam) {
+        // If coming back from GitHub OAuth on step 7, go to step 8 (repo selection)
+        // Otherwise respect the step parameter
+        if (stepParam === '7') {
+          console.log('[OnboardingModal] Advancing from step 7 to step 8 (repo selection)');
+          setStep(8); // Advance to repo selection after successful GitHub connection
+        } else if (stepParam) {
           const stepNum = parseInt(stepParam, 10);
-          if (stepNum >= 1 && stepNum <= 8) {
+          if (stepNum >= 1 && stepNum <= 9) {
+            console.log('[OnboardingModal] Setting step to:', stepNum);
             setStep(stepNum as typeof step);
           }
         }
@@ -118,10 +200,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
         const newUrl = window.location.pathname;
         window.history.replaceState({}, '', newUrl);
       } else if (urlParams.get('github_error')) {
+        console.log('[OnboardingModal] GitHub error detected');
         // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
         if (stepParam) {
           const stepNum = parseInt(stepParam, 10);
-          if (stepNum >= 1 && stepNum <= 8) {
+          if (stepNum >= 1 && stepNum <= 9) {
             setStep(stepNum as typeof step);
           }
         } else {
@@ -135,27 +218,163 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
     }
   }, [open]);
 
+  // Fetch GitHub repos when entering step 8 (without saving to database)
+  useEffect(() => {
+    if (step === 8 && githubConnected && githubRepos.length === 0 && !isLoadingRepos) {
+      const fetchRepos = async () => {
+        setIsLoadingRepos(true);
+        try {
+          // Use skip_save=true to fetch from GitHub without saving to database
+          const response = await fetch('/api/candidate/github/repositories?skip_save=true', {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            const repos = data.repositories || [];
+            setGithubRepos(repos);
+            // Initialize selections (all repos start as not selected during onboarding)
+            const initialSelections = new Map<number, RepoSelection>();
+            repos.forEach((repo: GitHubRepo) => {
+              initialSelections.set(repo.github_repo_id, {
+                github_repo_id: repo.github_repo_id,
+                is_selected: false,
+                category_tags: [],
+              });
+            });
+            setRepoSelections(initialSelections);
+          }
+        } catch (error) {
+          console.error('Error fetching GitHub repos:', error);
+        } finally {
+          setIsLoadingRepos(false);
+        }
+      };
+      fetchRepos();
+    }
+  }, [step, githubConnected, githubRepos.length, isLoadingRepos]);
+
   const handleGithubConnect = () => {
     // Redirect to GitHub OAuth connection
-    const currentUrl = window.location.origin;
-    const redirectUrl = `${currentUrl}/onboarding`;
+    const currentUrl = window.location.href;
+    // Stay on the same page (landing page with modal)
+    const redirectUrl = currentUrl.split('?')[0]; // Remove any existing query params
     window.location.href = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectUrl)}&step=7`;
   };
 
   const handleGithubSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(8); // Choice screen
+      setStep(9); // Skip to choice screen (no repos to select)
       setIsTransitioning(false);
-    }, 200); // Reduced from 300ms to 200ms
+    }, 200);
   }, []);
 
   const handleGithubContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(8); // Choice screen
+      setStep(8); // Go to repo selection step
       setIsTransitioning(false);
-    }, 200); // Reduced from 300ms to 200ms
+    }, 200);
+  }, []);
+
+  // Handle repo selection toggle
+  const handleRepoToggle = useCallback((githubRepoId: number) => {
+    setRepoSelections(prev => {
+      const newSelections = new Map(prev);
+      const existing = newSelections.get(githubRepoId);
+      if (existing) {
+        newSelections.set(githubRepoId, {
+          ...existing,
+          is_selected: !existing.is_selected,
+        });
+      }
+      return newSelections;
+    });
+  }, []);
+
+  // Handle category tag toggle for a repo
+  const handleCategoryToggle = useCallback((githubRepoId: number, category: RoleType) => {
+    setRepoSelections(prev => {
+      const newSelections = new Map(prev);
+      const existing = newSelections.get(githubRepoId);
+      if (existing) {
+        const currentTags = existing.category_tags || [];
+        const newTags = currentTags.includes(category)
+          ? currentTags.filter(t => t !== category)
+          : [...currentTags, category];
+        newSelections.set(githubRepoId, {
+          ...existing,
+          category_tags: newTags,
+          // Auto-select the repo if adding a category
+          is_selected: newTags.length > 0 ? true : existing.is_selected,
+        });
+      }
+      return newSelections;
+    });
+  }, []);
+
+  // Continue to step 9 without saving (repos are saved when onboarding completes)
+  const handleReposContinue = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(9); // Go to choice screen
+      setIsTransitioning(false);
+    }, 200);
+  }, []);
+
+  // Save selected repos to database (called when onboarding completes)
+  const saveSelectedRepos = useCallback(async () => {
+    // Get only repos that have been selected or have category tags
+    const reposToSave = githubRepos
+      .filter(repo => {
+        const selection = repoSelections.get(repo.github_repo_id);
+        return selection?.is_selected || (selection?.category_tags && selection.category_tags.length > 0);
+      })
+      .map(repo => {
+        const selection = repoSelections.get(repo.github_repo_id);
+        return {
+          github_repo_id: repo.github_repo_id,
+          name: repo.name,
+          full_name: repo.full_name,
+          html_url: repo.html_url,
+          description: repo.description,
+          language: repo.language,
+          languages: repo.languages,
+          topics: repo.topics || [],
+          is_private: repo.is_private,
+          stargazers_count: repo.stargazers_count,
+          forks_count: repo.forks_count,
+          is_selected: selection?.is_selected || false,
+          category_tags: selection?.category_tags || [],
+        };
+      });
+
+    if (reposToSave.length > 0) {
+      try {
+        const response = await fetch('/api/candidate/github/repositories/categories', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({ repositories: reposToSave, full_save: true }),
+        });
+
+        if (!response.ok) {
+          console.error('Failed to save repositories:', await response.text());
+        }
+      } catch (error) {
+        console.error('Error saving repositories:', error);
+      }
+    }
+  }, [githubRepos, repoSelections]);
+
+  const handleReposSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(9); // Go to choice screen
+      setIsTransitioning(false);
+    }, 200);
   }, []);
 
   const handleObjectiveContinue = useCallback(() => {
@@ -261,6 +480,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
 
   const handleViewMatches = async () => {
     try {
+      // Save selected GitHub repos to database (if any were selected)
+      await saveSelectedRepos();
+
       // Mark onboarding as truly complete and wait for response
       const response = await fetch('/api/candidate/mark-onboarding-complete', {
         method: 'POST',
@@ -289,21 +511,21 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="bg-white text-gray-900 w-screen h-screen max-w-none max-h-none overflow-y-auto p-0 flex items-center justify-center">
-          <div className="w-full max-w-3xl px-6 sm:px-8 py-8">
+          <div className={`w-full px-6 sm:px-8 py-8 ${step === 8 ? 'max-w-6xl' : 'max-w-3xl'}`}>
             <DialogHeader>
               <div className="mb-8">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((stepNum) => (
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((stepNum) => (
                     <div
                       key={stepNum}
-                      className={`h-2 w-10 rounded-full transition-colors duration-300 ${
+                      className={`h-2 w-8 rounded-full transition-colors duration-300 ${
                         step >= stepNum ? 'bg-[#498EDC]' : 'bg-gray-200'
                       }`}
                     />
                   ))}
                 </div>
                 <p className="text-center text-gray-500 text-sm">
-                  Step {step} of 8
+                  Step {step} of 9
                 </p>
               </div>
             </DialogHeader>
@@ -749,8 +971,169 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
               </div>
               )}
 
-              {/* Step 8: Choice Screen (Matches vs Enhance) */}
+              {/* Step 8: GitHub Repository Selection with Category Tags */}
               {step === 8 && (
+              <div
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
+                  }`}
+              >
+                <div className="text-center">
+                  <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
+                    Showcase your projects
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 mt-2">
+                    Select repositories to display on your profile and tag them by category.
+                  </DialogDescription>
+                </div>
+
+                {isLoadingRepos ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="text-gray-500">Loading your repositories...</div>
+                  </div>
+                ) : githubRepos.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No repositories found. You can add them later from your profile.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Search bar */}
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        type="text"
+                        placeholder="Search repositories..."
+                        value={repoSearchQuery}
+                        onChange={(e) => setRepoSearchQuery(e.target.value)}
+                        className="pl-10 bg-white border-gray-200"
+                      />
+                    </div>
+
+                    <div className="max-h-[55vh] overflow-y-auto px-2 py-2">
+                      {filteredRepos.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No repositories match your search.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {filteredRepos.map((repo) => {
+                          const selection = repoSelections.get(repo.github_repo_id);
+                          const isSelected = selection?.is_selected || false;
+                          const selectedCategories = selection?.category_tags || [];
+
+                          return (
+                            <div
+                              key={repo.github_repo_id}
+                              onClick={() => handleRepoToggle(repo.github_repo_id)}
+                              className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${
+                                isSelected
+                                  ? 'border-[#498EDC] bg-blue-50'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <Checkbox
+                                  id={`repo-${repo.github_repo_id}`}
+                                  checked={isSelected}
+                                  onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="mt-1 flex-shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-semibold text-gray-900 block truncate">
+                                    {repo.name}
+                                    {repo.is_private && (
+                                      <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                                        Private
+                                      </span>
+                                    )}
+                                  </div>
+                                  {repo.description && (
+                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                      {repo.description}
+                                    </p>
+                                  )}
+                                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                    {repo.language && (
+                                      <span className="flex items-center gap-1">
+                                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                        {repo.language}
+                                      </span>
+                                    )}
+                                    {repo.stargazers_count > 0 && (
+                                      <span>{repo.stargazers_count} stars</span>
+                                    )}
+                                  </div>
+
+                                  {/* Category Tags */}
+                                  {isSelected && (
+                                    <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
+                                      <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {REPO_TAG_OPTIONS.map((roleOption) => (
+                                          <button
+                                            key={roleOption.value}
+                                            onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
+                                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${
+                                              selectedCategories.includes(roleOption.value)
+                                                ? 'bg-[#498EDC] text-white'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                          >
+                                            {!selectedCategories.includes(roleOption.value) && (
+                                              <Plus className="h-3 w-3" />
+                                            )}
+                                            {roleOption.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-4 mt-6">
+                  <Button
+                    onClick={() => {
+                      setIsTransitioning(true);
+                      setTimeout(() => {
+                        setStep(7);
+                        setIsTransitioning(false);
+                      }, 200);
+                    }}
+                    variant="outline"
+                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleReposSkip}
+                    variant="outline"
+                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                  >
+                    Skip
+                  </Button>
+                  <Button
+                    onClick={handleReposContinue}
+                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+              )}
+
+              {/* Step 9: Choice Screen (Matches vs Enhance) */}
+              {step === 9 && (
               <div
                 className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
                   ? 'opacity-100'
@@ -794,6 +1177,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                     <Button
                       onClick={async () => {
                         try {
+                          // Save selected GitHub repos to database (if any were selected)
+                          await saveSelectedRepos();
+
                           // Mark onboarding as complete
                           await fetch('/api/candidate/mark-onboarding-complete', {
                             method: 'POST',
