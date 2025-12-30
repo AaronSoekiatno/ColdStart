@@ -124,39 +124,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
   // const [showResumeUpload, setShowResumeUpload] = useState(false);
 
-  // Check URL params on mount if modal is already open (handles case where modal opens with GitHub connection)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && open && step === 1) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const githubConnected = urlParams.get('github_connected');
-      const stepParam = urlParams.get('step');
-      
-      // If GitHub is connected and we're still on step 1, advance to the correct step
-      if (githubConnected === 'true') {
-        console.log('[OnboardingModal] Initial mount with GitHub connection, advancing step');
-        setGithubConnected(true);
-        if (stepParam === '7') {
-          if (isTopCandidatesRoute) {
-            setStep(8);
-          } else {
-            setStep(9);
-          }
-        } else if (stepParam) {
-          const stepNum = parseInt(stepParam, 10);
-          if (stepNum >= 1 && stepNum <= 9) {
-            setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
-          }
-        } else {
-          if (isTopCandidatesRoute) {
-            setStep(8);
-          } else {
-            setStep(9);
-          }
-        }
-      }
-    }
-  }, [open, step, isTopCandidatesRoute]); // Run when modal opens or step changes
-
   // Check if user has beta access
   useEffect(() => {
     if (open) {
@@ -219,64 +186,69 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   // Check for GitHub connection status from URL params
   useEffect(() => {
     if (typeof window !== 'undefined' && open) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const stepParam = urlParams.get('step');
-      const githubConnected = urlParams.get('github_connected');
+      // Use a small delay to ensure URL params are available after page load
+      const checkParams = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const stepParam = urlParams.get('step');
+        const githubConnected = urlParams.get('github_connected');
+        const githubError = urlParams.get('github_error');
 
-      console.log('[OnboardingModal] Checking URL params:', {
-        open,
-        githubConnected,
-        stepParam,
-        currentStep: step,
-        url: window.location.href,
-        isTopCandidatesRoute
-      });
-
-      if (githubConnected === 'true') {
-        console.log('[OnboardingModal] GitHub connected! Setting up step navigation');
-        setGithubConnected(true);
-        // If coming back from GitHub OAuth on step 7
-        if (stepParam === '7') {
-          if (isTopCandidatesRoute) {
-            console.log('[OnboardingModal] Advancing from step 7 to step 8 (repo selection)');
-            setStep(8); // Advance to repo selection after successful GitHub connection (topcandidates only)
+        if (githubConnected === 'true') {
+          setGithubConnected(true);
+          
+          // Determine target step
+          let targetStep: 8 | 9;
+          if (stepParam === '7') {
+            targetStep = isTopCandidatesRoute ? 8 : 9;
+          } else if (stepParam) {
+            const stepNum = parseInt(stepParam, 10);
+            if (stepNum >= 1 && stepNum <= 9) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+              // Clean up URL params after processing
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, '', newUrl);
+              return; // Early return since we set a specific step
+            } else {
+              targetStep = isTopCandidatesRoute ? 8 : 9;
+            }
           } else {
-            console.log('[OnboardingModal] Advancing from step 7 to step 9 (skipping repo selection)');
-            setStep(9); // Skip repo selection for regular onboarding
+            // No step param but GitHub connected - default behavior based on route
+            targetStep = isTopCandidatesRoute ? 8 : 9;
           }
-        } else if (stepParam) {
-          const stepNum = parseInt(stepParam, 10);
-          if (stepNum >= 1 && stepNum <= 9) {
-            console.log('[OnboardingModal] Setting step to:', stepNum);
-            setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
-          }
-        } else {
-          // No step param but GitHub connected - default behavior based on route
-          if (isTopCandidatesRoute) {
-            setStep(8);
+          
+          // Set the target step
+          setStep(targetStep);
+          
+          // Clean up URL params after processing
+          setTimeout(() => {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+          }, 100);
+        } else if (githubError) {
+          // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
+          if (stepParam) {
+            const stepNum = parseInt(stepParam, 10);
+            if (stepNum >= 1 && stepNum <= 9) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+            }
           } else {
-            setStep(9);
+            // Default to step 7 if no step specified
+            setStep(7);
           }
+          // Clean up URL params
+          setTimeout(() => {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+          }, 100);
         }
-        // Clean up URL params after processing
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-      } else if (urlParams.get('github_error')) {
-        console.log('[OnboardingModal] GitHub error detected');
-        // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
-        if (stepParam) {
-          const stepNum = parseInt(stepParam, 10);
-          if (stepNum >= 1 && stepNum <= 9) {
-            setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
-          }
-        } else {
-          // Default to step 7 if no step specified
-          setStep(7);
-        }
-        // Clean up URL params
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-      }
+      };
+      
+      // Check immediately
+      checkParams();
+      
+      // Also check after a small delay to catch any timing issues
+      const timeoutId = setTimeout(checkParams, 100);
+      return () => clearTimeout(timeoutId);
     }
   }, [open, isTopCandidatesRoute]);
 
@@ -320,7 +292,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     const currentUrl = window.location.href;
     // Stay on the same page (landing page with modal)
     const redirectUrl = currentUrl.split('?')[0]; // Remove any existing query params
-    window.location.href = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectUrl)}&step=7`;
+    const connectUrl = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectUrl)}&step=7`;
+    window.location.href = connectUrl;
   };
 
   const handleGithubSkip = useCallback(() => {
@@ -912,8 +885,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               </div>
               )}
 
-              {/* Step 6: Mandatory Resume Upload */}
-              {step === 6 && (
+              {/* Step 6: Mandatory Resume Upload (hidden on topcandidates route) */}
+              {step === 6 && !isTopCandidatesRoute && (
               <div
                 className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
                   ? 'opacity-100'

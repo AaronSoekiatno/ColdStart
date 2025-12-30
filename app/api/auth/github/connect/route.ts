@@ -36,13 +36,14 @@ export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
     const redirectTo = requestUrl.searchParams.get('redirect') || '/onboarding';
     const onboardingStep = requestUrl.searchParams.get('step') || '6';
+    const callbackUrl = `${requestUrl.origin}/api/auth/github/callback?redirect=${encodeURIComponent(redirectTo)}&step=${onboardingStep}`;
 
     // Use Supabase's built-in GitHub OAuth provider
     // This will redirect to GitHub for authorization
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: `${requestUrl.origin}/api/auth/github/callback?redirect=${encodeURIComponent(redirectTo)}&step=${onboardingStep}`,
+        redirectTo: callbackUrl,
         scopes: 'repo read:user', // Request repository access and user info
       },
     });

@@ -64,7 +64,6 @@ export function NewLandingPage() {
 
       if (isGitHubConnection) {
         // Let the GitHub redirect handler (separate useEffect) handle this
-        console.log('[Landing] Skipping onboarding check - GitHub connection flow');
         return;
       }
 
@@ -187,15 +186,15 @@ export function NewLandingPage() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const githubConnected = urlParams.get('github_connected');
-      const stepParam = urlParams.get('step');
-
-      console.log('[Landing] GitHub redirect detected:', { githubConnected, stepParam, url: window.location.href });
+      const githubError = urlParams.get('github_error');
 
       if (githubConnected === 'true') {
-        console.log('[Landing] Opening onboarding modal for GitHub connection');
         // Open onboarding modal when GitHub connection is successful
         setShowOnboarding(true);
         // The OnboardingModal will handle the step navigation internally
+      } else if (githubError) {
+        // Still open modal to show error state
+        setShowOnboarding(true);
       }
     }
   }, []);
