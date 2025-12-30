@@ -67,6 +67,13 @@ export function NewLandingPage() {
         return;
       }
 
+      // On topcandidates route, always show onboarding modal (don't check status)
+      if (isTopCandidatesRoute) {
+        setShowSignIn(false);
+        setShowOnboarding(true);
+        return;
+      }
+
       // Check if user has completed onboarding
       try {
         const response = await fetch('/api/candidate/check-onboarding', {
@@ -85,7 +92,8 @@ export function NewLandingPage() {
       }
 
       // If user just signed in and onboarding is complete, redirect to matches
-      if (isNewSignIn) {
+      // (but not if on topcandidates route)
+      if (isNewSignIn && !isTopCandidatesRoute) {
         setShowSignIn(false);
         window.location.href = "/matches";
       }
@@ -198,6 +206,20 @@ export function NewLandingPage() {
       }
     }
   }, []);
+
+  // Force show onboarding modal on topcandidates route for authenticated users
+  useEffect(() => {
+    if (isTopCandidatesRoute && user) {
+      // Check if this is a GitHub connection flow - if so, don't interfere
+      const urlParams = new URLSearchParams(window.location.search);
+      const isGitHubConnection = urlParams.get('github_connected') === 'true';
+      
+      if (!isGitHubConnection) {
+        // Force show onboarding modal on topcandidates route
+        setShowOnboarding(true);
+      }
+    }
+  }, [isTopCandidatesRoute, user]);
 
   const handleGetStarted = () => {
     // If not authenticated, prompt sign-up (onboarding will happen after sign-up)
