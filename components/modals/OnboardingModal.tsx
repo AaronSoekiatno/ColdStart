@@ -68,9 +68,11 @@ interface OnboardingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete?: () => void;
+  skipResumeUpload?: boolean; // If true, skip step 6 (resume upload)
 }
 
-export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingModalProps) {
+export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
+  // Step type depends on whether we skip resume upload
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8>(1);
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
@@ -95,10 +97,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
   const handleStatisticContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(6); // Resume upload step
+      if (skipResumeUpload) {
+        setStep(7); // Skip to GitHub connection if resume upload is skipped
+      } else {
+        setStep(6); // Resume upload step
+      }
       setIsTransitioning(false);
     }, 200); // Reduced from 300ms to 200ms
-  }, []);
+  }, [skipResumeUpload]);
 
   // Check for GitHub connection status from URL params
   useEffect(() => {
@@ -294,7 +300,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
             <DialogHeader>
               <div className="mb-8">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((stepNum) => (
+                  {(skipResumeUpload ? [1, 2, 3, 4, 5, 7, 8] : [1, 2, 3, 4, 5, 6, 7, 8]).map((stepNum) => (
                     <div
                       key={stepNum}
                       className={`h-2 w-10 rounded-full transition-colors duration-300 ${
@@ -304,7 +310,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                   ))}
                 </div>
                 <p className="text-center text-gray-500 text-sm">
-                  Step {step} of 8
+                  Step {skipResumeUpload && step >= 7 ? step - 1 : step} of {skipResumeUpload ? 7 : 8}
                 </p>
               </div>
             </DialogHeader>
@@ -722,7 +728,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                     onClick={() => {
                       setIsTransitioning(true);
                       setTimeout(() => {
-                        setStep(6);
+                        if (skipResumeUpload) {
+                          setStep(5); // Go back to statistic screen
+                        } else {
+                          setStep(6); // Go back to resume upload
+                        }
                         setIsTransitioning(false);
                       }, 200);
                     }}
@@ -764,7 +774,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete }: OnboardingMo
                     You're all set!
                   </DialogTitle>
                   <DialogDescription className="text-gray-600 mt-2 text-lg">
-                    Your resume has been uploaded successfully.
+                    {skipResumeUpload 
+                      ? "Your profile has been set up successfully."
+                      : "Your resume has been uploaded successfully."}
                   </DialogDescription>
                 </div>
 

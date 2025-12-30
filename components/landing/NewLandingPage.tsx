@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/landing/NewHero";
@@ -33,6 +33,7 @@ import { Button } from "@/components/ui/button";
 export function NewLandingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -599,6 +600,7 @@ export function NewLandingPage() {
           // After onboarding, redirect to matches
           window.location.href = "/matches";
         }}
+        skipResumeUpload={pathname === '/topcandidates'}
       />
       <SignInModal
         open={showSignIn}
