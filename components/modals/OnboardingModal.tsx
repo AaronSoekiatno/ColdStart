@@ -177,7 +177,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       if (skipResumeUpload) {
         setStep(7); // Skip to GitHub connection if resume upload is skipped
       } else {
-      setStep(6); // Resume upload step
+        setStep(6); // Resume upload step
       }
       setIsTransitioning(false);
     }, 200); // Reduced from 300ms to 200ms
@@ -885,8 +885,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               </div>
               )}
 
-              {/* Step 6: Mandatory Resume Upload (hidden on topcandidates route) */}
-              {step === 6 && !isTopCandidatesRoute && (
+              {/* Step 6: Mandatory Resume Upload */}
+              {step === 6 && (
               <div
                 className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
                   ? 'opacity-100'
