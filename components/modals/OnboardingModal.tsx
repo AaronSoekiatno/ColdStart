@@ -94,11 +94,20 @@ interface OnboardingModalProps {
   onOpenChange: (open: boolean) => void;
   onComplete?: () => void;
   skipResumeUpload?: boolean; // If true, skip step 6 (resume upload)
+  isTopCandidatesRoute?: boolean; // If true, include step 8 (GitHub repo selection), otherwise skip it
 }
 
-export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
+export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false, isTopCandidatesRoute = false }: OnboardingModalProps) {
   // Step type depends on whether we skip resume upload (includes step 9 for choice screen)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>(1);
+  
+  // Prevent accessing step 8 if not on topcandidates route
+  useEffect(() => {
+    if (step === 8 && !isTopCandidatesRoute) {
+      setStep(9); // Skip to final step
+    }
+  }, [step, isTopCandidatesRoute]);
+
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
   const [selectedRoleTypes, setSelectedRoleTypes] = useState<RoleType[]>([]);
@@ -177,54 +186,71 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   // Check for GitHub connection status from URL params
   useEffect(() => {
     if (typeof window !== 'undefined' && open) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const stepParam = urlParams.get('step');
-      const githubConnected = urlParams.get('github_connected');
+      // Use a small delay to ensure URL params are available after page load
+      const checkParams = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const stepParam = urlParams.get('step');
+        const githubConnected = urlParams.get('github_connected');
+        const githubError = urlParams.get('github_error');
 
-      console.log('[OnboardingModal] Checking URL params:', {
-        open,
-        githubConnected,
-        stepParam,
-        currentStep: step,
-        url: window.location.href
-      });
-
-      if (githubConnected === 'true') {
-        console.log('[OnboardingModal] GitHub connected! Setting up step navigation');
-        setGithubConnected(true);
-        // If coming back from GitHub OAuth on step 7, go to step 8 (repo selection)
-        // Otherwise respect the step parameter
-        if (stepParam === '7') {
-          console.log('[OnboardingModal] Advancing from step 7 to step 8 (repo selection)');
-          setStep(8); // Advance to repo selection after successful GitHub connection
-        } else         if (stepParam) {
-          const stepNum = parseInt(stepParam, 10);
-          if (stepNum >= 1 && stepNum <= 9) {
-            console.log('[OnboardingModal] Setting step to:', stepNum);
-            setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+        if (githubConnected === 'true') {
+          setGithubConnected(true);
+          
+          // Determine target step
+          let targetStep: 8 | 9;
+          if (stepParam === '7') {
+            targetStep = isTopCandidatesRoute ? 8 : 9;
+          } else if (stepParam) {
+            const stepNum = parseInt(stepParam, 10);
+            if (stepNum >= 1 && stepNum <= 9) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+              // Clean up URL params after processing
+              const newUrl = window.location.pathname;
+              window.history.replaceState({}, '', newUrl);
+              return; // Early return since we set a specific step
+            } else {
+              targetStep = isTopCandidatesRoute ? 8 : 9;
+            }
+          } else {
+            // No step param but GitHub connected - default behavior based on route
+            targetStep = isTopCandidatesRoute ? 8 : 9;
           }
-        }
-        // Clean up URL params
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-      } else if (urlParams.get('github_error')) {
-        console.log('[OnboardingModal] GitHub error detected');
-        // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
-        if (stepParam) {
-          const stepNum = parseInt(stepParam, 10);
-          if (stepNum >= 1 && stepNum <= 9) {
-            setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+          
+          // Set the target step
+          setStep(targetStep);
+          
+          // Clean up URL params after processing
+          setTimeout(() => {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+          }, 100);
+        } else if (githubError) {
+          // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
+          if (stepParam) {
+            const stepNum = parseInt(stepParam, 10);
+            if (stepNum >= 1 && stepNum <= 9) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+            }
+          } else {
+            // Default to step 7 if no step specified
+            setStep(7);
           }
-        } else {
-          // Default to step 7 if no step specified
-          setStep(7);
+          // Clean up URL params
+          setTimeout(() => {
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+          }, 100);
         }
-        // Clean up URL params
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, '', newUrl);
-      }
+      };
+      
+      // Check immediately
+      checkParams();
+      
+      // Also check after a small delay to catch any timing issues
+      const timeoutId = setTimeout(checkParams, 100);
+      return () => clearTimeout(timeoutId);
     }
-  }, [open]);
+  }, [open, isTopCandidatesRoute]);
 
   // Fetch GitHub repos when entering step 8 (without saving to database)
   useEffect(() => {
@@ -266,7 +292,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     const currentUrl = window.location.href;
     // Stay on the same page (landing page with modal)
     const redirectUrl = currentUrl.split('?')[0]; // Remove any existing query params
-    window.location.href = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectUrl)}&step=7`;
+    const connectUrl = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectUrl)}&step=7`;
+    window.location.href = connectUrl;
   };
 
   const handleGithubSkip = useCallback(() => {
@@ -280,10 +307,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleGithubContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(8); // Go to repo selection step
+      if (isTopCandidatesRoute) {
+        setStep(8); // Go to repo selection step (only for topcandidates)
+      } else {
+        setStep(9); // Skip repo selection for regular onboarding
+      }
       setIsTransitioning(false);
     }, 200);
-  }, []);
+  }, [isTopCandidatesRoute]);
 
   // Handle repo selection toggle
   const handleRepoToggle = useCallback((githubRepoId: number) => {
@@ -523,17 +554,36 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             <DialogHeader>
               <div className="mb-8">
                 <div className="flex items-center justify-center gap-2 mb-4">
-                  {(skipResumeUpload ? [1, 2, 3, 4, 5, 7, 8, 9] : [1, 2, 3, 4, 5, 6, 7, 8, 9]).map((stepNum) => (
-                    <div
-                      key={stepNum}
-                      className={`h-2 w-8 rounded-full transition-colors duration-300 ${
-                        step >= stepNum ? 'bg-[#498EDC]' : 'bg-gray-200'
-                      }`}
-                    />
-                  ))}
+                  {(() => {
+                    const steps = skipResumeUpload 
+                      ? [1, 2, 3, 4, 5, 7, ...(isTopCandidatesRoute ? [8] : []), 9]
+                      : [1, 2, 3, 4, 5, 6, 7, ...(isTopCandidatesRoute ? [8] : []), 9];
+                    return steps.map((stepNum) => (
+                      <div
+                        key={stepNum}
+                        className={`h-2 w-8 rounded-full transition-colors duration-300 ${
+                          step >= stepNum ? 'bg-[#498EDC]' : 'bg-gray-200'
+                        }`}
+                      />
+                    ));
+                  })()}
                 </div>
                 <p className="text-center text-gray-500 text-sm">
-                  Step {skipResumeUpload && step >= 7 && step < 9 ? step - 1 : step} of {skipResumeUpload ? 8 : 9}
+                  Step {(() => {
+                    const totalSteps = skipResumeUpload 
+                      ? (isTopCandidatesRoute ? 8 : 7)
+                      : (isTopCandidatesRoute ? 9 : 8);
+                    // Adjust displayed step number if we're past step 8 but it's not shown
+                    if (!isTopCandidatesRoute && step === 9) {
+                      return totalSteps;
+                    }
+                    if (skipResumeUpload && step >= 7 && step < 9) {
+                      return step - 1;
+                    }
+                    return step;
+                  })()} of {skipResumeUpload 
+                    ? (isTopCandidatesRoute ? 8 : 7)
+                    : (isTopCandidatesRoute ? 9 : 8)}
                 </p>
               </div>
             </DialogHeader>
@@ -835,8 +885,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               </div>
               )}
 
-              {/* Step 6: Mandatory Resume Upload */}
-              {step === 6 && (
+              {/* Step 6: Mandatory Resume Upload (hidden on topcandidates route) */}
+              {step === 6 && !isTopCandidatesRoute && (
               <div
                 className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
                   ? 'opacity-100'
@@ -984,8 +1034,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               </div>
               )}
 
-              {/* Step 8: GitHub Repository Selection with Category Tags */}
-              {step === 8 && (
+              {/* Step 8: GitHub Repository Selection with Category Tags (only for topcandidates) */}
+              {step === 8 && isTopCandidatesRoute && (
               <div
                 className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
                   ? 'opacity-100'
