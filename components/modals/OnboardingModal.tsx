@@ -100,7 +100,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       if (skipResumeUpload) {
         setStep(7); // Skip to GitHub connection if resume upload is skipped
       } else {
-        setStep(6); // Resume upload step
+      setStep(6); // Resume upload step
       }
       setIsTransitioning(false);
     }, 200); // Reduced from 300ms to 200ms
