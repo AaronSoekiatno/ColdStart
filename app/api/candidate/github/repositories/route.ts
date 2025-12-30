@@ -49,7 +49,9 @@ async function fetchGitHubRepositories(
   while (true) {
     try {
       // Fetch repositories for the authenticated user
-      const url = `https://api.github.com/user/repos?per_page=${perPage}&page=${page}&sort=updated&direction=desc&affiliation=owner,collaborator`;
+      // affiliation includes: owner (user's repos), collaborator (repos user collaborates on), 
+      // and organization_member (repos from orgs where user is a member)
+      const url = `https://api.github.com/user/repos?per_page=${perPage}&page=${page}&sort=updated&direction=desc&affiliation=owner,collaborator,organization_member`;
       
       const response = await fetch(url, {
         headers: {
