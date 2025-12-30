@@ -117,6 +117,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showStatistic, setShowStatistic] = useState(false);
   const [githubConnected, setGithubConnected] = useState(false);
+  const [selectedCalendlyLink, setSelectedCalendlyLink] = useState<string | null>(null);
   // GitHub repos state
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
@@ -251,6 +252,19 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       return () => clearTimeout(timeoutId);
     }
   }, [open, isTopCandidatesRoute]);
+
+  // Randomly select a Calendly link when step 9 is shown for topcandidates route
+  useEffect(() => {
+    if (step === 9 && isTopCandidatesRoute && !selectedCalendlyLink) {
+      const calendlyLinks = [
+        'https://calendly.com/aaronjsoekiatno/hermes-portfolio',
+        'https://calendly.com/robertpflores06/30min',
+        'https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran',
+      ];
+      const randomIndex = Math.floor(Math.random() * calendlyLinks.length);
+      setSelectedCalendlyLink(calendlyLinks[randomIndex]);
+    }
+  }, [step, isTopCandidatesRoute, selectedCalendlyLink]);
 
   // Fetch GitHub repos when entering step 8 (without saving to database)
   useEffect(() => {
@@ -1163,83 +1177,88 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     </div>
                   </>
                 ) : (
-                  // Simple UI for non-beta users
-                  <div className="space-y-4 max-h-[60vh] overflow-y-auto px-2 py-2">
-                    {githubRepos.map((repo) => {
-                      const selection = repoSelections.get(repo.github_repo_id);
-                      const isSelected = selection?.is_selected || false;
-                      const selectedCategories = selection?.category_tags || [];
+                  // Simple UI for non-beta users - 2-column layout
+                  <div className="max-h-[60vh] overflow-y-auto px-2 py-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {githubRepos.map((repo) => {
+                        const selection = repoSelections.get(repo.github_repo_id);
+                        const isSelected = selection?.is_selected || false;
+                        const selectedCategories = selection?.category_tags || [];
 
-                      return (
-                        <div
-                          key={repo.github_repo_id}
-                          onClick={() => handleRepoToggle(repo.github_repo_id)}
-                          className={`border-2 rounded-xl p-5 transition-all cursor-pointer ${
-                            isSelected
-                              ? 'border-[#498EDC] bg-blue-50'
-                              : 'border-gray-200 bg-white hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <Checkbox
-                              id={`repo-${repo.github_repo_id}`}
-                              checked={isSelected}
-                              onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="mt-1"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-gray-900 block truncate">
-                                {repo.name}
-                                {repo.is_private && (
-                                  <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                                    Private
-                                  </span>
-                                )}
-                              </div>
-                              {repo.description && (
-                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                  {repo.description}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                {repo.language && (
-                                  <span className="flex items-center gap-1">
-                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                    {repo.language}
-                                  </span>
-                                )}
-                                {repo.stargazers_count > 0 && (
-                                  <span>{repo.stargazers_count} stars</span>
-                                )}
-                              </div>
-
-                              {/* Category Tags - Show all role types instead of just selected ones */}
-                              {isSelected && (
-                                <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
-                                  <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {ROLE_OPTIONS.map((roleOption) => (
-                                      <button
-                                        key={roleOption.value}
-                                        onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
-                                        className={`px-2 py-1 text-xs rounded-full transition-all ${
-                                          selectedCategories.includes(roleOption.value)
-                                            ? 'bg-[#498EDC] text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                        }`}
-                                      >
-                                        {roleOption.label}
-                                      </button>
-                                    ))}
-                                  </div>
+                        return (
+                          <div
+                            key={repo.github_repo_id}
+                            onClick={() => handleRepoToggle(repo.github_repo_id)}
+                            className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${
+                              isSelected
+                                ? 'border-[#498EDC] bg-blue-50'
+                                : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <Checkbox
+                                id={`repo-${repo.github_repo_id}`}
+                                checked={isSelected}
+                                onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-1 flex-shrink-0"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-gray-900 block truncate">
+                                  {repo.name}
+                                  {repo.is_private && (
+                                    <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                                      Private
+                                    </span>
+                                  )}
                                 </div>
-                              )}
+                                {repo.description && (
+                                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                    {repo.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                  {repo.language && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                      {repo.language}
+                                    </span>
+                                  )}
+                                  {repo.stargazers_count > 0 && (
+                                    <span>{repo.stargazers_count} stars</span>
+                                  )}
+                                </div>
+
+                                {/* Category Tags - Use REPO_TAG_OPTIONS (excludes "Other") */}
+                                {isSelected && (
+                                  <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
+                                    <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {REPO_TAG_OPTIONS.map((roleOption) => (
+                                        <button
+                                          key={roleOption.value}
+                                          onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
+                                          className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${
+                                            selectedCategories.includes(roleOption.value)
+                                              ? 'bg-[#498EDC] text-white'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                          }`}
+                                        >
+                                          {!selectedCategories.includes(roleOption.value) && (
+                                            <Plus className="h-3 w-3" />
+                                          )}
+                                          {roleOption.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -1292,6 +1311,22 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       : "Your resume has been uploaded successfully."}
                   </DialogDescription>
                 </div>
+
+                {isTopCandidatesRoute && selectedCalendlyLink && (
+                  <div className="mb-8">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 text-center">
+                      <p className="text-lg font-semibold text-gray-900 mb-4">
+                        Let us help you build a portfolio to stand out to top startups
+                      </p>
+                      <Button
+                        onClick={() => window.open(selectedCalendlyLink, '_blank')}
+                        className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                      >
+                        Schedule a Call
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                   {/* View Matches Option */}
