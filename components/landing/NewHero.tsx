@@ -47,14 +47,14 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
         {/* Value Proposition */}
         <div className="mt-24 relative">
           {/* Foreground Text */}
-          <div className="relative z-10 space-y-2">
+          <div className="relative z-10 space-y-6">
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight leading-tight text-white drop-shadow-md">
-              Your AI agent networks
-              <br />
-              with 2000+ YC founders
+              Meet Your AI Outreaching Agent
             </h2>
-            <p className="text-xl md:text-2xl text-white mt-4 drop-shadow-sm">
-              Personalized outreach. Land Interviews. Get Actual Offers.
+            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto drop-shadow-md">
+              Hermes works 24/7 to connect you with startup founders.
+              <br />
+              Personalized. Professional. Proven.
             </p>
           </div>
         </div>

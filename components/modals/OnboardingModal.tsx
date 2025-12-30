@@ -1316,7 +1316,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   <div className="mb-8">
                     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 text-center">
                       <p className="text-lg font-semibold text-gray-900 mb-4">
-                        Let us help you build a portfolio to stand out to top startups
+                        Let us help you curate your personal portfolio page to stand out to startup founders through a short demo of your experiences.
                       </p>
                       <Button
                         onClick={() => window.open(selectedCalendlyLink, '_blank')}

@@ -7,7 +7,6 @@ import type { User } from "@supabase/supabase-js";
 import { NewHero } from "@/components/landing/NewHero";
 import { TrustBadge } from "@/components/shared/TrustBadge";
 import { UniversityCarousel } from "@/components/landing/StartupsCarousel";
-import { AIAgentSection } from "@/components/landing/AIAgentSection";
 import { StartupLogoDeck } from "@/components/landing/StartupLogoDeck";
 import { DemoMatchCard } from "@/components/features/matches/DemoMatchCard";
 import { NewHowItWorks } from "@/components/landing/NewHowItWorks";
@@ -640,7 +639,6 @@ export function NewLandingPage() {
 
         {/* Second Half with White Background */}
         <div className="bg-white">
-          <AIAgentSection />
           <NewHowItWorks />
           <StartupLogoDeck />
           <DemoMatchCard />
