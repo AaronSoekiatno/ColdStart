@@ -30,7 +30,7 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
           <Button
             onClick={onGetStarted}
             size="lg"
-            className="rounded-full px-8 py-6 text-base font-medium bg-white text-[#498EDC] hover:bg-white/90 transition-all duration-300 shadow-xl hover:shadow-2xl"
+            className="rounded-full px-8 py-6 text-base font-medium bg-white text-[#498EDC] hover:bg-white/90 transition-all duration-300 shadow-xl hover:shadow-2xl cursor-pointer"
           >
             Get Started
           </Button>
@@ -38,7 +38,7 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
             onClick={handleCompanyClick}
             variant="outline"
             size="lg"
-            className="rounded-full px-8 py-6 text-base font-medium border-2 border-white bg-white/20 backdrop-blur-md text-white hover:bg-white/30 hover:border-white transition-all duration-300 shadow-lg"
+            className="rounded-full px-8 py-6 text-base font-medium border-2 border-white bg-white/20 backdrop-blur-md text-white hover:bg-white/30 hover:border-white transition-all duration-300 shadow-lg cursor-pointer"
           >
             I represent a company
           </Button>

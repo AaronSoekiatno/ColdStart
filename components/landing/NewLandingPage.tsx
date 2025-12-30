@@ -325,7 +325,7 @@ export function NewLandingPage() {
                 {/* Sign In Button - Hidden when scrolled on mobile */}
                 <Button
                   onClick={() => setShowSignIn(true)}
-                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300 ${isScrolled ? 'hidden sm:flex' : 'flex'
+                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300 cursor-pointer ${isScrolled ? 'hidden sm:flex' : 'flex'
                     }`}
                 >
                   Sign In
@@ -340,20 +340,12 @@ export function NewLandingPage() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="rounded-full h-9 px-4 text-white drop-shadow-md text-sm max-w-[200px] truncate"
+                        className="rounded-full h-9 px-4 text-white drop-shadow-md text-sm max-w-[200px] truncate cursor-pointer"
                       >
                         {user.email}
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {!isTopCandidatesRoute && (
-                        <DropdownMenuItem
-                          className="cursor-pointer"
-                          onSelect={handlePremiumClick}
-                        >
-                          Premium Plan
-                        </DropdownMenuItem>
-                      )}
                       {isPremium && (
                         <DropdownMenuItem
                           className="cursor-pointer"
@@ -401,7 +393,7 @@ export function NewLandingPage() {
                 {/* View Matches Button - Only visible when scrolled */}
                 <Button
                   onClick={handleGetStarted}
-                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 transform ${isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none hidden'
+                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 transform cursor-pointer ${isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none hidden'
                     }`}
                 >
                   View Matches

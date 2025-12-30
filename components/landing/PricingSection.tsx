@@ -65,7 +65,7 @@ export function PricingSection({ userEmail, onGetStarted }: PricingSectionProps)
 
             <Button
               onClick={onGetStarted}
-              className="w-full py-6 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium text-base transition-all duration-300"
+              className="w-full py-6 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium text-base transition-all duration-300 cursor-pointer"
             >
               Get Free Matches
             </Button>
@@ -104,13 +104,13 @@ export function PricingSection({ userEmail, onGetStarted }: PricingSectionProps)
             {userEmail ? (
               <UpgradeButton 
                 email={userEmail} 
-                className="w-full text-base py-6 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium transition-all duration-300"
+                className="w-full text-base py-6 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium transition-all duration-300 cursor-pointer"
                 showTrialCTA={true}
               />
             ) : (
               <Button
                 onClick={onGetStarted}
-                className="w-full py-6 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium text-base transition-all duration-300"
+                className="w-full py-6 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium text-base transition-all duration-300 cursor-pointer"
               >
                 Upgrade to Premium
               </Button>
