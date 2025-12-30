@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       async () => {
         const result = await adminClient
           .from('candidates')
-          .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills')
+          .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills, beta_access')
           .eq('email', user.email)
           .single();
         return result;

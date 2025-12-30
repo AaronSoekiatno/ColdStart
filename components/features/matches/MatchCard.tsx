@@ -1119,14 +1119,14 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               })()
             ) : null}
             
-            {/* Also Consider dropdown */}
+            {/* View More dropdown */}
             {match.alsoConsider && match.alsoConsider.length > 0 && (
               <div className="mt-4 sm:mt-5">
                 <button
                   onClick={() => setShowAlsoConsider(!showAlsoConsider)}
                   className="flex items-center justify-between w-full text-left text-sm sm:text-base font-semibold text-gray-700 hover:text-gray-900 transition mb-3 sm:mb-4"
                 >
-                  <span>Also Consider ({match.alsoConsider.length})</span>
+                  <span>View More ({match.alsoConsider.length})</span>
                   <ChevronDown 
                     className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${showAlsoConsider ? 'rotate-180' : ''}`}
                   />

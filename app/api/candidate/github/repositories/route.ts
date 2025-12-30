@@ -97,7 +97,7 @@ async function fetchGitHubRepositories(
     }
   }
 
-  // Fetch language data for each repository (optional, can be slow)
+  // Fetch language data for each repository
   // We'll do this in parallel but limit concurrency
   const reposWithLanguages = await Promise.all(
     allRepos.map(async (repo) => {
@@ -127,7 +127,7 @@ async function fetchGitHubRepositories(
 }
 
 /**
- * Store repositories in database
+ * Store repositories in database using upsert
  */
 async function storeRepositories(
   candidateId: string,
@@ -137,75 +137,54 @@ async function storeRepositories(
     throw new Error('Database connection not available');
   }
 
-  let stored = 0;
-  let updated = 0;
+  const repoDataArray = repositories.map(repo => ({
+    candidate_id: candidateId,
+    github_repo_id: repo.id,
+    name: repo.name,
+    full_name: repo.full_name,
+    html_url: repo.html_url,
+    description: repo.description,
+    language: repo.language,
+    languages: repo.languages || null,
+    topics: repo.topics || [],
+    is_private: repo.private,
+    is_fork: repo.fork,
+    is_archived: repo.archived,
+    stargazers_count: repo.stargazers_count,
+    forks_count: repo.forks_count,
+    watchers_count: repo.watchers_count,
+    created_at: repo.created_at,
+    updated_at: repo.updated_at,
+    pushed_at: repo.pushed_at,
+    size: repo.size,
+    default_branch: repo.default_branch,
+    homepage: repo.homepage,
+    license_name: repo.license?.name || null,
+    has_issues: repo.has_issues,
+    has_projects: repo.has_projects,
+    has_wiki: repo.has_wiki,
+    has_pages: repo.has_pages,
+    full_data: repo as any, // Store complete repo object
+    synced_at: new Date().toISOString(),
+  }));
 
-  for (const repo of repositories) {
-    const repoData = {
-      candidate_id: candidateId,
-      github_repo_id: repo.id,
-      name: repo.name,
-      full_name: repo.full_name,
-      html_url: repo.html_url,
-      description: repo.description,
-      language: repo.language,
-      languages: repo.languages || null,
-      topics: repo.topics || [],
-      is_private: repo.private,
-      is_fork: repo.fork,
-      is_archived: repo.archived,
-      stargazers_count: repo.stargazers_count,
-      forks_count: repo.forks_count,
-      watchers_count: repo.watchers_count,
-      created_at: repo.created_at,
-      updated_at: repo.updated_at,
-      pushed_at: repo.pushed_at,
-      size: repo.size,
-      default_branch: repo.default_branch,
-      homepage: repo.homepage,
-      license_name: repo.license?.name || null,
-      has_issues: repo.has_issues,
-      has_projects: repo.has_projects,
-      has_wiki: repo.has_wiki,
-      has_pages: repo.has_pages,
-      full_data: repo as any, // Store complete repo object
-      synced_at: new Date().toISOString(),
-    };
+  // Use upsert to insert new repos or update existing ones
+  // onConflict specifies the unique constraint columns
+  // ignoreDuplicates: false means it will update on conflict
+  const { data, error } = await supabaseAdmin
+    .from('github_repositories')
+    .upsert(repoDataArray, {
+      onConflict: 'candidate_id,github_repo_id',
+      ignoreDuplicates: false,
+    });
 
-    const { data: existing, error: selectError } = await supabaseAdmin
-      .from('github_repositories')
-      .select('id')
-      .eq('candidate_id', candidateId)
-      .eq('github_repo_id', repo.id)
-      .single();
-
-    if (existing) {
-      // Update existing repository
-      const { error: updateError } = await supabaseAdmin
-        .from('github_repositories')
-        .update(repoData)
-        .eq('id', existing.id);
-
-      if (updateError) {
-        console.error(`Error updating repository ${repo.full_name}:`, updateError);
-      } else {
-        updated++;
-      }
-    } else {
-      // Insert new repository
-      const { error: insertError } = await supabaseAdmin
-        .from('github_repositories')
-        .insert(repoData);
-
-      if (insertError) {
-        console.error(`Error inserting repository ${repo.full_name}:`, insertError);
-      } else {
-        stored++;
-      }
-    }
+  if (error) {
+    console.error('Error upserting repositories:', error);
+    throw error;
   }
 
-  return { stored, updated };
+  // Return approximate counts (we can't easily distinguish inserts vs updates with upsert)
+  return { stored: repositories.length, updated: 0 };
 }
 
 export async function GET(request: NextRequest) {
@@ -255,24 +234,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if token is expired
-    if (candidate.github_token_expires_at) {
-      const expiresAt = new Date(candidate.github_token_expires_at);
-      const now = new Date();
-      if (expiresAt < now) {
-        return NextResponse.json(
-          { error: 'GitHub token expired. Please reconnect your GitHub account.' },
-          { status: 401 }
-        );
-      }
-    }
+    // Note: GitHub OAuth tokens don't expire unless revoked
+    // If the token is invalid, the GitHub API call will fail and we handle that error below
 
     const requestUrl = new URL(request.url);
     const forceRefresh = requestUrl.searchParams.get('refresh') === 'true';
     const includePrivate = requestUrl.searchParams.get('include_private') !== 'false';
+    // skip_save=true means don't save to database (used during onboarding before completion)
+    const skipSave = requestUrl.searchParams.get('skip_save') === 'true';
 
-    // Check if database connection is available
-    if (!supabaseAdmin) {
+    // Check if database connection is available (only needed if we're saving)
+    if (!skipSave && !supabaseAdmin) {
       return NextResponse.json(
         { error: 'Database connection not available' },
         { status: 500 }
@@ -280,7 +252,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if we have recent data (within last hour) and user doesn't want refresh
-    if (!forceRefresh && candidate.github_username) {
+    // Skip this cache check if skip_save is true (we want fresh data from GitHub)
+    if (!skipSave && !forceRefresh && candidate.github_username && supabaseAdmin) {
       const { data: recentRepos } = await supabaseAdmin
         .from('github_repositories')
         .select('synced_at')
@@ -302,9 +275,9 @@ export async function GET(request: NextRequest) {
 
           if (fetchError) {
             console.error('Error fetching cached repos:', fetchError);
-          } else {
+          } else if (repos && repos.length > 0) {
             return NextResponse.json({
-              repositories: repos || [],
+              repositories: repos,
               cached: true,
               synced_at: recentRepos.synced_at,
             });
@@ -320,11 +293,42 @@ export async function GET(request: NextRequest) {
       includePrivate
     );
 
+    // If skip_save is true, return GitHub data directly without storing
+    if (skipSave) {
+      // Transform GitHub API response to match our expected format
+      const transformedRepos = repositories.map(repo => ({
+        id: null, // No database ID yet
+        github_repo_id: repo.id,
+        name: repo.name,
+        full_name: repo.full_name,
+        html_url: repo.html_url,
+        description: repo.description,
+        language: repo.language,
+        languages: repo.languages || null,
+        topics: repo.topics || [],
+        is_private: repo.private,
+        is_fork: repo.fork,
+        is_archived: repo.archived,
+        stargazers_count: repo.stargazers_count,
+        forks_count: repo.forks_count,
+        watchers_count: repo.watchers_count,
+        is_selected: false,
+        category_tags: [],
+      }));
+
+      return NextResponse.json({
+        repositories: transformedRepos,
+        cached: false,
+        synced_at: new Date().toISOString(),
+        skip_save: true,
+      });
+    }
+
     // Store repositories in database
     const { stored, updated } = await storeRepositories(candidate.id, repositories);
 
     // Return repositories
-    const { data: storedRepos, error: fetchError } = await supabaseAdmin
+    const { data: storedRepos, error: fetchError } = await supabaseAdmin!
       .from('github_repositories')
       .select('*')
       .eq('candidate_id', candidate.id)
