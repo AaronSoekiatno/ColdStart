@@ -312,14 +312,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     window.location.href = connectUrl;
   };
 
-  const handleGithubSkip = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(9); // Skip to choice screen (no repos to select)
-      setIsTransitioning(false);
-    }, 200);
-  }, []);
-
   const handleGithubContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
@@ -368,14 +360,37 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
+  // Validate that at least 1 repo is selected and at least 1 tag is attached
+  const validateReposSelection = useCallback(() => {
+    const selectedRepos = Array.from(repoSelections.values()).filter(
+      selection => selection.is_selected === true
+    );
+    
+    if (selectedRepos.length === 0) {
+      return false; // At least 1 repo must be selected
+    }
+    
+    // Check if at least 1 selected repo has at least 1 tag
+    const hasTaggedRepo = selectedRepos.some(
+      selection => selection.category_tags && selection.category_tags.length > 0
+    );
+    
+    return hasTaggedRepo;
+  }, [repoSelections]);
+
   // Continue to step 9 without saving (repos are saved when onboarding completes)
   const handleReposContinue = useCallback(() => {
+    // Validate before continuing
+    if (!validateReposSelection()) {
+      return; // Don't proceed if validation fails
+    }
+    
     setIsTransitioning(true);
     setTimeout(() => {
       setStep(9); // Go to Calendly step (9) for topcandidates, choice screen (9) for regular
       setIsTransitioning(false);
     }, 200);
-  }, []);
+  }, [validateReposSelection]);
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
@@ -423,14 +438,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       }
     }
   }, [githubRepos, repoSelections]);
-
-  const handleReposSkip = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(9); // Go to Calendly step (9) for topcandidates, choice screen (9) for regular
-      setIsTransitioning(false);
-    }, 200);
-  }, []);
 
   const handleObjectiveContinue = useCallback(() => {
     if (selectedObjectives.length === 0) return;
@@ -1039,22 +1046,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   >
                     Back
                   </Button>
-                  {githubConnected ? (
-                    <Button
-                      onClick={handleGithubContinue}
-                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      Continue
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleGithubSkip}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Skip for now
-                    </Button>
-                  )}
+                  <Button
+                    onClick={handleGithubContinue}
+                    disabled={!githubConnected}
+                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Continue
+                  </Button>
                 </div>
               </div>
               )}
@@ -1273,6 +1271,31 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   </div>
                 )}
 
+                {/* Validation message */}
+                {(() => {
+                  const selectedRepos = Array.from(repoSelections.values()).filter(
+                    selection => selection.is_selected === true
+                  );
+                  const hasTaggedRepo = selectedRepos.some(
+                    selection => selection.category_tags && selection.category_tags.length > 0
+                  );
+                  
+                  if (selectedRepos.length === 0) {
+                    return (
+                      <div className="text-center text-sm text-amber-600 mt-4">
+                        Please select at least 1 repository to continue.
+                      </div>
+                    );
+                  } else if (!hasTaggedRepo) {
+                    return (
+                      <div className="text-center text-sm text-amber-600 mt-4">
+                        Please add at least 1 tag to your selected repositories to continue.
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 <div className="flex gap-4 mt-6">
                   <Button
                     onClick={() => {
@@ -1288,15 +1311,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     Back
                   </Button>
                   <Button
-                    onClick={handleReposSkip}
-                    variant="outline"
-                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Skip
-                  </Button>
-                  <Button
                     onClick={handleReposContinue}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                    disabled={!validateReposSelection()}
+                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continue
                   </Button>
