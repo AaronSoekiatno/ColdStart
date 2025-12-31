@@ -98,8 +98,8 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false, isTopCandidatesRoute = false }: OnboardingModalProps) {
-  // Step type depends on whether we skip resume upload (includes step 9 for choice screen)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9>(1);
+  // Step type depends on whether we skip resume upload (includes step 9 for choice screen, step 10 for topcandidates Calendly)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10>(1);
   
   // Prevent accessing step 8 if not on topcandidates route
   useEffect(() => {
@@ -107,6 +107,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       setStep(9); // Skip to final step
     }
   }, [step, isTopCandidatesRoute]);
+
+  // Step 9 is Calendly for topcandidates, final choice for regular - no special handling needed
 
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
@@ -203,8 +205,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             targetStep = isTopCandidatesRoute ? 8 : 9;
           } else if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            if (stepNum >= 1 && stepNum <= 9) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+            if (stepNum >= 1 && stepNum <= 10) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10);
               // Clean up URL params after processing
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
@@ -229,8 +231,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
           // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
           if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            if (stepNum >= 1 && stepNum <= 9) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9);
+            if (stepNum >= 1 && stepNum <= 10) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10);
             }
           } else {
             // Default to step 7 if no step specified
@@ -370,7 +372,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleReposContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(9); // Go to choice screen
+      setStep(9); // Go to Calendly step (9) for topcandidates, choice screen (9) for regular
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -425,7 +427,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(9); // Go to choice screen
+      setStep(9); // Go to Calendly step (9) for topcandidates, choice screen (9) for regular
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -569,9 +571,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               <div className="mb-8">
                 <div className="flex items-center justify-center gap-2 mb-4">
                   {(() => {
-                    const steps = skipResumeUpload 
-                      ? [1, 2, 3, 4, 5, 7, ...(isTopCandidatesRoute ? [8] : []), 9]
-                      : [1, 2, 3, 4, 5, 6, 7, ...(isTopCandidatesRoute ? [8] : []), 9];
+                    const steps = isTopCandidatesRoute
+                      ? skipResumeUpload 
+                        ? [1, 2, 3, 4, 5, 7, 8, 9, 10]
+                        : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                      : skipResumeUpload 
+                        ? [1, 2, 3, 4, 5, 7, 9]
+                        : [1, 2, 3, 4, 5, 6, 7, 9];
                     return steps.map((stepNum) => (
                       <div
                         key={stepNum}
@@ -584,9 +590,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 </div>
                 <p className="text-center text-gray-500 text-sm">
                   Step {(() => {
+                    if (isTopCandidatesRoute) {
+                      // Map steps for topcandidates: 1-8 stay same, 9 is Calendly, 10 is final choice
+                      // Display: 1-8 stay same, step 9 displays as 9, step 10 displays as 10
+                      return step;
+                    }
                     const totalSteps = skipResumeUpload 
-                      ? (isTopCandidatesRoute ? 8 : 7)
-                      : (isTopCandidatesRoute ? 9 : 8);
+                      ? 7
+                      : 8;
                     // Adjust displayed step number if we're past step 8 but it's not shown
                     if (!isTopCandidatesRoute && step === 9) {
                       return totalSteps;
@@ -595,9 +606,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       return step - 1;
                     }
                     return step;
-                  })()} of {skipResumeUpload 
-                    ? (isTopCandidatesRoute ? 8 : 7)
-                    : (isTopCandidatesRoute ? 9 : 8)}
+                  })()} of {isTopCandidatesRoute
+                    ? (skipResumeUpload ? 9 : 10)
+                    : (skipResumeUpload ? 7 : 8)}
                 </p>
               </div>
             </DialogHeader>
@@ -1293,8 +1304,72 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               </div>
               )}
 
-              {/* Step 9: Choice Screen (Matches vs Enhance) */}
-              {step === 9 && (
+              {/* Step 9: Calendly Page (only for topcandidates) */}
+              {step === 9 && isTopCandidatesRoute && (
+              <div
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
+                  }`}
+              >
+                <div className="text-center mb-8">
+                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                    Let's curate your portfolio
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 mt-2 text-lg">
+                    Schedule a demo to get personalized help curating your portfolio page and stand out to startup founders
+                  </DialogDescription>
+                </div>
+
+                {selectedCalendlyLink && (
+                  <div className="max-w-2xl mx-auto">
+                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-8 text-center">
+                      <p className="text-lg font-semibold text-gray-900 mb-6">
+                        Let us help you curate your personal portfolio page to stand out to startup founders through a short demo of your experiences.
+                      </p>
+                      <Button
+                        onClick={() => window.open(selectedCalendlyLink, '_blank')}
+                        className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all px-8 py-6 text-lg"
+                      >
+                        Schedule a Call
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-4 mt-8">
+                  <Button
+                    onClick={() => {
+                      setIsTransitioning(true);
+                      setTimeout(() => {
+                        setStep(8); // Go back to repo selection
+                        setIsTransitioning(false);
+                      }, 200);
+                    }}
+                    variant="outline"
+                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsTransitioning(true);
+                      setTimeout(() => {
+                        setStep(10); // Go to final choice screen
+                        setIsTransitioning(false);
+                      }, 200);
+                    }}
+                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+              )}
+
+              {/* Step 9: Choice Screen (Matches vs Enhance) - Regular onboarding */}
+              {/* Step 10: Choice Screen (Matches vs Enhance) - Topcandidates onboarding */}
+              {step === (isTopCandidatesRoute ? 10 : 9) && (
               <div
                 className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
                   ? 'opacity-100'
@@ -1312,21 +1387,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   </DialogDescription>
                 </div>
 
-                {isTopCandidatesRoute && selectedCalendlyLink && (
-                  <div className="mb-8">
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 text-center">
-                      <p className="text-lg font-semibold text-gray-900 mb-4">
-                        Let us help you curate your personal portfolio page to stand out to startup founders through a short demo of your experiences.
-                      </p>
-                      <Button
-                        onClick={() => window.open(selectedCalendlyLink, '_blank')}
-                        className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                      >
-                        Schedule a Call
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                   {/* View Matches Option */}
