@@ -394,11 +394,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
-    // Get only repos that have been selected or have category tags
+    // Get only repos that have been selected (repos with tags must be selected, enforced by UI)
     const reposToSave = githubRepos
       .filter(repo => {
         const selection = repoSelections.get(repo.github_repo_id);
-        return selection?.is_selected || (selection?.category_tags && selection.category_tags.length > 0);
+        return selection?.is_selected === true;
       })
       .map(repo => {
         const selection = repoSelections.get(repo.github_repo_id);
