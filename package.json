@@ -75,6 +75,7 @@
     "retry:keywords-batch:dry-run": "tsx yc_companies/retry_failed_keywords_batch.ts --dry-run",
     "send-waitlist": "tsx scripts/email/send-waitlist-emails.ts",
     "send-waitlist:sendgrid": "tsx scripts/email/sendgrid/sendgrid-send-waitlist-emails.ts",
+    "send-founding-engineer:sendgrid": "tsx scripts/email/sendgrid/sendgrid-send-founding-engineer-emails.ts",
     "send-campaign:leads": "tsx scripts/email/sendgrid/send-lead-campaign.ts",
     "send-campaign:users": "tsx scripts/email/sendgrid/send-user-campaign.ts",
     "backfill-candidates-waitlist": "tsx scripts/email/backfill-candidates-to-waitlist.ts",
