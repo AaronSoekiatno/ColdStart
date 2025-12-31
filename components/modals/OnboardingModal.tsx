@@ -1316,26 +1316,19 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
                     Let's curate your portfolio
                   </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2 text-lg">
+                  <DialogDescription className="text-gray-600 mt-2 text-lg mb-8">
                     Schedule a demo to get personalized help curating your portfolio page and stand out to startup founders
                   </DialogDescription>
+                  
+                  {selectedCalendlyLink && (
+                    <Button
+                      onClick={() => window.open(selectedCalendlyLink, '_blank')}
+                      className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all px-8 py-6 text-lg"
+                    >
+                      Schedule a Call
+                    </Button>
+                  )}
                 </div>
-
-                {selectedCalendlyLink && (
-                  <div className="max-w-2xl mx-auto">
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-8 text-center">
-                      <p className="text-lg font-semibold text-gray-900 mb-6">
-                        Let us help you curate your personal portfolio page to stand out to startup founders through a short demo of your experiences.
-                      </p>
-                      <Button
-                        onClick={() => window.open(selectedCalendlyLink, '_blank')}
-                        className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all px-8 py-6 text-lg"
-                      >
-                        Schedule a Call
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex gap-4 mt-8">
                   <Button
@@ -1363,6 +1356,22 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   >
                     Continue
                   </Button>
+                </div>
+
+                {/* Skip button - less prominent */}
+                <div className="text-center mt-4">
+                  <button
+                    onClick={() => {
+                      setIsTransitioning(true);
+                      setTimeout(() => {
+                        setStep(10); // Go to final choice screen
+                        setIsTransitioning(false);
+                      }, 200);
+                    }}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2 transition-colors"
+                  >
+                    Skip for now
+                  </button>
                 </div>
               </div>
               )}
