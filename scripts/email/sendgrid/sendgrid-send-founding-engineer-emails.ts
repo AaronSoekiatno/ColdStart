@@ -102,13 +102,15 @@ const EMAIL_SUBJECT = process.env.FOUNDING_ENGINEER_EMAIL_SUBJECT || 'Founding E
 // Plain-text founding engineer email
 const EMAIL_TEXT = process.env.FOUNDING_ENGINEER_EMAIL_TEXT || `Hey 
 
-Absurd YC25, Taya A16Z speedrun, and another startup are looking for full-time and remote internships based in the United States! 
+FurtherAI, Absurd YC25, and other top startups are looking for full-time and remote internship roles based in the United States! 
 
-We think you can fit this role and we want to build a profile for you to help you stand out to YC founders.
+We think you can fit this role and we want to highlight your ability to ship real code and stand out to YC founders.
 
 Here are some of the job listings: 
-https://www.hivespelling.com/careers
 https://www.workatastartup.com/companies/absurd
+https://www.ycombinator.com/companies/afterquery/jobs
+https://www.ycombinator.com/companies/furtherai/jobs
+
 
 If this interests you please sign up for a 30-minute meeting where we can onboard you. 
 
