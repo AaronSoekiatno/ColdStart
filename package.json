@@ -2,6 +2,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.89.0",
     "@vapi-ai/web": "^2.5.2",
+    "dotenv": "^17.2.3",
     "lru-cache": "^11.2.4"
   }
 }
