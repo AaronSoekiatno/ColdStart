@@ -1,9 +1,246 @@
+/**
+ * Vapi Client - Phase-Aware Voice Agent Controller
+ * 
+ * Manages Vapi voice calls with phase-specific assistants,
+ * automatic start/stop based on interview phases, and cost tracking.
+ */
+
 import Vapi from "@vapi-ai/web";
 
-// Initialize Vapi client
+// Vapi instance
 const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY);
 
-// Start a voice conversation
+// Assistant IDs for each phase (loaded from environment)
+const ASSISTANT_IDS = {
+    kickoff: process.env.VAPI_KICKOFF_ASSISTANT_ID || 'kickoff-assistant-placeholder',
+    bug_injection: process.env.VAPI_BUG_INJECTION_ASSISTANT_ID || 'bug-injection-placeholder',
+    post_mortem: process.env.VAPI_POST_MORTEM_ASSISTANT_ID || 'post-mortem-placeholder'
+};
+
+// Track active call state
+let activeCall = {
+    callId: null,
+    sessionId: null,
+    phaseId: null,
+    assistantType: null,
+    startTime: null,
+    status: 'idle', // idle, connecting, active, ending
+    messageBuffer: [] // Collect messages during the call
+};
+
+// Event callbacks
+const eventCallbacks = {
+    onCallStart: [],
+    onCallEnd: [],
+    onSpeechStart: [],
+    onSpeechEnd: [],
+    onMessage: [],
+    onError: []
+};
+
+/**
+ * Initialize Vapi event listeners
+ */
+export function initializeVapiListeners() {
+    vapi.on("call-start", () => {
+        activeCall.status = 'active';
+        activeCall.startTime = Date.now();
+        activeCall.messageBuffer = []; // Reset message buffer for new call
+        console.log(`[Vapi] Call started for phase ${activeCall.phaseId}`);
+        eventCallbacks.onCallStart.forEach(cb => cb(activeCall));
+    });
+
+    vapi.on("call-end", () => {
+        const duration = activeCall.startTime
+            ? Math.floor((Date.now() - activeCall.startTime) / 1000)
+            : 0;
+
+        console.log(`[Vapi] Call ended for phase ${activeCall.phaseId}, duration: ${duration}s`);
+
+        const callData = {
+            ...activeCall,
+            duration,
+            messages: [...activeCall.messageBuffer] // Include collected messages
+        };
+
+        activeCall = {
+            callId: null,
+            sessionId: null,
+            phaseId: null,
+            assistantType: null,
+            startTime: null,
+            status: 'idle',
+            messageBuffer: []
+        };
+
+        eventCallbacks.onCallEnd.forEach(cb => cb(callData));
+    });
+
+    vapi.on("speech-start", () => {
+        console.log("[Vapi] Assistant started speaking");
+        eventCallbacks.onSpeechStart.forEach(cb => cb());
+    });
+
+    vapi.on("speech-end", () => {
+        console.log("[Vapi] Assistant finished speaking");
+        eventCallbacks.onSpeechEnd.forEach(cb => cb());
+    });
+
+    vapi.on("message", (message) => {
+        console.log("[Vapi] Message:", message);
+
+        // Collect transcript messages for conversation history
+        if (message.type === 'transcript' && message.transcript) {
+            const role = message.transcript.role; // 'user' or 'assistant'
+            const content = message.transcript.text;
+
+            if (role && content) {
+                activeCall.messageBuffer.push({ role, content });
+            }
+        }
+
+        eventCallbacks.onMessage.forEach(cb => cb(message));
+    });
+
+    vapi.on("error", (error) => {
+        console.error("[Vapi] Error:", error);
+        activeCall.status = 'idle';
+        eventCallbacks.onError.forEach(cb => cb(error));
+    });
+
+    console.log("[Vapi] Event listeners initialized");
+}
+
+/**
+ * Start a phase-specific voice call
+ */
+export async function startPhaseCall(sessionId, phaseId, assistantType, previousMessages = []) {
+    if (activeCall.status !== 'idle') {
+        console.warn(`[Vapi] Call already in progress for session ${activeCall.sessionId}`);
+        return null;
+    }
+
+    const assistantId = ASSISTANT_IDS[assistantType];
+    if (!assistantId) {
+        throw new Error(`Unknown assistant type: ${assistantType}`);
+    }
+
+    const contextInfo = previousMessages.length > 0
+        ? `with ${previousMessages.length} previous messages`
+        : 'without previous context';
+
+    console.log(`[Vapi] Starting call for session ${sessionId}, phase ${phaseId}, assistant ${assistantType} ${contextInfo}`);
+
+    activeCall = {
+        callId: `call_${Date.now()}`,
+        sessionId,
+        phaseId,
+        assistantType,
+        startTime: null,
+        status: 'connecting',
+        messageBuffer: []
+    };
+
+    try {
+        // Start Vapi call with optional conversation history
+        const callOptions = previousMessages.length > 0
+            ? { messages: previousMessages }
+            : {};
+
+        await vapi.start(assistantId, callOptions);
+        return activeCall;
+    } catch (error) {
+        console.error("[Vapi] Failed to start call:", error);
+        activeCall.status = 'idle';
+        throw error;
+    }
+}
+
+/**
+ * Stop the current voice call
+ */
+export async function stopCall(reason = 'manual') {
+    if (activeCall.status === 'idle') {
+        console.log("[Vapi] No active call to stop");
+        return null;
+    }
+
+    console.log(`[Vapi] Stopping call for session ${activeCall.sessionId}, reason: ${reason}`);
+    activeCall.status = 'ending';
+
+    try {
+        await vapi.stop();
+        return { success: true, reason };
+    } catch (error) {
+        console.error("[Vapi] Failed to stop call:", error);
+        throw error;
+    }
+}
+
+/**
+ * Get current call status
+ */
+export function getCallStatus() {
+    return { ...activeCall };
+}
+
+/**
+ * Check if a call is currently active
+ */
+export function isCallActive() {
+    return activeCall.status === 'active' || activeCall.status === 'connecting';
+}
+
+/**
+ * Register event callback
+ */
+export function onEvent(eventType, callback) {
+    if (eventCallbacks[eventType]) {
+        eventCallbacks[eventType].push(callback);
+    }
+}
+
+/**
+ * Remove event callback
+ */
+export function offEvent(eventType, callback) {
+    if (eventCallbacks[eventType]) {
+        const index = eventCallbacks[eventType].indexOf(callback);
+        if (index > -1) {
+            eventCallbacks[eventType].splice(index, 1);
+        }
+    }
+}
+
+/**
+ * Calculate call cost estimate
+ */
+export function estimateCost(durationSeconds) {
+    const costPerMinute = parseFloat(process.env.VAPI_COST_PER_MINUTE || '0.10');
+    return (durationSeconds / 60) * costPerMinute;
+}
+
+/**
+ * Send a message to the assistant (if supported)
+ */
+export function sendMessage(message) {
+    if (!isCallActive()) {
+        console.warn("[Vapi] Cannot send message - no active call");
+        return false;
+    }
+
+    vapi.send({
+        type: 'add-message',
+        message: {
+            role: 'user',
+            content: message
+        }
+    });
+
+    return true;
+}
+
+// Legacy exports for backwards compatibility
 export async function startVoiceCall(assistantId) {
     try {
         await vapi.start(assistantId);
@@ -13,7 +250,6 @@ export async function startVoiceCall(assistantId) {
     }
 }
 
-// Stop the current conversation
 export async function stopVoiceCall() {
     try {
         await vapi.stop();
@@ -23,36 +259,25 @@ export async function stopVoiceCall() {
     }
 }
 
-// Listen to call events
-export function setupVapiListeners() {
-    // When call starts
-    vapi.on("call-start", () => {
-        console.log("Call has started");
-    });
-
-    // When call ends
-    vapi.on("call-end", () => {
-        console.log("Call has ended");
-    });
-
-    // When receiving messages from the assistant
-    vapi.on("message", (message) => {
-        console.log("Message received:", message);
-    });
-
-    // When there's an error
-    vapi.on("error", (error) => {
-        console.error("Vapi error:", error);
-    });
-
-    // Speech status updates
-    vapi.on("speech-start", () => {
-        console.log("Assistant started speaking");
-    });
-
-    vapi.on("speech-end", () => {
-        console.log("Assistant finished speaking");
-    });
+// Auto-initialize if in browser
+if (typeof window !== 'undefined') {
+    initializeVapiListeners();
 }
 
-export default vapi;
+export { vapi };
+
+export default {
+    vapi,
+    initializeVapiListeners,
+    startPhaseCall,
+    stopCall,
+    getCallStatus,
+    isCallActive,
+    onEvent,
+    offEvent,
+    estimateCost,
+    sendMessage,
+    startVoiceCall,
+    stopVoiceCall,
+    ASSISTANT_IDS
+};
