@@ -15,7 +15,7 @@
 
 import { NextApiRequest, NextApiResponse } from 'next';
 import crypto from 'crypto';
-import { handleCommitEvent } from '../../../lib/vapi-orchestrator.js';
+import { handleCommitEvent, handleTestEvent } from '../../../lib/vapi-orchestrator.js';
 
 export default async function handler(req, res) {
     // Only accept POST requests
@@ -33,61 +33,65 @@ export default async function handler(req, res) {
             return res.status(401).json({ error: 'Invalid signature' });
         }
 
-        // Extract webhook data
-        const { repository, commits, ref } = req.body;
+        // Determine event type
+        const eventType = req.headers['x-github-event'] || 'push';
 
-        // Only process pushes to main/master branch
-        if (!ref.endsWith('/main') && !ref.endsWith('/master')) {
-            console.log('[Webhook] Ignoring non-main branch push');
-            return res.status(200).json({ message: 'Ignored non-main branch' });
-        }
+        // --- HANDLE PUSH EVENTS ---
+        if (eventType === 'push') {
+            const { repository, commits, ref } = req.body;
 
-        // No commits? Ignore
-        if (!commits || commits.length === 0) {
-            console.log('[Webhook] No commits in push event');
-            return res.status(200).json({ message: 'No commits' });
-        }
+            // Only process pushes to main/master
+            if (!ref.endsWith('/main') && !ref.endsWith('/master')) {
+                return res.status(200).json({ message: 'Ignored non-main branch' });
+            }
 
-        console.log(`[Webhook] Received push event from ${repository.full_name}`);
-        console.log(`[Webhook] Commits: ${commits.length}`);
+            if (!commits || commits.length === 0) return res.status(200).json({ message: 'No commits' });
 
-        // Extract session ID from repo name
-        // Assuming repo name is the session ID or has a mapping
-        const repoName = repository.name;
-        const sessionId = repoName; // Or map it: await getSessionIdFromRepoName(repoName)
+            const repoName = repository.name;
+            const sessionId = repoName;
 
-        // Get the latest commit
-        const latestCommit = commits[commits.length - 1];
-        const commitData = {
-            id: latestCommit.id,
-            message: latestCommit.message,
-            author: latestCommit.author.name,
-            timestamp: latestCommit.timestamp,
-            url: latestCommit.url
-        };
-
-        console.log(`[Webhook] Processing commit: ${commitData.id.substring(0, 7)} - ${commitData.message}`);
-
-        // Trigger phase transition via orchestrator
-        const result = await handleCommitEvent(sessionId, commitData);
-
-        if (result.shouldTransition) {
-            console.log(`[Webhook] ✅ Phase transition triggered for session ${sessionId}`);
-            return res.status(200).json({
-                message: 'Commit processed, phase transition triggered',
-                sessionId,
-                commitId: commitData.id,
-                transitioned: true
+            // Record the commit (Activity)
+            const latestCommit = commits[commits.length - 1];
+            await handleCommitEvent(sessionId, {
+                id: latestCommit.id,
+                message: latestCommit.message,
+                author: latestCommit.author.name,
+                timestamp: latestCommit.timestamp,
+                url: latestCommit.url
             });
-        } else {
-            console.log(`[Webhook] ℹ️ Commit recorded but no phase transition`);
-            return res.status(200).json({
-                message: 'Commit recorded',
-                sessionId,
-                commitId: commitData.id,
-                transitioned: false
-            });
+
+            return res.status(200).json({ message: 'Commit recorded' });
         }
+
+        // --- HANDLE CHECK SUITE (TEST_RESULTS) ---
+        if (eventType === 'check_suite') {
+            const { action, check_suite, repository } = req.body;
+
+            // We only care when the suite is COMPLETED
+            if (action !== 'completed') {
+                return res.status(200).json({ message: 'Ignored check_suite status (not completed)' });
+            }
+
+            const sessionId = repository.name;
+            const conclusion = check_suite.conclusion; // 'success', 'failure', 'neutral'
+
+            console.log(`[Webhook] Check Suite Completed for ${sessionId}: ${conclusion}`);
+
+            // Delegate to Orchestrator to decide if we transition
+            const result = await handleTestEvent(sessionId, {
+                status: check_suite.status,
+                conclusion: conclusion,
+                head_sha: check_suite.head_sha
+            });
+
+            if (result.transition) {
+                return res.status(200).json({ message: 'Transition triggered by passing tests' });
+            } else {
+                return res.status(200).json({ message: 'Test result recorded', conclusion });
+            }
+        }
+
+        return res.status(200).json({ message: 'Ignored event type' });
 
     } catch (error) {
         console.error('[Webhook] Error processing webhook:', error);
