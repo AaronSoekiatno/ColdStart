@@ -1,10 +1,10 @@
-# Minerva 🦉
+# Minerva 
 
 **Autonomous Voice-Driven Technical Interviewer**
 
 Minerva is an agentic system that conducts end-to-end coding interviews using voice (Vapi.ai) and real coding environments (GitHub). It measures candidate "slope" (velocity & learning rate) by tracking their progress through a multi-phase technical challenge.
 
-## 🏗 Architecture
+## Architecture
 
 Minerva acts as the orchestrator between the Candidate, the Voice Agent, and the Codebase.
 
@@ -34,7 +34,7 @@ sequenceDiagram
     V->>C: "We have a production bug!"
 ```
 
-## ✨ Key Features
+## Key Features
 
 - **Voice-First Experience:** Uses Vapi.ai for low-latency, natural conversation.
 - **Cost Optimized:** The voice agent **sleeps** during deep work phases (Build/Fix), reducing costs by ~65% ($0.80/interview vs $2.40).
@@ -46,7 +46,7 @@ sequenceDiagram
     - Auto-configures webhooks.
     - Arhives repos upon completion.
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ### Prerequisites
 - Node.js 18+
@@ -85,7 +85,7 @@ npm install
 npm run dev
 ```
 
-## 🛠 Development Flow
+## Development Flow
 
 Since Minerva relies on GitHub Webhooks, you must expose your local server to the internet.
 
@@ -102,7 +102,7 @@ Since Minerva relies on GitHub Webhooks, you must expose your local server to th
 3.  **Update Config:**
     Set `MINERVA_WEBHOOK_URL` in `.env.local` to your ngrok URL (e.g., `https://a1b2.ngrok-free.app`).
 
-## 🧪 Testing
+## Testing
 
 We have dedicated simulation scripts to test the backend without a real candidate:
 
