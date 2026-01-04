@@ -291,13 +291,15 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
  * Get a candidate by email
  * Explicitly selects subscription_tier and subscription_status from candidates table
  * Excludes large text fields (structured_resume_data, resume_latex) to reduce egress
+ * 
+ * @param email - Candidate's email address
+ * @param includeAssessmentFields - If true, includes assessment_repo_url, assessment_repo_created_at, assessment_started_at (only for top candidates)
  */
-export async function getCandidate(email: string) {
+export async function getCandidate(email: string, includeAssessmentFields: boolean = false) {
   const client = supabaseAdmin || supabase;
   
-  const { data, error } = await client
-    .from('candidates')
-    .select(`
+  // Base fields that are always selected (excludes assessment fields for regular onboarding)
+  const baseFields = `
       id,
       email,
       name,
@@ -324,7 +326,22 @@ export async function getCandidate(email: string) {
       github_connected_at,
       github_token_expires_at,
       created_at
-    `)
+  `;
+  
+  // Assessment fields (only for top candidates when includeAssessmentFields is true)
+  const assessmentFields = includeAssessmentFields ? `
+      assessment_repo_url,
+      assessment_repo_created_at,
+      assessment_started_at
+  ` : '';
+  
+  const selectFields = includeAssessmentFields 
+    ? `${baseFields},${assessmentFields}`
+    : baseFields;
+  
+  const { data, error } = await client
+    .from('candidates')
+    .select(selectFields)
     .eq('email', email)
     .single();
 

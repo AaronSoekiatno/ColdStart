@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const candidate = await getCandidate(user.email);
+    const candidate = await getCandidate(user.email, true); // Include assessment fields for top candidates
 
     if (!candidate || !candidate.id) {
       return NextResponse.json(

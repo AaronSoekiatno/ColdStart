@@ -9,10 +9,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search, Copy, Check, ExternalLink } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import dynamic from "next/dynamic";
+import { useToast } from "@/hooks/use-toast";
 
 // Lazy load ResumeUpload only when needed (step 6)
 const ResumeUpload = dynamic(() => import("@/app/components/ResumeUpload"), {
@@ -94,13 +95,12 @@ interface OnboardingModalProps {
   onOpenChange: (open: boolean) => void;
   onComplete?: () => void;
   skipResumeUpload?: boolean; // If true, skip step 6 (resume upload)
-  isTopCandidatesRoute?: boolean; // If true, include step 8 (GitHub repo selection), otherwise skip it
-  onAssessmentPrompt?: () => void; // Callback to show assessment prompt after onboarding
+  isTopCandidatesRoute?: boolean; // If true, include step 8 (GitHub repo selection), step 9 (Calendly), step 10 (Assessment), step 11 (Completion)
 }
 
-export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false, isTopCandidatesRoute = false, onAssessmentPrompt }: OnboardingModalProps) {
-  // Step type depends on whether we skip resume upload (includes step 9 for choice screen, step 10 for topcandidates Calendly)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10>(1);
+export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false, isTopCandidatesRoute = false }: OnboardingModalProps) {
+  // Step type depends on whether we skip resume upload (includes step 9 for choice screen, step 10 for topcandidates Calendly, step 11 for assessment)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11>(1);
   
   // Prevent accessing step 8 if not on topcandidates route
   useEffect(() => {
@@ -126,6 +126,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
+  // Assessment state
+  const [isCreatingRepo, setIsCreatingRepo] = useState(false);
+  const [assessmentRepoUrl, setAssessmentRepoUrl] = useState<string | null>(null);
+  const [assessmentCloneUrl, setAssessmentCloneUrl] = useState<string | null>(null);
+  const [assessmentCredentials, setAssessmentCredentials] = useState<any>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const { toast } = useToast();
   // const [showResumeUpload, setShowResumeUpload] = useState(false);
 
   // Check if user has beta access
@@ -428,10 +435,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(9); // Go to Calendly step (9) for topcandidates, choice screen (9) for regular
+      if (isTopCandidatesRoute) {
+        setStep(9); // Go to Calendly step (9) for topcandidates
+      } else {
+        setStep(9); // Go to choice screen (9) for regular
+      }
       setIsTransitioning(false);
     }, 200);
-  }, []);
+  }, [isTopCandidatesRoute]);
 
   const handleObjectiveContinue = useCallback(() => {
     if (selectedObjectives.length === 0) return;
@@ -534,6 +545,61 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   };
 
+  // Handle assessment start (Step 10 for top candidates)
+  const handleStartAssessment = useCallback(async () => {
+    setIsCreatingRepo(true);
+    try {
+      const response = await fetch('/api/topcandidates/create-assessment-repo', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create assessment repository');
+      }
+
+      const data = await response.json();
+      setAssessmentRepoUrl(data.repoUrl);
+      setAssessmentCloneUrl(data.cloneUrl);
+      if (data.credentials) {
+        setAssessmentCredentials(data.credentials);
+      }
+
+      toast({
+        title: "Assessment repository created!",
+        description: "Your private workspace is ready.",
+      });
+
+      // Move to completion step (Step 11)
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setStep(11);
+        setIsTransitioning(false);
+      }, 300);
+    } catch (error) {
+      console.error('Error creating assessment repo:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create repository';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingRepo(false);
+    }
+  }, [toast]);
+
+  const handleCopy = useCallback((text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast({
+      title: "Copied!",
+      description: `${field} copied to clipboard`,
+    });
+    setTimeout(() => setCopiedField(null), 2000);
+  }, [toast]);
+
   const handleViewMatches = async () => {
     try {
       // Save selected GitHub repos to database (if any were selected)
@@ -574,8 +640,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   {(() => {
                     const steps = isTopCandidatesRoute
                       ? skipResumeUpload 
-                        ? [1, 2, 3, 4, 5, 7, 8, 9, 10]
-                        : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+                        ? [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]
+                        : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
                       : skipResumeUpload 
                         ? [1, 2, 3, 4, 5, 7, 9]
                         : [1, 2, 3, 4, 5, 6, 7, 9];
@@ -1349,7 +1415,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     onClick={() => {
                       setIsTransitioning(true);
                       setTimeout(() => {
-                        setStep(10); // Go to final choice screen
+                        setStep(10); // Go to assessment step for topcandidates
                         setIsTransitioning(false);
                       }, 200);
                     }}
@@ -1365,7 +1431,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     onClick={() => {
                       setIsTransitioning(true);
                       setTimeout(() => {
-                        setStep(10); // Go to final choice screen
+                        setStep(10); // Go to assessment step for topcandidates
                         setIsTransitioning(false);
                       }, 200);
                     }}
@@ -1377,9 +1443,198 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               </div>
               )}
 
+              {/* Step 10: Assessment Prompt (only for topcandidates) */}
+              {step === 10 && isTopCandidatesRoute && (
+              <div
+                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                  ? 'opacity-100'
+                  : 'opacity-0'
+                  }`}
+              >
+                <div className="text-center mb-8">
+                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                    {assessmentRepoUrl ? "Your Assessment Workspace is Ready!" : "Start Your 20-Minute Assessment"}
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-600 mt-2 text-lg">
+                    {assessmentRepoUrl
+                      ? "Clone your repository and follow the instructions to begin."
+                      : "Complete a quick assessment to demonstrate your skills. We'll set up a private workspace for you."}
+                  </DialogDescription>
+                </div>
+
+                {!assessmentRepoUrl ? (
+                  <div className="space-y-6 mt-6">
+                    <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                      <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
+                      <ul className="space-y-2 text-gray-700 list-disc list-inside">
+                        <li>Work in a private GitHub repository</li>
+                        <li>Complete database tasks in your isolated workspace</li>
+                        <li>Demonstrate your problem-solving skills</li>
+                        <li>Showcase your technical abilities</li>
+                      </ul>
+                    </div>
+
+                    <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                      <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
+                      <p className="text-gray-700">Approximately 20 minutes</p>
+                    </div>
+
+                    <Button
+                      onClick={handleStartAssessment}
+                      disabled={isCreatingRepo}
+                      className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
+                    >
+                      {isCreatingRepo ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Creating your workspace...
+                        </>
+                      ) : (
+                        "Start Assessment"
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-6 mt-6">
+                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="text-green-600 text-2xl">✓</div>
+                        <h3 className="font-semibold text-lg text-gray-900">
+                          Repository Created Successfully
+                        </h3>
+                      </div>
+                      <p className="text-gray-700 mb-4">
+                        Your private assessment workspace has been created. Follow these steps to get started:
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Step 1: Clone the repository</h4>
+                        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
+                          <code className="flex-1 break-all">
+                            git clone {assessmentCloneUrl || assessmentRepoUrl + '.git'}
+                          </code>
+                          <button
+                            onClick={() => handleCopy(`git clone ${assessmentCloneUrl || assessmentRepoUrl + '.git'}`, 'clone')}
+                            className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
+                            title="Copy clone command"
+                          >
+                            {copiedField === 'clone' ? (
+                              <Check className="h-4 w-4 text-green-400" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Step 2: Navigate to the repository</h4>
+                        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
+                          <code>cd {assessmentRepoUrl?.split('/').pop() || 'hermes-assessment-*'}</code>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-semibold text-gray-900 mb-2">Step 3: Start the assessment</h4>
+                        <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
+                          <code>yarn mission:start</code>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                          This command will automatically fetch your credentials and set up your environment.
+                        </p>
+                      </div>
+
+                      {assessmentCredentials && (
+                        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mt-4">
+                          <h4 className="font-semibold text-gray-900 mb-3">Your Credentials (auto-injected)</h4>
+                          <p className="text-sm text-gray-700 mb-3">
+                            These will be automatically added to your <code className="bg-gray-200 px-1 rounded">.env.local</code> file when you run <code className="bg-gray-200 px-1 rounded">yarn mission:start</code>:
+                          </p>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
+                              <code className="text-xs flex-1 break-all">
+                                SUPABASE_URL={assessmentCredentials.SUPABASE_URL}
+                              </code>
+                              <button
+                                onClick={() => handleCopy(`SUPABASE_URL=${assessmentCredentials.SUPABASE_URL}`, 'supabase_url')}
+                                className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
+                              >
+                                {copiedField === 'supabase_url' ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
+                              <code className="text-xs flex-1 break-all">
+                                SUPABASE_PRIVATE_KEY={assessmentCredentials.SUPABASE_PRIVATE_KEY.substring(0, 50)}...
+                              </code>
+                              <button
+                                onClick={() => handleCopy(`SUPABASE_PRIVATE_KEY=${assessmentCredentials.SUPABASE_PRIVATE_KEY}`, 'supabase_key')}
+                                className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
+                              >
+                                {copiedField === 'supabase_key' ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
+                              <code className="text-xs flex-1 break-all">
+                                GOOGLE_API_KEY={assessmentCredentials.GOOGLE_API_KEY.substring(0, 30)}...
+                              </code>
+                              <button
+                                onClick={() => handleCopy(`GOOGLE_API_KEY=${assessmentCredentials.GOOGLE_API_KEY}`, 'google_key')}
+                                className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
+                              >
+                                {copiedField === 'google_key' ? (
+                                  <Check className="h-3 w-3 text-green-600" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {assessmentRepoUrl && (
+                  <div className="flex gap-4 mt-6">
+                    <Button
+                      onClick={() => window.open(assessmentRepoUrl, '_blank')}
+                      variant="outline"
+                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Open Repository
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(11); // Go to completion step
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium"
+                    >
+                      Continue
+                    </Button>
+                  </div>
+                )}
+              </div>
+              )}
+
               {/* Step 9: Choice Screen (Matches vs Enhance) - Regular onboarding */}
-              {/* Step 10: Choice Screen (Matches vs Enhance) - Topcandidates onboarding */}
-              {step === (isTopCandidatesRoute ? 10 : 9) && (
+              {/* Step 11: Completion Screen (Matches vs Enhance) - Topcandidates onboarding */}
+              {step === (isTopCandidatesRoute ? 11 : 9) && (
               <div
                 className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
                   ? 'opacity-100'
@@ -1439,16 +1694,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                           // Continue anyway - don't block user
                         }
 
-                        // For top candidates route, show assessment prompt instead of redirecting
-                        if (isTopCandidatesRoute && onAssessmentPrompt) {
-                          onOpenChange(false); // Close onboarding modal
-                          // Small delay to allow modal to close
-                          setTimeout(() => {
-                            onAssessmentPrompt();
-                          }, 300);
-                          return;
-                        }
-
+                        // For top candidates route, onboarding is already complete (assessment was step 10)
+                        // Just redirect normally
                         window.location.href = "/resumes";
                       }}
                       variant="outline"
