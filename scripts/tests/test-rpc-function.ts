@@ -123,32 +123,38 @@ async function testRPCFunction() {
   console.log('TEST 4: Verify Schema Exists');
   console.log('-'.repeat(50));
   
-  const { data: schemas, error: schemaError } = await supabase
-    .rpc('exec_sql', {
-      sql: `SELECT schema_name FROM information_schema.schemata WHERE schema_name = '${schemaName}'`
-    })
-    .catch(() => {
-      // exec_sql might not exist, try direct query
-      return { data: null, error: { message: 'Cannot query schemas directly' } };
-    });
+  // Note: Direct schema verification requires database-level access
+  // Supabase client can't directly query information_schema for security reasons
+  // We'll verify by checking the candidates table was updated instead
+  
+  console.log('Note: Direct schema verification requires database-level access.');
+  console.log('Schema verification will be done via candidates table update check.\n');
+  
+  // Try to verify by checking if we can query tables (this might not work due to RLS)
+  let tables: any[] = [];
+  try {
+    const { data: tablesData, error: tablesError } = await supabase
+      .from('information_schema.tables')
+      .select('table_name')
+      .eq('table_schema', schemaName)
+      .limit(10);
 
-  // Alternative: Check if we can query tables in the schema
-  const { data: tables, error: tablesError } = await supabase
-    .from('information_schema.tables')
-    .select('table_name')
-    .eq('table_schema', schemaName)
-    .limit(10);
+    if (!tablesError && tablesData) {
+      tables = tablesData;
+    }
+  } catch (error) {
+    // Expected - information_schema might not be accessible via Supabase client
+  }
 
-  if (tablesError) {
-    console.log('⚠️  WARNING: Cannot directly verify schema (this is expected)');
-    console.log('   Schema verification requires direct database access');
-  } else if (tables && tables.length > 0) {
+  if (tables.length > 0) {
     console.log(`✅ PASSED: Schema exists with ${tables.length} table(s)`);
     tables.forEach((table: any) => {
       console.log(`  - ${table.table_name}`);
     });
   } else {
-    console.log('⚠️  WARNING: Could not verify tables (might require direct DB access)');
+    console.log('⚠️  INFO: Cannot directly verify tables via Supabase client');
+    console.log('   This is expected - schema verification requires direct database access');
+    console.log('   Schema creation will be verified via candidates table update (next test)');
   }
   console.log('');
 

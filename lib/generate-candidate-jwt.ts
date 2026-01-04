@@ -1,8 +1,8 @@
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 
 /**
- * Generate a schema-specific JWT token for a candidate
- * This token includes claims that allow the candidate to access their private schema
+ * Generate a schema-specific JWT token for a candidate.
+ * This token includes claims that allow the candidate to access their private schema.
  * 
  * @param candidateId - The candidate's UUID
  * @param schemaName - The Postgres schema name (e.g., "candidate_abc123")
@@ -14,12 +14,13 @@ export function generateCandidateJWT(
   schemaName: string,
   expiresInHours: number = 24
 ): string {
-  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  // Check both SUPABASE_JWT_SECRET and JWT_SECRET for flexibility
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET;
   
   if (!jwtSecret) {
     throw new Error(
-      'SUPABASE_JWT_SECRET environment variable is not set. ' +
-      'This is required to generate candidate JWT tokens.'
+      'JWT secret not found. Please set SUPABASE_JWT_SECRET or JWT_SECRET environment variable. ' +
+      'Get it from: Supabase Dashboard > Settings > API > JWT Secret'
     );
   }
 
