@@ -91,6 +91,8 @@ export interface CandidateRow {
   github_username?: string; // GitHub username
   github_connected_at?: string; // Timestamp when GitHub was connected
   github_token_expires_at?: string; // Timestamp when GitHub token expires
+  provisioned_schema_name?: string; // Postgres schema name created for candidate assessment workspace
+  provisioned_at?: string; // Timestamp when the candidate schema was provisioned
   created_at?: string;
 }
 
