@@ -93,6 +93,9 @@ export interface CandidateRow {
   github_token_expires_at?: string; // Timestamp when GitHub token expires
   provisioned_schema_name?: string; // Postgres schema name created for candidate assessment workspace
   provisioned_at?: string; // Timestamp when the candidate schema was provisioned
+  assessment_repo_url?: string; // GitHub repository URL for assessment workspace
+  assessment_repo_created_at?: string; // Timestamp when assessment repo was created
+  assessment_started_at?: string; // Timestamp when candidate started assessment
   created_at?: string;
 }
 

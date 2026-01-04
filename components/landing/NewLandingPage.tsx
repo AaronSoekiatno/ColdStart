@@ -17,6 +17,7 @@ import { SignUpModal } from "@/components/modals/SignUpModal";
 import { ResumeUploadModal } from "@/components/modals/ResumeUploadModal";
 import { UpgradeModal } from "@/components/modals/UpgradeModal";
 import { OnboardingModal } from "@/components/modals/OnboardingModal";
+import { AssessmentPromptModal } from "@/components/modals/AssessmentPromptModal";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import {
@@ -41,6 +42,7 @@ export function NewLandingPage() {
   const [showResumeUpload, setShowResumeUpload] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showAssessmentPrompt, setShowAssessmentPrompt] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -140,7 +142,7 @@ export function NewLandingPage() {
     return () => subscription.unsubscribe();
   }, [router]);
 
-  // Fetch candidate info to check premium status - only when email changes
+  // Fetch candidate info to check premium status and assessment status - only when email changes
   useEffect(() => {
     const fetchCandidateInfo = async () => {
       if (!userEmail) {
@@ -164,6 +166,34 @@ export function NewLandingPage() {
           const candidateInfo = await response.json();
           setIsPremium(isSubscribed(candidateInfo));
           lastFetchedEmailRef.current = userEmail;
+
+          // Check assessment status for top candidates route
+          if (isTopCandidatesRoute) {
+            try {
+              const assessmentResponse = await fetch('/api/topcandidates/assessment-status', {
+                credentials: 'include',
+              });
+              if (assessmentResponse.ok) {
+                const assessmentData = await assessmentResponse.json();
+                // If onboarding is complete but assessment not started, show prompt
+                if (assessmentData.status === 'not_started' && !showOnboarding) {
+                  // Only show if user is authenticated and onboarding is complete
+                  const onboardingResponse = await fetch('/api/candidate/check-onboarding', {
+                    credentials: 'include',
+                  });
+                  if (onboardingResponse.ok) {
+                    const onboardingData = await onboardingResponse.json();
+                    if (!onboardingData.needsOnboarding) {
+                      // Onboarding complete, assessment not started - show prompt
+                      setShowAssessmentPrompt(true);
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error checking assessment status:', error);
+            }
+          }
         } else {
           setIsPremium(false);
         }
@@ -177,7 +207,7 @@ export function NewLandingPage() {
     };
 
     fetchCandidateInfo();
-  }, [userEmail]);
+  }, [userEmail, isTopCandidatesRoute, showOnboarding]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -647,11 +677,21 @@ export function NewLandingPage() {
         onOpenChange={setShowOnboarding}
         onComplete={() => {
           setShowOnboarding(false);
-          // After onboarding, redirect to matches
-          window.location.href = "/matches";
+          // After onboarding, redirect to matches (unless on top candidates route)
+          if (!isTopCandidatesRoute) {
+            window.location.href = "/matches";
+          }
         }}
         skipResumeUpload={false}
         isTopCandidatesRoute={isTopCandidatesRoute}
+        onAssessmentPrompt={() => setShowAssessmentPrompt(true)}
+      />
+      <AssessmentPromptModal
+        open={showAssessmentPrompt}
+        onOpenChange={setShowAssessmentPrompt}
+        onAssessmentStarted={() => {
+          // Optionally handle assessment started event
+        }}
       />
       <SignInModal
         open={showSignIn}

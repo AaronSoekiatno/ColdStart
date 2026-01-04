@@ -95,9 +95,10 @@ interface OnboardingModalProps {
   onComplete?: () => void;
   skipResumeUpload?: boolean; // If true, skip step 6 (resume upload)
   isTopCandidatesRoute?: boolean; // If true, include step 8 (GitHub repo selection), otherwise skip it
+  onAssessmentPrompt?: () => void; // Callback to show assessment prompt after onboarding
 }
 
-export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false, isTopCandidatesRoute = false }: OnboardingModalProps) {
+export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false, isTopCandidatesRoute = false, onAssessmentPrompt }: OnboardingModalProps) {
   // Step type depends on whether we skip resume upload (includes step 9 for choice screen, step 10 for topcandidates Calendly)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10>(1);
   
@@ -1436,6 +1437,16 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         } catch (error) {
                           console.error('Error marking onboarding complete:', error);
                           // Continue anyway - don't block user
+                        }
+
+                        // For top candidates route, show assessment prompt instead of redirecting
+                        if (isTopCandidatesRoute && onAssessmentPrompt) {
+                          onOpenChange(false); // Close onboarding modal
+                          // Small delay to allow modal to close
+                          setTimeout(() => {
+                            onAssessmentPrompt();
+                          }, 300);
+                          return;
                         }
 
                         window.location.href = "/resumes";
