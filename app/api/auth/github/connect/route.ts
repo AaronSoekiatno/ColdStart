@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,102 +37,27 @@ export async function GET(request: NextRequest) {
     const redirectTo = requestUrl.searchParams.get('redirect') || '/onboarding';
     const onboardingStep = requestUrl.searchParams.get('step') || '6';
 
-    // MOCK CONNECTION LOGIC
-    // Instead of redirecting to GitHub, we directly update the database and return
-    console.log('[Mock GitHub] Starting mock connection for:', user.email);
+    // Initiate GitHub OAuth flow
+    // We redirect to our callback route, which will then redirect to the final destination
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${requestUrl.origin}/api/auth/github/callback?redirect=${encodeURIComponent(redirectTo)}&step=${onboardingStep}`,
+        scopes: 'repo,rad:user',
+      },
+    });
 
-    if (supabaseAdmin) {
-      // 1. Get candidate ID
-      const { data: candidateData } = await supabaseAdmin
-        .from('candidates')
-        .select('id')
-        .eq('email', user.email)
-        .single();
-
-      if (candidateData) {
-        // 2. Update candidate with mock GitHub info
-        const { error: updateError } = await supabaseAdmin
-          .from('candidates')
-          .update({
-            github_access_token: 'mock_gh_access_token_' + Date.now(),
-            github_username: 'mock_developer',
-            github_connected_at: new Date().toISOString(),
-          })
-          .eq('email', user.email);
-
-        if (updateError) {
-          console.error('[Mock GitHub] Error updating candidate:', updateError);
-        } else {
-             // 3. Insert mock repositories
-             const mockRepos = [
-                {
-                    candidate_id: candidateData.id,
-                    github_repo_id: 101, 
-                    name: 'nextjs-dashboard',
-                    full_name: 'mock_developer/nextjs-dashboard',
-                    html_url: 'https://github.com/mock_developer/nextjs-dashboard',
-                    description: 'A dashboard built with Next.js and Supabase',
-                    language: 'TypeScript',
-                    stargazers_count: 120,
-                    forks_count: 15,
-                    is_private: false,
-                    updated_at: new Date().toISOString(),
-                    synced_at: new Date().toISOString()
-                },
-                {
-                    candidate_id: candidateData.id,
-                    github_repo_id: 102, 
-                    name: 'react-components',
-                    full_name: 'mock_developer/react-components',
-                    html_url: 'https://github.com/mock_developer/react-components',
-                    description: 'Reusable React components',
-                    language: 'JavaScript',
-                    stargazers_count: 85,
-                    forks_count: 8,
-                    is_private: false,
-                    updated_at: new Date().toISOString(),
-                    synced_at: new Date().toISOString()
-                },
-                {
-                    candidate_id: candidateData.id,
-                    github_repo_id: 103, 
-                    name: 'python-scripts',
-                    full_name: 'mock_developer/python-scripts',
-                    html_url: 'https://github.com/mock_developer/python-scripts',
-                    description: 'Useful Python automation scripts',
-                    language: 'Python',
-                    stargazers_count: 42,
-                    forks_count: 5,
-                    is_private: true, // Mock a private repo
-                    updated_at: new Date().toISOString(),
-                    synced_at: new Date().toISOString()
-                }
-             ];
-
-             const { error: repoError } = await supabaseAdmin
-                .from('github_repositories')
-                .upsert(mockRepos, { onConflict: 'candidate_id,github_repo_id' });
-            
-             if (repoError) {
-                console.error('[Mock GitHub] Error inserting mock repos:', repoError);
-             } else {
-                console.log('[Mock GitHub] Successfully inserted mock repos');
-             }
-        }
-      }
-    } else {
-        console.warn('[Mock GitHub] supabaseAdmin not available, skipping DB updates');
+    if (error) {
+      console.error('GitHub OAuth error:', error);
+      throw error;
     }
 
+    if (!data.url) {
+      throw new Error('No redirect URL returned from Supabase');
+    }
 
-    // Redirect back to onboarding with success parameter
-    // We behave exactly as the callback would have
-    const successUrl = new URL(redirectTo, requestUrl.origin);
-    successUrl.searchParams.set('github_connected', 'true');
-    successUrl.searchParams.set('step', onboardingStep);
-    
-    console.log('[Mock GitHub] Redirecting to success URL:', successUrl.toString());
-    return NextResponse.redirect(successUrl);
+    // Redirect user to GitHub for authentication
+    return NextResponse.redirect(data.url);
 
   } catch (error) {
     console.error('GitHub connect error:', error);

@@ -295,7 +295,7 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
  * @param email - Candidate's email address
  * @param includeAssessmentFields - If true, includes assessment_repo_url, assessment_repo_created_at, assessment_started_at (only for top candidates)
  */
-export async function getCandidate(email: string, includeAssessmentFields: boolean = false) {
+export async function getCandidate(email: string, includeAssessmentFields: boolean = false): Promise<CandidateRow | null> {
   const client = supabaseAdmin || supabase;
   
   // Base fields that are always selected (excludes assessment fields for regular onboarding)
@@ -352,7 +352,7 @@ export async function getCandidate(email: string, includeAssessmentFields: boole
     throw new Error(`Failed to get candidate: ${error.message}`);
   }
 
-  return data;
+  return data as any as CandidateRow | null;
 }
 
 // ==================== STARTUP FUNCTIONS ====================

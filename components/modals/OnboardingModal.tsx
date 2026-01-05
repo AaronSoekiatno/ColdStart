@@ -1180,8 +1180,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                   key={repo.github_repo_id}
                                   onClick={() => handleRepoToggle(repo.github_repo_id)}
                                   className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
-                                      ? 'border-[#498EDC] bg-blue-50'
-                                      : 'border-gray-200 bg-white hover:border-gray-300'
+                                    ? 'border-[#498EDC] bg-blue-50'
+                                    : 'border-gray-200 bg-white hover:border-gray-300'
                                     }`}
                                 >
                                   <div className="flex items-start gap-3">
@@ -1228,8 +1228,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                                 key={roleOption.value}
                                                 onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
                                                 className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${selectedCategories.includes(roleOption.value)
-                                                    ? 'bg-[#498EDC] text-white'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                  ? 'bg-[#498EDC] text-white'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                   }`}
                                               >
                                                 {!selectedCategories.includes(roleOption.value) && (
@@ -1264,8 +1264,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                               key={repo.github_repo_id}
                               onClick={() => handleRepoToggle(repo.github_repo_id)}
                               className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
-                                  ? 'border-[#498EDC] bg-blue-50'
-                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                                ? 'border-[#498EDC] bg-blue-50'
+                                : 'border-gray-200 bg-white hover:border-gray-300'
                                 }`}
                             >
                               <div className="flex items-start gap-3">
@@ -1312,8 +1312,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                             key={roleOption.value}
                                             onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
                                             className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${selectedCategories.includes(roleOption.value)
-                                                ? 'bg-[#498EDC] text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                              ? 'bg-[#498EDC] text-white'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                               }`}
                                           >
                                             {!selectedCategories.includes(roleOption.value) && (
@@ -1347,13 +1347,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
                       Back
-                    </Button>
-                    <Button
-                      onClick={handleReposSkip}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Skip
                     </Button>
                     <Button
                       onClick={handleReposContinue}
@@ -1419,21 +1412,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     </Button>
                   </div>
 
-                  {/* Skip button - less prominent */}
-                  <div className="text-center mt-4">
-                    <button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(10); // Go to assessment step for topcandidates
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2 transition-colors"
-                    >
-                      Skip for now
-                    </button>
-                  </div>
+
                 </div>
               )}
 
