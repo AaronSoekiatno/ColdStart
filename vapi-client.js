@@ -5,10 +5,24 @@
  * automatic start/stop based on interview phases, and cost tracking.
  */
 
-import Vapi from "@vapi-ai/web";
+// Conditionally import Vapi or use a mock for Server-Side Rendering
+let Vapi;
+let vapi;
 
-// Vapi instance
-const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY);
+if (typeof window !== 'undefined') {
+    Vapi = require("@vapi-ai/web").default;
+    vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY);
+} else {
+    // Server-side mock to prevent crashes
+    console.log('[Vapi] Running on server - using mock Vapi client');
+    vapi = {
+        on: () => { },
+        start: async () => console.log('Mock Vapi start'),
+        stop: async () => console.log('Mock Vapi stop'),
+        send: () => { },
+        getCallStatus: () => ({ status: 'idle' })
+    };
+}
 
 // Assistant IDs for each phase (loaded from environment)
 const ASSISTANT_IDS = {
@@ -42,6 +56,8 @@ const eventCallbacks = {
  * Initialize Vapi event listeners
  */
 export function initializeVapiListeners() {
+    if (typeof window === 'undefined') return;
+
     vapi.on("call-start", () => {
         activeCall.status = 'active';
         activeCall.startTime = Date.now();
@@ -114,7 +130,10 @@ export function initializeVapiListeners() {
 /**
  * Start a phase-specific voice call
  */
-export async function startPhaseCall(sessionId, phaseId, assistantType, previousMessages = []) {
+/**
+ * Start a phase-specific voice call
+ */
+export async function startPhaseCall(sessionId, phaseId, assistantType, previousMessages = [], overrides = null) {
     if (activeCall.status !== 'idle') {
         console.warn(`[Vapi] Call already in progress for session ${activeCall.sessionId}`);
         return null;
@@ -143,9 +162,16 @@ export async function startPhaseCall(sessionId, phaseId, assistantType, previous
 
     try {
         // Start Vapi call with optional conversation history
-        const callOptions = previousMessages.length > 0
-            ? { messages: previousMessages }
-            : {};
+        const callOptions = {};
+
+        if (previousMessages.length > 0) {
+            callOptions.messages = previousMessages;
+        }
+
+        if (overrides) {
+            callOptions.assistantOverrides = overrides;
+            console.log('[Vapi] Applying assistant overrides:', overrides);
+        }
 
         await vapi.start(assistantId, callOptions);
         return activeCall;
