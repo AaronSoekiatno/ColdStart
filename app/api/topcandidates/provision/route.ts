@@ -18,7 +18,8 @@ import { getNextApiKey } from '@/lib/api-key-pool';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Authenticate user
+
+    // Initialize Supabase Client
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,52 +34,59 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // 1. Try Authentication via Session (Browser/Cookie)
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    let candidateId: string | null = null;
+    let candidateEmail: string | null = null;
 
-    if (authError || !user || !user.email) {
+    if (user && user.email) {
+      // Authenticated via Session
+      const { data: candidateData, error: candidateError } = await supabaseAdmin!
+        .from('candidates')
+        .select('id, email')
+        .eq('email', user.email)
+        .single();
+      
+      if (!candidateError && candidateData) {
+        candidateId = candidateData.id;
+        candidateEmail = candidateData.email;
+      }
+    }
+
+    // 2. Try Authentication via Provisioning Token (Script/Header)
+    if (!candidateId) {
+        const authHeader = request.headers.get('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            
+            // Validate token against candidates table
+            const { data: tokenCandidate, error: tokenError } = await supabaseAdmin!
+                .from('candidates')
+                .select('id, email')
+                .eq('provisioning_token', token)
+                .single();
+
+            if (!tokenError && tokenCandidate) {
+                candidateId = tokenCandidate.id;
+                candidateEmail = tokenCandidate.email;
+                console.log(`[Provision] Authenticated via provisioning token for candidate: ${candidateEmail}`);
+            } else {
+                console.warn(`[Provision] Invalid provisioning token attempt`);
+            }
+        }
+    }
+
+    if (!candidateId) {
       return NextResponse.json(
-        { error: 'Unauthorized. Please sign in to provision your workspace.' },
+        { error: 'Unauthorized. Please sign in or provide a valid provisioning token.' },
         { status: 401 }
       );
     }
 
-    // Get candidate record
-    if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Database connection not available' },
-        { status: 500 }
-      );
-    }
-
-    const candidate = await getCandidate(user.email, true); // Include assessment fields for top candidates
-
-    if (!candidate || !candidate.id) {
-      return NextResponse.json(
-        { error: 'Candidate record not found. Please complete onboarding first.' },
-        { status: 404 }
-      );
-    }
-
-    // Verify candidate_id matches authenticated user (security check)
-    // This ensures candidates can only provision their own workspace
-    const { data: candidateCheck, error: candidateCheckError } = await supabaseAdmin
-      .from('candidates')
-      .select('id, email')
-      .eq('id', candidate.id)
-      .eq('email', user.email)
-      .single();
-
-    if (candidateCheckError || !candidateCheck) {
-      return NextResponse.json(
-        { error: 'Authorization failed. Candidate ID does not match authenticated user.' },
-        { status: 403 }
-      );
-    }
-
     // Call RPC function to create candidate schema
-    const { data: schemaName, error: rpcError } = await supabaseAdmin.rpc(
+    const { data: schemaName, error: rpcError } = await supabaseAdmin!.rpc(
       'create_candidate_schema',
-      { candidate_id_param: candidate.id }
+      { candidate_id_param: candidateId }
     );
 
     if (rpcError) {
@@ -102,7 +110,7 @@ export async function POST(request: NextRequest) {
     // Generate schema-specific JWT token
     let jwtToken: string;
     try {
-      jwtToken = generateCandidateJWT(candidate.id, schemaName, 24); // 24 hour expiration
+      jwtToken = generateCandidateJWT(candidateId, schemaName, 24); // 24 hour expiration
     } catch (jwtError) {
       const errorMessage = jwtError instanceof Error ? jwtError.message : 'Unknown error';
       console.error('[Provision] JWT generation error:', jwtError);
@@ -143,6 +151,7 @@ export async function POST(request: NextRequest) {
     // Return credentials in format suitable for .env.local
     return NextResponse.json({
       SUPABASE_URL: supabaseUrl,
+      SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       SUPABASE_PRIVATE_KEY: jwtToken,
       GOOGLE_API_KEY: googleApiKey,
     });

@@ -19,12 +19,26 @@ const server = http.createServer((req, res) => {
   console.log(`[Mock Server] Received request: ${req.method} ${req.url}`);
   
   if (req.url === '/api/topcandidates/provision' && req.method === 'GET') {
+      const authHeader = req.headers['authorization'];
+      let isAuthenticated = false;
+
+      // Log auth header for debugging
+      if (authHeader) {
+          console.log(`[Mock Server] Auth Header: ${authHeader}`);
+          if (authHeader.startsWith('Bearer ')) {
+              isAuthenticated = true; // For testing purposes, accept any Bearer token
+          }
+      } else {
+           console.log(`[Mock Server] No Auth Header received`);
+      }
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       GOOGLE_API_KEY: 'mock-google-key',
       SUPABASE_URL: 'https://mock.supabase.co',
       SUPABASE_PRIVATE_KEY: 'mock-private-key',
-      SUPABASE_ANON_KEY: 'mock-anon-key'
+      SUPABASE_ANON_KEY: 'mock-anon-key',
+      _TEST_AUTH_RECEIVED: isAuthenticated // Return this so we can verify it in the logs/output
     }));
   } else {
     res.writeHead(404);
@@ -45,6 +59,12 @@ async function runTests() {
     console.log('\n--- Test 2: Using ADMIN_TELEMETRY_URL (Base URL) ---');
     await runScript({ ADMIN_TELEMETRY_URL: MOCK_API_URL });
 
+    console.log('\n--- Test 3: With HERMES_PROVISIONING_TOKEN ---');
+    await runScript({ 
+      ADMIN_TELEMETRY_URL: MOCK_API_URL,
+      HERMES_PROVISIONING_TOKEN: 'test-token-uuid-1234'
+    });
+
     console.log('\n✅ All provisioning tests passed!');
   } catch (error) {
     console.error('\n❌ Test failed:', error);
@@ -54,7 +74,7 @@ async function runTests() {
   }
 }
 
-function runScript(env: NodeJS.ProcessEnv) {
+function runScript(env: Record<string, string>) {
   return new Promise<void>((resolve, reject) => {
     const child = spawn('node', [PROVISION_SCRIPT], {
       env: { ...process.env, ...env },

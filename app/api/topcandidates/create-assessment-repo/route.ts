@@ -260,6 +260,10 @@ export async function POST(request: NextRequest) {
         repoOwnerName = generatedRepo.owner.login;
       }
 
+
+      // Generate Provisioning Token
+      const provisioningToken = crypto.randomUUID();
+
       // --- Secret Injection ---
       try {
         console.log(`[Create Repo] Injecting secrets into ${repoOwnerName}/${repoName}...`);
@@ -283,6 +287,15 @@ export async function POST(request: NextRequest) {
             candidate.github_access_token
           );
         }
+
+        // Inject HERMES_PROVISIONING_TOKEN
+        await uploadSecret(
+          repoOwnerName,
+          repoName,
+          'HERMES_PROVISIONING_TOKEN',
+          provisioningToken,
+          candidate.github_access_token
+        );
         
       } catch (secretError) {
         console.error('[Create Repo] Error injecting secrets:', secretError);
@@ -295,6 +308,7 @@ export async function POST(request: NextRequest) {
         .update({
           assessment_repo_url: repoUrl,
           assessment_repo_created_at: new Date().toISOString(),
+          provisioning_token: provisioningToken,
         })
         .eq('id', candidate.id);
 
