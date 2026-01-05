@@ -108,6 +108,7 @@
     "googleapis": "^166.0.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
+    "libsodium-wrappers": "^0.7.16",
     "lucide-react": "^0.555.0",
     "mammoth": "^1.11.0",
     "next": "^16.0.10",
@@ -124,6 +125,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/jsonwebtoken": "^9.0.7",
+    "@types/libsodium-wrappers": "^0.7.14",
     "@types/node": "^22.19.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

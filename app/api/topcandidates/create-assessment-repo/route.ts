@@ -2,6 +2,71 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate } from '@/lib/supabase';
+import sodium from 'libsodium-wrappers';
+
+/**
+ * Upload a secret to a GitHub repository
+ */
+async function uploadSecret(
+  owner: string,
+  repo: string,
+  secretName: string,
+  secretValue: string,
+  token: string
+) {
+  try {
+    // 1. Get the public key for the repository
+    const publicKeyResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/secrets/public-key`,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      }
+    );
+
+    if (!publicKeyResponse.ok) {
+      throw new Error(`Failed to get public key: ${await publicKeyResponse.text()}`);
+    }
+
+    const { key_id, key } = await publicKeyResponse.json();
+
+    // 2. Encrypt the secret
+    await sodium.ready;
+    const binkey = sodium.from_base64(key, sodium.base64_variants.ORIGINAL);
+    const binsec = sodium.from_string(secretValue);
+    const encBytes = sodium.crypto_box_seal(binsec, binkey);
+    const encrypted_value = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
+
+    // 3. Create or update the secret
+    const secretResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/actions/secrets/${secretName}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body: JSON.stringify({
+          encrypted_value,
+          key_id,
+        }),
+      }
+    );
+
+    if (!secretResponse.ok) {
+      throw new Error(`Failed to create secret ${secretName}: ${await secretResponse.text()}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`[Secret Injection] Error injecting ${secretName}:`, error);
+    return false;
+  }
+}
 
 /**
  * POST /api/topcandidates/create-assessment-repo
@@ -112,6 +177,9 @@ export async function POST(request: NextRequest) {
 
     // Create repository from template using GitHub API
     const repoName = `hermes-assessment-${candidate.id.substring(0, 8)}`;
+    let repoUrl = '';
+    let cloneUrl = '';
+    let repoOwnerName = '';
     
     try {
       // Try using template repository generation endpoint first
@@ -180,45 +248,46 @@ export async function POST(request: NextRequest) {
         }
 
         const createdRepo = await createResponse.json();
-        const repoUrl = createdRepo.html_url;
-        const cloneUrl = createdRepo.clone_url;
+        repoUrl = createdRepo.html_url;
+        cloneUrl = createdRepo.clone_url;
+        repoOwnerName = createdRepo.owner.login;
 
-        // Update candidate record
-        await supabaseAdmin
-          .from('candidates')
-          .update({
-            assessment_repo_url: repoUrl,
-            assessment_repo_created_at: new Date().toISOString(),
-          })
-          .eq('id', candidate.id);
-
-        // Call provisioning endpoint
-        const provisionResponse = await fetch(
-          `${request.nextUrl.origin}/api/topcandidates/provision`,
-          {
-            method: 'POST',
-            headers: {
-              'Cookie': request.headers.get('Cookie') || '',
-            },
-          }
-        );
-
-        let credentials = null;
-        if (provisionResponse.ok) {
-          credentials = await provisionResponse.json();
-        }
-
-        return NextResponse.json({
-          repoUrl,
-          cloneUrl,
-          credentials,
-        });
+      } else {
+        // Template generation succeeded
+        const generatedRepo = await generateResponse.json();
+        repoUrl = generatedRepo.html_url;
+        cloneUrl = generatedRepo.clone_url;
+        repoOwnerName = generatedRepo.owner.login;
       }
 
-      // Template generation succeeded
-      const generatedRepo = await generateResponse.json();
-      const repoUrl = generatedRepo.html_url;
-      const cloneUrl = generatedRepo.clone_url;
+      // --- Secret Injection ---
+      try {
+        console.log(`[Create Repo] Injecting secrets into ${repoOwnerName}/${repoName}...`);
+        
+        // Inject ADMIN_TELEMETRY_URL
+        await uploadSecret(
+          repoOwnerName,
+          repoName,
+          'ADMIN_TELEMETRY_URL',
+          request.nextUrl.origin,
+          candidate.github_access_token
+        );
+        
+        // Inject SUPABASE_ANON_KEY (from environment)
+        if (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+          await uploadSecret(
+            repoOwnerName,
+            repoName,
+            'SUPABASE_ANON_KEY',
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+            candidate.github_access_token
+          );
+        }
+        
+      } catch (secretError) {
+        console.error('[Create Repo] Error injecting secrets:', secretError);
+        // Continue even if secrets fail, as the repo is created
+      }
 
       // Update candidate record
       await supabaseAdmin
@@ -271,4 +340,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

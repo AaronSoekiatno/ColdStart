@@ -570,12 +570,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         description: "Your private workspace is ready.",
       });
 
-      // Move to completion step (Step 11)
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setStep(11);
-        setIsTransitioning(false);
-      }, 300);
+      // Do not auto-advance to step 11 - let user see the clone instructions (step 10 success state)
     } catch (error) {
       console.error('Error creating assessment repo:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create repository';
@@ -1104,20 +1099,21 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     >
                       Back
                     </Button>
-                    {githubConnected ? (
+                    {!githubConnected && (
+                      <Button
+                        onClick={handleGithubSkip}
+                        variant="ghost"
+                        className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                      >
+                        Skip for now
+                      </Button>
+                    )}
+                    {githubConnected && (
                       <Button
                         onClick={handleGithubContinue}
                         className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
                       >
                         Continue
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={handleGithubSkip}
-                        variant="outline"
-                        className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                      >
-                        Skip for now
                       </Button>
                     )}
                   </div>
@@ -1349,6 +1345,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       Back
                     </Button>
                     <Button
+                      onClick={handleReposSkip}
+                      variant="ghost"
+                      className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    >
+                      Skip for now
+                    </Button>
+                    <Button
                       onClick={handleReposContinue}
                       className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
                     >
@@ -1397,6 +1400,19 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
                       Back
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(10); // Go to assessment step for topcandidates
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                      variant="ghost"
+                      className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    >
+                      Skip for now
                     </Button>
                     <Button
                       onClick={() => {
