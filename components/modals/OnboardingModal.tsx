@@ -109,6 +109,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [step, isTopCandidatesRoute]);
 
+  // Safeguard: Redirect from removed step 5
+  useEffect(() => {
+    if (step === 5) {
+      setStep(skipResumeUpload ? 7 : 6);
+    }
+  }, [step, skipResumeUpload]);
+
   // Step 9 is Calendly for topcandidates, final choice for regular - no special handling needed
 
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
@@ -118,7 +125,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [hasBetaAccess, setHasBetaAccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [showStatistic, setShowStatistic] = useState(false);
+
   const [githubConnected, setGithubConnected] = useState(false);
   const [selectedCalendlyLink, setSelectedCalendlyLink] = useState<string | null>(null);
   // GitHub repos state
@@ -182,17 +189,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  const handleStatisticContinue = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      if (skipResumeUpload) {
-        setStep(7); // Skip to GitHub connection if resume upload is skipped
-      } else {
-        setStep(6); // Resume upload step
-      }
-      setIsTransitioning(false);
-    }, 200); // Reduced from 300ms to 200ms
-  }, [skipResumeUpload]);
+
 
   // Check for GitHub connection status from URL params
   useEffect(() => {
@@ -452,14 +449,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }, 200); // Reduced from 300ms to 200ms
   }, [selectedObjectives.length]);
 
-  useEffect(() => {
-    if (step === 5) {
-      setShowStatistic(false);
-      // Small delay to allow render then trigger animation
-      const timer = setTimeout(() => setShowStatistic(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [step]);
+
 
   const handleJobTypeSelect = useCallback((jobType: JobType) => {
     setSelectedJobType(jobType);
@@ -527,9 +517,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
       if (data.success) {
         // Go to final step instead of completing
+        // Go to next step
         setIsTransitioning(true);
         setTimeout(() => {
-          setStep(5); // Go to Statistic screen
+          if (skipResumeUpload) {
+            setStep(7); // Skip failure-prone resume upload if requested
+          } else {
+            setStep(6); // Resume upload step
+          }
           setIsSubmitting(false);
           setIsTransitioning(false);
         }, 200);
@@ -634,11 +629,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   {(() => {
                     const steps = isTopCandidatesRoute
                       ? skipResumeUpload
-                        ? [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]
-                        : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+                        ? [1, 2, 3, 4, 7, 8, 9, 10, 11]
+                        : [1, 2, 3, 4, 6, 7, 8, 9, 10, 11]
                       : skipResumeUpload
-                        ? [1, 2, 3, 4, 5, 7, 9]
-                        : [1, 2, 3, 4, 5, 6, 7, 9];
+                        ? [1, 2, 3, 4, 7, 9]
+                        : [1, 2, 3, 4, 6, 7, 9];
                     return steps.map((stepNum) => (
                       <div
                         key={stepNum}
@@ -650,25 +645,35 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 </div>
                 <p className="text-center text-gray-500 text-sm">
                   Step {(() => {
+                    const currentStepDisplay = step > 5 ? step - 1 : step;
+
                     if (isTopCandidatesRoute) {
-                      // Map steps for topcandidates: 1-8 stay same, 9 is Calendly, 10 is final choice
-                      // Display: 1-8 stay same, step 9 displays as 9, step 10 displays as 10
-                      return step;
+                      return currentStepDisplay;
                     }
-                    const totalSteps = skipResumeUpload
-                      ? 7
-                      : 8;
+
+                    const totalSteps = skipResumeUpload ? 6 : 7;
+
                     // Adjust displayed step number if we're past step 8 but it's not shown
                     if (!isTopCandidatesRoute && step === 9) {
-                      return totalSteps;
+                      return totalSteps; // Final step
                     }
+
                     if (skipResumeUpload && step >= 7 && step < 9) {
-                      return step - 1;
+                      // If skipping resume (step 6), step 7 is actually the 5th step visited
+                      return step - 2;
                     }
-                    return step;
+
+                    // Standard flow:
+                    // 1->1
+                    // 2->2
+                    // 3->3
+                    // 4->4
+                    // 6->5 (Resume)
+                    // 7->6 (GitHub)
+                    return currentStepDisplay;
                   })()} of {isTopCandidatesRoute
-                    ? (skipResumeUpload ? 9 : 10)
-                    : (skipResumeUpload ? 7 : 8)}
+                    ? (skipResumeUpload ? 8 : 9)
+                    : (skipResumeUpload ? 6 : 7)}
                 </p>
               </div>
             </DialogHeader>
@@ -676,69 +681,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             <div className="relative min-h-[450px]">
               {/* Conditionally render only the current step to improve performance */}
 
-              {/* Step 5: Statistic Screen (Moved from Step 1) */}
-              {step === 5 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center space-y-8">
-                    <div className={`transition-all duration-700 ${showStatistic ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-                      <DialogTitle className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-                        Get better results with Hermes
-                      </DialogTitle>
-                    </div>
 
-                    {/* Positive statistic first - Cold emails */}
-                    <div className={`transition-all duration-700 delay-300 ${showStatistic ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-8 shadow-lg">
-                        <p className="text-lg md:text-xl text-gray-700 leading-relaxed mb-4">
-                          Cold emails to tech recruiters, hiring managers, or potential referrers give you an{" "}
-                          <span className="font-bold text-blue-600">edge over traditional applications</span> through direct outreach.
-                        </p>
-                        <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-                          Even modest reply rates{" "}
-                          <span className="font-bold text-blue-600">(2–5%)</span> add extra screens, referrals, and interviews that would not occur from applications alone.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Traditional application statistic - less intimidating */}
-                    <div className={`transition-all duration-700 delay-500 ${showStatistic ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl p-6 shadow-lg max-w-2xl mx-auto">
-                        <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                          Traditional online job applications aren't working right now—success rates hover around just{" "}
-                          <span className="font-semibold text-gray-800">2%</span> in many cases.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`flex gap-4 mt-12 transition-all duration-700 delay-700 ${showStatistic ? 'opacity-100' : 'opacity-0'}`}>
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(4);
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm py-6 text-lg"
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      onClick={handleStatisticContinue}
-                      className="flex-[2] bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               {/* Step 1: Objectives (Moved from Step 2) */}
               {step === 1 && (
@@ -1008,7 +951,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       onClick={() => {
                         setIsTransitioning(true);
                         setTimeout(() => {
-                          setStep(5);
+                          setStep(4); // Back to YOE
                           setIsTransitioning(false);
                         }, 200);
                       }}
@@ -1087,7 +1030,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         setIsTransitioning(true);
                         setTimeout(() => {
                           if (skipResumeUpload) {
-                            setStep(5); // Go back to statistic screen
+                            setStep(4); // Go back to YOE (skipped statistic)
                           } else {
                             setStep(6); // Go back to resume upload
                           }
