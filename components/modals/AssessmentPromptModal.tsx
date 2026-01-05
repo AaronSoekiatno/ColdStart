@@ -182,7 +182,17 @@ export function AssessmentPromptModal({
               </div>
 
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Step 3: Start the assessment</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install dependencies</h4>
+                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
+                  <code>yarn</code>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  This installs the required packages for the assessment.
+                </p>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Step 4: Start the assessment</h4>
                 <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
                   <code>yarn mission:start</code>
                 </div>
