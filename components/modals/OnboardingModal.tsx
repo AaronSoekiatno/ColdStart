@@ -127,7 +127,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const [githubConnected, setGithubConnected] = useState(false);
-  const [selectedCalendlyLink, setSelectedCalendlyLink] = useState<string | null>(null);
+
   // GitHub repos state
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
@@ -140,7 +140,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [assessmentCredentials, setAssessmentCredentials] = useState<any>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const { toast } = useToast();
-  // const [showResumeUpload, setShowResumeUpload] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
 
   // Check if user has beta access
   useEffect(() => {
@@ -260,18 +266,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [open, isTopCandidatesRoute]);
 
-  // Randomly select a Calendly link when step 9 is shown for topcandidates route
-  useEffect(() => {
-    if (step === 9 && isTopCandidatesRoute && !selectedCalendlyLink) {
-      const calendlyLinks = [
-        'https://calendly.com/aaronjsoekiatno/hermes-portfolio',
-        'https://calendly.com/robertpflores06/30min',
-        'https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran',
-      ];
-      const randomIndex = Math.floor(Math.random() * calendlyLinks.length);
-      setSelectedCalendlyLink(calendlyLinks[randomIndex]);
-    }
-  }, [step, isTopCandidatesRoute, selectedCalendlyLink]);
+
 
   // Fetch GitHub repos when entering step 8 (without saving to database)
   useEffect(() => {
@@ -319,10 +314,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleGithubSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(9); // Skip to choice screen (no repos to select)
+      if (isTopCandidatesRoute) {
+        setStep(10); // Skip to Assessment (no repos to select)
+      } else {
+        setStep(9); // Skip to choice screen
+      }
       setIsTransitioning(false);
     }, 200);
-  }, []);
+  }, [isTopCandidatesRoute]);
 
   const handleGithubContinue = useCallback(() => {
     setIsTransitioning(true);
@@ -376,10 +375,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleReposContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(9); // Go to Calendly step (9) for topcandidates, choice screen (9) for regular
+      if (isTopCandidatesRoute) {
+        setStep(10); // Go to Assessment step (10) for topcandidates
+      } else {
+        setStep(9); // Go to choice screen (9) for regular
+      }
       setIsTransitioning(false);
     }, 200);
-  }, []);
+  }, [isTopCandidatesRoute]);
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
@@ -432,7 +435,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     setIsTransitioning(true);
     setTimeout(() => {
       if (isTopCandidatesRoute) {
-        setStep(9); // Go to Calendly step (9) for topcandidates
+        setStep(10); // Go to Assessment step (10) for topcandidates
       } else {
         setStep(9); // Go to choice screen (9) for regular
       }
@@ -629,8 +632,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   {(() => {
                     const steps = isTopCandidatesRoute
                       ? skipResumeUpload
-                        ? [1, 2, 3, 4, 7, 8, 9, 10, 11]
-                        : [1, 2, 3, 4, 6, 7, 8, 9, 10, 11]
+                        ? [1, 2, 3, 4, 7, 8, 10, 11]
+                        : [1, 2, 3, 4, 6, 7, 8, 10, 11]
                       : skipResumeUpload
                         ? [1, 2, 3, 4, 7, 9]
                         : [1, 2, 3, 4, 6, 7, 9];
@@ -645,9 +648,20 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 </div>
                 <p className="text-center text-gray-500 text-sm">
                   Step {(() => {
-                    const currentStepDisplay = step > 5 ? step - 1 : step;
+                    // Start with basic adjustment for removed step 5
+                    let currentStepDisplay = step > 5 ? step - 1 : step;
 
                     if (isTopCandidatesRoute) {
+                      // For top candidates, we also removed step 9
+                      if (step >= 10) {
+                        currentStepDisplay -= 1;
+                      }
+
+                      // Handle skip resume (remove step 6)
+                      if (skipResumeUpload && step >= 7) {
+                        currentStepDisplay -= 1;
+                      }
+
                       return currentStepDisplay;
                     }
 
@@ -663,13 +677,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       return step - 2;
                     }
 
-                    // Standard flow:
-                    // 1->1
-                    // 2->2
-                    // 3->3
-                    // 4->4
-                    // 6->5 (Resume)
-                    // 7->6 (GitHub)
                     return currentStepDisplay;
                   })()} of {isTopCandidatesRoute
                     ? (skipResumeUpload ? 8 : 9)
@@ -1042,15 +1049,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     >
                       Back
                     </Button>
-                    {!githubConnected && (
-                      <Button
-                        onClick={handleGithubSkip}
-                        variant="ghost"
-                        className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                      >
-                        Skip for now
-                      </Button>
-                    )}
+
                     {githubConnected && (
                       <Button
                         onClick={handleGithubContinue}
@@ -1304,76 +1303,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 </div>
               )}
 
-              {/* Step 9: Calendly Page (only for topcandidates) */}
-              {step === 9 && isTopCandidatesRoute && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center mb-8">
-                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                      Let's curate your portfolio
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2 text-lg mb-8">
-                      Schedule a demo to get personalized help curating your portfolio page and stand out to startup founders
-                    </DialogDescription>
 
-                    {selectedCalendlyLink && (
-                      <Button
-                        onClick={() => window.open(selectedCalendlyLink, '_blank')}
-                        className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all px-8 py-6 text-lg"
-                      >
-                        Schedule a Call
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="flex gap-4 mt-8">
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(8); // Go back to repo selection
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(10); // Go to assessment step for topcandidates
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="ghost"
-                      className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    >
-                      Skip for now
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(10); // Go to assessment step for topcandidates
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-
-
-                </div>
-              )}
 
               {/* Step 10: Assessment Prompt (only for topcandidates) */}
               {step === 10 && isTopCandidatesRoute && (
@@ -1481,7 +1411,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-2">Step 4: Start the assessment</h4>
                           <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                            <code>yarn mission:start</code>
+                            <code>QUARTERMASTER_API_URL={origin}/api/topcandidates/provision yarn mission:start</code>
                           </div>
                           <p className="text-sm text-gray-600 mt-2">
                             This command will automatically fetch your credentials and set up your environment.

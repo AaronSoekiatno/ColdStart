@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,14 @@ export function AssessmentPromptModal({
   const [cloneUrl, setCloneUrl] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
+
+  // Set origin on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin);
+    }
+  }, []);
 
   const handleStartAssessment = async () => {
     setIsCreating(true);
@@ -194,7 +202,7 @@ export function AssessmentPromptModal({
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Step 4: Start the assessment</h4>
                 <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                  <code>yarn mission:start</code>
+                  <code>QUARTERMASTER_API_URL={origin}/api/topcandidates/provision yarn mission:start</code>
                 </div>
                 <p className="text-sm text-gray-600 mt-2">
                   This command will automatically fetch your credentials and set up your environment.

@@ -16,7 +16,7 @@ import { getNextApiKey } from '@/lib/api-key-pool';
  * 
  * Requires: Authenticated candidate with valid Supabase session
  */
-export async function POST(request: NextRequest) {
+async function handler(request: NextRequest) {
   try {
 
     // Initialize Supabase Client
@@ -168,4 +168,6 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export { handler as GET, handler as POST };
 
