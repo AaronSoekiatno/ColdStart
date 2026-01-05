@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
             repoUrl: candidate.assessment_repo_url,
             cloneUrl: candidate.assessment_repo_url.replace('https://github.com/', 'https://github.com/').replace(/\/$/, '') + '.git',
             credentials,
+            provisioningToken: candidate.provisioning_token,
             alreadyExists: true,
           });
         }
@@ -155,6 +156,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         repoUrl: candidate.assessment_repo_url,
         cloneUrl: candidate.assessment_repo_url.replace('https://github.com/', 'https://github.com/').replace(/\/$/, '') + '.git',
+        provisioningToken: candidate.provisioning_token,
         alreadyExists: true,
       });
     }
@@ -337,6 +339,7 @@ export async function POST(request: NextRequest) {
         repoUrl,
         cloneUrl,
         credentials,
+        provisioningToken,
       });
 
     } catch (error) {

@@ -93,6 +93,7 @@ export interface CandidateRow {
   github_token_expires_at?: string; // Timestamp when GitHub token expires
   provisioned_schema_name?: string; // Postgres schema name created for candidate assessment workspace
   provisioned_at?: string; // Timestamp when the candidate schema was provisioned
+  provisioning_token?: string; // Token for provisioning authentication
   assessment_repo_url?: string; // GitHub repository URL for assessment workspace
   assessment_repo_created_at?: string; // Timestamp when assessment repo was created
   assessment_started_at?: string; // Timestamp when candidate started assessment
@@ -325,6 +326,7 @@ export async function getCandidate(email: string, includeAssessmentFields: boole
       github_username,
       github_connected_at,
       github_token_expires_at,
+      provisioning_token,
       created_at
   `;
   

@@ -34,6 +34,7 @@ export function AssessmentPromptModal({
   const [repoUrl, setRepoUrl] = useState<string | null>(null);
   const [cloneUrl, setCloneUrl] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const [provisioningToken, setProvisioningToken] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
 
@@ -62,6 +63,9 @@ export function AssessmentPromptModal({
       setCloneUrl(data.cloneUrl);
       if (data.credentials) {
         setCredentials(data.credentials);
+      }
+      if (data.provisioningToken) {
+        setProvisioningToken(data.provisioningToken);
       }
 
       toast({
@@ -202,7 +206,7 @@ export function AssessmentPromptModal({
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Step 4: Start the assessment</h4>
                 <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                  <code>QUARTERMASTER_API_URL={origin}/api/topcandidates/provision yarn mission:start</code>
+                  <code className="text-xs md:text-sm break-all">QUARTERMASTER_API_URL="{origin}/api/topcandidates/provision?token={provisioningToken || 'YOUR_TOKEN'}" yarn mission:start</code>
                 </div>
                 <p className="text-sm text-gray-600 mt-2">
                   This command will automatically fetch your credentials and set up your environment.
