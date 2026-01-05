@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate } from '@/lib/supabase';
-import sodium from 'libsodium-wrappers';
+// @ts-ignore
+// @ts-ignore
+import sodium from 'sodium-javascript';
 
 /**
  * Upload a secret to a GitHub repository
@@ -34,11 +36,12 @@ async function uploadSecret(
     const { key_id, key } = await publicKeyResponse.json();
 
     // 2. Encrypt the secret
-    await sodium.ready;
-    const binkey = sodium.from_base64(key, sodium.base64_variants.ORIGINAL);
-    const binsec = sodium.from_string(secretValue);
-    const encBytes = sodium.crypto_box_seal(binsec, binkey);
-    const encrypted_value = sodium.to_base64(encBytes, sodium.base64_variants.ORIGINAL);
+    // 2. Encrypt the secret
+    const binkey = Buffer.from(key, 'base64');
+    const binsec = Buffer.from(secretValue);
+    const encBytes = Buffer.alloc(binsec.length + sodium.crypto_box_SEALBYTES);
+    sodium.crypto_box_seal(encBytes, binsec, binkey);
+    const encrypted_value = encBytes.toString('base64');
 
     // 3. Create or update the secret
     const secretResponse = await fetch(

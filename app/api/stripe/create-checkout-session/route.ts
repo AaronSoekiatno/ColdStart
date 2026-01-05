@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     // Check if candidate exists and has uploaded a resume
     const candidate = await getCandidate(email);
     
-    if (!candidate) {
+    if (!candidate || !candidate.id) {
       return NextResponse.json(
         { error: 'Please upload your resume before subscribing to Premium. Premium features require a resume to match you with startups.' },
         { status: 400 }

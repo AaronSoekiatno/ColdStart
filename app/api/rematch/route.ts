@@ -165,6 +165,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (!candidate.id) {
+          throw new Error("Candidate ID is missing");
+        }
+
     // Save matches to Supabase
     await saveMatches(candidate.id, matchMappings);
 

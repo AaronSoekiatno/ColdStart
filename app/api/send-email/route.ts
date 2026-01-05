@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const candidate = await getCandidate(user.email);
     const startup = await getStartup(startupId);
 
-    if (!candidate) {
+    if (!candidate || !candidate.id) {
       return NextResponse.json(
         { error: 'Candidate profile not found. Please upload your resume first.' },
         { status: 404 }

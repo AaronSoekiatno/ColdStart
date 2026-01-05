@@ -63,7 +63,7 @@ export default async function TrackerPage() {
     .eq('email', user.email ?? '')
     .single();
 
-  if (!candidate) {
+  if (!candidate || !candidate.id) {
     // No candidate record found, redirect to upload page
     redirect('/?error=no_resume');
   }

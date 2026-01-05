@@ -187,7 +187,7 @@ export async function GET(request: NextRequest) {
     const { data: candidate } = candidatePrefsResult;
     const candidateError = candidatePrefsResult.error;
 
-    if (candidateError || !candidate) {
+    if (candidateError || !candidate || !candidate.id) {
       const errorMessage = candidateError?.message || '';
       const isTimeout = errorMessage.includes('timeout') || 
                        errorMessage.includes('ConnectTimeoutError');
@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
       }
       
       return NextResponse.json(
-        { error: 'Candidate not found' },
+        { error: 'Candidate not found or ID missing' },
         { status: 404 }
       );
     }

@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
     // Get candidate info
     const candidate = await getCandidate(user.email);
 
-    if (!candidate) {
+    if (!candidate || !candidate.id) {
       return NextResponse.json(
-        { error: 'Candidate profile not found.' },
+        { error: 'Candidate profile or ID not found.' },
         { status: 404 }
       );
     }
