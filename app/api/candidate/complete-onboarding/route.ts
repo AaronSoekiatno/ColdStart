@@ -16,7 +16,16 @@ export async function POST(request: NextRequest) {
           getAll() {
             return cookieStore.getAll();
           },
-          setAll() {},
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              try {
+                cookieStore.set(name, value, options);
+              } catch (error) {
+                // Cookie setting might fail in route handlers - this is okay
+                // The cookies are already set by the client
+              }
+            });
+          },
         },
       }
     );
@@ -86,7 +95,7 @@ export async function POST(request: NextRequest) {
         job_type: jobType,
         role_type: roleTypes,
         years_of_experience: yearsOfExperience,
-        onboarding_completed: true,
+        onboarding_completed: false, // Don't mark complete until all steps are done
       });
 
       // Refetch the candidate to get the complete type with required fields
@@ -106,37 +115,7 @@ export async function POST(request: NextRequest) {
         roleTypes,
       });
 
-      // Upgrade user_type from 'lead' to 'user' in waitlist table when onboarding is completed
-      // This ensures they receive user campaigns instead of lead campaigns
-      if (supabaseAdmin) {
-        await supabaseAdmin
-          .from('waitlist')
-          .update({ user_type: 'user' })
-          .eq('email', user.email.toLowerCase().trim())
-          .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
-      }
-
-      // Send welcome email after onboarding completion (non-blocking)
-      // This ensures users get the welcome email even if they complete onboarding before the auth callback runs
-      try {
-        const firstName = candidate.name?.split(' ')[0]?.trim() || 
-                         extractFirstName(user.user_metadata, user.email);
-        
-        sendWelcomeEmail(user.email, firstName, user.user_metadata)
-          .then((result) => {
-            if (result.success) {
-              console.log(`[Onboarding] Welcome email sent to ${user.email}`);
-            } else {
-              console.warn(`[Onboarding] Failed to send welcome email to ${user.email}:`, result.error);
-            }
-          })
-          .catch((error) => {
-            console.error(`[Onboarding] Error sending welcome email to ${user.email}:`, error);
-          });
-      } catch (error) {
-        // Log error but don't block onboarding completion
-        console.error('[Onboarding] Error setting up welcome email:', error);
-      }
+      // Don't upgrade user_type or send welcome email here - wait until onboarding is fully complete
     } else {
       // Update existing candidate's job_type and role_type
       await saveCandidate({
@@ -147,7 +126,7 @@ export async function POST(request: NextRequest) {
         job_type: jobType,
         role_type: roleTypes,
         years_of_experience: yearsOfExperience,
-        onboarding_completed: true,
+        onboarding_completed: false, // Don't mark complete until all steps are done
         // Preserve existing fields
         location: candidate.location,
         education_level: candidate.education_level,
@@ -167,20 +146,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Upgrade user_type from 'lead' to 'user' in waitlist table when onboarding is completed
-    // This ensures they receive user campaigns instead of lead campaigns
-    if (supabaseAdmin) {
-      await supabaseAdmin
-        .from('waitlist')
-        .update({ user_type: 'user' })
-        .eq('email', user.email.toLowerCase().trim())
-        .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
-    }
-
-    // Invalidate matches cache since job_type and years_of_experience affect filtering
-    const matchesCacheKey = `matches:${user.email}:ALL`;
-    await deleteCache(matchesCacheKey);
-    console.log('[Complete Onboarding] Invalidated matches cache:', matchesCacheKey);
+    // Don't upgrade user_type, send welcome email, or invalidate cache here
+    // Wait until onboarding is fully complete (all steps done)
 
     return NextResponse.json({ 
       success: true, 

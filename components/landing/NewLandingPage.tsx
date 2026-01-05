@@ -33,7 +33,7 @@ export function NewLandingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const isTopCandidatesRoute = pathname === '/topcandidates';
+  const isTopCandidatesRoute = pathname === '/topcandidates' || pathname === '/onboarding';
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -214,7 +214,7 @@ export function NewLandingPage() {
       // Check if this is a GitHub connection flow - if so, don't interfere
       const urlParams = new URLSearchParams(window.location.search);
       const isGitHubConnection = urlParams.get('github_connected') === 'true';
-      
+
       if (!isGitHubConnection) {
         // Force show onboarding modal on topcandidates route
         setShowOnboarding(true);
@@ -649,13 +649,12 @@ export function NewLandingPage() {
         onOpenChange={setShowOnboarding}
         onComplete={() => {
           setShowOnboarding(false);
-          // After onboarding, redirect to matches (unless on top candidates route)
-          if (!isTopCandidatesRoute) {
-            window.location.href = "/matches";
-          }
+          // Redirect to matches if the modal itself doesn't handle it
+          // (Though for enhanced flow the modal usually redirects)
+          window.location.href = '/matches';
         }}
         skipResumeUpload={false}
-        isTopCandidatesRoute={isTopCandidatesRoute}
+        isTopCandidatesRoute={true}
       />
       <SignInModal
         open={showSignIn}
