@@ -1,100 +1,107 @@
 
-import { spawn } from 'child_process';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 import path from 'path';
 
-/**
- * Test script for verifying provision-key.js logic
- * 
- * Usage: tsx scripts/test-provisioning-flow.ts
- */
+// Load environment variables from .env.local
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
-const PROVISION_SCRIPT = path.join(process.cwd(), 'AbsurdLangChain', 'scripts', 'provision-key.js');
-const MOCK_API_PORT = 3005;
-const MOCK_API_URL = `http://localhost:${MOCK_API_PORT}`;
+// Setup Supabase Admin Client
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// 1. Start a mock server to simulate the provisioning API
-import http from 'http';
-
-const server = http.createServer((req, res) => {
-  console.log(`[Mock Server] Received request: ${req.method} ${req.url}`);
-  
-  if (req.url === '/api/topcandidates/provision' && req.method === 'GET') {
-      const authHeader = req.headers['authorization'];
-      let isAuthenticated = false;
-
-      // Log auth header for debugging
-      if (authHeader) {
-          console.log(`[Mock Server] Auth Header: ${authHeader}`);
-          if (authHeader.startsWith('Bearer ')) {
-              isAuthenticated = true; // For testing purposes, accept any Bearer token
-          }
-      } else {
-           console.log(`[Mock Server] No Auth Header received`);
-      }
-
-    const proxyUrl = `${MOCK_API_URL}/api/proxy/gemini`;
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      GEMINI_BASE_URL: proxyUrl,
-      GOOGLE_BASE_URL: proxyUrl,
-      GOOGLE_API_KEY: 'managed-by-proxy',
-      SUPABASE_URL: 'https://mock.supabase.co',
-      SUPABASE_PRIVATE_KEY: 'mock-private-key',
-      SUPABASE_ANON_KEY: 'mock-anon-key',
-      _TEST_AUTH_RECEIVED: isAuthenticated // Return this so we can verify it in the logs/output
-    }));
-  } else {
-    res.writeHead(404);
-    res.end();
-  }
-});
-
-server.listen(MOCK_API_PORT, () => {
-  console.log(`[Test] Mock provisioning server running at ${MOCK_API_URL}`);
-  runTests();
-});
-
-async function runTests() {
-  try {
-    console.log('\n--- Test 1: Using QUARTERMASTER_API_URL directly ---');
-    await runScript({ QUARTERMASTER_API_URL: `${MOCK_API_URL}/api/topcandidates/provision` });
-
-    console.log('\n--- Test 2: Using ADMIN_TELEMETRY_URL (Base URL) ---');
-    await runScript({ ADMIN_TELEMETRY_URL: MOCK_API_URL });
-
-    console.log('\n--- Test 3: With HERMES_PROVISIONING_TOKEN ---');
-    await runScript({ 
-      ADMIN_TELEMETRY_URL: MOCK_API_URL,
-      HERMES_PROVISIONING_TOKEN: 'test-token-uuid-1234'
-    });
-
-    console.log('\n✅ All provisioning tests passed!');
-  } catch (error) {
-    console.error('\n❌ Test failed:', error);
-  } finally {
-    server.close();
-    process.exit(0);
-  }
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("❌ Missing Supabase Credentials in .env.local");
+    process.exit(1);
 }
 
-function runScript(env: Record<string, string>) {
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn('node', [PROVISION_SCRIPT], {
-      env: { ...process.env, ...env },
-      stdio: 'inherit'
-    });
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+});
 
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Script exited with code ${code}`));
-      }
-    });
+const TEST_EMAIL = `test-provision-${Date.now()}@example.com`;
+const TEST_TOKEN = `test-token-${Date.now()}`;
+const API_URL = 'http://localhost:3000/api/topcandidates/provision';
 
-    child.on('error', (err) => {
-      reject(err);
-    });
-  });
+async function testProvisioningFlow() {
+    console.log("🧪 Starting Provision API Test...");
+    console.log(`👤 Creating Test Candidate: ${TEST_EMAIL}`);
+
+    try {
+        // 1. Create Test Candidate
+        const { data: candidate, error: createError } = await supabaseAdmin
+            .from('candidates')
+            .insert({
+                email: TEST_EMAIL,
+                name: 'Test Provision Candidate',
+                skills: 'Testing',
+                provisioning_token: TEST_TOKEN
+            })
+            .select()
+            .single();
+
+        if (createError) {
+            throw new Error(`Failed to create candidate: ${createError.message}`);
+        }
+        console.log("✅ Candidate Created.");
+
+        // 2. Call Provision API
+        console.log(`\n📡 Calling Provision API with token: ${TEST_TOKEN}`);
+        const response = await fetch(`${API_URL}?token=${TEST_TOKEN}`, {
+            method: 'GET'
+        });
+
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`API Request Failed: ${response.status} ${text}`);
+        }
+
+        const data = await response.json();
+        console.log("✅ API Response Received.");
+        
+        // 3. Verify Response Structure
+        console.log("\n🔍 Verifying Response Keys...");
+        
+        let passed = true;
+        
+        if (data.GOOGLE_API_KEY === 'managed-by-proxy') {
+            console.log("✅ GOOGLE_API_KEY is masked ('managed-by-proxy')");
+        } else {
+            console.error(`❌ GOOGLE_API_KEY LEAKED: ${data.GOOGLE_API_KEY}`);
+            passed = false;
+        }
+
+        if (data.GEMINI_BASE_URL && data.GEMINI_BASE_URL.includes('/api/proxy/gemini')) {
+            console.log(`✅ GEMINI_BASE_URL is correct: ${data.GEMINI_BASE_URL}`);
+        } else {
+            console.error(`❌ Missing or Invalid GEMINI_BASE_URL: ${data.GEMINI_BASE_URL}`);
+            passed = false;
+        }
+
+        if (data.SUPABASE_PRIVATE_KEY) {
+            console.log("✅ SUPABASE_PRIVATE_KEY (JWT) received");
+        } else {
+             console.error("❌ Missing SUPABASE_PRIVATE_KEY");
+             passed = false;
+        }
+
+        // Cleanup
+        console.log("\n🧹 Cleaning up Test Candidate...");
+        await supabaseAdmin.from('candidates').delete().eq('email', TEST_EMAIL);
+
+        if (passed) {
+            console.log("\n🎉 SUCCESS: Provision API and Proxy Configuration are Secure!");
+        } else {
+            console.error("\n💥 FAILURE: Security checks failed.");
+            process.exit(1);
+        }
+
+    } catch (error) {
+        console.error("\n❌ Test Failed:", error);
+        // Attempt Cleanup
+        await supabaseAdmin.from('candidates').delete().eq('email', TEST_EMAIL);
+        process.exit(1);
+    }
 }
+
+testProvisioningFlow();
