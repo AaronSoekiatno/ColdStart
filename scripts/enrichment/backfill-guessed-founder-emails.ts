@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { guessFounderEmailFromStartup } from '@/lib/founder-email';
+import { guessFounderEmailFromStartup } from '../../lib/founder-email';
 import { config as loadEnv } from 'dotenv';
 import path from 'path';
 
