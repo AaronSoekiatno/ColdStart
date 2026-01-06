@@ -1,5 +1,4 @@
 import { startInterview, initializeOrchestrator } from '../../../lib/vapi-orchestrator';
-import { createInterviewRepo, addCollaborator, setupWebhook } from '../../../lib/github-repo-manager';
 import { supabase } from '../../../lib/supabase-client.js';
 
 // Ensure orchestrator is listening
@@ -23,6 +22,18 @@ export default async function handler(req, res) {
             .select('*')
             .eq('email', candidateEmail.toLowerCase())
             .single();
+
+        // Handle case where table doesn't exist
+        if (candidateError && candidateError.code === '42P01') {
+            console.error('[API] test_candidates table does not exist. Please run the SQL schema.');
+            throw new Error('Database table missing. Please run lib/test-candidates-schema.sql in Supabase SQL Editor.');
+        }
+
+        if (candidateError && candidateError.code !== 'PGRST116') {
+            // PGRST116 is "not found" which is fine, but other errors are not
+            console.error('[API] Error looking up candidate:', candidateError);
+            throw new Error(`Database error: ${candidateError.message}`);
+        }
 
         if (!candidate) {
             // Create new candidate
@@ -64,37 +75,18 @@ export default async function handler(req, res) {
         const candidateId = candidate.id;
         console.log(`[API] Starting interview for ${candidateName} (${candidateId}) - ${candidateEmail}`);
 
-        // 2. Create GitHub Repo (if username provided)
-        let repoInfo = null;
-        if (githubUsername || candidate.github_username) {
-            try {
-                const repo = await createInterviewRepo(candidateId);
-                await addCollaborator(repo.name, githubUsername || candidate.github_username);
-                await setupWebhook(repo.name);
-                repoInfo = {
-                    name: repo.name,
-                    url: repo.url,
-                    owner: repo.owner
-                };
-            } catch (repoError) {
-                console.error('[API] Failed to provision GitHub repo:', repoError);
-                // We continue, but warn
-            }
-        }
-
-        // 3. Start Interview Orchestration (pass candidate name for Vapi personalization)
+        // 2. Start Interview Orchestration (pass candidate name for Vapi personalization)
+        // Note: Repo access is handled by co-founder's implementation
         const result = await startInterview(candidateId, {
             name: candidateName,
             email: candidateEmail,
-            githubUsername: githubUsername || candidate.github_username,
-            repo: repoInfo
+            githubUsername: githubUsername || candidate.github_username
         });
 
         return res.status(200).json({
             message: 'Interview started successfully',
             sessionId: result.sessionId,
-            phase: result.phase,
-            repo: repoInfo
+            phase: result.phase
         });
 
     } catch (error) {
