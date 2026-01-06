@@ -18,7 +18,7 @@ sequenceDiagram
     Note over M: Phase 1: Kick-off
     M->>V: Start Call (Intro)
     V->>C: "Welcome! Clone this repo..."
-    M->>G: Provision Temp Repo
+    Note over M,G: Repo access handled by co-founder's implementation
     
     Note over M: Phase 2: The Build
     M->>V: Stop Call (Save Costs)
@@ -42,17 +42,16 @@ sequenceDiagram
     - **Quality Gates:** Phases only advance when tests PASS (`check_suite` success).
     - **Velocity Tracking:** Measures time-to-solution, not just completion.
 - **Automated Infrastructure:**
-    - Provisions private GitHub repos per candidate.
-    - Auto-configures webhooks.
-    - Arhives repos upon completion.
+    - Integrates with existing repo access management.
+    - Tracks commits and test results via webhooks.
 
 ## Setup & Installation
 
 ### Prerequisites
 - Node.js 18+
-- GitHub Account with PAT (Personal Access Token)
 - Vapi.ai Account
 - Supabase Project
+- Repo access management (handled by co-founder's implementation)
 
 ### Environment Variables
 Copy `.env.local.example` to `.env.local` and fill in:
@@ -62,14 +61,8 @@ Copy `.env.local.example` to `.env.local` and fill in:
 NEXT_PUBLIC_VAPI_PUBLIC_KEY=
 VAPI_ASSISTANT_ID=          # Single assistant ID for all phases (kickoff, bug_injection, post_mortem)
 
-# GitHub Configuration for Repo Manager
-GITHUB_ACCESS_TOKEN=     # PAT with 'repo' and 'admin:org' scopes
-GITHUB_ORG_NAME=         # Org where temp repos live
-GITHUB_SEED_REPO=        # Template repo name
-GITHUB_WEBHOOK_SECRET=   # Secret for webhook verification
-
 # App Configuration
-MINERVA_WEBHOOK_URL=     # Public URL (e.g. https://minerva.app or ngrok)
+MINERVA_WEBHOOK_URL=     # Public URL (e.g. https://minerva.app or ngrok) - for GitHub webhooks
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
