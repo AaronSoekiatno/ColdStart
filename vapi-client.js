@@ -136,9 +136,10 @@ export function initializeVapiListeners() {
 /**
  * Start a phase-specific voice call
  */
-export async function startPhaseCall(sessionId, phaseId, assistantType, previousMessages = [], overrides = null) {
+export async function startPhaseCall(sessionId, phaseId, assistantType, previousMessages = [], overrides = null, context = null) {
     // Note: 'overrides' parameter kept for backwards compatibility but is no longer used
     // All assistant configuration comes from the Vapi dashboard
+    // 'context' can contain candidateName for personalizing the first message
     if (activeCall.status !== 'idle') {
         console.warn(`[Vapi] Call already in progress for session ${activeCall.sessionId}`);
         return null;
@@ -173,8 +174,15 @@ export async function startPhaseCall(sessionId, phaseId, assistantType, previous
             callOptions.messages = previousMessages;
         }
 
-        // Note: Overrides removed - using assistant configuration from Vapi dashboard only
-        // If overrides are provided, they are ignored to preserve dashboard settings
+        // Personalize first message if candidate name is provided (for KICK_OFF phase)
+        if (context?.candidateName && phaseId === 'KICK_OFF') {
+            // Replace {candidate's name} placeholder in first message
+            // Note: Vapi dashboard first message should use {candidate's name} as placeholder
+            callOptions.assistantOverrides = {
+                firstMessage: `Hello ${context.candidateName}, I'm Minerva and I'll be helping you through this challenge today. Before we start, do you have any questions?`
+            };
+            console.log(`[Vapi] Personalizing first message for ${context.candidateName}`);
+        }
 
         await vapi.start(assistantId, callOptions);
         return activeCall;
