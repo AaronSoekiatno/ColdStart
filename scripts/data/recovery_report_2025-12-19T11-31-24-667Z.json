@@ -1,0 +1,246 @@
+{
+  "totalStartups": 1080,
+  "remainingDuplicates": 0,
+  "missingAllThreeFields": 0,
+  "badLocations": 47,
+  "missingKeywords": 1080,
+  "duplicateGroups": [],
+  "missingFieldsStartups": [],
+  "badLocationStartups": [
+    {
+      "id": "33b3f51e-a06e-431a-a99f-e4ea97be13e6",
+      "name": "Alpha Vantage",
+      "location": "Boston   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "f845aec3-d799-4312-9fed-9f17918ea7ea",
+      "name": "Sapling Ai",
+      "location": "San Francisco    FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "cc71d5ed-17da-45ce-80a3-25c0a0d85e43",
+      "name": "Mdalgorithms Inc",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "9f9e1b45-be4c-4807-988c-f3412975cb51",
+      "name": "Wifi Dabba Inc",
+      "location": "Bengaluru, India  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "aff4f4fb-5d9a-452e-8962-61a081efc7da",
+      "name": "Swadesh",
+      "location": "New York FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "9917d4bb-1aea-4721-a478-e7f3171ec00b",
+      "name": "Quill",
+      "location": "San FranciscoFooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "2eaae876-c372-4d7f-b534-9110b9299f04",
+      "name": "Spellbrush",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "4f110f65-737f-4591-b295-a8e38008ded9",
+      "name": "Quickchat Ai",
+      "location": "Warsaw, Poland FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "5b94ca48-4e99-4bb3-b489-b2ec260c3622",
+      "name": "Pillar",
+      "location": "Austin, TX  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "cd6eaaf7-2045-430d-a0e2-69d8438856b1",
+      "name": "Speak",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "96de9b97-8d20-4803-9223-1718514297ba",
+      "name": "Factored Quality",
+      "location": "New York  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "a15294fb-185e-424b-871b-fd24189ecf6a",
+      "name": "Letterdrop",
+      "location": "New York  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "52e93fd3-2756-46a0-b050-edceaffabab8",
+      "name": "Upcodes",
+      "location": "Austin, TX   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "ab027002-e1fd-4034-87ae-bdfaff291fa2",
+      "name": "Intelline",
+      "location": "Waterloo, Canada   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "9cde11fd-c843-46a9-8fdd-c2d121def8a4",
+      "name": "Legionfarm",
+      "location": "San FranciscoFooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "c23e2edf-93b9-4268-b66f-1abc2f3423cd",
+      "name": "Eze",
+      "location": "San Francisco   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "5f1db833-ab91-4f43-b22b-28d1079b467e",
+      "name": "Titan",
+      "location": "New York   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "0d14d39f-a6e2-427c-b3be-314b2479e55d",
+      "name": "Caribou",
+      "location": "London, United Kingdom  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "3f108f76-18cf-4fd7-b207-8387ccfcf6df",
+      "name": "Owny",
+      "location": "Palo Alto  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "cd48fbd4-6d71-49f6-87c9-4fb89c6af283",
+      "name": "Aden",
+      "location": "San Francisco    FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "f5059273-ba55-410f-a6ad-465706d6b269",
+      "name": "Bunkerhill Health",
+      "location": "San Francisco   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "3112b0e6-ca46-48c0-935c-c75b708c1832",
+      "name": "Swayable",
+      "location": "New York    FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "6c6bbe38-a000-47fb-a560-f3fc09afca33",
+      "name": "Parker",
+      "location": "San FranciscoFooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "66de7c0d-edfe-4c36-9127-5a953f841bc3",
+      "name": "Handoff",
+      "location": "Austin, TX  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "0a016484-ec3b-4be4-afa9-b2f06b559b19",
+      "name": "Teleo",
+      "location": "Palo Alto  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "5d52c8da-5245-40e2-9d48-cef91753ae52",
+      "name": "Zeal",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "1fb581cd-f892-40b5-916e-05b52987c3a0",
+      "name": "Projectpro",
+      "location": "Sunnyvale, CA FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "b030d2bf-45e5-4d37-ba6f-085d5b54beed",
+      "name": "Cytera Cellworks",
+      "location": "London, United Kingdom  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "e2b2b8ed-d0b1-4141-81af-83ca9835d3d6",
+      "name": "Probably Genetic",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "fdb3a3f2-a69a-4a7f-9ef9-b20aa949246c",
+      "name": "Dover",
+      "location": "New York   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "219e4844-4ee2-468e-8f62-d173fb644c86",
+      "name": "Yummy Future",
+      "location": "Champaign, IL   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "f166d1e7-c5e6-4feb-8a19-a4143550a5cf",
+      "name": "Meridian Industries",
+      "location": "San Francisco FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "5dd674b7-7344-46a8-bc98-1b06db07cc01",
+      "name": "Turing Labs Inc",
+      "location": "San Francisco FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "34fb533a-4e5e-46be-aacf-93bef2534549",
+      "name": "Prelim",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "98bf4bd3-1532-423b-8f9c-89efa6c4d33a",
+      "name": "Ello",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "a9f34ed0-e458-48cd-8942-daee71423117",
+      "name": "Signadot",
+      "location": "San Mateo, CA   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "18485a84-c9ff-4927-a060-4c48ab8c1923",
+      "name": "Embeddables",
+      "location": "San Francisco FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "ed18e940-5770-4aa0-97df-69068819ef4d",
+      "name": "Vorticity",
+      "location": "Redwood City, CA FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "d688c57d-daa7-4c44-88cb-59730d0773d0",
+      "name": "Keeper",
+      "location": "San Francisco    FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "4ed661fe-254d-4524-8e62-bc76b9b49de1",
+      "name": "Orangewood Labs",
+      "location": "San Francisco  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "6b25f746-3139-4669-b584-6ea6100032ee",
+      "name": "Mutiny",
+      "location": "New York  FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "8be3abac-bd3a-47dc-89aa-5f443e4553d2",
+      "name": "Lucid Bots",
+      "location": "Charlotte, NC   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "97adfa3a-c4b4-4e00-bf66-be313b965d6a",
+      "name": "Gogograndparent",
+      "location": "San Francisco   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "67f78810-1fae-4361-978f-c0d7d323d5d6",
+      "name": "Centaur",
+      "location": "Boston FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "c0062341-7a4a-4420-b974-5a3326763414",
+      "name": "Method Financial",
+      "location": "Austin, TX   FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "8ddf1cb5-db4e-42f8-ae76-69cf9ba47378",
+      "name": "Mixrank",
+      "location": "San FranciscoFooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    },
+    {
+      "id": "08cd4a67-1fce-44b1-9a68-a41ad3c60dba",
+      "name": "Wanderlog",
+      "location": "San Francisco FooterY CombinatorProgramsYC ProgramStartup SchoolWork at a StartupCo"
+    }
+  ]
+}

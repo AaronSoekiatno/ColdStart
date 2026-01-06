@@ -14,12 +14,18 @@ node_modules/
 /build
 /dist
 
+# Helix
+.helix/
+target/
+*.log
+
 # Environment variables
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+.env*.local
 
 # Debug
 npm-debug.log*
@@ -37,8 +43,24 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Misc
 *.log
 .cache
 .temp
+
+# API keys and secrets
+*.key
+*.pem
+secrets/
+.secrets
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Vercel
+.vercel

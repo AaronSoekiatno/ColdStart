@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(findstr:*)",
+      "Bash(find:*)",
+      "Bash(npx supabase:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx next lint:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(dig:*)",
+      "Bash(npx tsx:*)",
+      "Bash(npx puppeteer browsers install chrome)",
+      "Bash(python3:*)",
+      "Bash(chmod:*)",
+      "Bash(pip3 install:*)",
+      "Bash(timeout 10 python3:*)",
+      "Bash(ls:*)",
+      "Bash(node --trace-deprecation node_modules/.bin/next dev:*)",
+      "Bash(echo:*)",
+      "Bash(pip3 list:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

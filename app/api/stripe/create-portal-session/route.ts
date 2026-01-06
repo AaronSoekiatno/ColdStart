@@ -1,0 +1,132 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getStripe } from '@/lib/stripe';
+import { supabaseAdmin } from '@/lib/supabase';
+import { createServerClient } from '@supabase/ssr';
+
+/**
+ * POST /api/stripe/create-portal-session
+ * Creates a Stripe Customer Portal session for managing subscriptions
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { email } = await request.json();
+
+    if (!email) {
+      return NextResponse.json(
+        { error: 'Email is required' },
+        { status: 400 }
+      );
+    }
+
+    // Import cookies at runtime (Next.js 15+ requirement)
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+              });
+            } catch {
+              // Cookie setting might fail in route handlers - this is okay
+            }
+          },
+        },
+      }
+    );
+
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user || user.email !== email) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Get candidate's Stripe customer ID (use admin client for database access)
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const { data: candidate, error: candidateError } = await supabaseAdmin
+      .from('candidates')
+      .select('stripe_customer_id, subscription_tier, subscription_status')
+      .eq('email', email)
+      .single();
+
+    if (candidateError || !candidate) {
+      console.error('Error fetching candidate:', candidateError);
+      return NextResponse.json(
+        { error: 'Candidate not found' },
+        { status: 404 }
+      );
+    }
+
+    // If user is premium but doesn't have a customer ID, they might have been manually set to premium
+    // In this case, we can't create a portal session without a Stripe customer
+    if (!candidate.stripe_customer_id) {
+      // Check if they're marked as premium - if so, this is a data inconsistency
+      if (candidate.subscription_tier === 'premium') {
+        console.warn(`Premium user ${email} has no stripe_customer_id - data inconsistency`);
+        return NextResponse.json(
+          { error: 'Subscription management unavailable. Please contact support.' },
+          { status: 400 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: 'No active subscription found' },
+        { status: 404 }
+      );
+    }
+
+    const stripe = getStripe();
+
+    // Verify customer exists in Stripe
+    let customerId = candidate.stripe_customer_id;
+    try {
+      await stripe.customers.retrieve(customerId);
+    } catch (error: any) {
+      // Customer doesn't exist (deleted or invalid) - clear it from database
+      console.warn(`Stripe customer ${customerId} not found, clearing from database`);
+      if (supabaseAdmin) {
+        await supabaseAdmin
+          .from('candidates')
+          .update({ stripe_customer_id: null })
+          .eq('email', email);
+      }
+      
+      return NextResponse.json(
+        { error: 'No active subscription found' },
+        { status: 404 }
+      );
+    }
+
+    // Create portal session
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/matches`,
+    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (error: any) {
+    console.error('Error creating portal session:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to create portal session' },
+      { status: 500 }
+    );
+  }
+}
