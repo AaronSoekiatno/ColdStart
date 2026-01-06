@@ -74,7 +74,7 @@ async function uploadSecret(
 
 
 /**
- * Upload a file to a GitHub repository
+ * Upload a file to a GitHub repository with retry logic
  */
 async function uploadFile(
   owner: string,
@@ -83,33 +83,56 @@ async function uploadFile(
   content: string,
   token: string,
   message: string = 'Inject configuration'
-) {
-  try {
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-        body: JSON.stringify({
-          message,
-          content: Buffer.from(content).toString('base64'),
-        }),
+): Promise<boolean> {
+  const maxRetries = 3;
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[File Injection] Attempt ${attempt}/${maxRetries} for ${path}...`);
+      
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+          body: JSON.stringify({
+            message,
+            content: Buffer.from(content).toString('base64'),
+          }),
+        }
+      );
+
+      if (response.ok) {
+        console.log(`[File Injection] Successfully uploaded ${path}`);
+        return true;
       }
-    );
 
-    if (!response.ok) {
-      throw new Error(`Failed to upload file ${path}: ${await response.text()}`);
+      const errorText = await response.text();
+      
+      // If 409 Conflict or 404 Not Found (repo not ready), retry
+      if ((response.status === 409 || response.status === 404) && attempt < maxRetries) {
+        console.log(`[File Injection] Repo not ready (${response.status}), waiting before retry...`);
+        await new Promise(r => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+
+      throw new Error(`Failed to upload file ${path}: ${response.status} ${errorText}`);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < maxRetries) {
+        console.log(`[File Injection] Attempt ${attempt} failed, retrying in ${2000 * attempt}ms...`);
+        await new Promise(r => setTimeout(r, 2000 * attempt));
+      }
     }
-
-    return true;
-  } catch (error) {
-    console.error(`[File Injection] Error uploading ${path}:`, error);
-    return false;
   }
+
+  console.error(`[File Injection] All ${maxRetries} attempts failed for ${path}:`, lastError);
+  return false;
 }
 
 /**
@@ -360,11 +383,15 @@ export async function POST(request: NextRequest) {
       }
 
       // --- File Injection (.env) ---
+      // Wait for GitHub to finish initializing the repository (template generation is async)
+      console.log('[Create Repo] Waiting for repository to initialize...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
       try {
         console.log(`[Create Repo] Injecting .env into ${repoOwnerName}/${repoName}...`);
         const envContent = `QUARTERMASTER_API_URL=${request.nextUrl.origin}/api/topcandidates/provision?token=${provisioningToken}\n`;
         
-        await uploadFile(
+        const fileUploaded = await uploadFile(
           repoOwnerName,
           repoName,
           '.env',
@@ -372,6 +399,10 @@ export async function POST(request: NextRequest) {
           candidate.github_access_token,
           'Configure assessment environment'
         );
+
+        if (!fileUploaded) {
+          console.warn('[Create Repo] .env file injection failed - candidates will need to set QUARTERMASTER_API_URL manually');
+        }
       } catch (fileError) {
         console.error('[Create Repo] Error injecting .env:', fileError);
       }

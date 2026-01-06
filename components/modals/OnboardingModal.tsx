@@ -545,6 +545,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }, 200);
   }, []);
 
+  const handleResumeSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(7);
+      setIsTransitioning(false);
+    }, 200);
+  }, []);
+
   // Handle assessment start (Step 10 for top candidates)
   const handleStartAssessment = useCallback(async () => {
     setIsCreatingRepo(true);
@@ -959,7 +967,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     />
                   </div>
 
-                  <div className="mt-6">
+                  <div className="flex gap-4 mt-6">
                     <Button
                       onClick={() => {
                         setIsTransitioning(true);
@@ -969,9 +977,16 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         }, 200);
                       }}
                       variant="outline"
-                      className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
                       Back
+                    </Button>
+                    <Button
+                      onClick={handleResumeSkip}
+                      variant="ghost"
+                      className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    >
+                      Skip for now
                     </Button>
                   </div>
                 </div>
@@ -1421,22 +1436,23 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         </div>
 
                         <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install dependencies</h4>
-                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                            <code>yarn</code>
+                          <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install and start assessment</h4>
+                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
+                            <code className="text-xs md:text-sm break-all">yarn && yarn mission:start</code>
+                            <button
+                              onClick={() => handleCopy(`yarn && yarn mission:start`, 'start')}
+                              className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
+                              title="Copy command"
+                            >
+                              {copiedField === 'start' ? (
+                                <Check className="h-4 w-4 text-green-400" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </button>
                           </div>
                           <p className="text-sm text-gray-600 mt-2">
-                            This installs the required packages for the assessment.
-                          </p>
-                        </div>
-
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Step 4: Start the assessment</h4>
-                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                            <code className="text-xs md:text-sm break-all">yarn mission:start</code>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-2">
-                            This command will automatically detect your configuration and set up your environment.
+                            This installs the required packages and starts the assessment environment.
                           </p>
                         </div>
 
