@@ -5,8 +5,8 @@ export default function Home() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
+        candidateEmail: '',
         candidateName: '',
-        candidateId: '',
         githubUsername: ''
     });
 
@@ -47,6 +47,20 @@ export default function Home() {
 
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '1rem' }}>
+                        <label>Candidate Email</label>
+                        <input
+                            className="input"
+                            type="email"
+                            required
+                            value={formData.candidateEmail}
+                            onChange={(e) =>
+                                setFormData({ ...formData, candidateEmail: e.target.value })
+                            }
+                            placeholder="e.g. alice@example.com"
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
                         <label>Candidate Name</label>
                         <input
                             className="input"
@@ -57,19 +71,9 @@ export default function Home() {
                             }
                             placeholder="e.g. Alice Smith"
                         />
-                    </div>
-
-                    <div style={{ marginBottom: '1rem' }}>
-                        <label>Candidate ID (Unique)</label>
-                        <input
-                            className="input"
-                            required
-                            value={formData.candidateId}
-                            onChange={(e) =>
-                                setFormData({ ...formData, candidateId: e.target.value })
-                            }
-                            placeholder="e.g. alice-smith-001"
-                        />
+                        <small style={{ opacity: 0.7, fontSize: '0.85rem', display: 'block', marginTop: '0.25rem' }}>
+                            This name will be used in the Vapi agent's introduction
+                        </small>
                     </div>
 
                     <div style={{ marginBottom: '2rem' }}>
