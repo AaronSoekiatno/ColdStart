@@ -60,10 +60,7 @@ Copy `.env.local.example` to `.env.local` and fill in:
 ```bash
 # Vapi Configuration
 NEXT_PUBLIC_VAPI_PUBLIC_KEY=
-VAPI_PRIVATE_KEY=
-VAPI_KICKOFF_ASSISTANT_ID=
-VAPI_BUG_INJECTION_ASSISTANT_ID=
-VAPI_POST_MORTEM_ASSISTANT_ID=
+VAPI_ASSISTANT_ID=          # Single assistant ID for all phases (kickoff, bug_injection, post_mortem)
 
 # GitHub Configuration for Repo Manager
 GITHUB_ACCESS_TOKEN=     # PAT with 'repo' and 'admin:org' scopes

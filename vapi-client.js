@@ -24,11 +24,14 @@ if (typeof window !== 'undefined') {
     };
 }
 
-// Assistant IDs for each phase (loaded from environment)
+// Assistant ID (single assistant for all phases, loaded from environment)
+const VAPI_ASSISTANT_ID = process.env.VAPI_ASSISTANT_ID || 'vapi-assistant-placeholder';
+
+// Assistant IDs mapping - all phases use the same assistant
 const ASSISTANT_IDS = {
-    kickoff: process.env.VAPI_KICKOFF_ASSISTANT_ID || 'kickoff-assistant-placeholder',
-    bug_injection: process.env.VAPI_BUG_INJECTION_ASSISTANT_ID || 'bug-injection-placeholder',
-    post_mortem: process.env.VAPI_POST_MORTEM_ASSISTANT_ID || 'post-mortem-placeholder'
+    kickoff: VAPI_ASSISTANT_ID,
+    bug_injection: VAPI_ASSISTANT_ID,
+    post_mortem: VAPI_ASSISTANT_ID
 };
 
 // Track active call state
@@ -134,6 +137,8 @@ export function initializeVapiListeners() {
  * Start a phase-specific voice call
  */
 export async function startPhaseCall(sessionId, phaseId, assistantType, previousMessages = [], overrides = null) {
+    // Note: 'overrides' parameter kept for backwards compatibility but is no longer used
+    // All assistant configuration comes from the Vapi dashboard
     if (activeCall.status !== 'idle') {
         console.warn(`[Vapi] Call already in progress for session ${activeCall.sessionId}`);
         return null;
@@ -168,10 +173,8 @@ export async function startPhaseCall(sessionId, phaseId, assistantType, previous
             callOptions.messages = previousMessages;
         }
 
-        if (overrides) {
-            callOptions.assistantOverrides = overrides;
-            console.log('[Vapi] Applying assistant overrides:', overrides);
-        }
+        // Note: Overrides removed - using assistant configuration from Vapi dashboard only
+        // If overrides are provided, they are ignored to preserve dashboard settings
 
         await vapi.start(assistantId, callOptions);
         return activeCall;
