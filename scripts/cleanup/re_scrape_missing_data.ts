@@ -26,7 +26,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { scrapeYCCompanyPage, extractCompanySlug } from './scrape_yc_companies';
+import { scrapeYCCompanyPage, extractCompanySlug } from '../scrapers/scrape_yc_companies';
 import { discoverFounderEmails } from './founder_email_discovery';
 
 // Initialize Supabase

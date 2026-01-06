@@ -14,7 +14,7 @@ config({ path: resolve(process.cwd(), '.env.local') });
 
 import puppeteer from 'puppeteer';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { scrapeYCCompanyPage } from './scrape_yc_companies';
+import { scrapeYCCompanyPage } from '../scrapers/scrape_yc_companies';
 import { updateStartupWithScrapedData } from './re_scrape_missing_data';
 
 interface StartupRecord {
