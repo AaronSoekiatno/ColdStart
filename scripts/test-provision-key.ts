@@ -32,9 +32,13 @@ const server = http.createServer((req, res) => {
            console.log(`[Mock Server] No Auth Header received`);
       }
 
+    const proxyUrl = `${MOCK_API_URL}/api/proxy/gemini`;
+    
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
-      GOOGLE_API_KEY: 'mock-google-key',
+      GEMINI_BASE_URL: proxyUrl,
+      GOOGLE_BASE_URL: proxyUrl,
+      GOOGLE_API_KEY: 'managed-by-proxy',
       SUPABASE_URL: 'https://mock.supabase.co',
       SUPABASE_PRIVATE_KEY: 'mock-private-key',
       SUPABASE_ANON_KEY: 'mock-anon-key',

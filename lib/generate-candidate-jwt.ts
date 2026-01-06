@@ -52,3 +52,26 @@ export function generateCandidateJWT(
   }
 }
 
+/**
+ * Verify a candidate's schema-specific JWT token.
+ * 
+ * @param token - The JWT token string
+ * @returns Decoded payload if valid
+ * @throws Error if invalid or expired
+ */
+export function verifyCandidateJWT(token: string): any {
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET;
+  
+  if (!jwtSecret) {
+    throw new Error('JWT secret not configured');
+  }
+
+  try {
+    return jwt.verify(token, jwtSecret, {
+      algorithms: ['HS256']
+    });
+  } catch (error) {
+    throw new Error('Invalid token');
+  }
+}
+

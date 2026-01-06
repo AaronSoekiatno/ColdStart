@@ -164,11 +164,19 @@ async function handler(request: NextRequest) {
     }
 
     // Return credentials in format suitable for .env.local
+    // IMPORTANT: We do NOT return the raw GOOGLE_API_KEY anymore.
+    // We return the proxy URL so requests are routed through our server.
+    const proxyUrl = `${request.nextUrl.origin}/api/proxy/gemini`;
+
     return NextResponse.json({
       SUPABASE_URL: supabaseUrl,
       SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       SUPABASE_PRIVATE_KEY: jwtToken,
-      GOOGLE_API_KEY: googleApiKey,
+      // The client should use this Base URL for Google/Gemini requests
+      GEMINI_BASE_URL: proxyUrl,
+      GOOGLE_BASE_URL: proxyUrl, 
+      // Legacy support or explicit "managed" flag
+      GOOGLE_API_KEY: 'managed-by-proxy', 
     });
 
   } catch (error) {
