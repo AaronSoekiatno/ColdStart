@@ -61,11 +61,28 @@ const eventCallbacks = {
 export function initializeVapiListeners() {
     if (typeof window === 'undefined') return;
 
-    vapi.on("call-start", () => {
+    vapi.on("call-start", async () => {
         activeCall.status = 'active';
         activeCall.startTime = Date.now();
         activeCall.messageBuffer = []; // Reset message buffer for new call
         console.log(`[Vapi] Call started for phase ${activeCall.phaseId}`);
+        
+        // Record call start in session via API (client-side can't directly access server modules)
+        if (activeCall.sessionId) {
+            try {
+                await fetch(`/api/vapi/call-start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: activeCall.sessionId,
+                        callId: activeCall.callId
+                    })
+                });
+            } catch (error) {
+                console.error('[Vapi] Failed to record call start in session:', error);
+            }
+        }
+        
         eventCallbacks.onCallStart.forEach(cb => cb(activeCall));
     });
 

@@ -28,6 +28,8 @@ export default function Dashboard() {
     }, [vapiInitialized]);
 
     // Start Vapi call when dashboard loads and phase requires it
+    const [vapiStartAttempted, setVapiStartAttempted] = useState(false);
+    
     useEffect(() => {
         if (!status || !status.session || !status.currentPhase) return;
         
@@ -37,14 +39,19 @@ export default function Dashboard() {
         // 1. Phase requires Vapi (vapiActive is true)
         // 2. Vapi is not already active
         // 3. We're in the browser
+        // 4. We haven't already attempted to start it
         if (currentPhase.vapiActive && 
             status.vapi?.status === 'idle' && 
+            !status.vapi?.active &&
             typeof window !== 'undefined' &&
-            session.status === 'active') {
+            session.status === 'active' &&
+            !vapiStartAttempted) {
             
             const startVapiCall = async () => {
                 try {
+                    setVapiStartAttempted(true);
                     const candidateName = session.candidateName || 'Candidate';
+                    console.log('[Dashboard] Attempting to start Vapi call for phase:', currentPhase.id);
                     await startPhaseCall(
                         sessionId,
                         currentPhase.id,
@@ -54,17 +61,23 @@ export default function Dashboard() {
                         null,
                         { candidateName }
                     );
-                    console.log('[Dashboard] Started Vapi call for phase:', currentPhase.id);
+                    console.log('[Dashboard] Successfully started Vapi call for phase:', currentPhase.id);
                 } catch (error) {
                     console.error('[Dashboard] Failed to start Vapi call:', error);
+                    setVapiStartAttempted(false); // Allow retry on error
                 }
             };
             
             // Small delay to ensure everything is loaded
-            const timer = setTimeout(startVapiCall, 500);
+            const timer = setTimeout(startVapiCall, 1000);
             return () => clearTimeout(timer);
         }
-    }, [status, sessionId]);
+        
+        // Reset attempt flag if Vapi becomes active (call succeeded)
+        if (status.vapi?.active) {
+            setVapiStartAttempted(false);
+        }
+    }, [status, sessionId, vapiStartAttempted]);
 
     if (error) {
         console.error('Dashboard error:', error);
