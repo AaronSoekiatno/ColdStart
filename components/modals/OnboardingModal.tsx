@@ -141,13 +141,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [provisioningToken, setProvisioningToken] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const { toast } = useToast();
-  const [origin, setOrigin] = useState("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-  }, []);
 
   // Check if user has beta access
   useEffect(() => {
@@ -542,6 +536,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       setIsSubmitting(false);
     }
   };
+
+  const handleAssessmentSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(11);
+      setIsTransitioning(false);
+    }, 200);
+  }, []);
 
   // Handle assessment start (Step 10 for top candidates)
   const handleStartAssessment = useCallback(async () => {
@@ -1290,13 +1292,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     >
                       Back
                     </Button>
-                    <Button
-                      onClick={handleReposSkip}
-                      variant="ghost"
-                      className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    >
-                      Skip for now
-                    </Button>
+
                     <Button
                       onClick={handleReposContinue}
                       className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
@@ -1345,20 +1341,42 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         <p className="text-gray-700">Approximately 20 minutes</p>
                       </div>
 
-                      <Button
-                        onClick={handleStartAssessment}
-                        disabled={isCreatingRepo}
-                        className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
-                      >
-                        {isCreatingRepo ? (
-                          <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Creating your workspace...
-                          </>
-                        ) : (
-                          "Start Assessment"
-                        )}
-                      </Button>
+                      <div className="flex gap-4 mt-6">
+                        <Button
+                          onClick={() => {
+                            setIsTransitioning(true);
+                            setTimeout(() => {
+                              setStep(8);
+                              setIsTransitioning(false);
+                            }, 200);
+                          }}
+                          variant="outline"
+                          className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          onClick={handleAssessmentSkip}
+                          variant="ghost"
+                          className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        >
+                          Skip for now
+                        </Button>
+                        <Button
+                          onClick={handleStartAssessment}
+                          disabled={isCreatingRepo}
+                          className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                        >
+                          {isCreatingRepo ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            "Start Assessment"
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-6 mt-6">
@@ -1415,10 +1433,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-2">Step 4: Start the assessment</h4>
                           <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                            <code className="text-xs md:text-sm break-all">QUARTERMASTER_API_URL="{origin}/api/topcandidates/provision?token={provisioningToken || 'YOUR_TOKEN'}" yarn mission:start</code>
+                            <code className="text-xs md:text-sm break-all">yarn mission:start</code>
                           </div>
                           <p className="text-sm text-gray-600 mt-2">
-                            This command will automatically fetch your credentials and set up your environment.
+                            This command will automatically detect your configuration and set up your environment.
                           </p>
                         </div>
 

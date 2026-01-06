@@ -71,6 +71,47 @@ async function uploadSecret(
   }
 }
 
+
+
+/**
+ * Upload a file to a GitHub repository
+ */
+async function uploadFile(
+  owner: string,
+  repo: string,
+  path: string,
+  content: string,
+  token: string,
+  message: string = 'Inject configuration'
+) {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+        body: JSON.stringify({
+          message,
+          content: Buffer.from(content).toString('base64'),
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to upload file ${path}: ${await response.text()}`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`[File Injection] Error uploading ${path}:`, error);
+    return false;
+  }
+}
+
 /**
  * POST /api/topcandidates/create-assessment-repo
  * 
@@ -305,6 +346,23 @@ export async function POST(request: NextRequest) {
       } catch (secretError) {
         console.error('[Create Repo] Error injecting secrets:', secretError);
         // Continue even if secrets fail, as the repo is created
+      }
+
+      // --- File Injection (.env) ---
+      try {
+        console.log(`[Create Repo] Injecting .env into ${repoOwnerName}/${repoName}...`);
+        const envContent = `QUARTERMASTER_API_URL=${request.nextUrl.origin}/api/topcandidates/provision?token=${provisioningToken}\n`;
+        
+        await uploadFile(
+          repoOwnerName,
+          repoName,
+          '.env',
+          envContent,
+          candidate.github_access_token,
+          'Configure assessment environment'
+        );
+      } catch (fileError) {
+        console.error('[Create Repo] Error injecting .env:', fileError);
       }
 
       // Update candidate record
