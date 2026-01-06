@@ -18,9 +18,14 @@ export default function Dashboard() {
     );
 
     if (error) return <div className="container">Error loading session</div>;
-    if (!status) return <div className="container">Loading dashboard...</div>;
+    if (!status || !status.session) return <div className="container">Loading dashboard...</div>;
 
     const { session, currentPhase, timer, vapi } = status;
+    
+    // Ensure session has required fields with defaults
+    if (!session.status) {
+        session.status = 'created';
+    }
     const PHASES = ['KICK_OFF', 'BUILD', 'BUG_INJECTION', 'FIX', 'POST_MORTEM'];
 
     const handleControl = async (action, payload = {}) => {
@@ -55,7 +60,7 @@ export default function Dashboard() {
                 </div>
                 <div style={{ textAlign: 'right' }}>
                     <div className={clsx('step', { active: session.status === 'active' })}>
-                        Status: {session.status.toUpperCase()}
+                        Status: {(session.status || 'created').toUpperCase()}
                     </div>
                 </div>
             </div>

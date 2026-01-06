@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const status = getInterviewStatus(sessionId);
+        const status = await getInterviewStatus(sessionId);
 
         if (!status) {
             return res.status(404).json({ error: 'Session not found' });
