@@ -1,7 +1,8 @@
 import { useRouter } from 'next/router';
 import useSWR from 'swr';
 import clsx from 'clsx';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { startPhaseCall, initializeVapiListeners } from '../../vapi-client';
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -9,6 +10,7 @@ export default function Dashboard() {
     const router = useRouter();
     const { sessionId } = router.query;
     const [controlLoading, setControlLoading] = useState(false);
+    const [vapiInitialized, setVapiInitialized] = useState(false);
 
     // Poll status every 1 second
     const { data: status, error, mutate } = useSWR(
@@ -17,7 +19,74 @@ export default function Dashboard() {
         { refreshInterval: 1000 }
     );
 
-    if (error) return <div className="container">Error loading session</div>;
+    // Initialize Vapi listeners on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined' && !vapiInitialized) {
+            initializeVapiListeners();
+            setVapiInitialized(true);
+        }
+    }, [vapiInitialized]);
+
+    // Start Vapi call when dashboard loads and phase requires it
+    useEffect(() => {
+        if (!status || !status.session || !status.currentPhase) return;
+        
+        const { currentPhase, session } = status;
+        
+        // Only start Vapi if:
+        // 1. Phase requires Vapi (vapiActive is true)
+        // 2. Vapi is not already active
+        // 3. We're in the browser
+        if (currentPhase.vapiActive && 
+            status.vapi?.status === 'idle' && 
+            typeof window !== 'undefined' &&
+            session.status === 'active') {
+            
+            const startVapiCall = async () => {
+                try {
+                    const candidateName = session.candidateName || 'Candidate';
+                    await startPhaseCall(
+                        sessionId,
+                        currentPhase.id,
+                        currentPhase.id === 'KICK_OFF' ? 'kickoff' : 
+                        currentPhase.id === 'BUG_INJECTION' ? 'bug_injection' : 'post_mortem',
+                        [], // No previous messages for now
+                        null,
+                        { candidateName }
+                    );
+                    console.log('[Dashboard] Started Vapi call for phase:', currentPhase.id);
+                } catch (error) {
+                    console.error('[Dashboard] Failed to start Vapi call:', error);
+                }
+            };
+            
+            // Small delay to ensure everything is loaded
+            const timer = setTimeout(startVapiCall, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [status, sessionId]);
+
+    if (error) {
+        console.error('Dashboard error:', error);
+        return (
+            <div className="container">
+                <div className="card" style={{ maxWidth: '600px', margin: '4rem auto', padding: '2rem' }}>
+                    <h2 style={{ color: 'var(--danger)', marginBottom: '1rem' }}>Error Loading Session</h2>
+                    <p>{error.message || 'Failed to load session data'}</p>
+                    <p style={{ marginTop: '1rem', fontSize: '0.9rem', opacity: 0.7 }}>
+                        Session ID: {sessionId}
+                    </p>
+                    <button 
+                        className="btn btn-primary" 
+                        style={{ marginTop: '1rem' }}
+                        onClick={() => router.push('/')}
+                    >
+                        Back to Home
+                    </button>
+                </div>
+            </div>
+        );
+    }
     if (!status || !status.session) return <div className="container">Loading dashboard...</div>;
 
     const { session, currentPhase, timer, vapi } = status;
