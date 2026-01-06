@@ -205,11 +205,22 @@ export function AssessmentPromptModal({
 
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Step 4: Start the assessment</h4>
-                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                  <code className="text-xs md:text-sm break-all">QUARTERMASTER_API_URL="{origin}/api/topcandidates/provision?token={provisioningToken || 'YOUR_TOKEN'}" yarn mission:start</code>
+                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
+                  <code className="text-xs md:text-sm break-all">yarn mission:start</code>
+                  <button
+                    onClick={() => handleCopy(`yarn mission:start`, 'start')}
+                    className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
+                    title="Copy command"
+                  >
+                    {copiedField === 'start' ? (
+                      <Check className="h-4 w-4 text-green-400" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
                 <p className="text-sm text-gray-600 mt-2">
-                  This command will automatically fetch your credentials and set up your environment.
+                  This command will automatically fetch your credentials and set up your environment using the configuration we injected.
                 </p>
               </div>
 

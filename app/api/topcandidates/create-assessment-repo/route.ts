@@ -74,7 +74,7 @@ async function uploadSecret(
 
 
 /**
- * Upload a file to a GitHub repository with retry logic
+ * Upload a file to a GitHub repository with retry logic and update support
  */
 async function uploadFile(
   owner: string,
@@ -91,6 +91,29 @@ async function uploadFile(
     try {
       console.log(`[File Injection] Attempt ${attempt}/${maxRetries} for ${path}...`);
       
+      // 1. Try to get the file SHA if it exists
+      let sha: string | undefined = undefined;
+      try {
+        const getResponse = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+          }
+        );
+        if (getResponse.ok) {
+          const fileData = await getResponse.json();
+          sha = fileData.sha;
+          console.log(`[File Injection] Existing file found for ${path}, SHA: ${sha}`);
+        }
+      } catch (e) {
+        // Ignore errors fetching SHA (file might not exist)
+      }
+
+      // 2. Upload/Update the file
       const response = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
         {
@@ -103,6 +126,7 @@ async function uploadFile(
           body: JSON.stringify({
             message,
             content: Buffer.from(content).toString('base64'),
+            sha, // Provide SHA if we're updating
           }),
         }
       );
@@ -116,7 +140,7 @@ async function uploadFile(
       
       // If 409 Conflict or 404 Not Found (repo not ready), retry
       if ((response.status === 409 || response.status === 404) && attempt < maxRetries) {
-        console.log(`[File Injection] Repo not ready (${response.status}), waiting before retry...`);
+        console.log(`[File Injection] Conflict/Repo not ready (${response.status}), waiting before retry...`);
         await new Promise(r => setTimeout(r, 2000 * attempt));
         continue;
       }
@@ -189,7 +213,30 @@ export async function POST(request: NextRequest) {
 
     // Check if repo already exists (idempotency)
     if (candidate.assessment_repo_url) {
-      // Repo already exists, return existing repo info
+      console.log(`[Create Repo] Repo already exists for candidate ${candidate.email}: ${candidate.assessment_repo_url}`);
+      
+      // Still attempt to inject .env if token exists, to ensure it's up to date
+      if (candidate.provisioning_token) {
+        const repoPath = candidate.assessment_repo_url.replace('https://github.com/', '').split('/');
+        const repoOwner = repoPath[0];
+        const repoName = repoPath[1];
+        
+        if (repoOwner && repoName) {
+           const origin = process.env.QUARTERMASTER_API_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+           const envContent = `QUARTERMASTER_API_URL=${origin}/api/topcandidates/provision?token=${candidate.provisioning_token}\n`;
+           
+           // Fire and forget injection to not block response
+           uploadFile(
+             repoOwner,
+             repoName,
+             '.env',
+             envContent,
+             candidate.github_access_token!,
+             'Update assessment environment'
+           ).catch(err => console.error('[Create Repo] async env update failed:', err));
+        }
+      }
+
       // Still call provisioning to ensure schema exists
       try {
         const provisionResponse = await fetch(
@@ -382,14 +429,17 @@ export async function POST(request: NextRequest) {
         // Continue even if secrets fail, as the repo is created
       }
 
-      // --- File Injection (.env) ---
+      // --- File Injection (.env and provision script) ---
       // Wait for GitHub to finish initializing the repository (template generation is async)
       console.log('[Create Repo] Waiting for repository to initialize...');
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time
 
+      const origin = process.env.QUARTERMASTER_API_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+
+      // Inject .env file
       try {
         console.log(`[Create Repo] Injecting .env into ${repoOwnerName}/${repoName}...`);
-        const envContent = `QUARTERMASTER_API_URL=${request.nextUrl.origin}/api/topcandidates/provision?token=${provisioningToken}\n`;
+        const envContent = `QUARTERMASTER_API_URL=${origin}/api/topcandidates/provision?token=${provisioningToken}\n`;
         
         const fileUploaded = await uploadFile(
           repoOwnerName,
@@ -405,6 +455,59 @@ export async function POST(request: NextRequest) {
         }
       } catch (fileError) {
         console.error('[Create Repo] Error injecting .env:', fileError);
+      }
+
+      // Inject production URL into provision script
+      try {
+        console.log(`[Create Repo] Injecting API URL into scripts/provision-key.js...`);
+        
+        // Fetch the current provision-key.js file
+        const scriptPath = 'scripts/provision-key.js';
+        const getScriptResponse = await fetch(
+          `https://api.github.com/repos/${repoOwnerName}/${repoName}/contents/${scriptPath}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${candidate.github_access_token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+            },
+          }
+        );
+
+        if (getScriptResponse.ok) {
+          const scriptData = await getScriptResponse.json();
+          const currentContent = Buffer.from(scriptData.content, 'base64').toString('utf-8');
+          
+          // Replace placeholder URL with production URL
+          const updatedContent = currentContent.replace(
+            /https:\/\/api\.example\.com\/provision/g,
+            `${origin}/api/topcandidates/provision`
+          );
+
+          // Only update if we actually made changes
+          if (updatedContent !== currentContent) {
+            const scriptUploaded = await uploadFile(
+              repoOwnerName,
+              repoName,
+              scriptPath,
+              updatedContent,
+              candidate.github_access_token,
+              'Inject production API URL'
+            );
+
+            if (scriptUploaded) {
+              console.log('[Create Repo] Successfully injected API URL into provision script');
+            } else {
+              console.warn('[Create Repo] Failed to update provision script - candidates will need to override URL manually');
+            }
+          } else {
+            console.log('[Create Repo] Provision script already has correct URL');
+          }
+        } else {
+          console.warn(`[Create Repo] Could not fetch provision script: ${getScriptResponse.status}`);
+        }
+      } catch (scriptError) {
+        console.error('[Create Repo] Error injecting script URL:', scriptError);
       }
 
       // Update candidate record
