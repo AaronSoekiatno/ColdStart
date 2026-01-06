@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
         const repoName = repoPath[1];
         
         if (repoOwner && repoName) {
-           const origin = process.env.QUARTERMASTER_API_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+           const origin = (process.env.QUARTERMASTER_API_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin).replace(/\/$/, '');
            const envContent = `QUARTERMASTER_API_URL=${origin}/api/topcandidates/provision?token=${candidate.provisioning_token}\n`;
            
            // Fire and forget injection to not block response
@@ -434,7 +434,7 @@ export async function POST(request: NextRequest) {
       console.log('[Create Repo] Waiting for repository to initialize...');
       await new Promise(resolve => setTimeout(resolve, 5000)); // Increased wait time
 
-      const origin = process.env.QUARTERMASTER_API_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+      const origin = (process.env.QUARTERMASTER_API_URL || process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin).replace(/\/$/, '');
 
       // Inject .env file
       try {
