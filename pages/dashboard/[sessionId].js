@@ -187,6 +187,19 @@ export default function Dashboard() {
                         <div style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
                             Active: {vapi.active ? 'YES' : 'NO'}
                         </div>
+                        {vapi.active && (
+                            <button
+                                className="btn btn-danger"
+                                style={{ width: '100%', marginTop: '1rem' }}
+                                onClick={() => {
+                                    if (confirm('Stop the call and end the interview? This will mark the interview as incomplete.')) {
+                                        handleControl('stop_call');
+                                    }
+                                }}
+                            >
+                                🛑 Stop Call & End Interview
+                            </button>
+                        )}
                     </div>
                 </div>
 

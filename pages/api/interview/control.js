@@ -3,7 +3,8 @@ import {
     resumeInterview,
     forcePhaseTransition,
     addExtraTime,
-    endInterviewEarly
+    endInterviewEarly,
+    cancelInterviewEarly
 } from '../../../lib/vapi-orchestrator';
 
 export default async function handler(req, res) {
@@ -53,6 +54,11 @@ export default async function handler(req, res) {
             case 'end_interview':
                 const endResult = await endInterviewEarly(sessionId, 'admin_manual');
                 result = { message: 'Interview ended', summary: endResult };
+                break;
+            case 'stop_call':
+                // Stop call and cancel interview (marks as incomplete)
+                const cancelResult = await cancelInterviewEarly(sessionId, 'user_stopped_call');
+                result = { message: 'Call stopped and interview cancelled', summary: cancelResult };
                 break;
             default:
                 return res.status(400).json({ error: 'Invalid action' });
