@@ -334,6 +334,17 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // Inject SUPABASE_URL (from environment)
+        if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+          await uploadSecret(
+            repoOwnerName,
+            repoName,
+            'SUPABASE_URL',
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            candidate.github_access_token
+          );
+        }
+
         // Inject HERMES_PROVISIONING_TOKEN
         await uploadSecret(
           repoOwnerName,
