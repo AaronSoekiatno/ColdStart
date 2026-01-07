@@ -33,7 +33,7 @@ export function NewLandingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const isTopCandidatesRoute = pathname === '/topcandidates' || pathname === '/onboarding';
+  const isOnboardingRoute = pathname === '/onboarding';
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -66,8 +66,8 @@ export function NewLandingPage() {
         return;
       }
 
-      // On topcandidates route, always show onboarding modal (don't check status)
-      if (isTopCandidatesRoute) {
+      // On onboarding route, always show onboarding modal (don't check status)
+      if (isOnboardingRoute) {
         setShowSignIn(false);
         setShowOnboarding(true);
         return;
@@ -91,8 +91,8 @@ export function NewLandingPage() {
       }
 
       // If user just signed in and onboarding is complete, redirect to matches
-      // (but not if on topcandidates route)
-      if (isNewSignIn && !isTopCandidatesRoute) {
+      // (but not if on onboarding route)
+      if (isNewSignIn && !isOnboardingRoute) {
         setShowSignIn(false);
         window.location.href = "/matches";
       }
@@ -179,7 +179,7 @@ export function NewLandingPage() {
     };
 
     fetchCandidateInfo();
-  }, [userEmail, isTopCandidatesRoute, showOnboarding]);
+  }, [userEmail, isOnboardingRoute, showOnboarding]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -208,19 +208,19 @@ export function NewLandingPage() {
     }
   }, []);
 
-  // Force show onboarding modal on topcandidates route for authenticated users
+  // Force show onboarding modal on onboarding route for authenticated users
   useEffect(() => {
-    if (isTopCandidatesRoute && user) {
+    if (isOnboardingRoute && user) {
       // Check if this is a GitHub connection flow - if so, don't interfere
       const urlParams = new URLSearchParams(window.location.search);
       const isGitHubConnection = urlParams.get('github_connected') === 'true';
 
       if (!isGitHubConnection) {
-        // Force show onboarding modal on topcandidates route
+        // Force show onboarding modal on onboarding route
         setShowOnboarding(true);
       }
     }
-  }, [isTopCandidatesRoute, user]);
+  }, [isOnboardingRoute, user]);
 
   const handleGetStarted = () => {
     // If not authenticated, prompt sign-up (onboarding will happen after sign-up)
@@ -300,22 +300,18 @@ export function NewLandingPage() {
                 >
                   Email Tracker
                 </Link>
-                {!isTopCandidatesRoute && (
-                  <Link
-                    href="/resumes"
-                    className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
-                  >
-                    Resumes
-                  </Link>
-                )}
-                {!isTopCandidatesRoute && (
-                  <button
-                    onClick={handlePremiumClick}
-                    className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md cursor-pointer"
-                  >
-                    Premium
-                  </button>
-                )}
+                <Link
+                  href="/resumes"
+                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
+                >
+                  Resumes
+                </Link>
+                <button
+                  onClick={handlePremiumClick}
+                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md cursor-pointer"
+                >
+                  Premium
+                </button>
               </>
             ) : null}
           </nav>
@@ -441,26 +437,22 @@ export function NewLandingPage() {
               >
                 Email Tracker
               </Link>
-              {!isTopCandidatesRoute && (
-                <Link
-                  href="/resumes"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  Resumes
-                </Link>
-              )}
-              {!isTopCandidatesRoute && (
-                <button
-                  onClick={() => {
-                    handlePremiumClick();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  Premium
-                </button>
-              )}
+              <Link
+                href="/resumes"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Resumes
+              </Link>
+              <button
+                onClick={() => {
+                  handlePremiumClick();
+                  setMobileMenuOpen(false);
+                }}
+                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Premium
+              </button>
               <div className="border-t border-gray-200 my-2"></div>
               <div className="px-3 py-2 text-xs text-gray-500 truncate">{user.email}</div>
               {isPremium && (
@@ -654,7 +646,6 @@ export function NewLandingPage() {
           window.location.href = '/matches';
         }}
         skipResumeUpload={false}
-        isTopCandidatesRoute={true}
       />
       <SignInModal
         open={showSignIn}

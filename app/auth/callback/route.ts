@@ -122,10 +122,10 @@ export async function GET(request: NextRequest) {
       }
 
       // Redirect back to the original page with success parameter
-      // Since Supabase doesn't preserve query params through OAuth, we default to /topcandidates
+      // Since Supabase doesn't preserve query params through OAuth, we default to /onboarding
       // but try to extract from the callback URL if available (though it likely won't be)
-      // Default to /topcandidates since GitHub OAuth is typically from top candidates flow
-      const redirectPath = '/topcandidates';
+      // Default to /onboarding for GitHub OAuth
+      const redirectPath = '/onboarding';
       const redirectUrl = new URL(redirectPath, origin);
       redirectUrl.searchParams.set('github_connected', 'true');
       redirectUrl.searchParams.set('step', '7');
