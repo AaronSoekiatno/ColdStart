@@ -9,7 +9,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { candidateEmail, candidateName, githubUsername } = req.body;
+    const { candidateEmail, candidateName } = req.body;
 
     if (!candidateEmail || !candidateName) {
         return res.status(400).json({ error: 'Missing candidateEmail or candidateName' });
@@ -43,8 +43,7 @@ export default async function handler(req, res) {
                 .insert({
                     id: candidateId,
                     email: candidateEmail.toLowerCase(),
-                    name: candidateName,
-                    github_username: githubUsername || null
+                    name: candidateName
                 })
                 .select()
                 .single();
@@ -56,12 +55,11 @@ export default async function handler(req, res) {
             candidate = newCandidate;
         } else {
             // Update candidate info if needed
-            if (candidateName !== candidate.name || githubUsername !== candidate.github_username) {
+            if (candidateName !== candidate.name) {
                 const { data: updated } = await supabase
                     .from('test_candidates')
                     .update({
                         name: candidateName,
-                        github_username: githubUsername || candidate.github_username,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', candidate.id)
@@ -79,8 +77,7 @@ export default async function handler(req, res) {
         // Note: Repo access is handled by co-founder's implementation
         const result = await startInterview(candidateId, {
             name: candidateName,
-            email: candidateEmail,
-            githubUsername: githubUsername || candidate.github_username
+            email: candidateEmail
         });
 
         return res.status(200).json({

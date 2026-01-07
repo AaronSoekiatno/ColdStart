@@ -63,6 +63,10 @@ NEXT_PUBLIC_VAPI_PUBLIC_KEY=
 VAPI_ASSISTANT_ID=          # Single assistant ID for all phases (kickoff, bug_injection, post_mortem)
 MINERVA_WEBHOOK_URL=     # Public URL (e.g. https://minerva.app or ngrok) - for GitHub webhooks
 
+# GitHub Seed Repository (for Assessment Workspaces)
+GITHUB_SEED_REPO_OWNER=     # GitHub username or organization that owns the seed template repository
+GITHUB_SEED_REPO_NAME=      # Name of the seed template repository (used to create assessment workspaces)
+
 # Supabase (shared)
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key

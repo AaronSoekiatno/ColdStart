@@ -6,7 +6,8 @@ import { supabase, isSubscribed } from '@/lib/supabase';
 import { MatchCard } from '@/components/features/matches/MatchCard';
 import { Header } from '@/components/layout/Header';
 import { UpgradeModal } from '@/components/modals/UpgradeModal';
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Play } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface MatchRecord {
@@ -393,6 +394,18 @@ export default function MatchesPage() {
             </button>
           </>
         )}
+
+        {/* Quick Access to Assessment */}
+        <div className="container mx-auto px-4 mb-4 max-w-4xl">
+          <Button
+            onClick={() => router.push('/assessment')}
+            variant="outline"
+            className="bg-white border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400"
+          >
+            <Play className="mr-2 h-4 w-4" />
+            Start Assessment
+          </Button>
+        </div>
 
         <div className="container mx-auto px-2 sm:px-4">
           {hasMatches ? (
