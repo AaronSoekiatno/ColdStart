@@ -172,6 +172,10 @@ async function uploadFile(
  */
 export async function POST(request: NextRequest) {
   try {
+    // Parse request body to get optional sessionId
+    const body = await request.json().catch(() => ({}));
+    const sessionId = body.sessionId as string | undefined;
+
     const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -216,7 +220,8 @@ export async function POST(request: NextRequest) {
       console.log(`[Create Repo] Repo already exists for candidate ${candidate.email}: ${candidate.assessment_repo_url}`);
       
       // Still attempt to inject .env if token exists, to ensure it's up to date
-      if (candidate.provisioning_token) {
+      // Also inject/update .hermes/config.json with sessionId if provided
+      if (candidate.provisioning_token && candidate.github_access_token) {
         const repoPath = candidate.assessment_repo_url.replace('https://github.com/', '').split('/');
         const repoOwner = repoPath[0];
         const repoName = repoPath[1];
@@ -231,9 +236,27 @@ export async function POST(request: NextRequest) {
              repoName,
              '.env',
              envContent,
-             candidate.github_access_token!,
+             candidate.github_access_token,
              'Update assessment environment'
            ).catch(err => console.error('[Create Repo] async env update failed:', err));
+
+           // Inject/update .hermes/config.json with sessionId if provided
+           if (sessionId) {
+             const apiBaseUrl = origin.replace('/api/topcandidates/provision', '') + '/api/interview';
+             const configContent = JSON.stringify({
+               sessionId: sessionId,
+               apiBaseUrl: apiBaseUrl
+             }, null, 2);
+
+             uploadFile(
+               repoOwner,
+               repoName,
+               '.hermes/config.json',
+               configContent,
+               candidate.github_access_token,
+               'Update Hermes interview session configuration'
+             ).catch(err => console.error('[Create Repo] async config update failed:', err));
+           }
         }
       }
 
@@ -508,6 +531,39 @@ export async function POST(request: NextRequest) {
         }
       } catch (scriptError) {
         console.error('[Create Repo] Error injecting script URL:', scriptError);
+      }
+
+      // Inject .hermes/config.json with sessionId if provided
+      if (sessionId) {
+        try {
+          console.log(`[Create Repo] Injecting .hermes/config.json into ${repoOwnerName}/${repoName}...`);
+          
+          const apiBaseUrl = origin.replace('/api/topcandidates/provision', '') + '/api/interview';
+          const configContent = JSON.stringify({
+            sessionId: sessionId,
+            apiBaseUrl: apiBaseUrl
+          }, null, 2);
+          
+          const configUploaded = await uploadFile(
+            repoOwnerName,
+            repoName,
+            '.hermes/config.json',
+            configContent,
+            candidate.github_access_token,
+            'Add Hermes interview session configuration'
+          );
+
+          if (configUploaded) {
+            console.log('[Create Repo] Successfully injected .hermes/config.json with sessionId');
+          } else {
+            console.warn('[Create Repo] Failed to inject .hermes/config.json');
+          }
+        } catch (configError) {
+          console.error('[Create Repo] Error injecting .hermes/config.json:', configError);
+          // Don't fail repo creation if config injection fails
+        }
+      } else {
+        console.warn('[Create Repo] No sessionId provided - .hermes/config.json will need to be added manually');
       }
 
       // Update candidate record
