@@ -321,13 +321,27 @@ export async function initializeVapiListeners() {
         console.log(`[Vapi] Number of registered onMessage callbacks: ${eventCallbacks.onMessage.length}`);
 
         // Collect transcript messages for conversation history
-        // Fixed: Vapi sends role and transcript at top level, not nested
+        // CRITICAL: Only store FINAL transcripts, not partial ones
+        // Also deduplicate: Vapi may send the same final transcript multiple times
         if (message.type === 'transcript' && message.role && message.transcript) {
-            const role = message.role; // 'user' or 'assistant'
-            const content = message.transcript; // Text is directly in transcript property
+            const isFinal = message.transcriptType === 'final';
             
-            if (role && content) {
-                activeCall.messageBuffer.push({ role, content });
+            if (isFinal && message.role && message.transcript) {
+                const role = message.role; // 'user' or 'assistant'
+                const content = message.transcript; // Text is directly in transcript property
+                
+                // Deduplicate: Check if we've already stored this exact message
+                // (Vapi may send the same final transcript multiple times)
+                const isDuplicate = activeCall.messageBuffer.some(
+                    (msg) => msg.role === role && msg.content === content
+                );
+                
+                if (!isDuplicate) {
+                    activeCall.messageBuffer.push({ role, content });
+                    console.log(`[Vapi] Stored final transcript: ${role} - ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
+                } else {
+                    console.log(`[Vapi] Skipping duplicate final transcript: ${role} - ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`);
+                }
             }
         }
 

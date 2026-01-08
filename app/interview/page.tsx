@@ -129,11 +129,14 @@ export default function InterviewPage() {
     };
   }, []); // Run once on mount
 
-  // Cleanup on unmount
+  // Cleanup on unmount only (not on status change)
   useEffect(() => {
     return () => {
+      // Only cleanup on actual component unmount, not status changes
+      // This prevents the interval from being cleared when status changes from 'connecting' to 'active'
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
+        durationIntervalRef.current = null;
       }
       if (vapiClientRef.current && interviewStatus.status === 'active') {
         try {
@@ -155,7 +158,7 @@ export default function InterviewPage() {
         }
       }
     };
-  }, [interviewStatus.status]);
+  }, []); // Empty dependency array - only run cleanup on unmount, NOT on status change
 
   useEffect(() => {
     const checkAuth = async () => {
