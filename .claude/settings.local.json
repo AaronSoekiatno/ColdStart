@@ -23,7 +23,11 @@
       "Bash(ls:*)",
       "Bash(node --trace-deprecation node_modules/.bin/next dev:*)",
       "Bash(echo:*)",
-      "Bash(pip3 list:*)"
+      "Bash(pip3 list:*)",
+      "Bash(npm run dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(timeout /t 2 /nobreak)",
+      "Bash(npm info:*)"
     ],
     "deny": [],
     "ask": []

@@ -216,13 +216,13 @@ export default function AssessmentPage() {
                     </div>
                   </div>
 
-                  {/* Step 3: Start */}
+                  {/* Step 3: Install */}
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install and start assessment</h4>
+                    <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install dependencies</h4>
                     <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
-                      <code className="text-xs md:text-sm break-all">yarn && yarn mission:start</code>
+                      <code>yarn install</code>
                       <button
-                        onClick={() => handleCopy('yarn && yarn mission:start', 'start')}
+                        onClick={() => handleCopy('yarn install', 'start')}
                         className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
                         title="Copy command"
                       >

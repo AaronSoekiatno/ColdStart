@@ -36,35 +36,9 @@ async function initializeVapi() {
     // The package uses CommonJS exports.default = Vapi
     vapiInitPromise = (async () => {
         try {
-            // Try multiple import strategies for Next.js compatibility
-            let VapiModule = null;
-            let importError = null;
-            
-            // Strategy 1: Standard dynamic import
-            try {
-                VapiModule = await import("@vapi-ai/web");
-                console.log('[Vapi] Standard import successful');
-            } catch (e) {
-                console.warn('[Vapi] Standard import failed, trying alternative...', e);
-                importError = e;
-                
-                // Strategy 2: Try importing from dist directly
-                try {
-                    VapiModule = await import("@vapi-ai/web/dist/vapi.js");
-                    console.log('[Vapi] Direct dist import successful');
-                } catch (e2) {
-                    console.warn('[Vapi] Direct dist import also failed', e2);
-                    
-                    // Strategy 3: Try with ?module suffix (for some bundlers)
-                    try {
-                        VapiModule = await import("@vapi-ai/web?module");
-                        console.log('[Vapi] Module suffix import successful');
-                    } catch (e3) {
-                        console.error('[Vapi] All import strategies failed');
-                        throw new Error(`Failed to import @vapi-ai/web. Original error: ${importError?.message || 'Unknown error'}`);
-                    }
-                }
-            }
+            // Standard dynamic import
+            const VapiModule = await import("@vapi-ai/web");
+            console.log('[Vapi] Import successful');
             
             if (!VapiModule) {
                 throw new Error('Vapi module import returned null or undefined');
