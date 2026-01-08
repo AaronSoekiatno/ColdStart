@@ -468,8 +468,18 @@ export default function InterviewPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#0F172A' }}>
       <Header initialUser={user} />
-      
-      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8">
+
+      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 pt-20 md:pt-24">
+        {/* Important Note Banner */}
+        <div className="w-full max-w-4xl mb-4 bg-amber-500/20 border border-amber-500/50 rounded-lg p-4">
+          <div className="flex items-center gap-3">
+            <Phone className="h-5 w-5 text-amber-400 flex-shrink-0" />
+            <p className="text-amber-200 font-medium">
+              Stay on the call with Minerva and code away! She'll guide you through the assessment.
+            </p>
+          </div>
+        </div>
+
         <Card className="w-full max-w-4xl bg-gray-900 border-gray-800 text-white">
           {/* Header */}
           <div className="p-6 border-b border-gray-800">
@@ -492,7 +502,7 @@ export default function InterviewPage() {
           {/* Main Content Area */}
           <div className="p-6 space-y-6">
             {/* Agent Video/Audio Area (Zoom-style) */}
-            <div className="relative bg-gray-800 rounded-lg aspect-video flex items-center justify-center overflow-hidden">
+            <div className="relative bg-gray-800 rounded-lg aspect-[16/7] flex items-center justify-center overflow-hidden">
               {interviewStatus.status === 'connecting' ? (
                 <div className="text-center">
                   <Loader2 className="h-16 w-16 animate-spin text-blue-400 mx-auto mb-4" />
