@@ -12,12 +12,6 @@ import type { User } from '@supabase/supabase-js';
 
 // Vapi client will be imported dynamically when needed
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
-
 interface InterviewStatus {
   sessionId: string | null;
   phase: string | null;
@@ -33,24 +27,16 @@ export default function InterviewPage() {
     phase: null,
     status: 'idle',
   });
-  const [messages, setMessages] = useState<Message[]>([]);
   const [isMuted, setIsMuted] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const vapiClientRef = useRef<any>(null);
   const vapiEventCallbacksRef = useRef<{
-    onMessage?: (message: any) => void;
     onCallStart?: () => void;
     onCallEnd?: (callData: any) => void;
     onError?: (error: any) => void;
   }>({});
   const { toast } = useToast();
-
-  // Scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   // Register Vapi event callbacks once when component mounts
   useEffect(() => {
@@ -68,108 +54,15 @@ export default function InterviewPage() {
 
       if (!vapiClient || !vapiClient.onEvent) return;
 
-      // Remove old callbacks if they exist
-      if (vapiEventCallbacksRef.current.onMessage && vapiClient.offEvent) {
-        vapiClient.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
-      }
-
-      // Register message callback
-      const messageCallback = (message: any) => {
-        console.log('[Interview] ✅ MESSAGE CALLBACK FIRED!', message);
-        console.log('[Interview] Message type:', message?.type);
-        
-        if (message.type === 'transcript' && message.role && message.transcript) {
-          console.log('[Interview] Processing transcript message:', { role: message.role, content: message.transcript });
-          const role = message.role;
-          const content = message.transcript;
-          const isPartial = message.transcriptType === 'partial';
-          
-          if (role && content) {
-            console.log('[Interview] Adding message to UI:', { role, content, isPartial });
-            setMessages((prev) => {
-              // For partial transcripts, update the last message if it's from the same role
-              if (isPartial) {
-                const lastMessage = prev[prev.length - 1];
-                if (lastMessage && lastMessage.role === role) {
-                  // Update the last message with new partial content
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                  return updated;
-                } else {
-                  // No matching last message, add new one
-                  return [...prev, { role, content, timestamp: new Date() }];
-                }
-              } else {
-                // For final transcripts, always check if we need to update or add
-                const lastMessage = prev[prev.length - 1];
-                if (lastMessage && lastMessage.role === role && lastMessage.content !== content) {
-                  // Replace the last partial with the final version
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                  return updated;
-                } else if (!lastMessage || lastMessage.role !== role || lastMessage.content !== content) {
-                  // Add new final message only if it's different
-                  return [...prev, { role, content, timestamp: new Date() }];
-                }
-                // If it's the same as the last message, don't add duplicate
-                return prev;
-              }
-            });
-          }
-        }
-      };
-
-      vapiEventCallbacksRef.current.onMessage = messageCallback;
-      console.log('[Interview] About to register message callback...', {
-        callbackType: typeof messageCallback,
-        callbackName: messageCallback.name || 'anonymous',
-        vapiClientExists: !!vapiClient,
-        onEventExists: typeof vapiClient.onEvent,
-        refStored: !!vapiEventCallbacksRef.current.onMessage
-      });
+      // NOTE: Message callback is NOT registered here - it's registered in startInterview()
+      // to ensure it uses the correct module instance. Only register other callbacks here.
       
-      // Check callback status before registering
-      if (vapiClient.getCallbackStatus) {
-        console.log('[Interview] Callback status BEFORE registration:');
-        vapiClient.getCallbackStatus();
-      }
-      
-      vapiClient.onEvent('onMessage', messageCallback);
-      console.log('[Interview] ✅ Message callback registered in useEffect');
-      
-      // Check callback status after registering
-      if (vapiClient.getCallbackStatus) {
-        console.log('[Interview] Callback status AFTER registration:');
-        vapiClient.getCallbackStatus();
-      }
-      
-      // Test the callback directly after a short delay to verify it works
-      setTimeout(() => {
-        console.log('[Interview] Testing callback directly after 2 seconds...');
-        if (vapiEventCallbacksRef.current.onMessage) {
-          try {
-            vapiEventCallbacksRef.current.onMessage({
-              type: 'transcript',
-              role: 'assistant',
-              transcriptType: 'final',
-              transcript: 'Test message from direct callback invocation'
-            });
-            console.log('[Interview] ✅ Direct callback test completed');
-          } catch (error) {
-            console.error('[Interview] ❌ Direct callback test failed:', error);
-          }
-        } else {
-          console.warn('[Interview] ⚠️ Callback not found in ref for direct test');
-        }
-      }, 2000);
-
       // Register other callbacks
       if (!vapiEventCallbacksRef.current.onCallStart) {
         const callStartCallback = () => {
           setInterviewStatus((prev) => ({ ...prev, status: 'active' }));
-          durationIntervalRef.current = setInterval(() => {
-            setCallDuration((prev) => prev + 1);
-          }, 1000);
+          // Duration timer is started immediately when call starts, not here
+          // This callback just confirms the call is active
           toast({ title: 'Call started', description: 'Minerva is now connected' });
         };
         vapiEventCallbacksRef.current.onCallStart = callStartCallback;
@@ -228,13 +121,11 @@ export default function InterviewPage() {
 
     setupCallbacks();
 
-    // Cleanup
+    // Cleanup - NOTE: onMessage callback cleanup is handled in startInterview/unmount cleanup
+    // since it's registered there, not in this useEffect
     return () => {
-      if (vapiClientRef.current && vapiClientRef.current.offEvent) {
-        if (vapiEventCallbacksRef.current.onMessage) {
-          vapiClientRef.current.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
-        }
-      }
+      // Only cleanup callbacks registered in this useEffect (onCallStart, onCallEnd, onError)
+      // onMessage is handled elsewhere
     };
   }, []); // Run once on mount
 
@@ -253,9 +144,6 @@ export default function InterviewPage() {
       }
       // Remove event listeners on unmount
       if (vapiClientRef.current && vapiClientRef.current.offEvent) {
-        if (vapiEventCallbacksRef.current.onMessage) {
-          vapiClientRef.current.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
-        }
         if (vapiEventCallbacksRef.current.onCallStart) {
           vapiClientRef.current.offEvent('onCallStart', vapiEventCallbacksRef.current.onCallStart);
         }
@@ -288,7 +176,6 @@ export default function InterviewPage() {
     }
 
     setInterviewStatus({ ...interviewStatus, status: 'starting' });
-    setMessages([]);
     setCallDuration(0);
 
     try {
@@ -336,108 +223,16 @@ export default function InterviewPage() {
           throw new Error('Vapi client onEvent method not available');
         }
 
-        // Check current callback status
-        if (vapiClient.getCallbackStatus) {
-          console.log('[Interview] Callback status BEFORE registration:');
-          vapiClient.getCallbackStatus();
-        }
-
-        // CRITICAL: Always register message callback - don't remove old ones to avoid losing callbacks
-        // Create and register message callback
-        console.log('[Interview] Creating NEW message callback...');
-        
-        // Remove old callback from ref if it exists (but don't call offEvent - might not work by reference)
-        // We'll rely on the callback function itself being the same reference
-        if (vapiEventCallbacksRef.current.onMessage && vapiClient.offEvent) {
-          console.log('[Interview] Attempting to remove old message callback...');
-          try {
-            vapiClient.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
-          } catch (err) {
-            console.warn('[Interview] Could not remove old callback (might not exist):', err);
-          }
-        }
-        
-        const messageCallback = (message: any) => {
-          console.log('[Interview] ✅ MESSAGE CALLBACK FIRED!', message);
-          
-          if (message.type === 'transcript' && message.role && message.transcript) {
-            const role = message.role;
-            const content = message.transcript;
-            const isPartial = message.transcriptType === 'partial';
-            
-            if (role && content) {
-              setMessages((prev) => {
-                // For partial transcripts, update the last message if it's from the same role
-                if (isPartial) {
-                  const lastMessage = prev[prev.length - 1];
-                  if (lastMessage && lastMessage.role === role) {
-                    // Update the last message with new partial content
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                    return updated;
-                  } else {
-                    // No matching last message, add new one
-                    return [...prev, { role, content, timestamp: new Date() }];
-                  }
-                } else {
-                  // For final transcripts, always check if we need to update or add
-                  const lastMessage = prev[prev.length - 1];
-                  if (lastMessage && lastMessage.role === role && lastMessage.content !== content) {
-                    // Replace the last partial with the final version
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                    return updated;
-                  } else if (!lastMessage || lastMessage.role !== role || lastMessage.content !== content) {
-                    // Add new final message only if it's different
-                    return [...prev, { role, content, timestamp: new Date() }];
-                  }
-                  // If it's the same as the last message, don't add duplicate
-                  return prev;
-                }
-              });
-            }
-          }
-        };
-        
-        // Store callback in ref before registering
-        vapiEventCallbacksRef.current.onMessage = messageCallback;
-        
-        console.log('[Interview] About to register message callback via onEvent...');
-        console.log('[Interview] vapiClient.onEvent type:', typeof vapiClient.onEvent);
-        
-        // Verify onEvent exists and is a function
-        if (typeof vapiClient.onEvent !== 'function') {
-          console.error('[Interview] ❌ vapiClient.onEvent is not a function!', vapiClient);
-          throw new Error('vapiClient.onEvent is not available');
-        }
-        
-        // Register the callback
-        vapiClient.onEvent('onMessage', messageCallback);
-        console.log('[Interview] ✅ Message callback registered!');
-        
-        // Verify registration immediately with detailed logging
-        if (vapiClient.getCallbackStatus) {
-          const status = vapiClient.getCallbackStatus();
-          console.log('[Interview] Callback status AFTER registration:', status);
-          if (status.onMessage === 0) {
-            console.error('[Interview] ❌ CRITICAL: Callback registration failed! No callbacks in array after registration!');
-            // Try to register again directly using the window singleton
-            if (typeof window !== 'undefined' && (window as any).__VAPI_EVENT_CALLBACKS__) {
-              console.log('[Interview] Attempting direct registration via window singleton...');
-              (window as any).__VAPI_EVENT_CALLBACKS__.onMessage.push(messageCallback);
-              const newStatus = vapiClient.getCallbackStatus();
-              console.log('[Interview] After direct registration:', newStatus);
-            }
-          }
-        }
+        // NOTE: No onMessage callback registration needed - messages are collected
+        // server-side in vapi-client.js (activeCall.messageBuffer) and sent to server
+        // when call ends via onCallEnd callback
 
         // Create and register other callbacks
         if (!vapiEventCallbacksRef.current.onCallStart) {
           const callStartCallback = () => {
             setInterviewStatus((prev) => ({ ...prev, status: 'active' }));
-            durationIntervalRef.current = setInterval(() => {
-              setCallDuration((prev) => prev + 1);
-            }, 1000);
+            // Duration timer is started immediately when call starts, not here
+            // This callback just confirms the call is active
             toast({ title: 'Call started', description: 'Minerva is now connected' });
           };
           vapiEventCallbacksRef.current.onCallStart = callStartCallback;
@@ -530,64 +325,6 @@ export default function InterviewPage() {
               setInterviewStatus((prev) => ({ ...prev, status: 'error' }));
               return;
             }
-            
-            // CRITICAL: Verify callbacks are registered before starting call
-            // If none exist, register an emergency callback to prevent message loss
-            if (vapiClient.getCallbackStatus) {
-              const status = vapiClient.getCallbackStatus();
-              console.log('[Interview] Callback status RIGHT BEFORE starting call:', status);
-              if (status.onMessage === 0) {
-                console.error('[Interview] ⚠️ CRITICAL: No message callbacks registered! Registering emergency callback...');
-                // Register emergency callback to prevent message loss
-                // Use the same callback function we registered earlier if it exists in ref
-                if (vapiEventCallbacksRef.current.onMessage) {
-                  console.log('[Interview] Re-registering callback from ref...');
-                  vapiClient.onEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
-                  const newStatus = vapiClient.getCallbackStatus();
-                  console.log('[Interview] After emergency registration:', newStatus);
-                } else {
-                  // Last resort: create a new emergency callback
-                  console.log('[Interview] Creating new emergency callback...');
-                  const emergencyCallback = (message: any) => {
-                    console.log('[Interview] ✅ EMERGENCY CALLBACK FIRED!', message);
-                    if (message.type === 'transcript' && message.role && message.transcript) {
-                      const role = message.role;
-                      const content = message.transcript;
-                      const isPartial = message.transcriptType === 'partial';
-                      
-                      if (role && content) {
-                        setMessages((prev) => {
-                          if (isPartial) {
-                            const lastMessage = prev[prev.length - 1];
-                            if (lastMessage && lastMessage.role === role) {
-                              const updated = [...prev];
-                              updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                              return updated;
-                            } else {
-                              return [...prev, { role, content, timestamp: new Date() }];
-                            }
-                          } else {
-                            const lastMessage = prev[prev.length - 1];
-                            if (lastMessage && lastMessage.role === role && lastMessage.content !== content) {
-                              const updated = [...prev];
-                              updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                              return updated;
-                            } else if (!lastMessage || lastMessage.role !== role || lastMessage.content !== content) {
-                              return [...prev, { role, content, timestamp: new Date() }];
-                            }
-                            return prev;
-                          }
-                        });
-                      }
-                    }
-                  };
-                  vapiEventCallbacksRef.current.onMessage = emergencyCallback;
-                  vapiClient.onEvent('onMessage', emergencyCallback);
-                  const newStatus = vapiClient.getCallbackStatus();
-                  console.log('[Interview] Emergency callback registered:', newStatus);
-                }
-              }
-            }
 
             console.log('[Interview] Starting Vapi call with:', {
               sessionId: data.sessionId,
@@ -605,6 +342,18 @@ export default function InterviewPage() {
               { candidateName } as any // Personalize with candidate name
             );
             console.log('[Interview] Vapi call started successfully:', callResult);
+            
+            // Start duration timer immediately (don't wait for callback)
+            // Clear any existing timer first
+            if (durationIntervalRef.current) {
+              clearInterval(durationIntervalRef.current);
+            }
+            // Reset duration and start counting
+            setCallDuration(0);
+            durationIntervalRef.current = setInterval(() => {
+              setCallDuration((prev) => prev + 1);
+            }, 1000);
+            console.log('[Interview] Duration timer started');
             
             // The call should trigger onCallStart event which will update status to 'active'
             // Set a timeout to mark as active if event doesn't fire
@@ -763,37 +512,6 @@ export default function InterviewPage() {
                 <div className="text-center">
                   <Phone className="h-16 w-16 text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-400">Ready to start interview</p>
-                </div>
-              )}
-            </div>
-
-            {/* Conversation Transcript */}
-            <div className="bg-gray-800 rounded-lg p-4 max-h-64 overflow-y-auto">
-              <h3 className="text-sm font-semibold text-gray-400 mb-3">Conversation</h3>
-              {messages.length === 0 ? (
-                <p className="text-gray-500 text-sm italic">No messages yet. Start the interview to begin...</p>
-              ) : (
-                <div className="space-y-3">
-                  {messages.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex ${msg.role === 'assistant' ? 'justify-start' : 'justify-end'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-lg p-3 ${
-                          msg.role === 'assistant'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-700 text-gray-100'
-                        }`}
-                      >
-                        <div className="text-xs font-semibold mb-1 opacity-75">
-                          {msg.role === 'assistant' ? 'Minerva' : 'You'}
-                        </div>
-                        <div className="text-sm">{msg.content}</div>
-                      </div>
-                    </div>
-                  ))}
-                  <div ref={messagesEndRef} />
                 </div>
               )}
             </div>
