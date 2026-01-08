@@ -342,15 +342,21 @@ export default function InterviewPage() {
           vapiClient.getCallbackStatus();
         }
 
-        // ALWAYS create and register fresh callbacks (don't rely on ref)
-        // Remove any existing callbacks first
-        if (vapiClient.offEvent && vapiEventCallbacksRef.current.onMessage) {
-          console.log('[Interview] Removing old message callback...');
-          vapiClient.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
-        }
-
+        // CRITICAL: Always register message callback - don't remove old ones to avoid losing callbacks
         // Create and register message callback
         console.log('[Interview] Creating NEW message callback...');
+        
+        // Remove old callback from ref if it exists (but don't call offEvent - might not work by reference)
+        // We'll rely on the callback function itself being the same reference
+        if (vapiEventCallbacksRef.current.onMessage && vapiClient.offEvent) {
+          console.log('[Interview] Attempting to remove old message callback...');
+          try {
+            vapiClient.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
+          } catch (err) {
+            console.warn('[Interview] Could not remove old callback (might not exist):', err);
+          }
+        }
+        
         const messageCallback = (message: any) => {
           console.log('[Interview] ✅ MESSAGE CALLBACK FIRED!', message);
           
@@ -393,16 +399,36 @@ export default function InterviewPage() {
           }
         };
         
+        // Store callback in ref before registering
         vapiEventCallbacksRef.current.onMessage = messageCallback;
+        
         console.log('[Interview] About to register message callback via onEvent...');
         console.log('[Interview] vapiClient.onEvent type:', typeof vapiClient.onEvent);
+        
+        // Verify onEvent exists and is a function
+        if (typeof vapiClient.onEvent !== 'function') {
+          console.error('[Interview] ❌ vapiClient.onEvent is not a function!', vapiClient);
+          throw new Error('vapiClient.onEvent is not available');
+        }
+        
+        // Register the callback
         vapiClient.onEvent('onMessage', messageCallback);
         console.log('[Interview] ✅ Message callback registered!');
         
-        // Verify registration immediately
+        // Verify registration immediately with detailed logging
         if (vapiClient.getCallbackStatus) {
-          console.log('[Interview] Callback status AFTER registration:');
-          vapiClient.getCallbackStatus();
+          const status = vapiClient.getCallbackStatus();
+          console.log('[Interview] Callback status AFTER registration:', status);
+          if (status.onMessage === 0) {
+            console.error('[Interview] ❌ CRITICAL: Callback registration failed! No callbacks in array after registration!');
+            // Try to register again directly using the window singleton
+            if (typeof window !== 'undefined' && (window as any).__VAPI_EVENT_CALLBACKS__) {
+              console.log('[Interview] Attempting direct registration via window singleton...');
+              (window as any).__VAPI_EVENT_CALLBACKS__.onMessage.push(messageCallback);
+              const newStatus = vapiClient.getCallbackStatus();
+              console.log('[Interview] After direct registration:', newStatus);
+            }
+          }
         }
 
         // Create and register other callbacks
@@ -505,14 +531,61 @@ export default function InterviewPage() {
               return;
             }
             
-            // Verify callbacks are registered before starting call (warning only, no emergency registration)
+            // CRITICAL: Verify callbacks are registered before starting call
+            // If none exist, register an emergency callback to prevent message loss
             if (vapiClient.getCallbackStatus) {
               const status = vapiClient.getCallbackStatus();
               console.log('[Interview] Callback status RIGHT BEFORE starting call:', status);
               if (status.onMessage === 0) {
-                console.error('[Interview] ⚠️ WARNING: No message callbacks registered! The call may not receive messages.');
-                // Don't register emergency callback - rely on the one we registered earlier
-                // Emergency callbacks cause duplicates and should be avoided
+                console.error('[Interview] ⚠️ CRITICAL: No message callbacks registered! Registering emergency callback...');
+                // Register emergency callback to prevent message loss
+                // Use the same callback function we registered earlier if it exists in ref
+                if (vapiEventCallbacksRef.current.onMessage) {
+                  console.log('[Interview] Re-registering callback from ref...');
+                  vapiClient.onEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
+                  const newStatus = vapiClient.getCallbackStatus();
+                  console.log('[Interview] After emergency registration:', newStatus);
+                } else {
+                  // Last resort: create a new emergency callback
+                  console.log('[Interview] Creating new emergency callback...');
+                  const emergencyCallback = (message: any) => {
+                    console.log('[Interview] ✅ EMERGENCY CALLBACK FIRED!', message);
+                    if (message.type === 'transcript' && message.role && message.transcript) {
+                      const role = message.role;
+                      const content = message.transcript;
+                      const isPartial = message.transcriptType === 'partial';
+                      
+                      if (role && content) {
+                        setMessages((prev) => {
+                          if (isPartial) {
+                            const lastMessage = prev[prev.length - 1];
+                            if (lastMessage && lastMessage.role === role) {
+                              const updated = [...prev];
+                              updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                              return updated;
+                            } else {
+                              return [...prev, { role, content, timestamp: new Date() }];
+                            }
+                          } else {
+                            const lastMessage = prev[prev.length - 1];
+                            if (lastMessage && lastMessage.role === role && lastMessage.content !== content) {
+                              const updated = [...prev];
+                              updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                              return updated;
+                            } else if (!lastMessage || lastMessage.role !== role || lastMessage.content !== content) {
+                              return [...prev, { role, content, timestamp: new Date() }];
+                            }
+                            return prev;
+                          }
+                        });
+                      }
+                    }
+                  };
+                  vapiEventCallbacksRef.current.onMessage = emergencyCallback;
+                  vapiClient.onEvent('onMessage', emergencyCallback);
+                  const newStatus = vapiClient.getCallbackStatus();
+                  console.log('[Interview] Emergency callback registered:', newStatus);
+                }
               }
             }
 
