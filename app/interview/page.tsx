@@ -82,17 +82,37 @@ export default function InterviewPage() {
           console.log('[Interview] Processing transcript message:', { role: message.role, content: message.transcript });
           const role = message.role;
           const content = message.transcript;
+          const isPartial = message.transcriptType === 'partial';
           
           if (role && content) {
-            console.log('[Interview] Adding message to UI:', { role, content });
+            console.log('[Interview] Adding message to UI:', { role, content, isPartial });
             setMessages((prev) => {
-              const lastMessage = prev[prev.length - 1];
-              if (lastMessage && lastMessage.role === role && message.transcriptType === 'partial') {
-                const updated = [...prev];
-                updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                return updated;
+              // For partial transcripts, update the last message if it's from the same role
+              if (isPartial) {
+                const lastMessage = prev[prev.length - 1];
+                if (lastMessage && lastMessage.role === role) {
+                  // Update the last message with new partial content
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                  return updated;
+                } else {
+                  // No matching last message, add new one
+                  return [...prev, { role, content, timestamp: new Date() }];
+                }
               } else {
-                return [...prev, { role, content, timestamp: new Date() }];
+                // For final transcripts, always check if we need to update or add
+                const lastMessage = prev[prev.length - 1];
+                if (lastMessage && lastMessage.role === role && lastMessage.content !== content) {
+                  // Replace the last partial with the final version
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                  return updated;
+                } else if (!lastMessage || lastMessage.role !== role || lastMessage.content !== content) {
+                  // Add new final message only if it's different
+                  return [...prev, { role, content, timestamp: new Date() }];
+                }
+                // If it's the same as the last message, don't add duplicate
+                return prev;
               }
             });
           }
@@ -337,16 +357,36 @@ export default function InterviewPage() {
           if (message.type === 'transcript' && message.role && message.transcript) {
             const role = message.role;
             const content = message.transcript;
+            const isPartial = message.transcriptType === 'partial';
             
             if (role && content) {
               setMessages((prev) => {
-                const lastMessage = prev[prev.length - 1];
-                if (lastMessage && lastMessage.role === role && message.transcriptType === 'partial') {
-                  const updated = [...prev];
-                  updated[updated.length - 1] = { role, content, timestamp: new Date() };
-                  return updated;
+                // For partial transcripts, update the last message if it's from the same role
+                if (isPartial) {
+                  const lastMessage = prev[prev.length - 1];
+                  if (lastMessage && lastMessage.role === role) {
+                    // Update the last message with new partial content
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                    return updated;
+                  } else {
+                    // No matching last message, add new one
+                    return [...prev, { role, content, timestamp: new Date() }];
+                  }
                 } else {
-                  return [...prev, { role, content, timestamp: new Date() }];
+                  // For final transcripts, always check if we need to update or add
+                  const lastMessage = prev[prev.length - 1];
+                  if (lastMessage && lastMessage.role === role && lastMessage.content !== content) {
+                    // Replace the last partial with the final version
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                    return updated;
+                  } else if (!lastMessage || lastMessage.role !== role || lastMessage.content !== content) {
+                    // Add new final message only if it's different
+                    return [...prev, { role, content, timestamp: new Date() }];
+                  }
+                  // If it's the same as the last message, don't add duplicate
+                  return prev;
                 }
               });
             }
@@ -465,31 +505,14 @@ export default function InterviewPage() {
               return;
             }
             
-            // CRITICAL: Verify callbacks are registered before starting call
+            // Verify callbacks are registered before starting call (warning only, no emergency registration)
             if (vapiClient.getCallbackStatus) {
               const status = vapiClient.getCallbackStatus();
               console.log('[Interview] Callback status RIGHT BEFORE starting call:', status);
               if (status.onMessage === 0) {
-                console.error('[Interview] ⚠️ WARNING: No message callbacks registered! Re-registering...');
-                // Emergency re-registration
-                const emergencyCallback = (message: any) => {
-                  console.log('[Interview] ✅ EMERGENCY CALLBACK FIRED!', message);
-                  if (message.type === 'transcript' && message.role && message.transcript) {
-                    setMessages((prev) => {
-                      const lastMessage = prev[prev.length - 1];
-                      if (lastMessage && lastMessage.role === message.role && message.transcriptType === 'partial') {
-                        const updated = [...prev];
-                        updated[updated.length - 1] = { role: message.role, content: message.transcript, timestamp: new Date() };
-                        return updated;
-                      } else {
-                        return [...prev, { role: message.role, content: message.transcript, timestamp: new Date() }];
-                      }
-                    });
-                  }
-                };
-                vapiClient.onEvent('onMessage', emergencyCallback);
-                console.log('[Interview] Emergency callback registered');
-                vapiClient.getCallbackStatus();
+                console.error('[Interview] ⚠️ WARNING: No message callbacks registered! The call may not receive messages.');
+                // Don't register emergency callback - rely on the one we registered earlier
+                // Emergency callbacks cause duplicates and should be avoided
               }
             }
 
