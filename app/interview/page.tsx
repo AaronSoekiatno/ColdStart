@@ -39,12 +39,184 @@ export default function InterviewPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const vapiClientRef = useRef<any>(null);
+  const vapiEventCallbacksRef = useRef<{
+    onMessage?: (message: any) => void;
+    onCallStart?: () => void;
+    onCallEnd?: (callData: any) => void;
+    onError?: (error: any) => void;
+  }>({});
   const { toast } = useToast();
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Register Vapi event callbacks once when component mounts
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const setupCallbacks = async () => {
+      const vapiModule = await import('@/vapi-client.js');
+      const vapiClient = vapiModule.default || vapiModule;
+      vapiClientRef.current = vapiClient;
+
+      // Ensure listeners are initialized
+      if (vapiClient.initializeVapiListeners) {
+        await vapiClient.initializeVapiListeners();
+      }
+
+      if (!vapiClient || !vapiClient.onEvent) return;
+
+      // Remove old callbacks if they exist
+      if (vapiEventCallbacksRef.current.onMessage && vapiClient.offEvent) {
+        vapiClient.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
+      }
+
+      // Register message callback
+      const messageCallback = (message: any) => {
+        console.log('[Interview] ✅ MESSAGE CALLBACK FIRED!', message);
+        console.log('[Interview] Message type:', message?.type);
+        
+        if (message.type === 'transcript' && message.role && message.transcript) {
+          console.log('[Interview] Processing transcript message:', { role: message.role, content: message.transcript });
+          const role = message.role;
+          const content = message.transcript;
+          
+          if (role && content) {
+            console.log('[Interview] Adding message to UI:', { role, content });
+            setMessages((prev) => {
+              const lastMessage = prev[prev.length - 1];
+              if (lastMessage && lastMessage.role === role && message.transcriptType === 'partial') {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                return updated;
+              } else {
+                return [...prev, { role, content, timestamp: new Date() }];
+              }
+            });
+          }
+        }
+      };
+
+      vapiEventCallbacksRef.current.onMessage = messageCallback;
+      console.log('[Interview] About to register message callback...', {
+        callbackType: typeof messageCallback,
+        callbackName: messageCallback.name || 'anonymous',
+        vapiClientExists: !!vapiClient,
+        onEventExists: typeof vapiClient.onEvent,
+        refStored: !!vapiEventCallbacksRef.current.onMessage
+      });
+      
+      // Check callback status before registering
+      if (vapiClient.getCallbackStatus) {
+        console.log('[Interview] Callback status BEFORE registration:');
+        vapiClient.getCallbackStatus();
+      }
+      
+      vapiClient.onEvent('onMessage', messageCallback);
+      console.log('[Interview] ✅ Message callback registered in useEffect');
+      
+      // Check callback status after registering
+      if (vapiClient.getCallbackStatus) {
+        console.log('[Interview] Callback status AFTER registration:');
+        vapiClient.getCallbackStatus();
+      }
+      
+      // Test the callback directly after a short delay to verify it works
+      setTimeout(() => {
+        console.log('[Interview] Testing callback directly after 2 seconds...');
+        if (vapiEventCallbacksRef.current.onMessage) {
+          try {
+            vapiEventCallbacksRef.current.onMessage({
+              type: 'transcript',
+              role: 'assistant',
+              transcriptType: 'final',
+              transcript: 'Test message from direct callback invocation'
+            });
+            console.log('[Interview] ✅ Direct callback test completed');
+          } catch (error) {
+            console.error('[Interview] ❌ Direct callback test failed:', error);
+          }
+        } else {
+          console.warn('[Interview] ⚠️ Callback not found in ref for direct test');
+        }
+      }, 2000);
+
+      // Register other callbacks
+      if (!vapiEventCallbacksRef.current.onCallStart) {
+        const callStartCallback = () => {
+          setInterviewStatus((prev) => ({ ...prev, status: 'active' }));
+          durationIntervalRef.current = setInterval(() => {
+            setCallDuration((prev) => prev + 1);
+          }, 1000);
+          toast({ title: 'Call started', description: 'Minerva is now connected' });
+        };
+        vapiEventCallbacksRef.current.onCallStart = callStartCallback;
+        vapiClient.onEvent('onCallStart', callStartCallback);
+      }
+
+      if (!vapiEventCallbacksRef.current.onCallEnd) {
+        const callEndCallback = (callData: any) => {
+          console.log('[Interview] Call ended event received:', callData);
+          setInterviewStatus((prev) => ({ ...prev, status: 'ended' }));
+          if (durationIntervalRef.current) {
+            clearInterval(durationIntervalRef.current);
+            durationIntervalRef.current = null;
+          }
+          toast({ title: 'Call ended', description: 'Interview session completed' });
+          
+          // Send messages to server for storage
+          if (callData?.sessionId && callData?.phaseId && callData?.messages) {
+            console.log(`[Interview] Sending ${callData.messages.length} messages to server for storage...`);
+            fetch('/api/vapi/call-end', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId: callData.sessionId,
+                phaseId: callData.phaseId,
+                callId: callData.callId,
+                duration: callData.duration,
+                messages: callData.messages
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              console.log('[Interview] Messages stored successfully:', data);
+            })
+            .catch(error => {
+              console.error('[Interview] Failed to store messages:', error);
+            });
+          } else {
+            console.warn('[Interview] Missing data in callData:', callData);
+          }
+        };
+        vapiEventCallbacksRef.current.onCallEnd = callEndCallback;
+        vapiClient.onEvent('onCallEnd', callEndCallback);
+      }
+
+      if (!vapiEventCallbacksRef.current.onError) {
+        const errorCallback = (error: any) => {
+          console.error('[Interview] VAPI ERROR:', error);
+          toast({ title: 'Call Error', description: error?.message || 'An error occurred', variant: 'destructive' });
+          setInterviewStatus((prev) => ({ ...prev, status: 'error' }));
+        };
+        vapiEventCallbacksRef.current.onError = errorCallback;
+        vapiClient.onEvent('onError', errorCallback);
+      }
+    };
+
+    setupCallbacks();
+
+    // Cleanup
+    return () => {
+      if (vapiClientRef.current && vapiClientRef.current.offEvent) {
+        if (vapiEventCallbacksRef.current.onMessage) {
+          vapiClientRef.current.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
+        }
+      }
+    };
+  }, []); // Run once on mount
 
   // Cleanup on unmount
   useEffect(() => {
@@ -57,6 +229,21 @@ export default function InterviewPage() {
           vapiClientRef.current.stopCall('page_unmount');
         } catch (error) {
           console.error('Error stopping call on unmount:', error);
+        }
+      }
+      // Remove event listeners on unmount
+      if (vapiClientRef.current && vapiClientRef.current.offEvent) {
+        if (vapiEventCallbacksRef.current.onMessage) {
+          vapiClientRef.current.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
+        }
+        if (vapiEventCallbacksRef.current.onCallStart) {
+          vapiClientRef.current.offEvent('onCallStart', vapiEventCallbacksRef.current.onCallStart);
+        }
+        if (vapiEventCallbacksRef.current.onCallEnd) {
+          vapiClientRef.current.offEvent('onCallEnd', vapiEventCallbacksRef.current.onCallEnd);
+        }
+        if (vapiEventCallbacksRef.current.onError) {
+          vapiClientRef.current.offEvent('onError', vapiEventCallbacksRef.current.onError);
         }
       }
     };
@@ -109,54 +296,147 @@ export default function InterviewPage() {
         const vapiClient = vapiModule.default || vapiModule;
         vapiClientRef.current = vapiClient;
         
-        // Ensure listeners are initialized
+        // Listeners are auto-initialized on module load, but ensure they're ready
+        // initializeVapiListeners() is idempotent - it won't register duplicates
         if (vapiClient.initializeVapiListeners) {
-          vapiClient.initializeVapiListeners();
+          await vapiClient.initializeVapiListeners();
         }
 
-        // Set up Vapi event listeners and start the call
-        if (vapiClient)
+        // CRITICAL FIX: Always create fresh callbacks with the CURRENT module instance
+        // This ensures callbacks are in the correct eventCallbacks array that the listeners use
+        console.log('[Interview] Setting up callbacks with current module instance...');
+        
+        if (!vapiClient) {
+          console.error('[Interview] vapiClient is null/undefined');
+          throw new Error('Vapi client not available');
+        }
+        
+        if (typeof vapiClient.onEvent !== 'function') {
+          console.error('[Interview] vapiClient.onEvent is not a function:', typeof vapiClient.onEvent);
+          throw new Error('Vapi client onEvent method not available');
+        }
 
-          // Listen for messages
-          vapiClient.onEvent('onMessage', (message: any) => {
-            if (message.type === 'transcript' && message.transcript) {
-              const role = message.transcript.role;
-              const content = message.transcript.text;
-              if (role && content) {
-                setMessages((prev) => [
-                  ...prev,
-                  { role, content, timestamp: new Date() },
-                ]);
-              }
+        // Check current callback status
+        if (vapiClient.getCallbackStatus) {
+          console.log('[Interview] Callback status BEFORE registration:');
+          vapiClient.getCallbackStatus();
+        }
+
+        // ALWAYS create and register fresh callbacks (don't rely on ref)
+        // Remove any existing callbacks first
+        if (vapiClient.offEvent && vapiEventCallbacksRef.current.onMessage) {
+          console.log('[Interview] Removing old message callback...');
+          vapiClient.offEvent('onMessage', vapiEventCallbacksRef.current.onMessage);
+        }
+
+        // Create and register message callback
+        console.log('[Interview] Creating NEW message callback...');
+        const messageCallback = (message: any) => {
+          console.log('[Interview] ✅ MESSAGE CALLBACK FIRED!', message);
+          
+          if (message.type === 'transcript' && message.role && message.transcript) {
+            const role = message.role;
+            const content = message.transcript;
+            
+            if (role && content) {
+              setMessages((prev) => {
+                const lastMessage = prev[prev.length - 1];
+                if (lastMessage && lastMessage.role === role && message.transcriptType === 'partial') {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = { role, content, timestamp: new Date() };
+                  return updated;
+                } else {
+                  return [...prev, { role, content, timestamp: new Date() }];
+                }
+              });
             }
-          });
+          }
+        };
+        
+        vapiEventCallbacksRef.current.onMessage = messageCallback;
+        console.log('[Interview] About to register message callback via onEvent...');
+        console.log('[Interview] vapiClient.onEvent type:', typeof vapiClient.onEvent);
+        vapiClient.onEvent('onMessage', messageCallback);
+        console.log('[Interview] ✅ Message callback registered!');
+        
+        // Verify registration immediately
+        if (vapiClient.getCallbackStatus) {
+          console.log('[Interview] Callback status AFTER registration:');
+          vapiClient.getCallbackStatus();
+        }
 
-          // Listen for call start
-          vapiClient.onEvent('onCallStart', () => {
+        // Create and register other callbacks
+        if (!vapiEventCallbacksRef.current.onCallStart) {
+          const callStartCallback = () => {
             setInterviewStatus((prev) => ({ ...prev, status: 'active' }));
-            // Start duration timer
             durationIntervalRef.current = setInterval(() => {
               setCallDuration((prev) => prev + 1);
             }, 1000);
-            toast({
-              title: 'Call started',
-              description: 'Minerva is now connected',
-            });
-          });
+            toast({ title: 'Call started', description: 'Minerva is now connected' });
+          };
+          vapiEventCallbacksRef.current.onCallStart = callStartCallback;
+          vapiClient.onEvent('onCallStart', callStartCallback);
+        }
 
-          // Listen for call end
-          vapiClient.onEvent('onCallEnd', () => {
+        if (!vapiEventCallbacksRef.current.onCallEnd) {
+          const callEndCallback = (callData: any) => {
+            console.log('[Interview] Call ended with data:', callData);
+            
+            // Update UI
             setInterviewStatus((prev) => ({ ...prev, status: 'ended' }));
             if (durationIntervalRef.current) {
               clearInterval(durationIntervalRef.current);
               durationIntervalRef.current = null;
             }
-            toast({
-              title: 'Call ended',
-              description: 'Interview session completed',
-            });
-          });
+            toast({ title: 'Call ended', description: 'Interview session completed' });
+            
+            // CRITICAL: Send messages to server for storage
+            if (callData?.sessionId && callData?.phaseId && callData?.messages) {
+              console.log(`[Interview] Sending ${callData.messages.length} messages to server for storage...`);
+              fetch('/api/vapi/call-end', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sessionId: callData.sessionId,
+                  phaseId: callData.phaseId,
+                  callId: callData.callId,
+                  duration: callData.duration,
+                  messages: callData.messages
+                })
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('[Interview] Messages stored successfully:', data);
+              })
+              .catch(error => {
+                console.error('[Interview] Failed to store messages:', error);
+              });
+            } else {
+              console.warn('[Interview] Missing data in callData:', callData);
+            }
+          };
+          vapiEventCallbacksRef.current.onCallEnd = callEndCallback;
+          vapiClient.onEvent('onCallEnd', callEndCallback);
+        }
 
+        if (!vapiEventCallbacksRef.current.onError) {
+          const errorCallback = (error: any) => {
+            console.error('[Interview] VAPI ERROR:', error);
+            toast({ title: 'Call Error', description: error?.message || 'An error occurred', variant: 'destructive' });
+            setInterviewStatus((prev) => ({ ...prev, status: 'error' }));
+          };
+          vapiEventCallbacksRef.current.onError = errorCallback;
+          vapiClient.onEvent('onError', errorCallback);
+        }
+        
+        // Final verification before starting call
+        if (vapiClient.getCallbackStatus) {
+          console.log('[Interview] Final callback status before starting call:');
+          vapiClient.getCallbackStatus();
+        }
+
+        // Now start the call
+        if (vapiClient) {
           // Manually start the Vapi call for KICK_OFF phase
           // The orchestrator doesn't start it client-side, so we need to do it here
           try {
@@ -168,6 +448,58 @@ export default function InterviewPage() {
               throw new Error('Vapi client not properly initialized');
             }
             
+            // Request microphone permission explicitly before starting call
+            try {
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+              // Immediately stop the stream - we just needed permission
+              stream.getTracks().forEach(track => track.stop());
+              console.log('[Interview] Microphone permission granted');
+            } catch (permError) {
+              console.error('[Interview] Microphone permission denied:', permError);
+              toast({
+                title: 'Microphone Permission Required',
+                description: 'Please allow microphone access to start the interview.',
+                variant: 'destructive',
+              });
+              setInterviewStatus((prev) => ({ ...prev, status: 'error' }));
+              return;
+            }
+            
+            // CRITICAL: Verify callbacks are registered before starting call
+            if (vapiClient.getCallbackStatus) {
+              const status = vapiClient.getCallbackStatus();
+              console.log('[Interview] Callback status RIGHT BEFORE starting call:', status);
+              if (status.onMessage === 0) {
+                console.error('[Interview] ⚠️ WARNING: No message callbacks registered! Re-registering...');
+                // Emergency re-registration
+                const emergencyCallback = (message: any) => {
+                  console.log('[Interview] ✅ EMERGENCY CALLBACK FIRED!', message);
+                  if (message.type === 'transcript' && message.role && message.transcript) {
+                    setMessages((prev) => {
+                      const lastMessage = prev[prev.length - 1];
+                      if (lastMessage && lastMessage.role === message.role && message.transcriptType === 'partial') {
+                        const updated = [...prev];
+                        updated[updated.length - 1] = { role: message.role, content: message.transcript, timestamp: new Date() };
+                        return updated;
+                      } else {
+                        return [...prev, { role: message.role, content: message.transcript, timestamp: new Date() }];
+                      }
+                    });
+                  }
+                };
+                vapiClient.onEvent('onMessage', emergencyCallback);
+                console.log('[Interview] Emergency callback registered');
+                vapiClient.getCallbackStatus();
+              }
+            }
+
+            console.log('[Interview] Starting Vapi call with:', {
+              sessionId: data.sessionId,
+              phase: 'KICK_OFF',
+              assistantType: 'kickoff',
+              candidateName
+            });
+            
             const callResult = await vapiClient.startPhaseCall(
               data.sessionId,
               'KICK_OFF',
@@ -176,7 +508,7 @@ export default function InterviewPage() {
               null, // No overrides
               { candidateName } as any // Personalize with candidate name
             );
-            console.log('[Interview] Vapi call started for session', data.sessionId, callResult);
+            console.log('[Interview] Vapi call started successfully:', callResult);
             
             // The call should trigger onCallStart event which will update status to 'active'
             // Set a timeout to mark as active if event doesn't fire
@@ -200,6 +532,8 @@ export default function InterviewPage() {
               userMessage = 'Failed to load Vapi SDK. Please check the browser console for details and ensure @vapi-ai/web is installed.';
             } else if (errorMessage.includes('Failed to import')) {
               userMessage = 'Failed to load Vapi SDK module. Please restart the dev server.';
+            } else if (errorMessage.includes('permission') || errorMessage.includes('microphone')) {
+              userMessage = 'Microphone permission is required. Please allow microphone access and try again.';
             }
             
             toast({
@@ -211,6 +545,7 @@ export default function InterviewPage() {
             setInterviewStatus((prev) => ({ ...prev, status: 'error' }));
           }
         }
+      }
 
       toast({
         title: 'Interview starting',
