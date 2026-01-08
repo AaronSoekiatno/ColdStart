@@ -3,23 +3,184 @@
  * 
  * Manages Vapi voice calls with phase-specific assistants,
  * automatic start/stop based on interview phases, and cost tracking.
+ * 
+ * NOTE: This file must only be imported on the client-side.
+ * Use dynamic imports in client components.
  */
 
 // Conditionally import Vapi or use a mock for Server-Side Rendering
 let Vapi;
 let vapi;
+let vapiInitialized = false;
+let vapiInitPromise = null;
 
-if (typeof window !== 'undefined') {
-    Vapi = require("@vapi-ai/web").default;
-    vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY);
+// Initialize Vapi client (lazy initialization for browser)
+async function initializeVapi() {
+    if (vapiInitialized) return vapi;
+    if (vapiInitPromise) return vapiInitPromise;
+    
+    if (typeof window === 'undefined') {
+        // Server-side mock
+        vapi = {
+            on: () => { },
+            start: async () => console.log('Mock Vapi start'),
+            stop: async () => console.log('Mock Vapi stop'),
+            send: () => { },
+            getCallStatus: () => ({ status: 'idle' })
+        };
+        vapiInitialized = true;
+        return vapi;
+    }
+    
+    // Browser-side: use dynamic import
+    // The package uses CommonJS exports.default = Vapi
+    vapiInitPromise = (async () => {
+        try {
+            // Try multiple import strategies for Next.js compatibility
+            let VapiModule = null;
+            let importError = null;
+            
+            // Strategy 1: Standard dynamic import
+            try {
+                VapiModule = await import("@vapi-ai/web");
+                console.log('[Vapi] Standard import successful');
+            } catch (e) {
+                console.warn('[Vapi] Standard import failed, trying alternative...', e);
+                importError = e;
+                
+                // Strategy 2: Try importing from dist directly
+                try {
+                    VapiModule = await import("@vapi-ai/web/dist/vapi.js");
+                    console.log('[Vapi] Direct dist import successful');
+                } catch (e2) {
+                    console.warn('[Vapi] Direct dist import also failed', e2);
+                    
+                    // Strategy 3: Try with ?module suffix (for some bundlers)
+                    try {
+                        VapiModule = await import("@vapi-ai/web?module");
+                        console.log('[Vapi] Module suffix import successful');
+                    } catch (e3) {
+                        console.error('[Vapi] All import strategies failed');
+                        throw new Error(`Failed to import @vapi-ai/web. Original error: ${importError?.message || 'Unknown error'}`);
+                    }
+                }
+            }
+            
+            if (!VapiModule) {
+                throw new Error('Vapi module import returned null or undefined');
+            }
+            
+            console.log('[Vapi] Module object type:', typeof VapiModule);
+            console.log('[Vapi] Module keys:', Object.keys(VapiModule));
+            if (VapiModule.default !== undefined) {
+                console.log('[Vapi] Module.default type:', typeof VapiModule.default);
+                console.log('[Vapi] Module.default:', VapiModule.default);
+            }
+            
+            // Extract the Vapi constructor
+            let VapiConstructor = null;
+            
+            // The package exports: export default class Vapi
+            // Check default export first
+            if (VapiModule.default !== undefined) {
+                if (typeof VapiModule.default === 'function') {
+                    VapiConstructor = VapiModule.default;
+                    console.log('[Vapi] Found constructor in module.default (function)');
+                } else if (VapiModule.default && typeof VapiModule.default === 'object') {
+                    // Check if it's a wrapped object
+                    if (VapiModule.default.default && typeof VapiModule.default.default === 'function') {
+                        VapiConstructor = VapiModule.default.default;
+                        console.log('[Vapi] Found constructor in module.default.default');
+                    } else if (VapiModule.default.Vapi && typeof VapiModule.default.Vapi === 'function') {
+                        VapiConstructor = VapiModule.default.Vapi;
+                        console.log('[Vapi] Found constructor in module.default.Vapi');
+                    }
+                }
+            }
+            
+            // Check named export
+            if (!VapiConstructor && VapiModule.Vapi && typeof VapiModule.Vapi === 'function') {
+                VapiConstructor = VapiModule.Vapi;
+                console.log('[Vapi] Found constructor in module.Vapi');
+            }
+            
+            // Last resort: module itself
+            if (!VapiConstructor && typeof VapiModule === 'function') {
+                VapiConstructor = VapiModule;
+                console.log('[Vapi] Found constructor as module itself');
+            }
+            
+            if (!VapiConstructor || typeof VapiConstructor !== 'function') {
+                const debugInfo = {
+                    moduleKeys: Object.keys(VapiModule),
+                    hasDefault: 'default' in VapiModule,
+                    defaultType: typeof VapiModule?.default,
+                    defaultValue: VapiModule?.default?.toString?.()?.substring(0, 100) || String(VapiModule?.default),
+                    hasVapi: 'Vapi' in VapiModule,
+                    moduleType: typeof VapiModule,
+                    moduleConstructor: VapiModule?.constructor?.name
+                };
+                console.error('[Vapi] Constructor not found. Full debug info:', debugInfo);
+                console.error('[Vapi] Full module dump:', VapiModule);
+                throw new Error(`Vapi constructor not found. Module has keys: ${Object.keys(VapiModule).join(', ')}. Default type: ${typeof VapiModule?.default}`);
+            }
+            
+            Vapi = VapiConstructor;
+            console.log('[Vapi] Using Vapi constructor:', Vapi.name || 'Anonymous', 'Type:', typeof Vapi);
+            
+            const apiKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || '';
+            if (!apiKey) {
+                throw new Error('NEXT_PUBLIC_VAPI_PUBLIC_KEY environment variable is required. Please check your .env.local file.');
+            }
+            
+            console.log('[Vapi] Initializing Vapi with API key (first 10 chars):', apiKey.substring(0, 10) + '...');
+            vapi = new Vapi(apiKey);
+            vapiInitialized = true;
+            console.log('[Vapi] Vapi client initialized successfully');
+            return vapi;
+        } catch (error) {
+            console.error('[Vapi] ========== VAPI SDK INITIALIZATION FAILED ==========');
+            console.error('[Vapi] Error name:', error.name);
+            console.error('[Vapi] Error message:', error.message);
+            console.error('[Vapi] Error stack:', error.stack);
+            console.error('[Vapi] =====================================================');
+            
+            // Provide helpful error message
+            const helpfulMessage = error.message || 'Unknown error';
+            let finalError;
+            
+            if (helpfulMessage.includes('NEXT_PUBLIC_VAPI_PUBLIC_KEY')) {
+                finalError = new Error('Vapi SDK requires NEXT_PUBLIC_VAPI_PUBLIC_KEY environment variable. Please add it to your .env.local file and restart the dev server.');
+            } else if (helpfulMessage.includes('import') || helpfulMessage.includes('module') || helpfulMessage.includes('constructor not found')) {
+                finalError = new Error(`Failed to load Vapi SDK module. This might be a bundling issue. Please check: 1) @vapi-ai/web is installed (run: npm install @vapi-ai/web), 2) Restart your dev server, 3) Check browser console for detailed error. Original error: ${helpfulMessage}`);
+            } else {
+                finalError = new Error(`Vapi SDK initialization failed: ${helpfulMessage}. Please check the browser console for details.`);
+            }
+            
+            throw finalError;
+        }
+    })();
+    
+    return vapiInitPromise;
+}
+
+// Initialize immediately for server-side
+if (typeof window === 'undefined') {
+    initializeVapi();
 } else {
-    // Server-side mock to prevent crashes
-    console.log('[Vapi] Running on server - using mock Vapi client');
+    // For browser, initialize asynchronously but create placeholder
+    // vapi will be set when initializeVapi() completes
     vapi = {
-        on: () => { },
-        start: async () => console.log('Mock Vapi start'),
-        stop: async () => console.log('Mock Vapi stop'),
-        send: () => { },
+        on: () => { console.warn('[Vapi] Vapi not initialized yet - call initializeVapi() first'); },
+        start: async (...args) => { 
+            const initializedVapi = await initializeVapi();
+            return initializedVapi.start(...args); 
+        },
+        stop: async (...args) => { 
+            const initializedVapi = await initializeVapi();
+            return initializedVapi.stop(...args); 
+        },
+        send: () => { console.warn('[Vapi] Vapi not initialized yet'); },
         getCallStatus: () => ({ status: 'idle' })
     };
 }
@@ -58,10 +219,12 @@ const eventCallbacks = {
 /**
  * Initialize Vapi event listeners
  */
-export function initializeVapiListeners() {
+export async function initializeVapiListeners() {
     if (typeof window === 'undefined') return;
+    
+    const initializedVapi = await initializeVapi();
 
-    vapi.on("call-start", async () => {
+    initializedVapi.on("call-start", async () => {
         activeCall.status = 'active';
         activeCall.startTime = Date.now();
         activeCall.messageBuffer = []; // Reset message buffer for new call
@@ -86,7 +249,7 @@ export function initializeVapiListeners() {
         eventCallbacks.onCallStart.forEach(cb => cb(activeCall));
     });
 
-    vapi.on("call-end", () => {
+    initializedVapi.on("call-end", () => {
         const duration = activeCall.startTime
             ? Math.floor((Date.now() - activeCall.startTime) / 1000)
             : 0;
@@ -112,17 +275,17 @@ export function initializeVapiListeners() {
         eventCallbacks.onCallEnd.forEach(cb => cb(callData));
     });
 
-    vapi.on("speech-start", () => {
+    initializedVapi.on("speech-start", () => {
         console.log("[Vapi] Assistant started speaking");
         eventCallbacks.onSpeechStart.forEach(cb => cb());
     });
 
-    vapi.on("speech-end", () => {
+    initializedVapi.on("speech-end", () => {
         console.log("[Vapi] Assistant finished speaking");
         eventCallbacks.onSpeechEnd.forEach(cb => cb());
     });
 
-    vapi.on("message", (message) => {
+    initializedVapi.on("message", (message) => {
         console.log("[Vapi] Message:", message);
 
         // Collect transcript messages for conversation history
@@ -138,7 +301,7 @@ export function initializeVapiListeners() {
         eventCallbacks.onMessage.forEach(cb => cb(message));
     });
 
-    vapi.on("error", (error) => {
+    initializedVapi.on("error", (error) => {
         console.error("[Vapi] Error:", error);
         activeCall.status = 'idle';
         eventCallbacks.onError.forEach(cb => cb(error));
@@ -214,6 +377,8 @@ export async function startPhaseCall(sessionId, phaseId, assistantType, previous
  * Stop the current voice call
  */
 export async function stopCall(reason = 'manual') {
+    const initializedVapi = await initializeVapi();
+    
     if (activeCall.status === 'idle') {
         console.log("[Vapi] No active call to stop");
         return null;
@@ -223,7 +388,7 @@ export async function stopCall(reason = 'manual') {
     activeCall.status = 'ending';
 
     try {
-        await vapi.stop();
+        await initializedVapi.stop();
         return { success: true, reason };
     } catch (error) {
         console.error("[Vapi] Failed to stop call:", error);
@@ -277,13 +442,14 @@ export function estimateCost(durationSeconds) {
 /**
  * Send a message to the assistant (if supported)
  */
-export function sendMessage(message) {
+export async function sendMessage(message) {
     if (!isCallActive()) {
         console.warn("[Vapi] Cannot send message - no active call");
         return false;
     }
 
-    vapi.send({
+    const initializedVapi = await initializeVapi();
+    initializedVapi.send({
         type: 'add-message',
         message: {
             role: 'user',
@@ -297,7 +463,8 @@ export function sendMessage(message) {
 // Legacy exports for backwards compatibility
 export async function startVoiceCall(assistantId) {
     try {
-        await vapi.start(assistantId);
+        const initializedVapi = await initializeVapi();
+        await initializedVapi.start(assistantId);
         console.log("Voice call started");
     } catch (error) {
         console.error("Error starting call:", error);
@@ -306,16 +473,19 @@ export async function startVoiceCall(assistantId) {
 
 export async function stopVoiceCall() {
     try {
-        await vapi.stop();
+        const initializedVapi = await initializeVapi();
+        await initializedVapi.stop();
         console.log("Voice call stopped");
     } catch (error) {
         console.error("Error stopping call:", error);
     }
 }
 
-// Auto-initialize if in browser
+// Auto-initialize listeners if in browser (async, but don't block)
 if (typeof window !== 'undefined') {
-    initializeVapiListeners();
+    initializeVapiListeners().catch(err => {
+        console.error('[Vapi] Failed to auto-initialize listeners:', err);
+    });
 }
 
 export { vapi };
