@@ -124,10 +124,10 @@ export default function AssessmentPage() {
           <div className="bg-white rounded-2xl md:rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 md:p-12">
             {/* Header */}
             <div className="text-center mb-8">
-              <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+              <h1 className="text-3xl font-bold mb-4 text-gray-900">
                 {hasRepo ? "Your Assessment Workspace" : "Start Your 20-Minute Assessment"}
               </h1>
-              <p className="text-gray-600 text-lg">
+              <p className="text-gray-600 text-md">
                 {hasRepo
                   ? "Your private workspace is ready. Clone the repository and start your assessment."
                   : "Start a 20-minute technical assessment to showcase your skills to potential employers"}
@@ -173,15 +173,15 @@ export default function AssessmentPage() {
               </div>
             ) : (
               /* Has Repository - Show Instructions */
-              <div className="space-y-6">
-                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
+              <div className="space-y-4">
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-2">
                     <div className="text-green-600 text-2xl">✓</div>
                     <h3 className="font-semibold text-lg text-gray-900">
                       Repository Created Successfully
                     </h3>
                   </div>
-                  <p className="text-gray-700 mb-4">
+                  <p className="text-gray-700">
                     Your private assessment workspace is ready. Follow these steps to get started:
                   </p>
                 </div>
@@ -222,7 +222,26 @@ export default function AssessmentPage() {
                     <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
                       <code>yarn install</code>
                       <button
-                        onClick={() => handleCopy('yarn install', 'start')}
+                        onClick={() => handleCopy('yarn install', 'install')}
+                        className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
+                        title="Copy command"
+                      >
+                        {copiedField === 'install' ? (
+                          <Check className="h-4 w-4 text-green-400" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Step 4: Run Command */}
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-2">Step 4: Run Command</h4>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
+                      <code>yarn mission:start</code>
+                      <button
+                        onClick={() => handleCopy('yarn mission:start', 'start')}
                         className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
                         title="Copy command"
                       >
@@ -234,26 +253,26 @@ export default function AssessmentPage() {
                       </button>
                     </div>
                     <p className="text-sm text-gray-600 mt-2">
-                      This installs the required packages and starts the assessment environment. Minerva will guide you through the interview.
+                      This starts the assessment environment. Minerva will guide you through the interview.
                     </p>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col gap-4 pt-4">
-                  <Button
-                    onClick={() => router.push('/interview')}
-                    className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
-                  >
-                    🎙️ Start Interview with Minerva
-                  </Button>
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
                   <Button
                     onClick={() => window.open(assessmentStatus?.repoUrl || '', '_blank')}
                     variant="outline"
-                    className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                    className="flex-1 text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400 h-12 text-lg"
                   >
                     <Github className="mr-2 h-4 w-4" />
                     Open Repository
+                  </Button>
+                  <Button
+                    onClick={() => router.push('/interview')}
+                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                  >
+                    Interview with Minerva
                   </Button>
                 </div>
               </div>
