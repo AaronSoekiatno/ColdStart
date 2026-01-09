@@ -45,7 +45,7 @@ CREATE INDEX IF NOT EXISTS idx_sessions_candidate_id ON interview_sessions(candi
 CREATE INDEX IF NOT EXISTS idx_sessions_status ON interview_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_sessions_current_phase ON interview_sessions(current_phase);
 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON interview_sessions(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_sessions_repo_name ON interview_sessions(repo_name); -- For webhook matching
+CREATE INDEX IF NOT EXISTS idx_sessions_repo_name ON interview_sessions(repo_name); -- For API endpoint session lookup
 
 -- Updated_at trigger
 CREATE OR REPLACE FUNCTION update_updated_at_column()
