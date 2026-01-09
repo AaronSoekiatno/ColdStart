@@ -366,42 +366,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     return hasTaggedRepo;
   }, [repoSelections]);
 
-  // Continue to step 9 without saving (repos are saved when onboarding completes)
-  const handleReposContinue = useCallback(async () => {
-    // Validate before continuing
-    if (!validateReposSelection()) {
-      toast({
-        title: 'Selection Required',
-        description: 'Please select at least one repository and add at least one category tag to continue.',
-        variant: 'destructive',
-      });
-      return; // Don't proceed if validation fails
-    }
-
-    setIsTransitioning(true);
-    try {
-      // Save selected repos first
-      await saveSelectedRepos();
-
-      // Mark onboarding as complete
-      await fetch('/api/candidate/mark-onboarding-complete', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      // Redirect to assessment page
-      window.location.href = '/assessment';
-    } catch (error) {
-      console.error('Error completing onboarding:', error);
-      setIsTransitioning(false);
-      toast({
-        title: 'Error',
-        description: 'Failed to complete onboarding. Please try again.',
-        variant: 'destructive',
-      });
-    }
-  }, [toast]);
-
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
     // Get only repos that have been selected (repos with tags must be selected, enforced by UI)
@@ -448,6 +412,44 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       }
     }
   }, [githubRepos, repoSelections]);
+
+  // Continue to step 9 without saving (repos are saved when onboarding completes)
+  const handleReposContinue = useCallback(async () => {
+    // Validate before continuing
+    if (!validateReposSelection()) {
+      toast({
+        title: 'Selection Required',
+        description: 'Please select at least one repository and add at least one category tag to continue.',
+        variant: 'destructive',
+      });
+      return; // Don't proceed if validation fails
+    }
+
+    setIsTransitioning(true);
+    try {
+      // Save selected repos first
+      await saveSelectedRepos();
+
+      // Mark onboarding as complete
+      await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      // Redirect to assessment page
+      window.location.href = '/assessment';
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      setIsTransitioning(false);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, validateReposSelection, saveSelectedRepos]);
+
+
 
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);
