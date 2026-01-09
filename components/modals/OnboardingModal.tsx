@@ -370,6 +370,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleReposContinue = useCallback(async () => {
     // Validate before continuing
     if (!validateReposSelection()) {
+      toast({
+        title: 'Selection Required',
+        description: 'Please select at least one repository and add at least one category tag to continue.',
+        variant: 'destructive',
+      });
       return; // Don't proceed if validation fails
     }
 
