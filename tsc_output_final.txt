@@ -1,0 +1,11 @@
+app/resumes/enhance/page.tsx(5,36): error TS2307: Cannot find module '@/components/ui/button' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(6,26): error TS2307: Cannot find module '@/hooks/use-toast' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(8,24): error TS2307: Cannot find module '@/components/layout/Header' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(9,37): error TS2307: Cannot find module '@/components/features/resumes/JakesResumeTemplate' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(10,39): error TS2307: Cannot find module '@/components/features/resumes/EditableResumePreview' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(11,31): error TS2307: Cannot find module '@/components/features/resumes/ATSScoreBadge' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(12,30): error TS2307: Cannot find module '@/components/modals/UpgradeModal' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(13,43): error TS2307: Cannot find module '@/types/resume' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(14,46): error TS2307: Cannot find module '@/types/resume-patch' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(15,30): error TS2307: Cannot find module '@/lib/resume-patch' or its corresponding type declarations.
+app/resumes/enhance/page.tsx(16,40): error TS2307: Cannot find module '@/lib/supabase' or its corresponding type declarations.
