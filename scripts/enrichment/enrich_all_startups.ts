@@ -27,7 +27,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import {
   enrichCompanyFromName,
   scrapeYCCompanyPage,
-} from './scrape_yc_companies';
+} from '../scrapers/scrape_yc_companies';
 
 // Initialize Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;

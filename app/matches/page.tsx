@@ -6,7 +6,8 @@ import { supabase, isSubscribed } from '@/lib/supabase';
 import { MatchCard } from '@/components/features/matches/MatchCard';
 import { Header } from '@/components/layout/Header';
 import { UpgradeModal } from '@/components/modals/UpgradeModal';
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Play } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface MatchRecord {
@@ -74,6 +75,7 @@ export default function MatchesPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [savedMatchIds, setSavedMatchIds] = useState<string[]>([]); // Store all saved match IDs from Supabase
   const [savedStartupIds, setSavedStartupIds] = useState<string[]>([]); // Store all saved startup IDs (to handle match ID changes)
+  const [assessmentStatus, setAssessmentStatus] = useState<'not_started' | 'in_progress' | 'completed' | null>(null);
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -93,7 +95,7 @@ export default function MatchesPage() {
     if (!visibleMatches[currentMatchIndex]) return false;
     const matchId = visibleMatches[currentMatchIndex].id;
     const startupId = visibleMatches[currentMatchIndex].startup?.id;
-    
+
     // Check by match_id first (exact match)
     const isSavedByMatchId = savedMatchIds.includes(matchId);
     // Also check by startup_id (handles cases where match ID changed but startup is still saved)
@@ -197,6 +199,20 @@ export default function MatchesPage() {
 
         // Fetch saved match IDs in batch (replaces 40+ individual calls)
         await fetchSavedMatchIds();
+
+        // Fetch assessment status to update button text
+        try {
+          const assessmentResponse = await fetch('/api/topcandidates/assessment-status', {
+            credentials: 'include',
+          });
+          if (assessmentResponse.ok) {
+            const assessmentData = await assessmentResponse.json();
+            setAssessmentStatus(assessmentData.status || 'not_started');
+          }
+        } catch (error) {
+          console.error('Error fetching assessment status:', error);
+          // Not critical - default to showing "Start Assessment"
+        }
       } catch (error) {
         console.error('Error initializing matches page:', error);
         setHasError(true);
@@ -212,7 +228,7 @@ export default function MatchesPage() {
   // Always refetch from Supabase to ensure UI reflects actual saved state
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && user) {
         // Debounce: Wait 500ms before refetching to ensure any pending saves complete
@@ -393,6 +409,44 @@ export default function MatchesPage() {
             </button>
           </>
         )}
+
+        {/* Quick Access to Assessment */}
+        <div className="container mx-auto px-4 mb-4 max-w-4xl">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 mb-1">
+                  {assessmentStatus === 'completed'
+                    ? '✅ Assessment Complete'
+                    : assessmentStatus === 'in_progress'
+                      ? '📝 Continue Your Assessment'
+                      : '🎯 Boost Your Profile'}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {assessmentStatus === 'completed'
+                    ? 'Great job! You can review your assessment anytime.'
+                    : assessmentStatus === 'in_progress'
+                      ? 'You started your assessment. Complete it to improve your match quality.'
+                      : 'Complete a 20-minute technical assessment to stand out to employers.'}
+                </p>
+              </div>
+              <Button
+                onClick={() => router.push('/assessment')}
+                variant={assessmentStatus === 'not_started' ? 'default' : 'outline'}
+                className={assessmentStatus === 'not_started'
+                  ? 'bg-[#498EDC] hover:bg-[#3a7bc4] text-white border-0 whitespace-nowrap'
+                  : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 whitespace-nowrap'}
+              >
+                <Play className="mr-2 h-4 w-4" />
+                {assessmentStatus === 'completed'
+                  ? 'View Assessment'
+                  : assessmentStatus === 'in_progress'
+                    ? 'Continue'
+                    : 'Start Assessment'}
+              </Button>
+            </div>
+          </div>
+        </div>
 
         <div className="container mx-auto px-2 sm:px-4">
           {hasMatches ? (

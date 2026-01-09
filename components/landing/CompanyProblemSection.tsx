@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { ScrollAnimate } from "@/components/shared/ScrollAnimate";
 
 export function CompanyProblemSection() {
@@ -46,4 +47,3 @@ export function CompanyProblemSection() {
     </section>
   );
 }
-

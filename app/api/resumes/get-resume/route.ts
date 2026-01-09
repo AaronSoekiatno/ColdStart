@@ -84,9 +84,9 @@ export async function GET(request: NextRequest) {
     // Verify the resume belongs to this user's candidate profile
     const candidate = await getCandidate(user.email);
 
-    if (!candidate || resume.candidate_id !== candidate.id) {
+    if (!candidate || !candidate.id || resume.candidate_id !== candidate.id) {
       return NextResponse.json(
-        { error: 'Access denied' },
+        { error: 'Access denied or candidate ID missing' },
         { status: 403 }
       );
     }

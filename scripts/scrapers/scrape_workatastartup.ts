@@ -1284,8 +1284,10 @@ export async function saveJobsAndEnrichStartups(jobs: JobListing[]): Promise<{ s
 
       if (!jobError) {
         saved++;
+        console.log(`   ✅ Saved: ${job.companyName} - ${job.jobTitle}`);
       } else {
         console.error(`❌ Error saving job ${job.companyName} - ${job.jobTitle}:`, jobError.message);
+        console.error(`   Error details:`, JSON.stringify(jobError, null, 2));
       }
 
     } catch (error) {
@@ -1294,6 +1296,667 @@ export async function saveJobsAndEnrichStartups(jobs: JobListing[]): Promise<{ s
   }
 
   return { saved, enriched };
+}
+
+/**
+ * Scrapes jobs for a specific company by name or URL
+ * @param companyIdentifier - Company name or work-at-a-startup URL
+ * @returns Array of job listings for that company
+ */
+export async function scrapeCompanyJobs(
+  companyIdentifier: string
+): Promise<JobListing[]> {
+  let browser: Browser | null = null;
+  const jobs: JobListing[] = [];
+
+  try {
+    console.log(`🚀 Starting company-specific scraper for: ${companyIdentifier}`);
+    
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1920, height: 1080 });
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+    // Step 1: Login if credentials are provided
+    const loggedIn = await loginToWorkAtAStartup(page);
+
+    // Step 2: Determine if we have a URL or a company name
+    let companyUrl: string;
+    let companyName: string;
+    let companyBatch: string | undefined;
+
+    if (companyIdentifier.startsWith('http://') || companyIdentifier.startsWith('https://')) {
+      // It's a URL
+      companyUrl = companyIdentifier;
+      // Extract company name from URL if possible
+      const urlMatch = companyUrl.match(/\/companies\/([^\/\?]+)/);
+      if (urlMatch) {
+        companyName = urlMatch[1]
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+      } else {
+        companyName = 'Unknown Company';
+      }
+    } else {
+      // It's a company name - we need to search for it
+      companyName = companyIdentifier;
+      console.log(`🔍 Searching for company: ${companyName}`);
+      
+      // Navigate to companies page
+      const companiesUrl = 'https://www.workatastartup.com/companies?demographic=any&hasEquity=any&hasSalary=any&industry=any&interviewProcess=any&jobType=any&layout=list-compact&sortBy=created_desc&tab=any&usVisaNotRequired=any';
+      await page.goto(companiesUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+      await delay(2000);
+
+      // Try to find the company by searching or scrolling through the list
+      const foundCompany = await page.evaluate((searchName) => {
+        const allLinks = Array.from(document.querySelectorAll('a'));
+        
+        for (const link of allLinks) {
+          const text = (link.textContent || '').trim();
+          const href = (link as HTMLAnchorElement).href || (link as HTMLAnchorElement).getAttribute('href') || '';
+          
+          // Check if this link is related to the company name
+          // Look for links that contain "See all X jobs" and check if nearby text matches company name
+          if (text.includes('See all') && text.includes('jobs')) {
+            // Look for company name in parent elements
+            let parent = link.parentElement;
+            let depth = 0;
+            while (parent && depth < 5) {
+              const parentText = parent.textContent || '';
+              
+              // Check if company name appears in parent text (case-insensitive)
+              if (parentText.toLowerCase().includes(searchName.toLowerCase())) {
+                // Extract company name and batch from parent text
+                const companyMatch = parentText.match(/([A-Z][a-zA-Z\s&.]+?)\s*\(([SW]\d{2})\)/);
+                if (companyMatch) {
+                  return {
+                    href: href.startsWith('http') ? href : `https://www.workatastartup.com${href}`,
+                    companyName: companyMatch[1].trim(),
+                    batch: companyMatch[2],
+                  };
+                }
+                
+                // If no batch found, try to extract from href
+                const hrefMatch = href.match(/\/companies\/([^\/\?]+)/);
+                if (hrefMatch) {
+                  return {
+                    href: href.startsWith('http') ? href : `https://www.workatastartup.com${href}`,
+                    companyName: searchName,
+                    batch: undefined,
+                  };
+                }
+              }
+              parent = parent.parentElement;
+              depth++;
+            }
+          }
+          
+          // Also check if the link text itself contains the company name
+          if (text.toLowerCase().includes(searchName.toLowerCase()) && href.includes('/companies/')) {
+            const hrefMatch = href.match(/\/companies\/([^\/\?]+)/);
+            if (hrefMatch) {
+              return {
+                href: href.startsWith('http') ? href : `https://www.workatastartup.com${href}`,
+                companyName: searchName,
+                batch: undefined,
+              };
+            }
+          }
+        }
+        
+        return null;
+      }, companyName);
+
+      if (!foundCompany) {
+        console.error(`❌ Could not find company: ${companyName}`);
+        return [];
+      }
+
+      companyUrl = foundCompany.href;
+      companyName = foundCompany.companyName;
+      companyBatch = foundCompany.batch;
+      console.log(`✅ Found company: ${companyName} at ${companyUrl}`);
+    }
+
+    // Step 3: Navigate to company's job page
+    console.log(`📄 Navigating to ${companyUrl}...`);
+    await page.goto(companyUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+    await delay(3000);
+
+    // Try to expand/reveal job listings if they're hidden
+    console.log(`🔍 Checking for expandable job sections...`);
+    try {
+      // Look for buttons/links that might expand job listings
+      const expandSelectors = [
+        'button:has-text("Show")',
+        'button:has-text("View")',
+        'button:has-text("See")',
+        '[aria-expanded="false"]',
+        'details summary',
+        '[class*="expand"]',
+        '[class*="toggle"]',
+      ];
+      
+      for (const selector of expandSelectors) {
+        try {
+          const elements = await page.$$(selector);
+          for (const element of elements) {
+            const text = await page.evaluate(el => el.textContent?.toLowerCase() || '', element);
+            if (text.includes('job') || text.includes('view') || text.includes('show') || text.includes('see')) {
+              console.log(`   Clicking expand element: "${text}"`);
+              await element.click();
+              await delay(1000);
+            }
+          }
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+      
+      // Scroll to trigger lazy loading
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+      await delay(2000);
+      
+      // Scroll back to top
+      await page.evaluate(() => {
+        window.scrollTo(0, 0);
+      });
+      await delay(1000);
+    } catch (error) {
+      console.log('   ⚠️  Could not expand job sections, continuing anyway...');
+    }
+
+    // Debug: Check what's on the page
+    const pageDebug = await page.evaluate(() => {
+      const allLinks = Array.from(document.querySelectorAll('a'));
+      const linkInfo = allLinks
+        .map(link => ({
+          text: (link.textContent || '').trim(),
+          href: (link as HTMLAnchorElement).href || (link as HTMLAnchorElement).getAttribute('href') || '',
+          hasJob: (link.textContent || '').toLowerCase().includes('job'),
+          hasView: (link.textContent || '').toLowerCase().includes('view'),
+        }))
+        .filter(l => l.hasJob || l.hasView || l.href.includes('/jobs/') || l.href.includes('/job/'))
+        .slice(0, 20);
+      
+      return {
+        totalLinks: allLinks.length,
+        relevantLinks: linkInfo,
+        pageText: document.body.textContent?.substring(0, 500) || '',
+      };
+    });
+    
+    console.log(`📊 Page debug: Found ${pageDebug.totalLinks} total links`);
+    console.log(`📋 Relevant links (first 20):`);
+    pageDebug.relevantLinks.forEach((link, i) => {
+      console.log(`   ${i + 1}. "${link.text}" -> ${link.href.substring(0, 80)}`);
+    });
+
+    // Step 4: Find all job links on this company's page
+    // Try multiple strategies to find job listings
+    console.log(`🔍 Looking for job links...`);
+    const jobLinks = await page.evaluate(() => {
+      const links: Array<{ href: string; jobTitle: string }> = [];
+      
+      // Strategy 1: Find all links/buttons with "View job" text
+      const allElements = Array.from(document.querySelectorAll('a, button'));
+      
+      for (const el of allElements) {
+        const text = (el.textContent || '').trim().toLowerCase();
+        const href = (el as HTMLAnchorElement).href || (el as HTMLAnchorElement).getAttribute('href') || '';
+        
+        // Check for "View job" or similar patterns
+        if (text.includes('view job') || text.includes('viewjob') || 
+            (text.includes('view') && text.includes('job'))) {
+          // Try to find job title nearby
+          let jobTitle = 'Unknown Position';
+          
+          // Look in parent elements for job title
+          let parent = el.parentElement;
+          let depth = 0;
+          while (parent && depth < 5) {
+            const parentText = parent.textContent || '';
+            // Look for common job title patterns
+            const titleMatch = parentText.match(/(Senior\s+)?(Staff\s+)?(Software\s+)?(Full\s+Stack\s+)?(Product\s+)?(AI\s+)?(ML\s+)?(Backend\s+)?(Frontend\s+)?(Engineer|Developer|Product\s+Engineer|Engineering\s+Lead|Director|Manager|Intern)/i);
+            if (titleMatch) {
+              jobTitle = titleMatch[0].trim();
+              break;
+            }
+            parent = parent.parentElement;
+            depth++;
+          }
+          
+          links.push({
+            href: href.startsWith('http') ? href : `https://www.workatastartup.com${href}`,
+            jobTitle: jobTitle,
+          });
+        }
+      }
+      
+      // Strategy 2: Look for links to /jobs/ or /job/ paths
+      if (links.length === 0) {
+        for (const el of allElements) {
+          const href = (el as HTMLAnchorElement).href || (el as HTMLAnchorElement).getAttribute('href') || '';
+          
+          if (href.includes('/jobs/') || href.includes('/job/')) {
+            // Try to extract job title from link text or nearby elements
+            let jobTitle = (el.textContent || '').trim();
+            
+            // If link text is empty or generic, look in parent
+            if (!jobTitle || jobTitle.length < 3 || jobTitle.toLowerCase().includes('view')) {
+              let parent = el.parentElement;
+              let depth = 0;
+              while (parent && depth < 5) {
+                const parentText = parent.textContent || '';
+                const titleMatch = parentText.match(/(Senior\s+)?(Staff\s+)?(Software\s+)?(Full\s+Stack\s+)?(Product\s+)?(AI\s+)?(ML\s+)?(Backend\s+)?(Frontend\s+)?(Engineer|Developer|Product\s+Engineer|Engineering\s+Lead|Director|Manager|Intern)/i);
+                if (titleMatch) {
+                  jobTitle = titleMatch[0].trim();
+                  break;
+                }
+                parent = parent.parentElement;
+                depth++;
+              }
+            }
+            
+            // If still no title, try to extract from URL
+            if (!jobTitle || jobTitle.length < 3) {
+              const urlMatch = href.match(/\/(jobs?|job)\/([^\/\?]+)/);
+              if (urlMatch) {
+                jobTitle = urlMatch[2]
+                  .split('-')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+              }
+            }
+            
+            // Only add if we haven't seen this href before
+            if (!links.some(l => l.href === href)) {
+              links.push({
+                href: href.startsWith('http') ? href : `https://www.workatastartup.com${href}`,
+                jobTitle: jobTitle || 'Unknown Position',
+              });
+            }
+          }
+        }
+      }
+      
+      // Strategy 3: Look for any links that might be job listings based on context
+      if (links.length === 0) {
+        // Look for article, card, or listing elements that might contain job info
+        const jobContainers = Array.from(document.querySelectorAll('article, [class*="job"], [class*="listing"], [class*="card"]'));
+        
+        for (const container of jobContainers) {
+          const containerLinks = container.querySelectorAll('a');
+          for (const link of containerLinks) {
+            const href = (link as HTMLAnchorElement).href || (link as HTMLAnchorElement).getAttribute('href') || '';
+            const text = (link.textContent || '').trim();
+            
+            // Check if this looks like a job link
+            if (href && (href.includes('/jobs/') || href.includes('/job/') || 
+                text.toLowerCase().includes('engineer') || 
+                text.toLowerCase().includes('developer') ||
+                text.toLowerCase().includes('manager'))) {
+              
+              if (!links.some(l => l.href === href)) {
+                links.push({
+                  href: href.startsWith('http') ? href : `https://www.workatastartup.com${href}`,
+                  jobTitle: text || 'Unknown Position',
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      return links;
+    });
+    
+    console.log(`✅ Found ${jobLinks.length} job listings for ${companyName}`);
+    
+    if (jobLinks.length === 0) {
+      console.log(`⚠️  No jobs found for ${companyName}`);
+      console.log(`💡 This could mean:`);
+      console.log(`   - The company has no active job listings`);
+      console.log(`   - The page structure has changed`);
+      console.log(`   - The company page requires different navigation`);
+      return [];
+    }
+    
+    // Log found job links
+    console.log(`📋 Job links found:`);
+    jobLinks.forEach((link, i) => {
+      console.log(`   ${i + 1}. ${link.jobTitle} -> ${link.href}`);
+    });
+
+    // Step 5: For each job, click through and extract details
+    for (let j = 0; j < jobLinks.length; j++) {
+      const jobLink = jobLinks[j];
+      console.log(`\n💼 Processing job ${j + 1}/${jobLinks.length}: ${jobLink.jobTitle}`);
+      console.log(`   🔗 ${jobLink.href}`);
+      
+      try {
+        // Navigate to individual job page
+        await page.goto(jobLink.href, { waitUntil: 'networkidle2', timeout: 30000 });
+        await delay(2000);
+        
+        // Extract all job details from the individual job page
+        const jobDetails = await page.evaluate((companyName, companyBatch) => {
+          const job: any = {
+            companyName: companyName,
+            companyBatch: companyBatch,
+            jobTitle: '',
+            jobType: 'fulltime',
+            location: 'Unknown',
+            jobRole: '',
+            postedDate: 'Unknown',
+            jobUrl: window.location.href,
+            companyTagline: '',
+            companyAbout: '',
+            salaryRange: '',
+            visaRequirements: '',
+            experienceLevel: '',
+            skills: '',
+            requirements: '',
+            benefits: '',
+            interviewProcess: '',
+            fullDescription: document.body.textContent || '',
+          };
+          
+          const text = document.body.textContent || '';
+          const html = document.body.innerHTML || '';
+          
+          // Extract job title (usually at the top)
+          const titleSelectors = ['h1', 'h2', '[class*="title"]', '[class*="job-title"]'];
+          for (const selector of titleSelectors) {
+            const el = document.querySelector(selector);
+            if (el) {
+              const titleText = el.textContent?.trim();
+              if (titleText && titleText.length > 5 && titleText.length < 100) {
+                job.jobTitle = titleText;
+                break;
+              }
+            }
+          }
+          
+          // Extract salary range
+          const salaryMatch = text.match(/\$(\d+K?)\s*-\s*\$(\d+K?)/);
+          if (salaryMatch) {
+            job.salaryRange = `$${salaryMatch[1]} - $${salaryMatch[2]}`;
+          }
+          
+          // Extract location
+          const locationLines = text.split('\n').map(l => l.trim());
+          for (const line of locationLines) {
+            if (line.match(/(San Francisco|New York|London|Boston|Seattle|Austin|Los Angeles|Palo Alto|Mountain View|Redwood City|Bangalore|Remote)/i) &&
+                (line.includes('CA') || line.includes('NY') || line.includes('US') || line.includes('GB') || line.includes('UK') || line.includes('WA') || line.includes('MA') || line.includes('TX') || line.match(/Remote/i))) {
+              job.location = line;
+              break;
+            }
+          }
+          
+          // Extract job type (normalize to lowercase with hyphens)
+          const jobTypeMatch = text.match(/(Full-time|Part-time|Contract|Internship|fulltime|parttime|contract|internship)/i);
+          if (jobTypeMatch) {
+            const rawType = jobTypeMatch[1].toLowerCase();
+            // Normalize to lowercase with hyphens: full-time, part-time, contract, internship
+            if (rawType.includes('full') || rawType === 'fulltime') {
+              job.jobType = 'full-time';
+            } else if (rawType.includes('part') || rawType === 'parttime') {
+              job.jobType = 'part-time';
+            } else if (rawType.includes('intern')) {
+              job.jobType = 'internship';
+            } else if (rawType.includes('contract')) {
+              job.jobType = 'contract';
+            }
+          }
+          
+          // Extract visa requirements
+          for (const line of locationLines) {
+            if (line.match(/(US citizen|visa|sponsor|US visa not required)/i)) {
+              job.visaRequirements = line;
+              break;
+            }
+          }
+          
+          // Extract experience level
+          for (const line of locationLines) {
+            if (line.match(/(Any|new grads|\d+\+?\s*years?|entry|senior|intern)/i) && 
+                (line.includes('new grads') || line.includes('Any') || line.match(/\d+\+?\s*years?/))) {
+              job.experienceLevel = line;
+              break;
+            }
+          }
+          
+          // Extract skills
+          let skillsFound = false;
+          for (let i = 0; i < locationLines.length; i++) {
+            const line = locationLines[i];
+            if (line.match(/^Skills:/i)) {
+              let skillsText = line.replace(/^Skills:\s*/i, '');
+              for (let j = i + 1; j < Math.min(i + 3, locationLines.length); j++) {
+                if (locationLines[j] && !locationLines[j].match(/^[A-Z][a-z]+\s+[A-Z]/)) {
+                  skillsText += ', ' + locationLines[j];
+                } else {
+                  break;
+                }
+              }
+              job.skills = skillsText.trim();
+              skillsFound = true;
+              break;
+            }
+          }
+          
+          if (!skillsFound) {
+            const techKeywords = ['Node.js', 'Python', 'React', 'TypeScript', 'JavaScript', 'Java', 'Go', 'Rust', 'C++', 'Swift', 'Kotlin', 'Ruby', 'PHP', 'Django', 'Flask', 'Express', 'Vue', 'Angular', 'Next.js', 'AWS', 'GCP', 'Azure', 'Docker', 'Kubernetes'];
+            const foundTech: string[] = [];
+            for (const keyword of techKeywords) {
+              if (text.includes(keyword)) {
+                foundTech.push(keyword);
+              }
+            }
+            if (foundTech.length > 0) {
+              job.skills = foundTech.join(', ');
+            }
+          }
+          
+          // Extract structured sections (same logic as main scraper)
+          const lines = text.split('\n').map(l => l.trim());
+          let currentSection = '';
+          let currentSectionText = '';
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            if (line.match(/^About\s+[A-Z]/i) && !line.match(/About the role/i)) {
+              if (currentSection && currentSectionText) {
+                if (currentSection === 'companyAbout') {
+                  job.companyAbout = currentSectionText.trim();
+                }
+              }
+              currentSection = 'companyAbout';
+              currentSectionText = '';
+              continue;
+            } else if (line.match(/^(About the role|The role)$/i)) {
+              if (currentSection && currentSectionText) {
+                if (currentSection === 'companyAbout') {
+                  job.companyAbout = currentSectionText.trim();
+                }
+              }
+              currentSection = 'aboutRole';
+              currentSectionText = '';
+              continue;
+            } else if (line.match(/^Requirements$/i)) {
+              if (currentSection && currentSectionText) {
+                job[currentSection] = currentSectionText.trim();
+              }
+              currentSection = 'requirements';
+              currentSectionText = '';
+              continue;
+            } else if (line.match(/^(Benefits|What we offer)$/i)) {
+              if (currentSection && currentSectionText) {
+                job[currentSection] = currentSectionText.trim();
+              }
+              currentSection = 'benefits';
+              currentSectionText = '';
+              continue;
+            } else if (line.match(/^Interview Process$/i)) {
+              if (currentSection && currentSectionText) {
+                job[currentSection] = currentSectionText.trim();
+              }
+              currentSection = 'interviewProcess';
+              currentSectionText = '';
+              continue;
+            } else if (line.match(/^(Technology|Stack|Our stack)$/i)) {
+              if (currentSection && currentSectionText) {
+                job[currentSection] = currentSectionText.trim();
+              }
+              currentSection = 'technology';
+              currentSectionText = '';
+              continue;
+            } else if (line.match(/^(What You|How we|Why|Preferred)/i)) {
+              if (currentSection) {
+                currentSectionText += '\n' + line;
+              }
+              continue;
+            }
+            
+            if (currentSection && line.length > 0) {
+              if (line.match(/^(About|Requirements|Benefits|Interview|Technology|What You|How we|Why)/i) && !currentSectionText) {
+                continue;
+              }
+              currentSectionText += (currentSectionText ? '\n' : '') + line;
+            }
+          }
+          
+          if (currentSection && currentSectionText) {
+            if (currentSection === 'companyAbout') {
+              job.companyAbout = currentSectionText.trim();
+            } else if (currentSection !== 'aboutRole' && currentSection !== 'technology') {
+              job[currentSection] = currentSectionText.trim();
+            }
+          }
+          
+          // Extract company tagline
+          const taglineMatch = text.match(new RegExp(`${companyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*\\n([^\\n]{10,150})`, 'i'));
+          if (taglineMatch && !taglineMatch[1].includes('$') && !taglineMatch[1].includes('Apply')) {
+            job.companyTagline = taglineMatch[1].trim();
+          }
+          
+          return job;
+        }, companyName, companyBatch || '');
+        
+        // Set job role from title if not set
+        if (!jobDetails.jobRole) {
+          jobDetails.jobRole = jobDetails.jobTitle;
+        }
+        
+        jobs.push({
+          companyName: (jobDetails.companyName || '').trim(),
+          jobTitle: (jobDetails.jobTitle || 'Unknown Position').trim(),
+          jobType: jobDetails.jobType || 'fulltime',
+          location: jobDetails.location || 'Unknown',
+          jobRole: jobDetails.jobRole || jobDetails.jobTitle?.trim() || 'Unknown',
+          postedDate: jobDetails.postedDate || 'Unknown',
+          jobUrl: jobDetails.jobUrl || '',
+          companyBatch: jobDetails.companyBatch,
+          companyTagline: jobDetails.companyTagline,
+          companyAbout: jobDetails.companyAbout,
+          salaryRange: jobDetails.salaryRange,
+          visaRequirements: jobDetails.visaRequirements,
+          experienceLevel: jobDetails.experienceLevel,
+          skills: jobDetails.skills,
+          requirements: jobDetails.requirements,
+          benefits: jobDetails.benefits,
+          interviewProcess: jobDetails.interviewProcess,
+          fullDescription: jobDetails.fullDescription,
+        });
+        
+        // Log the extracted job details
+        console.log(`   ✅ Extracted job details:`);
+        console.log(`      Title: ${jobDetails.jobTitle}`);
+        console.log(`      Type: ${jobDetails.jobType}`);
+        console.log(`      Location: ${jobDetails.location}`);
+        if (jobDetails.salaryRange) console.log(`      Salary: ${jobDetails.salaryRange}`);
+        if (jobDetails.skills) console.log(`      Skills: ${jobDetails.skills.substring(0, 80)}...`);
+        
+      } catch (jobError) {
+        console.error(`   ❌ Error processing job ${jobLink.jobTitle}:`, jobError);
+        // Continue to next job
+      }
+    }
+    
+    console.log(`\n✅ Completed scraping. Found ${jobs.length} jobs for ${companyName}.`);
+    return jobs;
+
+  } catch (error) {
+    console.error('❌ Error scraping company jobs:', error);
+    throw error;
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
+}
+
+/**
+ * Scrapes and saves jobs for a specific company by name or URL
+ * @param companyIdentifier - Company name or work-at-a-startup URL
+ * @returns Result with saved and enriched counts
+ */
+export async function scrapeAndSaveCompanyJobs(
+  companyIdentifier: string
+): Promise<{ saved: number; enriched: number }> {
+  try {
+    console.log(`🚀 Starting company-specific scraper for: ${companyIdentifier}`);
+    
+    const jobs = await scrapeCompanyJobs(companyIdentifier);
+    console.log(`📊 Scraped ${jobs.length} job listings`);
+
+    if (jobs.length === 0) {
+      console.log('⚠️  No jobs found for this company.');
+      console.log('💡 Possible reasons:');
+      console.log('   - Company has no active job listings');
+      console.log('   - Page structure is different than expected');
+      console.log('   - Need to be logged in to see jobs');
+      console.log('   - Company page requires different navigation');
+      return { saved: 0, enriched: 0 };
+    }
+
+    // Log details of scraped jobs
+    console.log(`\n📋 Scraped jobs details:`);
+    jobs.forEach((job, i) => {
+      console.log(`   ${i + 1}. ${job.companyName} - ${job.jobTitle}`);
+      console.log(`      URL: ${job.jobUrl}`);
+      console.log(`      Type: ${job.jobType}, Location: ${job.location}`);
+    });
+
+    console.log(`\n💾 Saving jobs to database...`);
+    const result = await saveJobsAndEnrichStartups(jobs);
+    console.log(`✅ Saved ${result.saved} jobs and enriched ${result.enriched} startups`);
+    
+    if (result.saved === 0 && jobs.length > 0) {
+      console.log(`⚠️  Warning: Found ${jobs.length} jobs but saved 0. This might indicate:`);
+      console.log('   - Database constraint violations (duplicate jobs)');
+      console.log('   - Missing required fields');
+      console.log('   - Database connection issues');
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('❌ Error in scrapeAndSaveCompanyJobs:', error);
+    if (error instanceof Error) {
+      console.error('   Error message:', error.message);
+      console.error('   Stack trace:', error.stack);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -1323,20 +1986,47 @@ export async function scrapeAndSaveWorkAtAStartup(limit: number = 50) {
 
 // Allow running as a script
 if (require.main === module) {
-  // First argument is the number of companies to process (default: 1 for testing)
-  // This limits how many companies we process, but we get ALL jobs for each company
-  const limit = process.argv[2] ? parseInt(process.argv[2], 10) : 1;
+  const args = process.argv.slice(2);
   
-  console.log(`🧪 Testing with ${limit} company/companies (will get all jobs for each)`);
+  // Check if first argument is a company name or URL
+  const firstArg = args[0];
+  const isCompanyIdentifier = firstArg && (
+    firstArg.startsWith('http://') || 
+    firstArg.startsWith('https://') || 
+    !/^\d+$/.test(firstArg) // Not a pure number
+  );
   
-  scrapeAndSaveWorkAtAStartup(limit)
-    .then((result) => {
-      console.log('✅ Scraping completed:', result);
-      process.exit(0);
-    })
-    .catch((error) => {
-      console.error('❌ Scraping failed:', error);
-      process.exit(1);
-    });
+  if (isCompanyIdentifier) {
+    // Scrape specific company by name or URL
+    const companyIdentifier = firstArg;
+    console.log(`🧪 Scraping jobs for company: ${companyIdentifier}`);
+    
+    scrapeAndSaveCompanyJobs(companyIdentifier)
+      .then((result) => {
+        console.log('✅ Scraping completed:', result);
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('❌ Scraping failed:', error);
+        process.exit(1);
+      });
+  } else {
+    // Default: scrape multiple companies (limit-based)
+    // First argument is the number of companies to process (default: 1 for testing)
+    // This limits how many companies we process, but we get ALL jobs for each company
+    const limit = firstArg ? parseInt(firstArg, 10) : 1;
+    
+    console.log(`🧪 Testing with ${limit} company/companies (will get all jobs for each)`);
+    
+    scrapeAndSaveWorkAtAStartup(limit)
+      .then((result) => {
+        console.log('✅ Scraping completed:', result);
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('❌ Scraping failed:', error);
+        process.exit(1);
+      });
+  }
 }
 

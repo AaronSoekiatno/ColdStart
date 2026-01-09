@@ -25,7 +25,7 @@ if (!envLoaded) {
 
 import puppeteer from 'puppeteer';
 import { createClient } from '@supabase/supabase-js';
-import { enrichCompanyFromName } from './scrape_yc_companies';
+import { enrichCompanyFromName } from '../scrapers/scrape_yc_companies';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;

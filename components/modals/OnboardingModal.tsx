@@ -9,10 +9,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Search } from "lucide-react";
+import { Loader2, Plus, Search, Copy, Check, ExternalLink } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import dynamic from "next/dynamic";
+import { useToast } from "@/hooks/use-toast";
 
 // Lazy load ResumeUpload only when needed (step 6)
 const ResumeUpload = dynamic(() => import("@/app/components/ResumeUpload"), {
@@ -94,21 +95,18 @@ interface OnboardingModalProps {
   onOpenChange: (open: boolean) => void;
   onComplete?: () => void;
   skipResumeUpload?: boolean; // If true, skip step 6 (resume upload)
-  isTopCandidatesRoute?: boolean; // If true, include step 8 (GitHub repo selection), otherwise skip it
 }
 
-export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false, isTopCandidatesRoute = false }: OnboardingModalProps) {
-  // Step type depends on whether we skip resume upload (includes step 9 for choice screen, step 10 for topcandidates Calendly)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10>(1);
-  
-  // Prevent accessing step 8 if not on topcandidates route
-  useEffect(() => {
-    if (step === 8 && !isTopCandidatesRoute) {
-      setStep(9); // Skip to final step
-    }
-  }, [step, isTopCandidatesRoute]);
+export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
+  // Unified onboarding flow: Steps 1-4 (basic info), Step 6 (resume, optional), Step 7 (GitHub), Step 8 (repo selection), Step 10 (assessment), Step 11 (completion)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11>(1);
 
-  // Step 9 is Calendly for topcandidates, final choice for regular - no special handling needed
+  // Safeguard: Redirect from removed step 5
+  useEffect(() => {
+    if (step === 5) {
+      setStep(skipResumeUpload ? 7 : 6);
+    }
+  }, [step, skipResumeUpload]);
 
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
@@ -117,15 +115,23 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [hasBetaAccess, setHasBetaAccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [showStatistic, setShowStatistic] = useState(false);
+
   const [githubConnected, setGithubConnected] = useState(false);
-  const [selectedCalendlyLink, setSelectedCalendlyLink] = useState<string | null>(null);
+
   // GitHub repos state
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
   const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
-  // const [showResumeUpload, setShowResumeUpload] = useState(false);
+  // Assessment state
+  const [isCreatingRepo, setIsCreatingRepo] = useState(false);
+  const [assessmentRepoUrl, setAssessmentRepoUrl] = useState<string | null>(null);
+  const [assessmentCloneUrl, setAssessmentCloneUrl] = useState<string | null>(null);
+  const [assessmentCredentials, setAssessmentCredentials] = useState<any>(null);
+  const [provisioningToken, setProvisioningToken] = useState<string | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const { toast } = useToast();
+
 
   // Check if user has beta access
   useEffect(() => {
@@ -162,7 +168,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   // Role options for repo tagging (excluding "Other")
   const REPO_TAG_OPTIONS = useMemo(() =>
     ROLE_OPTIONS.filter(option => option.value !== 'Other'),
-  []);
+    []);
 
   const handleObjectiveSelect = useCallback((objective: ObjectiveType) => {
     setSelectedObjectives(prev => {
@@ -174,17 +180,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  const handleStatisticContinue = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      if (skipResumeUpload) {
-        setStep(7); // Skip to GitHub connection if resume upload is skipped
-      } else {
-        setStep(6); // Resume upload step
-      }
-      setIsTransitioning(false);
-    }, 200); // Reduced from 300ms to 200ms
-  }, [skipResumeUpload]);
+
 
   // Check for GitHub connection status from URL params
   useEffect(() => {
@@ -198,30 +194,30 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
         if (githubConnected === 'true') {
           setGithubConnected(true);
-          
-          // Determine target step
+
+          // Determine target step - always go to step 8 (repo selection) after GitHub connection
           let targetStep: 8 | 9;
           if (stepParam === '7') {
-            targetStep = isTopCandidatesRoute ? 8 : 9;
+            targetStep = 8; // Always go to repo selection after GitHub connection
           } else if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            if (stepNum >= 1 && stepNum <= 10) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10);
+            if (stepNum >= 1 && stepNum <= 11) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11);
               // Clean up URL params after processing
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
               return; // Early return since we set a specific step
             } else {
-              targetStep = isTopCandidatesRoute ? 8 : 9;
+              targetStep = 8; // Default to repo selection
             }
           } else {
-            // No step param but GitHub connected - default behavior based on route
-            targetStep = isTopCandidatesRoute ? 8 : 9;
+            // No step param but GitHub connected - default to repo selection
+            targetStep = 8;
           }
-          
+
           // Set the target step
           setStep(targetStep);
-          
+
           // Clean up URL params after processing
           setTimeout(() => {
             const newUrl = window.location.pathname;
@@ -245,28 +241,17 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
           }, 100);
         }
       };
-      
+
       // Check immediately
       checkParams();
-      
+
       // Also check after a small delay to catch any timing issues
       const timeoutId = setTimeout(checkParams, 100);
       return () => clearTimeout(timeoutId);
     }
-  }, [open, isTopCandidatesRoute]);
+  }, [open]);
 
-  // Randomly select a Calendly link when step 9 is shown for topcandidates route
-  useEffect(() => {
-    if (step === 9 && isTopCandidatesRoute && !selectedCalendlyLink) {
-      const calendlyLinks = [
-        'https://calendly.com/aaronjsoekiatno/hermes-portfolio',
-        'https://calendly.com/robertpflores06/30min',
-        'https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran',
-      ];
-      const randomIndex = Math.floor(Math.random() * calendlyLinks.length);
-      setSelectedCalendlyLink(calendlyLinks[randomIndex]);
-    }
-  }, [step, isTopCandidatesRoute, selectedCalendlyLink]);
+
 
   // Fetch GitHub repos when entering step 8 (without saving to database)
   useEffect(() => {
@@ -305,24 +290,27 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   const handleGithubConnect = () => {
     // Redirect to GitHub OAuth connection
-    const currentUrl = window.location.href;
-    // Stay on the same page (landing page with modal)
-    const redirectUrl = currentUrl.split('?')[0]; // Remove any existing query params
-    const connectUrl = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectUrl)}&step=7`;
+    // Use pathname to preserve the current page (e.g., /onboarding)
+    const redirectPath = window.location.pathname || '/';
+    const connectUrl = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectPath)}&step=7`;
     window.location.href = connectUrl;
   };
+
+  const handleGithubSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(10); // Skip to Assessment
+      setIsTransitioning(false);
+    }, 200);
+  }, []);
 
   const handleGithubContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      if (isTopCandidatesRoute) {
-        setStep(8); // Go to repo selection step (only for topcandidates)
-      } else {
-        setStep(9); // Skip repo selection for regular onboarding
-      }
+      setStep(8); // Go to repo selection step
       setIsTransitioning(false);
     }, 200);
-  }, [isTopCandidatesRoute]);
+  }, []);
 
   // Handle repo selection toggle
   const handleRepoToggle = useCallback((githubRepoId: number) => {
@@ -386,11 +374,28 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
     
     setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(9); // Go to Calendly step (9) for topcandidates, choice screen (9) for regular
+    try {
+      // Save selected repos first
+      await saveSelectedRepos();
+
+      // Mark onboarding as complete
+      await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      // Redirect to assessment page
+      window.location.href = '/assessment';
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
       setIsTransitioning(false);
-    }, 200);
-  }, [validateReposSelection]);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
@@ -439,6 +444,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [githubRepos, repoSelections]);
 
+  const handleReposSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(10); // Go to Assessment step
+      setIsTransitioning(false);
+    }, 200);
+  }, []);
+
   const handleObjectiveContinue = useCallback(() => {
     if (selectedObjectives.length === 0) return;
     setIsTransitioning(true);
@@ -448,14 +461,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }, 200); // Reduced from 300ms to 200ms
   }, [selectedObjectives.length]);
 
-  useEffect(() => {
-    if (step === 5) {
-      setShowStatistic(false);
-      // Small delay to allow render then trigger animation
-      const timer = setTimeout(() => setShowStatistic(true), 100);
-      return () => clearTimeout(timer);
-    }
-  }, [step]);
+
 
   const handleJobTypeSelect = useCallback((jobType: JobType) => {
     setSelectedJobType(jobType);
@@ -523,9 +529,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
       if (data.success) {
         // Go to final step instead of completing
+        // Go to next step
         setIsTransitioning(true);
         setTimeout(() => {
-          setStep(5); // Go to Statistic screen
+          if (skipResumeUpload) {
+            setStep(7); // Skip failure-prone resume upload if requested
+          } else {
+            setStep(6); // Resume upload step
+          }
           setIsSubmitting(false);
           setIsTransitioning(false);
         }, 200);
@@ -539,6 +550,79 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       setIsSubmitting(false);
     }
   };
+
+  const handleAssessmentSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(11);
+      setIsTransitioning(false);
+    }, 200);
+  }, []);
+
+  const handleResumeSkip = useCallback(() => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setStep(7);
+      setIsTransitioning(false);
+    }, 200);
+  }, []);
+
+  // Handle assessment start (Step 10 for top candidates)
+  const handleStartAssessment = useCallback(async () => {
+    setIsCreatingRepo(true);
+    try {
+      const response = await fetch('/api/topcandidates/create-assessment-repo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create assessment repository');
+      }
+
+      const data = await response.json();
+      setAssessmentRepoUrl(data.repoUrl);
+      setAssessmentCloneUrl(data.cloneUrl);
+      if (data.credentials) {
+        setAssessmentCredentials(data.credentials);
+      }
+      if (data.provisioningToken) {
+        setProvisioningToken(data.provisioningToken);
+      }
+
+      toast({
+        title: "Assessment repository created!",
+        description: "Your private workspace is ready.",
+      });
+
+      // Do not auto-advance to step 11 - let user see the clone instructions (step 10 success state)
+    } catch (error) {
+      console.error('Error creating assessment repo:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create repository';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreatingRepo(false);
+    }
+  }, [toast]);
+
+  const handleCopy = useCallback((text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    toast({
+      title: "Copied!",
+      description: `${field} copied to clipboard`,
+    });
+    setTimeout(() => setCopiedField(null), 2000);
+  }, [toast]);
 
   const handleViewMatches = async () => {
     try {
@@ -578,532 +662,547 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               <div className="mb-8">
                 <div className="flex items-center justify-center gap-2 mb-4">
                   {(() => {
-                    const steps = isTopCandidatesRoute
-                      ? skipResumeUpload 
-                        ? [1, 2, 3, 4, 5, 7, 8, 9, 10]
-                        : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-                      : skipResumeUpload 
-                        ? [1, 2, 3, 4, 5, 7, 9]
-                        : [1, 2, 3, 4, 5, 6, 7, 9];
+                    const steps = skipResumeUpload
+                      ? [1, 2, 3, 4, 7, 8, 10, 11]
+                      : [1, 2, 3, 4, 6, 7, 8, 10, 11];
                     return steps.map((stepNum) => (
                       <div
                         key={stepNum}
-                        className={`h-2 w-8 rounded-full transition-colors duration-300 ${
-                          step >= stepNum ? 'bg-[#498EDC]' : 'bg-gray-200'
-                        }`}
+                        className={`h-2 w-8 rounded-full transition-colors duration-300 ${step >= stepNum ? 'bg-[#498EDC]' : 'bg-gray-200'
+                          }`}
                       />
                     ));
                   })()}
                 </div>
                 <p className="text-center text-gray-500 text-sm">
                   Step {(() => {
-                    if (isTopCandidatesRoute) {
-                      // Map steps for topcandidates: 1-8 stay same, 9 is Calendly, 10 is final choice
-                      // Display: 1-8 stay same, step 9 displays as 9, step 10 displays as 10
-                      return step;
+                    // Calculate step display: remove step 5 (removed), adjust for skipped resume
+                    let currentStepDisplay = step > 5 ? step - 1 : step;
+
+                    // Handle skip resume (remove step 6)
+                    if (skipResumeUpload && step >= 7) {
+                      currentStepDisplay -= 1;
                     }
-                    const totalSteps = skipResumeUpload 
-                      ? 7
-                      : 8;
-                    // Adjust displayed step number if we're past step 8 but it's not shown
-                    if (!isTopCandidatesRoute && step === 9) {
-                      return totalSteps;
+
+                    // Step 9 is removed, so step 10 becomes step 9 in display
+                    if (step >= 10) {
+                      currentStepDisplay -= 1;
                     }
-                    if (skipResumeUpload && step >= 7 && step < 9) {
-                      return step - 1;
-                    }
-                    return step;
-                  })()} of {isTopCandidatesRoute
-                    ? (skipResumeUpload ? 9 : 10)
-                    : (skipResumeUpload ? 7 : 8)}
+
+                    return currentStepDisplay;
+                  })()} of {skipResumeUpload ? 8 : 9}
                 </p>
               </div>
             </DialogHeader>
 
             <div className="relative min-h-[450px]">
               {/* Conditionally render only the current step to improve performance */}
-              
-              {/* Step 5: Statistic Screen (Moved from Step 1) */}
-              {step === 5 && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center space-y-8">
-                  <div className={`transition-all duration-700 ${showStatistic ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-6 text-gray-900">
-                      Get better results with Hermes
-                    </DialogTitle>
-                  </div>
 
-                  {/* Positive statistic first - Cold emails */}
-                  <div className={`transition-all duration-700 delay-300 ${showStatistic ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-8 shadow-lg">
-                      <p className="text-lg md:text-xl text-gray-700 leading-relaxed mb-4">
-                        Cold emails to tech recruiters, hiring managers, or potential referrers give you an{" "}
-                        <span className="font-bold text-blue-600">edge over traditional applications</span> through direct outreach.
-                      </p>
-                      <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-                        Even modest reply rates{" "}
-                        <span className="font-bold text-blue-600">(2–5%)</span> add extra screens, referrals, and interviews that would not occur from applications alone.
-                      </p>
-                    </div>
-                  </div>
 
-                  {/* Traditional application statistic - less intimidating */}
-                  <div className={`transition-all duration-700 delay-500 ${showStatistic ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-2xl p-6 shadow-lg max-w-2xl mx-auto">
-                      <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-                        Traditional online job applications aren't working right now—success rates hover around just{" "}
-                        <span className="font-semibold text-gray-800">2%</span> in many cases.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`flex gap-4 mt-12 transition-all duration-700 delay-700 ${showStatistic ? 'opacity-100' : 'opacity-0'}`}>
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(4);
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm py-6 text-lg"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleStatisticContinue}
-                    className="flex-[2] bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
-                  >
-                    Continue
-                  </Button>
-                </div>
-              </div>
-              )}
 
               {/* Step 1: Objectives (Moved from Step 2) */}
               {step === 1 && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center">
-                  <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                    Welcome to Hermes!
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2">
-                    Which of the following choices best describe your objective with Hermes?
-                  </DialogDescription>
-                  <p className="text-sm text-gray-500 mt-1">Select all that apply</p>
-                </div>
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center">
+                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
+                      Welcome to Hermes!
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2">
+                      Which of the following choices best describe your objective with Hermes?
+                    </DialogDescription>
+                    <p className="text-sm text-gray-500 mt-1">Select all that apply</p>
+                  </div>
 
-                <div className="space-y-3 mt-8">
-                  {OBJECTIVE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => handleObjectiveSelect(option.value)}
-                      className={`w-full p-5 rounded-xl border-2 transition-all text-left shadow-sm ${selectedObjectives.includes(option.value)
-                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                        }`}
+                  <div className="space-y-3 mt-8">
+                    {OBJECTIVE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handleObjectiveSelect(option.value)}
+                        className={`w-full p-5 rounded-xl border-2 transition-all text-left shadow-sm ${selectedObjectives.includes(option.value)
+                          ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
+                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="font-semibold text-gray-900">{option.label}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-4 mt-6">
+                    <Button
+                      onClick={handleObjectiveContinue}
+                      disabled={selectedObjectives.length === 0}
+                      className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
                     >
-                      <div className="font-semibold text-gray-900">{option.label}</div>
-                    </button>
-                  ))}
+                      Continue
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="flex gap-4 mt-6">
-                  <Button
-                    onClick={handleObjectiveContinue}
-                    disabled={selectedObjectives.length === 0}
-                    className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                  >
-                    Continue
-                  </Button>
-                </div>
-              </div>
               )}
 
               {/* Step 2: Job Type (Moved from Step 3) */}
               {step === 2 && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center">
-                  <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                    What type of position are you looking for?
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2">
-                    Select one option
-                  </DialogDescription>
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center">
+                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
+                      What type of position are you looking for?
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2">
+                      Select one option
+                    </DialogDescription>
+                  </div>
+
+                  <div className="space-y-4 mt-8">
+                    <button
+                      onClick={() => handleJobTypeSelect('full-time')}
+                      className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'full-time'
+                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
+                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                        }`}
+                    >
+                      <div className="font-semibold text-lg text-gray-900">Full-Time</div>
+                      <div className="text-sm text-gray-600 mt-1">Permanent, full-time positions</div>
+                    </button>
+
+                    <button
+                      onClick={() => handleJobTypeSelect('part-time')}
+                      className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'part-time'
+                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
+                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                        }`}
+                    >
+                      <div className="font-semibold text-lg text-gray-900">Part-Time</div>
+                      <div className="text-sm text-gray-600 mt-1">Part-time or contract positions</div>
+                    </button>
+
+                    <button
+                      onClick={() => handleJobTypeSelect('internship')}
+                      className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'internship'
+                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
+                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                        }`}
+                    >
+                      <div className="font-semibold text-lg text-gray-900">Internship</div>
+                      <div className="text-sm text-gray-600 mt-1">Summer, winter, or year-round internships</div>
+                    </button>
+                  </div>
+
+                  <div className="mt-6">
+                    <Button
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(1);
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                      variant="outline"
+                      className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                    >
+                      Back
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="space-y-4 mt-8">
-                  <button
-                    onClick={() => handleJobTypeSelect('full-time')}
-                    className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'full-time'
-                      ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                      : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                      }`}
-                  >
-                    <div className="font-semibold text-lg text-gray-900">Full-Time</div>
-                    <div className="text-sm text-gray-600 mt-1">Permanent, full-time positions</div>
-                  </button>
-
-                  <button
-                    onClick={() => handleJobTypeSelect('part-time')}
-                    className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'part-time'
-                      ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                      : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                      }`}
-                  >
-                    <div className="font-semibold text-lg text-gray-900">Part-Time</div>
-                    <div className="text-sm text-gray-600 mt-1">Part-time or contract positions</div>
-                  </button>
-
-                  <button
-                    onClick={() => handleJobTypeSelect('internship')}
-                    className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'internship'
-                      ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                      : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                      }`}
-                  >
-                    <div className="font-semibold text-lg text-gray-900">Internship</div>
-                    <div className="text-sm text-gray-600 mt-1">Summer, winter, or year-round internships</div>
-                  </button>
-                </div>
-
-                <div className="mt-6">
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(1);
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Back
-                  </Button>
-                </div>
-              </div>
               )}
 
               {/* Step 3: Role Type (Moved from Step 4) */}
               {step === 3 && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center">
-                  <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                    What roles interest you?
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2">
-                    Select all that apply
-                  </DialogDescription>
-                </div>
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center">
+                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
+                      What roles interest you?
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2">
+                      Select all that apply
+                    </DialogDescription>
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 max-h-[45vh] overflow-y-auto px-2 py-2">
-                  {ROLE_OPTIONS.map((role) => (
-                    <button
-                      key={role.value}
-                      onClick={() => handleRoleTypeSelect(role.value)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left shadow-sm ${selectedRoleTypes.includes(role.value)
-                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                        }`}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 max-h-[45vh] overflow-y-auto px-2 py-2">
+                    {ROLE_OPTIONS.map((role) => (
+                      <button
+                        key={role.value}
+                        onClick={() => handleRoleTypeSelect(role.value)}
+                        className={`p-4 rounded-xl border-2 transition-all text-left shadow-sm ${selectedRoleTypes.includes(role.value)
+                          ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
+                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="font-semibold text-gray-900">{role.label}</div>
+                        <div className="text-xs text-gray-600 mt-1">{role.description}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-4 mt-6">
+                    <Button
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(2);
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                      variant="outline"
+                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
-                      <div className="font-semibold text-gray-900">{role.label}</div>
-                      <div className="text-xs text-gray-600 mt-1">{role.description}</div>
-                    </button>
-                  ))}
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handleRolesContinue}
+                      disabled={selectedRoleTypes.length === 0}
+                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                    >
+                      Continue
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="flex gap-4 mt-6">
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(2);
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleRolesContinue}
-                    disabled={selectedRoleTypes.length === 0}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                  >
-                    Continue
-                  </Button>
-                </div>
-              </div>
               )}
 
               {/* Step 4: Years of Experience (Moved from Step 5) */}
               {step === 4 && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center">
-                  <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                    How many Years Of Experience do you have?
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2">
-                    Select one option
-                  </DialogDescription>
-                </div>
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center">
+                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
+                      How many Years Of Experience do you have?
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2">
+                      Select one option
+                    </DialogDescription>
+                  </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-8">
-                  {YOE_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => handleYOESelect(option.value)}
-                      className={`p-6 rounded-xl border-2 transition-all text-center shadow-sm ${selectedYOE === option.value
-                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                        }`}
+                  <div className="grid grid-cols-2 gap-4 mt-8">
+                    {YOE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handleYOESelect(option.value)}
+                        className={`p-6 rounded-xl border-2 transition-all text-center shadow-sm ${selectedYOE === option.value
+                          ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
+                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                          }`}
+                      >
+                        <div className="font-semibold text-lg text-gray-900">{option.label}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-4 mt-6">
+                    <Button
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(3);
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                      variant="outline"
+                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
-                      <div className="font-semibold text-lg text-gray-900">{option.label}</div>
-                    </button>
-                  ))}
+                      Back
+                    </Button>
+                    <Button
+                      onClick={handleYOEContinue}
+                      disabled={!selectedYOE || isSubmitting}
+                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                    >
+                      {isSubmitting ? 'Saving...' : 'Continue'}
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="flex gap-4 mt-6">
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(3);
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleYOEContinue}
-                    disabled={!selectedYOE || isSubmitting}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                  >
-                    {isSubmitting ? 'Saving...' : 'Continue'}
-                  </Button>
-                </div>
-              </div>
               )}
 
               {/* Step 6: Mandatory Resume Upload */}
               {step === 6 && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center mb-8">
-                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                    Upload your resume
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2 text-lg">
-                    To generate the best matches for you, we need to analyze your resume.
-                  </DialogDescription>
-                </div>
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center mb-8">
+                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                      Upload your resume
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2 text-lg">
+                      To generate the best matches for you, we need to analyze your resume.
+                    </DialogDescription>
+                  </div>
 
-                <div className="max-w-md mx-auto mt-8">
-                  {/* Embedded Resume Upload Component */}
-                  <ResumeUpload
-                    onSuccess={() => {
-                      // Advance to Step 7 (GitHub Connection)
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(7);
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                  // Note: onUpgradeRequired handled by ResumeUpload locally or we can add handler if needed
-                  // For onboarding, we typically expect users to be allowed to upload.
-                  />
-                </div>
+                  <div className="max-w-md mx-auto mt-8">
+                    {/* Embedded Resume Upload Component */}
+                    <ResumeUpload
+                      onSuccess={() => {
+                        // Advance to Step 7 (GitHub Connection)
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(7);
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                    // Note: onUpgradeRequired handled by ResumeUpload locally or we can add handler if needed
+                    // For onboarding, we typically expect users to be allowed to upload.
+                    />
+                  </div>
 
-                <div className="mt-6">
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(5);
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Back
-                  </Button>
+                  <div className="flex gap-4 mt-6">
+                    <Button
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(4); // Back to YOE
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                      variant="outline"
+                      className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                    >
+                      Back
+                    </Button>
+                  </div>
                 </div>
-              </div>
               )}
 
               {/* Step 7: GitHub Connection (Optional) */}
               {step === 7 && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center mb-8">
-                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                    Connect your GitHub
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2 text-lg">
-                    {githubConnected 
-                      ? 'Your GitHub account has been connected successfully!'
-                      : 'Connect your GitHub to help us find better matches based on your projects and contributions.'}
-                  </DialogDescription>
-                </div>
-
-                {githubConnected ? (
-                  <div className="max-w-md mx-auto mt-8">
-                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
-                      <div className="text-green-600 text-4xl mb-4">✓</div>
-                      <p className="text-green-800 font-semibold text-lg mb-2">
-                        GitHub Connected Successfully
-                      </p>
-                      <p className="text-green-700 text-sm">
-                        We'll use your repository data to improve your matches.
-                      </p>
-                    </div>
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center mb-8">
+                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                      Connect your GitHub
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2 text-lg">
+                      {githubConnected
+                        ? 'Your GitHub account has been connected successfully!'
+                        : 'Connect your GitHub to help us find better matches based on your projects and contributions.'}
+                    </DialogDescription>
                   </div>
-                ) : (
-                  <div className="max-w-md mx-auto mt-8">
-                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-8 text-center">
-                      <div className="mb-6">
-                        <svg
-                          className="w-16 h-16 mx-auto text-gray-700"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.737 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
+
+                  {githubConnected ? (
+                    <div className="max-w-md mx-auto mt-8">
+                      <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
+                        <div className="text-green-600 text-4xl mb-4">✓</div>
+                        <p className="text-green-800 font-semibold text-lg mb-2">
+                          GitHub Connected Successfully
+                        </p>
+                        <p className="text-green-700 text-sm">
+                          We'll use your repository data to improve your matches.
+                        </p>
                       </div>
-                      <p className="text-gray-700 mb-6">
-                        Connect your GitHub account to help us understand your coding experience and find better startup matches.
-                      </p>
-                      <Button
-                        onClick={handleGithubConnect}
-                        className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
-                      >
-                        Connect GitHub
-                      </Button>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="max-w-md mx-auto mt-8">
+                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-8 text-center">
+                        <div className="mb-6">
+                          <svg
+                            className="w-16 h-16 mx-auto text-gray-700"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.737 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <p className="text-gray-700 mb-6">
+                          Connect your GitHub account to help us understand your coding experience and find better startup matches.
+                        </p>
+                        <Button
+                          onClick={handleGithubConnect}
+                          className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
+                        >
+                          Connect GitHub
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
-                <div className="flex gap-4 mt-6">
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        if (skipResumeUpload) {
-                          setStep(5); // Go back to statistic screen
-                        } else {
-                          setStep(6); // Go back to resume upload
-                        }
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleGithubContinue}
-                    disabled={!githubConnected}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Continue
-                  </Button>
+                  <div className="flex gap-4 mt-6">
+                    <Button
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          if (skipResumeUpload) {
+                            setStep(4); // Go back to YOE (skipped statistic)
+                          } else {
+                            setStep(6); // Go back to resume upload
+                          }
+                          setIsTransitioning(false);
+                        }, 200);
+                      }}
+                      variant="outline"
+                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                    >
+                      Back
+                    </Button>
+
+                    {githubConnected && (
+                      <Button
+                        onClick={handleGithubContinue}
+                        className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                      >
+                        Continue
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
               )}
 
-              {/* Step 8: GitHub Repository Selection with Category Tags (only for topcandidates) */}
-              {step === 8 && isTopCandidatesRoute && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center">
-                  <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                    Showcase your projects
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2">
-                    Select repositories to display on your profile and tag them by category.
-                  </DialogDescription>
-                </div>
+              {/* Step 8: GitHub Repository Selection with Category Tags */}
+              {step === 8 && (
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center">
+                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
+                      Showcase your projects
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2">
+                      Select repositories to display on your profile and tag them by category.
+                    </DialogDescription>
+                  </div>
 
-                {isLoadingRepos ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-gray-500">Loading your repositories...</div>
-                  </div>
-                ) : githubRepos.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600">No repositories found. You can add them later from your profile.</p>
-                  </div>
-                ) : hasBetaAccess ? (
-                  <>
-                    {/* Enhanced UI for beta users: Search bar */}
-                    <div className="relative mb-4">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <Input
-                        type="text"
-                        placeholder="Search repositories..."
-                        value={repoSearchQuery}
-                        onChange={(e) => setRepoSearchQuery(e.target.value)}
-                        className="pl-10 bg-white border-gray-200"
-                      />
+                  {isLoadingRepos ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="text-gray-500">Loading your repositories...</div>
                     </div>
+                  ) : githubRepos.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600">No repositories found. You can add them later from your profile.</p>
+                    </div>
+                  ) : hasBetaAccess ? (
+                    <>
+                      {/* Enhanced UI for beta users: Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          type="text"
+                          placeholder="Search repositories..."
+                          value={repoSearchQuery}
+                          onChange={(e) => setRepoSearchQuery(e.target.value)}
+                          className="pl-10 bg-white border-gray-200"
+                        />
+                      </div>
 
-                    <div className="max-h-[55vh] overflow-y-auto px-2 py-2">
-                      {filteredRepos.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-gray-500">No repositories match your search.</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {filteredRepos.map((repo) => {
+                      <div className="max-h-[55vh] overflow-y-auto px-2 py-2">
+                        {filteredRepos.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p className="text-gray-500">No repositories match your search.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {filteredRepos.map((repo) => {
+                              const selection = repoSelections.get(repo.github_repo_id);
+                              const isSelected = selection?.is_selected || false;
+                              const selectedCategories = selection?.category_tags || [];
+
+                              return (
+                                <div
+                                  key={repo.github_repo_id}
+                                  onClick={() => handleRepoToggle(repo.github_repo_id)}
+                                  className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
+                                    ? 'border-[#498EDC] bg-blue-50'
+                                    : 'border-gray-200 bg-white hover:border-gray-300'
+                                    }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <Checkbox
+                                      id={`repo-${repo.github_repo_id}`}
+                                      checked={isSelected}
+                                      onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="mt-1 flex-shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-semibold text-gray-900 block truncate">
+                                        {repo.name}
+                                        {repo.is_private && (
+                                          <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                                            Private
+                                          </span>
+                                        )}
+                                      </div>
+                                      {repo.description && (
+                                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                          {repo.description}
+                                        </p>
+                                      )}
+                                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                        {repo.language && (
+                                          <span className="flex items-center gap-1">
+                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                            {repo.language}
+                                          </span>
+                                        )}
+                                        {repo.stargazers_count > 0 && (
+                                          <span>{repo.stargazers_count} stars</span>
+                                        )}
+                                      </div>
+
+                                      {/* Category Tags */}
+                                      {isSelected && (
+                                        <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
+                                          <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
+                                          <div className="flex flex-wrap gap-2">
+                                            {REPO_TAG_OPTIONS.map((roleOption) => (
+                                              <button
+                                                key={roleOption.value}
+                                                onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
+                                                className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${selectedCategories.includes(roleOption.value)
+                                                  ? 'bg-[#498EDC] text-white'
+                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                  }`}
+                                              >
+                                                {!selectedCategories.includes(roleOption.value) && (
+                                                  <Plus className="h-3 w-3" />
+                                                )}
+                                                {roleOption.label}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    // Simple UI for non-beta users - 2-column layout
+                    <div className="max-h-[60vh] overflow-y-auto px-2 py-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {githubRepos.map((repo) => {
                           const selection = repoSelections.get(repo.github_repo_id);
                           const isSelected = selection?.is_selected || false;
                           const selectedCategories = selection?.category_tags || [];
@@ -1112,11 +1211,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                             <div
                               key={repo.github_repo_id}
                               onClick={() => handleRepoToggle(repo.github_repo_id)}
-                              className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${
-                                isSelected
-                                  ? 'border-[#498EDC] bg-blue-50'
-                                  : 'border-gray-200 bg-white hover:border-gray-300'
-                              }`}
+                              className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
+                                ? 'border-[#498EDC] bg-blue-50'
+                                : 'border-gray-200 bg-white hover:border-gray-300'
+                                }`}
                             >
                               <div className="flex items-start gap-3">
                                 <Checkbox
@@ -1152,7 +1250,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                     )}
                                   </div>
 
-                                  {/* Category Tags */}
+                                  {/* Category Tags - Use REPO_TAG_OPTIONS (excludes "Other") */}
                                   {isSelected && (
                                     <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
                                       <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
@@ -1161,11 +1259,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                           <button
                                             key={roleOption.value}
                                             onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
-                                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${
-                                              selectedCategories.includes(roleOption.value)
-                                                ? 'bg-[#498EDC] text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            }`}
+                                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${selectedCategories.includes(roleOption.value)
+                                              ? 'bg-[#498EDC] text-white'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                              }`}
                                           >
                                             {!selectedCategories.includes(roleOption.value) && (
                                               <Plus className="h-3 w-3" />
@@ -1181,290 +1278,283 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                             </div>
                           );
                         })}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  // Simple UI for non-beta users - 2-column layout
-                  <div className="max-h-[60vh] overflow-y-auto px-2 py-2">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {githubRepos.map((repo) => {
-                        const selection = repoSelections.get(repo.github_repo_id);
-                        const isSelected = selection?.is_selected || false;
-                        const selectedCategories = selection?.category_tags || [];
-
-                        return (
-                          <div
-                            key={repo.github_repo_id}
-                            onClick={() => handleRepoToggle(repo.github_repo_id)}
-                            className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${
-                              isSelected
-                                ? 'border-[#498EDC] bg-blue-50'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <Checkbox
-                                id={`repo-${repo.github_repo_id}`}
-                                checked={isSelected}
-                                onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="mt-1 flex-shrink-0"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-gray-900 block truncate">
-                                  {repo.name}
-                                  {repo.is_private && (
-                                    <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                                      Private
-                                    </span>
-                                  )}
-                                </div>
-                                {repo.description && (
-                                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                    {repo.description}
-                                  </p>
-                                )}
-                                <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                  {repo.language && (
-                                    <span className="flex items-center gap-1">
-                                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                      {repo.language}
-                                    </span>
-                                  )}
-                                  {repo.stargazers_count > 0 && (
-                                    <span>{repo.stargazers_count} stars</span>
-                                  )}
-                                </div>
-
-                                {/* Category Tags - Use REPO_TAG_OPTIONS (excludes "Other") */}
-                                {isSelected && (
-                                  <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
-                                    <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {REPO_TAG_OPTIONS.map((roleOption) => (
-                                        <button
-                                          key={roleOption.value}
-                                          onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
-                                          className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${
-                                            selectedCategories.includes(roleOption.value)
-                                              ? 'bg-[#498EDC] text-white'
-                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                          }`}
-                                        >
-                                          {!selectedCategories.includes(roleOption.value) && (
-                                            <Plus className="h-3 w-3" />
-                                          )}
-                                          {roleOption.label}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Validation message */}
-                {(() => {
-                  const selectedRepos = Array.from(repoSelections.values()).filter(
-                    selection => selection.is_selected === true
-                  );
-                  const hasTaggedRepo = selectedRepos.some(
-                    selection => selection.category_tags && selection.category_tags.length > 0
-                  );
-                  
-                  if (selectedRepos.length === 0) {
-                    return (
-                      <div className="text-center text-sm text-amber-600 mt-4">
-                        Please select at least 1 repository to continue.
                       </div>
-                    );
-                  } else if (!hasTaggedRepo) {
-                    return (
-                      <div className="text-center text-sm text-amber-600 mt-4">
-                        Please add at least 1 tag to your selected repositories to continue.
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                <div className="flex gap-4 mt-6">
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(7);
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleReposContinue}
-                    disabled={!validateReposSelection()}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Continue
-                  </Button>
-                </div>
-              </div>
-              )}
-
-              {/* Step 9: Calendly Page (only for topcandidates) */}
-              {step === 9 && isTopCandidatesRoute && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center mb-8">
-                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                    Let's curate your portfolio
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2 text-lg mb-8">
-                    Schedule a demo to get personalized help curating your portfolio page and stand out to startup founders
-                  </DialogDescription>
-                  
-                  {selectedCalendlyLink && (
-                    <Button
-                      onClick={() => window.open(selectedCalendlyLink, '_blank')}
-                      className="bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all px-8 py-6 text-lg"
-                    >
-                      Schedule a Call
-                    </Button>
+                    </div>
                   )}
-                </div>
 
-                <div className="flex gap-4 mt-8">
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(8); // Go back to repo selection
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    variant="outline"
-                    className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(10); // Go to final choice screen
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                  >
-                    Continue
-                  </Button>
-                </div>
-
-                {/* Skip button - less prominent */}
-                <div className="text-center mt-4">
-                  <button
-                    onClick={() => {
-                      setIsTransitioning(true);
-                      setTimeout(() => {
-                        setStep(10); // Go to final choice screen
-                        setIsTransitioning(false);
-                      }, 200);
-                    }}
-                    className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2 transition-colors"
-                  >
-                    Skip for now
-                  </button>
-                </div>
-              </div>
-              )}
-
-              {/* Step 9: Choice Screen (Matches vs Enhance) - Regular onboarding */}
-              {/* Step 10: Choice Screen (Matches vs Enhance) - Topcandidates onboarding */}
-              {step === (isTopCandidatesRoute ? 10 : 9) && (
-              <div
-                className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                  ? 'opacity-100'
-                  : 'opacity-0'
-                  }`}
-              >
-                <div className="text-center mb-8">
-                  <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                    You're all set!
-                  </DialogTitle>
-                  <DialogDescription className="text-gray-600 mt-2 text-lg">
-                    {skipResumeUpload 
-                      ? "Your profile has been set up successfully."
-                      : "Your resume has been uploaded successfully."}
-                  </DialogDescription>
-                </div>
-
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                  {/* View Matches Option */}
-                  <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">View your matches</h3>
-                      <p className="text-gray-600 text-sm">
-                        See the startups we've matched you with based on your profile.
-                      </p>
-                    </div>
+                  <div className="flex gap-4 mt-6">
                     <Button
-                      onClick={handleViewMatches}
-                      className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      View Matches
-                    </Button>
-                  </div>
-
-                  {/* Enhance Resume Option */}
-                  <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
-                    <div className="mb-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Enhance Resume</h3>
-                      <p className="text-gray-600 text-sm">
-                        Get AI-powered suggestions to improve your resume for better matches.
-                      </p>
-                    </div>
-                    <Button
-                      onClick={async () => {
-                        try {
-                          // Save selected GitHub repos to database (if any were selected)
-                          await saveSelectedRepos();
-
-                          // Mark onboarding as complete
-                          await fetch('/api/candidate/mark-onboarding-complete', {
-                            method: 'POST',
-                            credentials: 'include',
-                          });
-                        } catch (error) {
-                          console.error('Error marking onboarding complete:', error);
-                          // Continue anyway - don't block user
-                        }
-
-                        window.location.href = "/resumes";
+                      onClick={() => {
+                        setIsTransitioning(true);
+                        setTimeout(() => {
+                          setStep(7);
+                          setIsTransitioning(false);
+                        }, 200);
                       }}
                       variant="outline"
-                      className="w-full border-2 border-[#498EDC] text-[#498EDC] hover:bg-[#498EDC] hover:text-white font-medium shadow-md hover:shadow-lg transition-all"
+                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
-                      Enhance Resume
+                      Back
+                    </Button>
+
+                    <Button
+                      onClick={handleReposContinue}
+                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                    >
+                      Continue
                     </Button>
                   </div>
                 </div>
-              </div>
+              )}
+
+
+
+              {/* Step 10: Assessment Prompt */}
+              {step === 10 && (
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center mb-8">
+                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                      {assessmentRepoUrl ? "Your Assessment Workspace is Ready!" : "Start Your 20-Minute Assessment"}
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2 text-lg">
+                      {assessmentRepoUrl
+                        ? "Clone your repository and follow the instructions to begin."
+                        : "Complete a quick assessment to demonstrate your skills. We'll set up a private workspace for you."}
+                    </DialogDescription>
+                  </div>
+
+                  {!assessmentRepoUrl ? (
+                    <div className="space-y-6 mt-6">
+                      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                        <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
+                        <ul className="space-y-2 text-gray-700 list-disc list-inside">
+                          <li>Work in a private GitHub repository</li>
+                          <li>Complete database tasks in your isolated workspace</li>
+                          <li>Demonstrate your problem-solving skills</li>
+                          <li>Showcase your technical abilities</li>
+                        </ul>
+                      </div>
+
+                      <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                        <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
+                        <p className="text-gray-700">Approximately 20 minutes</p>
+                      </div>
+
+                      <div className="flex gap-4 mt-6">
+                        <Button
+                          onClick={() => {
+                            setIsTransitioning(true);
+                            setTimeout(() => {
+                              setStep(8);
+                              setIsTransitioning(false);
+                            }, 200);
+                          }}
+                          variant="outline"
+                          className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                        >
+                          Back
+                        </Button>
+                        <Button
+                          onClick={handleAssessmentSkip}
+                          variant="ghost"
+                          className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                        >
+                          Skip for now
+                        </Button>
+                        <Button
+                          onClick={handleStartAssessment}
+                          disabled={isCreatingRepo}
+                          className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                        >
+                          {isCreatingRepo ? (
+                            <>
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            "Start Assessment"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6 mt-6">
+                      <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="text-green-600 text-2xl">✓</div>
+                          <h3 className="font-semibold text-lg text-gray-900">
+                            Repository Created Successfully
+                          </h3>
+                        </div>
+                        <p className="text-gray-700 mb-4">
+                          Your private assessment workspace has been created. Follow these steps to get started:
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Step 1: Clone the repository</h4>
+                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
+                            <code className="flex-1 break-all">
+                              git clone {assessmentCloneUrl || assessmentRepoUrl + '.git'}
+                            </code>
+                            <button
+                              onClick={() => handleCopy(`git clone ${assessmentCloneUrl || assessmentRepoUrl + '.git'}`, 'clone')}
+                              className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
+                              title="Copy clone command"
+                            >
+                              {copiedField === 'clone' ? (
+                                <Check className="h-4 w-4 text-green-400" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Step 2: Navigate to the repository</h4>
+                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
+                            <code>cd {assessmentRepoUrl?.split('/').pop() || 'hermes-assessment-*'}</code>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install and start assessment</h4>
+                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
+                            <code className="text-xs md:text-sm break-all">yarn && yarn mission:start</code>
+                            <button
+                              onClick={() => handleCopy(`yarn && yarn mission:start`, 'start')}
+                              className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
+                              title="Copy command"
+                            >
+                              {copiedField === 'start' ? (
+                                <Check className="h-4 w-4 text-green-400" />
+                              ) : (
+                                <Copy className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-2">
+                            This installs the required packages and starts the assessment environment.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {assessmentRepoUrl && (
+                    <div className="flex flex-col gap-4 mt-6">
+                      <Button
+                        onClick={async () => {
+                          // Save repos and mark onboarding complete before starting interview
+                          try {
+                            await saveSelectedRepos();
+                            await fetch('/api/candidate/mark-onboarding-complete', {
+                              method: 'POST',
+                              credentials: 'include',
+                            });
+                          } catch (error) {
+                            console.error('Error completing onboarding:', error);
+                          }
+                          // Navigate to interview to start Minerva session
+                          window.location.href = '/interview';
+                        }}
+                        className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                      >
+                        🎙️ Start Interview with Minerva
+                      </Button>
+                      <Button
+                        onClick={() => window.open(assessmentRepoUrl, '_blank')}
+                        variant="outline"
+                        className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open Repository
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 11: Completion Screen (Matches vs Enhance) */}
+              {step === 11 && (
+                <div
+                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
+                    ? 'opacity-100'
+                    : 'opacity-0'
+                    }`}
+                >
+                  <div className="text-center mb-8">
+                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                      You're all set!
+                    </DialogTitle>
+                    <DialogDescription className="text-gray-600 mt-2 text-lg">
+                      {skipResumeUpload
+                        ? "Your profile has been set up successfully."
+                        : "Your resume has been uploaded successfully."}
+                    </DialogDescription>
+                  </div>
+
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                    {/* View Matches Option */}
+                    <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">View your matches</h3>
+                        <p className="text-gray-600 text-sm">
+                          See the startups we've matched you with based on your profile.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleViewMatches}
+                        className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                      >
+                        View Matches
+                      </Button>
+                    </div>
+
+                    {/* Enhance Resume Option */}
+                    <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
+                      <div className="mb-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Enhance Resume</h3>
+                        <p className="text-gray-600 text-sm">
+                          Get AI-powered suggestions to improve your resume for better matches.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={async () => {
+                          try {
+                            // Save selected GitHub repos to database (if any were selected)
+                            await saveSelectedRepos();
+
+                            // Mark onboarding as complete
+                            await fetch('/api/candidate/mark-onboarding-complete', {
+                              method: 'POST',
+                              credentials: 'include',
+                            });
+                          } catch (error) {
+                            console.error('Error marking onboarding complete:', error);
+                            // Continue anyway - don't block user
+                          }
+
+                          // For top candidates route, onboarding is already complete (assessment was step 10)
+                          // Just redirect normally
+                          window.location.href = "/resumes";
+                        }}
+                        variant="outline"
+                        className="w-full border-2 border-[#498EDC] text-[#498EDC] hover:bg-[#498EDC] hover:text-white font-medium shadow-md hover:shadow-lg transition-all"
+                      >
+                        Enhance Resume
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>

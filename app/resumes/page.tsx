@@ -56,7 +56,7 @@ export default async function ResumePage() {
 
   // If still no candidate after retries, redirect to onboarding instead of home
   // This prevents redirect loops
-  if (!candidate) {
+  if (!candidate || !candidate.id) {
     redirect('/onboarding');
   }
 

@@ -55,15 +55,84 @@ export async function GET(request: NextRequest) {
 
   // Handle OAuth callback (Google, etc.)
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    // Exchange code for session first to detect provider
+    const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (error) {
-      console.error('Auth callback error:', error);
+    if (exchangeError) {
+      console.error('Auth callback error:', exchangeError);
       return NextResponse.redirect(new URL('/?error=auth_failed', origin));
     }
 
-    // Check if this is a new user by checking if they have a candidate record
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get user from session
+    const user = sessionData?.session?.user;
+    
+    // Check if this is a GitHub OAuth callback by checking for provider_token in session
+    // GitHub OAuth sessions will have a provider_token after exchange
+    if (sessionData?.session?.provider_token && user?.email) {
+      // This is GitHub OAuth - handle it directly here since we've already exchanged the code
+      // Import supabaseAdmin for database operations
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      
+      const providerToken = sessionData.session.provider_token;
+      const providerRefreshToken = sessionData.session.provider_refresh_token;
+      
+      // Fetch GitHub user info to get username
+      let githubUsername = null;
+      try {
+        const githubResponse = await fetch('https://api.github.com/user', {
+          headers: {
+            'Authorization': `Bearer ${providerToken}`,
+            'Accept': 'application/vnd.github.v3+json',
+          },
+        });
+
+        if (githubResponse.ok) {
+          const githubUser = await githubResponse.json();
+          githubUsername = githubUser.login;
+        }
+      } catch (error) {
+        console.error('Error fetching GitHub user info:', error);
+      }
+
+      // Store GitHub tokens and info in candidates table
+      if (supabaseAdmin) {
+        try {
+          const updateData: any = {
+            github_access_token: providerToken,
+            github_connected_at: new Date().toISOString(),
+          };
+
+          if (providerRefreshToken) {
+            updateData.github_refresh_token = providerRefreshToken;
+          }
+
+          if (githubUsername) {
+            updateData.github_username = githubUsername;
+          }
+
+          await supabaseAdmin
+            .from('candidates')
+            .update(updateData)
+            .eq('email', user.email);
+          
+          console.log(`[Auth Callback] GitHub connected for user: ${user.email}`);
+        } catch (error) {
+          console.error('Error storing GitHub tokens:', error);
+        }
+      }
+
+      // Redirect back to the original page with success parameter
+      // Since Supabase doesn't preserve query params through OAuth, we default to /onboarding
+      // but try to extract from the callback URL if available (though it likely won't be)
+      // Default to /onboarding for GitHub OAuth
+      const redirectPath = '/onboarding';
+      const redirectUrl = new URL(redirectPath, origin);
+      redirectUrl.searchParams.set('github_connected', 'true');
+      redirectUrl.searchParams.set('step', '7');
+      console.log('[Auth Callback] GitHub OAuth handled, redirecting to:', redirectUrl.toString());
+      return NextResponse.redirect(redirectUrl);
+    }
+    
     let isNewSignUp = false;
     
     if (user?.email) {

@@ -15,7 +15,7 @@ import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import puppeteer from 'puppeteer';
-import { scrapeYCCompanyPage } from './scrape_yc_companies';
+import { scrapeYCCompanyPage } from '../scrapers/scrape_yc_companies';
 
 // Test URLs - can be overridden via command line
 const DEFAULT_TEST_URL = 'https://www.ycombinator.com/companies/the-interface';

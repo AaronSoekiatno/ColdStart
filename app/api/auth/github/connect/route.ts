@@ -36,35 +36,29 @@ export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
     const redirectTo = requestUrl.searchParams.get('redirect') || '/onboarding';
     const onboardingStep = requestUrl.searchParams.get('step') || '6';
-    const callbackUrl = `${requestUrl.origin}/api/auth/github/callback?redirect=${encodeURIComponent(redirectTo)}&step=${onboardingStep}`;
 
-    // Use Supabase's built-in GitHub OAuth provider
-    // This will redirect to GitHub for authorization
+    // Initiate GitHub OAuth flow
+    // We redirect to our callback route, which will then redirect to the final destination
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: callbackUrl,
-        scopes: 'repo read:user', // Request repository access and user info
+        redirectTo: `${requestUrl.origin}/api/auth/github/callback?redirect=${encodeURIComponent(redirectTo)}&step=${onboardingStep}`,
+        scopes: 'repo,rad:user',
       },
     });
 
     if (error) {
-      console.error('GitHub OAuth connect error:', error);
-      return NextResponse.json(
-        { error: 'Failed to initiate GitHub connection' },
-        { status: 500 }
-      );
+      console.error('GitHub OAuth error:', error);
+      throw error;
     }
 
-    // Redirect to GitHub OAuth page
-    if (data?.url) {
-      return NextResponse.redirect(data.url);
+    if (!data.url) {
+      throw new Error('No redirect URL returned from Supabase');
     }
 
-    return NextResponse.json(
-      { error: 'No redirect URL received from OAuth provider' },
-      { status: 500 }
-    );
+    // Redirect user to GitHub for authentication
+    return NextResponse.redirect(data.url);
+
   } catch (error) {
     console.error('GitHub connect error:', error);
     return NextResponse.json(
@@ -73,4 +67,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

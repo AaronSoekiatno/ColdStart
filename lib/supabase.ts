@@ -91,6 +91,12 @@ export interface CandidateRow {
   github_username?: string; // GitHub username
   github_connected_at?: string; // Timestamp when GitHub was connected
   github_token_expires_at?: string; // Timestamp when GitHub token expires
+  provisioned_schema_name?: string; // Postgres schema name created for candidate assessment workspace
+  provisioned_at?: string; // Timestamp when the candidate schema was provisioned
+  provisioning_token?: string; // Token for provisioning authentication
+  assessment_repo_url?: string; // GitHub repository URL for assessment workspace
+  assessment_repo_created_at?: string; // Timestamp when assessment repo was created
+  assessment_started_at?: string; // Timestamp when candidate started assessment
   created_at?: string;
 }
 
@@ -286,13 +292,15 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
  * Get a candidate by email
  * Explicitly selects subscription_tier and subscription_status from candidates table
  * Excludes large text fields (structured_resume_data, resume_latex) to reduce egress
+ * 
+ * @param email - Candidate's email address
+ * @param includeAssessmentFields - If true, includes assessment_repo_url, assessment_repo_created_at, assessment_started_at (only for top candidates)
  */
-export async function getCandidate(email: string) {
+export async function getCandidate(email: string, includeAssessmentFields: boolean = false): Promise<CandidateRow | null> {
   const client = supabaseAdmin || supabase;
   
-  const { data, error } = await client
-    .from('candidates')
-    .select(`
+  // Base fields that are always selected (excludes assessment fields for regular onboarding)
+  const baseFields = `
       id,
       email,
       name,
@@ -318,8 +326,24 @@ export async function getCandidate(email: string) {
       github_username,
       github_connected_at,
       github_token_expires_at,
+      provisioning_token,
       created_at
-    `)
+  `;
+  
+  // Assessment fields (only for top candidates when includeAssessmentFields is true)
+  const assessmentFields = includeAssessmentFields ? `
+      assessment_repo_url,
+      assessment_repo_created_at,
+      assessment_started_at
+  ` : '';
+  
+  const selectFields = includeAssessmentFields 
+    ? `${baseFields},${assessmentFields}`
+    : baseFields;
+  
+  const { data, error } = await client
+    .from('candidates')
+    .select(selectFields)
     .eq('email', email)
     .single();
 
@@ -330,7 +354,7 @@ export async function getCandidate(email: string) {
     throw new Error(`Failed to get candidate: ${error.message}`);
   }
 
-  return data;
+  return data as any as CandidateRow | null;
 }
 
 // ==================== STARTUP FUNCTIONS ====================
