@@ -9,11 +9,11 @@ import { randomUUID } from 'crypto';
  *
  * Returns:
  * - CANDIDATE_ID: Unique identifier for the candidate
- * - SUPABASE_URL: Supabase project URL
+ * - NEXT_PUBLIC_SUPABASE_URL: Supabase project URL
  * - SUPABASE_ANON_KEY: Anon key for prompt logging (safe to distribute, respects RLS)
  */
 export async function GET() {
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
