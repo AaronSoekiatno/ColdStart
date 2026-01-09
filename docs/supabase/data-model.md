@@ -28,7 +28,7 @@ Store the complete state of each interview session, including:
 | Field | Type | Purpose | When Written | When Read |
 |-------|------|---------|--------------|-----------|
 | `session_id` | TEXT (PK) | Unique identifier for this interview session | Session creation | Every operation |
-| `candidate_id` | TEXT | **ONLY link to your SaaS** - Foreign key to your candidates table | Session creation | Joining with your candidate data |
+| `candidate_id` | UUID | **ONLY link to your SaaS** - Foreign key to candidates.id (UUID) | Session creation | Joining with your candidate data |
 
 **Why ONLY candidate_id?**
 - Your SaaS already has: `candidates (id, name, email, phone, github_username, ...)`
@@ -493,7 +493,7 @@ CREATE TABLE candidates (
 -- Minerva session state (separate database)
 CREATE TABLE interview_sessions (
   session_id TEXT PRIMARY KEY,
-  candidate_id TEXT,  -- References candidates.id
+  candidate_id UUID REFERENCES candidates(id) ON DELETE CASCADE,  -- References candidates.id (UUID)
   repo_name TEXT,
   repo_url TEXT,
   current_phase TEXT,

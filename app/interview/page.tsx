@@ -502,7 +502,7 @@ export default function InterviewPage() {
           {/* Main Content Area */}
           <div className="p-6 space-y-6">
             {/* Agent Video/Audio Area (Zoom-style) */}
-            <div className="relative bg-gray-800 rounded-lg aspect-[16/7] flex items-center justify-center overflow-hidden">
+            <div className="relative bg-gray-800 rounded-lg aspect-[4] flex items-center justify-center overflow-hidden">
               {interviewStatus.status === 'connecting' ? (
                 <div className="text-center">
                   <Loader2 className="h-16 w-16 animate-spin text-blue-400 mx-auto mb-4" />
@@ -510,8 +510,8 @@ export default function InterviewPage() {
                 </div>
               ) : interviewStatus.status === 'active' ? (
                 <div className="text-center">
-                  <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-4 animate-pulse">
-                    <Volume2 className="h-16 w-16 text-white" />
+                  <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-4 animate-pulse">
+                    <Volume2 className="h-14 w-14 text-white" />
                   </div>
                   <p className="text-gray-300 font-medium">Minerva is speaking...</p>
                   <p className="text-sm text-gray-500 mt-2">Listen carefully and respond naturally</p>
