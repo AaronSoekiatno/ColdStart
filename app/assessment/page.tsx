@@ -69,7 +69,7 @@ export default function AssessmentPage() {
       }
 
       const data = await response.json();
-      
+
       toast({
         title: "Assessment repository created!",
         description: "Your private workspace is ready.",
@@ -118,43 +118,45 @@ export default function AssessmentPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
-      
-      <section className="flex-1 flex flex-col justify-center pt-16 sm:pt-20 pb-8 sm:pb-12">
-        <div className="container mx-auto px-4 max-w-3xl">
+
+      <section className="flex-1 pt-16 sm:pt-20 md:pt-24 pb-8 sm:pb-12 md:pb-20">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="bg-white rounded-2xl md:rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 md:p-12">
             {/* Header */}
-            <div className="text-center mb-5">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2 text-gray-900">
+            <div className="text-center mb-8">
+              <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
                 {hasRepo ? "Your Assessment Workspace" : "Start Your 20-Minute Assessment"}
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-lg">
                 {hasRepo
-                  ? "Complete your technical assessment to demonstrate your skills"
-                  : "Work through a coding challenge guided by Minerva, your AI interview assistant"}
+                  ? "Your private workspace is ready. Clone the repository and start your assessment."
+                  : "Start a 20-minute technical assessment to showcase your skills to potential employers"}
               </p>
             </div>
 
             {!hasRepo ? (
               /* Not Started State */
-              <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">What you'll do:</h3>
-                  <ul className="space-y-1 text-sm text-gray-700 list-disc list-inside">
+              <div className="space-y-6">
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
+                  <ul className="space-y-2 text-gray-700 list-disc list-inside">
                     <li>Work in a private GitHub repository</li>
                     <li>Complete database tasks in your isolated workspace</li>
                     <li>Demonstrate your problem-solving skills</li>
+                    <li>Showcase your technical abilities</li>
                     <li>Get guided by Minerva, your voice AI assistant</li>
                   </ul>
                 </div>
 
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Time required:</h3>
-                  <p className="text-sm text-gray-700">Approximately 20 minutes</p>
+                <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
+                  <p className="text-gray-700">Approximately 20 minutes</p>
                 </div>
 
                 <Button
                   onClick={handleStartAssessment}
                   disabled={isCreatingRepo}
-                  className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-11"
+                  className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
                 >
                   {isCreatingRepo ? (
                     <>
@@ -172,27 +174,29 @@ export default function AssessmentPage() {
             ) : (
               /* Has Repository - Show Instructions */
               <div className="space-y-6">
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="text-green-600 text-xl">✓</div>
-                    <h3 className="font-semibold text-gray-900">
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="text-green-600 text-2xl">✓</div>
+                    <h3 className="font-semibold text-lg text-gray-900">
                       Repository Created Successfully
                     </h3>
                   </div>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-gray-700 mb-4">
                     Your private assessment workspace is ready. Follow these steps to get started:
                   </p>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {/* Step 1: Clone */}
                   <div>
-                    <h4 className="font-medium text-sm text-gray-900 mb-1">Step 1: Clone the repository</h4>
-                    <div className="bg-gray-900 text-gray-100 px-3 py-2 rounded-lg font-mono text-sm flex items-center justify-between gap-2">
-                      <code className="truncate">git clone {cloneUrl}</code>
+                    <h4 className="font-semibold text-gray-900 mb-2">Step 1: Clone the repository</h4>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
+                      <code className="flex-1 break-all">
+                        git clone {cloneUrl}
+                      </code>
                       <button
                         onClick={() => handleCopy(`git clone ${cloneUrl}`, 'clone')}
-                        className="flex-shrink-0 p-1.5 hover:bg-gray-800 rounded transition-colors"
+                        className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
                         title="Copy clone command"
                       >
                         {copiedField === 'clone' ? (
@@ -206,20 +210,20 @@ export default function AssessmentPage() {
 
                   {/* Step 2: Navigate */}
                   <div>
-                    <h4 className="font-medium text-sm text-gray-900 mb-1">Step 2: Navigate to the repository</h4>
-                    <div className="bg-gray-900 text-gray-100 px-3 py-2 rounded-lg font-mono text-sm">
+                    <h4 className="font-semibold text-gray-900 mb-2">Step 2: Navigate to the repository</h4>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
                       <code>cd {repoName}</code>
                     </div>
                   </div>
 
                   {/* Step 3: Install */}
                   <div>
-                    <h4 className="font-medium text-sm text-gray-900 mb-1">Step 3: Install dependencies</h4>
-                    <div className="bg-gray-900 text-gray-100 px-3 py-2 rounded-lg font-mono text-sm flex items-center justify-between gap-2">
+                    <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install dependencies</h4>
+                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
                       <code>yarn install</code>
                       <button
                         onClick={() => handleCopy('yarn install', 'start')}
-                        className="flex-shrink-0 p-1.5 hover:bg-gray-800 rounded transition-colors"
+                        className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
                         title="Copy command"
                       >
                         {copiedField === 'start' ? (
@@ -229,11 +233,21 @@ export default function AssessmentPage() {
                         )}
                       </button>
                     </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      This installs the required packages and starts the assessment environment. Minerva will guide you through the interview.
+                    </p>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-4 pt-2">
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    onClick={() => router.push('/matches')}
+                    variant="outline"
+                    className="flex-1 text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                  >
+                    Back to Matches
+                  </Button>
                   <Button
                     onClick={() => window.open(assessmentStatus?.repoUrl || '', '_blank')}
                     variant="outline"
@@ -252,6 +266,7 @@ export default function AssessmentPage() {
                 </div>
               </div>
             )}
+          </div>
         </div>
       </section>
     </div>

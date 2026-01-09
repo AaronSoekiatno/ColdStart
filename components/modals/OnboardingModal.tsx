@@ -533,7 +533,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     try {
       const response = await fetch('/api/topcandidates/create-assessment-repo', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
@@ -929,16 +933,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         }, 200);
                       }}
                       variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                      className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
                       Back
-                    </Button>
-                    <Button
-                      onClick={handleResumeSkip}
-                      variant="ghost"
-                      className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    >
-                      Skip for now
                     </Button>
                   </div>
                 </div>
@@ -1412,26 +1409,33 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   )}
 
                   {assessmentRepoUrl && (
-                    <div className="flex gap-4 mt-6">
+                    <div className="flex flex-col gap-4 mt-6">
+                      <Button
+                        onClick={async () => {
+                          // Save repos and mark onboarding complete before starting interview
+                          try {
+                            await saveSelectedRepos();
+                            await fetch('/api/candidate/mark-onboarding-complete', {
+                              method: 'POST',
+                              credentials: 'include',
+                            });
+                          } catch (error) {
+                            console.error('Error completing onboarding:', error);
+                          }
+                          // Navigate to interview to start Minerva session
+                          window.location.href = '/interview';
+                        }}
+                        className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                      >
+                        🎙️ Start Interview with Minerva
+                      </Button>
                       <Button
                         onClick={() => window.open(assessmentRepoUrl, '_blank')}
                         variant="outline"
-                        className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                        className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
                       >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Open Repository
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setIsTransitioning(true);
-                          setTimeout(() => {
-                            setStep(11); // Go to completion step
-                            setIsTransitioning(false);
-                          }, 200);
-                        }}
-                        className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium"
-                      >
-                        Continue
                       </Button>
                     </div>
                   )}
