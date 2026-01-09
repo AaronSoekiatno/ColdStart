@@ -36,7 +36,7 @@ const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'robert@joinhermes.co';
 const FROM_NAME = 'Robert from Hermes';
 
 // Email subject
-const SUBJECT = 'Beta Access: 20-Min AI Coding Assessment | Hermes';
+const SUBJECT = '⚡ Limited Spots Today: AI Coding Assessment Beta | Hermes';
 
 // HTML email template
 const EMAIL_HTML = (firstName: string) => `
@@ -70,9 +70,15 @@ const EMAIL_HTML = (firstName: string) => `
         Our mission at Hermes is to get you a job by introducing you to founders.
       </p>
 
-      <p style="font-size: 16px; line-height: 1.6; color: #1d1d1f; margin: 0 0 24px;">
+      <p style="font-size: 16px; line-height: 1.6; color: #1d1d1f; margin: 0 0 16px;">
         We value your input as we launch a new product. We would like to offer you a seat in our beta test:
       </p>
+
+      <div style="background-color: #fff3cd; border-left: 4px solid #d4a853; padding: 16px; margin-bottom: 24px; border-radius: 4px;">
+        <p style="margin: 0; font-size: 15px; color: #856404; font-weight: 600;">
+          ⚡ <strong>Limited spots available today only</strong> - we need to fill these interview slots by end of day.
+        </p>
+      </div>
 
       <!-- Features List -->
       <div style="background-color: #f5f5f7; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
@@ -91,7 +97,7 @@ const EMAIL_HTML = (firstName: string) => `
       </div>
 
       <p style="font-size: 16px; line-height: 1.6; color: #1d1d1f; margin: 0 0 28px;">
-        Schedule a call with us and we'll help you get setup:
+        <strong>Schedule your call today</strong> and we'll help you get setup:
       </p>
 
       <!-- CTA Button -->
@@ -137,11 +143,13 @@ Our mission at Hermes is to get you a job by introducing you to founders.
 
 We value your input as we launch a new product. We would like to offer you a seat in our beta test:
 
+⚡ LIMITED SPOTS AVAILABLE TODAY ONLY - we need to fill these interview slots by end of day.
+
 ⏱️ 20 min AI-native coding assessment
 💻 Cursor required
 🚀 Profile shared with YC startups
 
-Schedule a call with us and we'll help you get setup:
+Schedule your call TODAY and we'll help you get setup:
 ${CALENDLY_LINK}
 
 Thanks!
