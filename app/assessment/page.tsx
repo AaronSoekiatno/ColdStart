@@ -240,28 +240,20 @@ export default function AssessmentPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-col gap-4 pt-4">
                   <Button
-                    onClick={() => router.push('/matches')}
-                    variant="outline"
-                    className="flex-1 text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                    onClick={() => router.push('/interview')}
+                    className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
                   >
-                    Back to Matches
+                    🎙️ Start Interview with Minerva
                   </Button>
                   <Button
                     onClick={() => window.open(assessmentStatus?.repoUrl || '', '_blank')}
                     variant="outline"
-                    className="flex-1 text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                    className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
                   >
                     <Github className="mr-2 h-4 w-4" />
                     Open Repository
-                  </Button>
-                  <Button
-                    onClick={() => router.push('/interview')}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white"
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    Start Interview
                   </Button>
                 </div>
               </div>

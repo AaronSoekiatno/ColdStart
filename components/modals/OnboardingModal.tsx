@@ -348,14 +348,31 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  // Continue to step 10 (assessment) without saving (repos are saved when onboarding completes)
-  const handleReposContinue = useCallback(() => {
+  // Complete onboarding after repo selection and redirect to assessment page
+  const handleReposContinue = useCallback(async () => {
     setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(10); // Go to Assessment step
+    try {
+      // Save selected repos first
+      await saveSelectedRepos();
+
+      // Mark onboarding as complete
+      await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      // Redirect to assessment page
+      window.location.href = '/assessment';
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
       setIsTransitioning(false);
-    }, 200);
-  }, []);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
