@@ -353,26 +353,26 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     const selectedRepos = Array.from(repoSelections.values()).filter(
       selection => selection.is_selected === true
     );
-    
+
     if (selectedRepos.length === 0) {
       return false; // At least 1 repo must be selected
     }
-    
+
     // Check if at least 1 selected repo has at least 1 tag
     const hasTaggedRepo = selectedRepos.some(
       selection => selection.category_tags && selection.category_tags.length > 0
     );
-    
+
     return hasTaggedRepo;
   }, [repoSelections]);
 
   // Continue to step 9 without saving (repos are saved when onboarding completes)
-  const handleReposContinue = useCallback(() => {
+  const handleReposContinue = useCallback(async () => {
     // Validate before continuing
     if (!validateReposSelection()) {
       return; // Don't proceed if validation fails
     }
-    
+
     setIsTransitioning(true);
     try {
       // Save selected repos first
