@@ -81,6 +81,7 @@
     "send-waitlist:sendgrid": "tsx scripts/email/sendgrid/sendgrid-send-waitlist-emails.ts",
     "send-campaign:leads": "tsx scripts/email/sendgrid/send-lead-campaign.ts",
     "send-campaign:users": "tsx scripts/email/sendgrid/send-user-campaign.ts",
+    "send-campaign:beta": "tsx scripts/email/sendgrid/send-beta-campaign.ts",
     "backfill-candidates-waitlist": "tsx scripts/email/backfill-candidates-to-waitlist.ts",
     "test-email": "tsx scripts/email/test-email.ts",
     "test-email:sendgrid": "tsx scripts/email/sendgrid/sendgrid-test-email.ts",
