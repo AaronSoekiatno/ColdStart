@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS interview_sessions (
     -- Primary identifiers
     session_id TEXT PRIMARY KEY,
-    candidate_id TEXT NOT NULL, -- Links to your SaaS candidate table
+    candidate_id UUID NOT NULL REFERENCES public.candidates(id) ON DELETE CASCADE, -- Links to your SaaS candidate table
 
     -- Repository info (Minerva-controlled temporary repos)
     repo_name TEXT, -- e.g., "session-abc123" or "interview-cand-12345"

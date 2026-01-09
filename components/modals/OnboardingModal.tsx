@@ -348,14 +348,31 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  // Continue to step 10 (assessment) without saving (repos are saved when onboarding completes)
-  const handleReposContinue = useCallback(() => {
+  // Complete onboarding after repo selection and redirect to assessment page
+  const handleReposContinue = useCallback(async () => {
     setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(10); // Go to Assessment step
+    try {
+      // Save selected repos first
+      await saveSelectedRepos();
+
+      // Mark onboarding as complete
+      await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      // Redirect to assessment page
+      window.location.href = '/assessment';
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
       setIsTransitioning(false);
-    }, 200);
-  }, []);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast]);
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
@@ -533,7 +550,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     try {
       const response = await fetch('/api/topcandidates/create-assessment-repo', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
+        body: JSON.stringify({}),
       });
 
       if (!response.ok) {
@@ -929,16 +950,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         }, 200);
                       }}
                       variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
+                      className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
                     >
                       Back
-                    </Button>
-                    <Button
-                      onClick={handleResumeSkip}
-                      variant="ghost"
-                      className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    >
-                      Skip for now
                     </Button>
                   </div>
                 </div>
@@ -1407,87 +1421,38 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                             This installs the required packages and starts the assessment environment.
                           </p>
                         </div>
-
-                        {assessmentCredentials && (
-                          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mt-4">
-                            <h4 className="font-semibold text-gray-900 mb-3">Your Credentials (auto-injected)</h4>
-                            <p className="text-sm text-gray-700 mb-3">
-                              These will be automatically added to your <code className="bg-gray-200 px-1 rounded">.env.local</code> file when you run <code className="bg-gray-200 px-1 rounded">yarn mission:start</code>:
-                            </p>
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
-                                <code className="text-xs flex-1 break-all">
-                                  SUPABASE_URL={assessmentCredentials.SUPABASE_URL}
-                                </code>
-                                <button
-                                  onClick={() => handleCopy(`SUPABASE_URL=${assessmentCredentials.SUPABASE_URL}`, 'supabase_url')}
-                                  className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
-                                >
-                                  {copiedField === 'supabase_url' ? (
-                                    <Check className="h-3 w-3 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
-                              </div>
-                              <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
-                                <code className="text-xs flex-1 break-all">
-                                  SUPABASE_PRIVATE_KEY={assessmentCredentials.SUPABASE_PRIVATE_KEY.substring(0, 50)}...
-                                </code>
-                                <button
-                                  onClick={() => handleCopy(`SUPABASE_PRIVATE_KEY=${assessmentCredentials.SUPABASE_PRIVATE_KEY}`, 'supabase_key')}
-                                  className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
-                                >
-                                  {copiedField === 'supabase_key' ? (
-                                    <Check className="h-3 w-3 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
-                              </div>
-                              <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
-                                <code className="text-xs flex-1 break-all">
-                                  GOOGLE_API_KEY={assessmentCredentials.GOOGLE_API_KEY.substring(0, 30)}...
-                                </code>
-                                <button
-                                  onClick={() => handleCopy(`GOOGLE_API_KEY=${assessmentCredentials.GOOGLE_API_KEY}`, 'google_key')}
-                                  className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
-                                >
-                                  {copiedField === 'google_key' ? (
-                                    <Check className="h-3 w-3 text-green-600" />
-                                  ) : (
-                                    <Copy className="h-3 w-3" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
 
                   {assessmentRepoUrl && (
-                    <div className="flex gap-4 mt-6">
+                    <div className="flex flex-col gap-4 mt-6">
+                      <Button
+                        onClick={async () => {
+                          // Save repos and mark onboarding complete before starting interview
+                          try {
+                            await saveSelectedRepos();
+                            await fetch('/api/candidate/mark-onboarding-complete', {
+                              method: 'POST',
+                              credentials: 'include',
+                            });
+                          } catch (error) {
+                            console.error('Error completing onboarding:', error);
+                          }
+                          // Navigate to interview to start Minerva session
+                          window.location.href = '/interview';
+                        }}
+                        className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                      >
+                        🎙️ Start Interview with Minerva
+                      </Button>
                       <Button
                         onClick={() => window.open(assessmentRepoUrl, '_blank')}
                         variant="outline"
-                        className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
+                        className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
                       >
                         <ExternalLink className="mr-2 h-4 w-4" />
                         Open Repository
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setIsTransitioning(true);
-                          setTimeout(() => {
-                            setStep(11); // Go to completion step
-                            setIsTransitioning(false);
-                          }, 200);
-                        }}
-                        className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium"
-                      >
-                        Continue
                       </Button>
                     </div>
                   )}

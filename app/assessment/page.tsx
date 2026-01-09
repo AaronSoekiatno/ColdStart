@@ -69,7 +69,7 @@ export default function AssessmentPage() {
       }
 
       const data = await response.json();
-      
+
       toast({
         title: "Assessment repository created!",
         description: "Your private workspace is ready.",
@@ -118,7 +118,7 @@ export default function AssessmentPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
-      
+
       <section className="flex-1 pt-16 sm:pt-20 md:pt-24 pb-8 sm:pb-12 md:pb-20">
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="bg-white rounded-2xl md:rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 md:p-12">
@@ -129,8 +129,8 @@ export default function AssessmentPage() {
               </h1>
               <p className="text-gray-600 text-lg">
                 {hasRepo
-                  ? "Complete your technical assessment to demonstrate your skills"
-                  : "Work through a coding challenge guided by Minerva, your AI interview assistant"}
+                  ? "Your private workspace is ready. Clone the repository and start your assessment."
+                  : "Start a 20-minute technical assessment to showcase your skills to potential employers"}
               </p>
             </div>
 
@@ -216,13 +216,13 @@ export default function AssessmentPage() {
                     </div>
                   </div>
 
-                  {/* Step 3: Start */}
+                  {/* Step 3: Install */}
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install and start assessment</h4>
+                    <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install dependencies</h4>
                     <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
-                      <code className="text-xs md:text-sm break-all">yarn && yarn mission:start</code>
+                      <code>yarn install</code>
                       <button
-                        onClick={() => handleCopy('yarn && yarn mission:start', 'start')}
+                        onClick={() => handleCopy('yarn install', 'start')}
                         className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
                         title="Copy command"
                       >
@@ -240,21 +240,20 @@ export default function AssessmentPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-col gap-4 pt-4">
+                  <Button
+                    onClick={() => router.push('/interview')}
+                    className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                  >
+                    🎙️ Start Interview with Minerva
+                  </Button>
                   <Button
                     onClick={() => window.open(assessmentStatus?.repoUrl || '', '_blank')}
                     variant="outline"
-                    className="flex-1 text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                    className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
                   >
                     <Github className="mr-2 h-4 w-4" />
                     Open Repository
-                  </Button>
-                  <Button
-                    onClick={() => router.push('/interview')}
-                    className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white"
-                  >
-                    <Play className="mr-2 h-4 w-4" />
-                    Start Interview
                   </Button>
                 </div>
               </div>

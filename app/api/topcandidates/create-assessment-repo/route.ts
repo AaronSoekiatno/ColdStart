@@ -36,7 +36,6 @@ async function uploadSecret(
     const { key_id, key } = await publicKeyResponse.json();
 
     // 2. Encrypt the secret
-    // 2. Encrypt the secret
     const binkey = Buffer.from(key, 'base64');
     const binsec = Buffer.from(secretValue);
     const encBytes = Buffer.alloc(binsec.length + sodium.crypto_box_SEALBYTES);

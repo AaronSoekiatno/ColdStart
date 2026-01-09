@@ -224,61 +224,6 @@ export function AssessmentPromptModal({
                 </p>
               </div>
 
-              {credentials && (
-                <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4 mt-4">
-                  <h4 className="font-semibold text-gray-900 mb-3">Your Credentials (auto-injected)</h4>
-                  <p className="text-sm text-gray-700 mb-3">
-                    These will be automatically added to your <code className="bg-gray-200 px-1 rounded">.env.local</code> file when you run <code className="bg-gray-200 px-1 rounded">yarn mission:start</code>:
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
-                      <code className="text-xs flex-1 break-all">
-                        SUPABASE_URL={credentials.SUPABASE_URL}
-                      </code>
-                      <button
-                        onClick={() => handleCopy(`SUPABASE_URL=${credentials.SUPABASE_URL}`, 'supabase_url')}
-                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
-                      >
-                        {copiedField === 'supabase_url' ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
-                      <code className="text-xs flex-1 break-all">
-                        SUPABASE_PRIVATE_KEY={credentials.SUPABASE_PRIVATE_KEY.substring(0, 50)}...
-                      </code>
-                      <button
-                        onClick={() => handleCopy(`SUPABASE_PRIVATE_KEY=${credentials.SUPABASE_PRIVATE_KEY}`, 'supabase_key')}
-                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
-                      >
-                        {copiedField === 'supabase_key' ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </button>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 bg-white p-2 rounded border">
-                      <code className="text-xs flex-1 break-all">
-                        GOOGLE_API_KEY={credentials.GOOGLE_API_KEY.substring(0, 30)}...
-                      </code>
-                      <button
-                        onClick={() => handleCopy(`GOOGLE_API_KEY=${credentials.GOOGLE_API_KEY}`, 'google_key')}
-                        className="flex-shrink-0 p-1 hover:bg-gray-100 rounded"
-                      >
-                        {copiedField === 'google_key' ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <div className="flex gap-4 mt-6">
                 <Button
