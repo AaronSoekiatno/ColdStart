@@ -63,7 +63,7 @@ return {
 
 | Field | Type | Purpose | When Written | When Read |
 |-------|------|---------|--------------|-----------|
-| `repo_name` | TEXT | Name of temporary repo (e.g., "session-abc123") | When repo is created via GitHub API | Webhook matching, display |
+| `repo_name` | TEXT | Name of temporary repo (e.g., "session-abc123") | When repo is created via GitHub API | API endpoint session lookup, display |
 | `repo_url` | TEXT | Full GitHub URL under minerva-interviews org | When repo is created | Link generation, candidate access |
 
 **Why?** Each interview uses a **temporary Minerva-controlled repo** that's created on-demand and cleaned up after.
@@ -86,24 +86,23 @@ return {
    ↓
 4. Candidate clones with token
    ↓
-5. Webhook sends commits → Match repo_name to session_id
+5. Assessment repo calls API endpoints → Uses sessionId from .hermes/config.json
    ↓
 6. Interview ends → Archive/delete repo
 ```
 
-**Webhook Matching:**
+**Session ID Lookup:**
 ```javascript
-// Incoming webhook
+// Assessment repository calls API with sessionId
+// SessionId is stored in .hermes/config.json when repo is created
+POST /api/interview/commit
 {
-  repository: {
-    name: "session-1735880200-kx9a2b",
-    full_name: "minerva-interviews/session-1735880200-kx9a2b"
-  }
+  sessionId: "session_1735880200_kx9a2b",
+  commitData: { ... }
 }
 
-// Match to session
-const repoName = webhookData.repository.name;
-const session = await getSession(repoName); // Use repo name as session ID
+// Or lookup by repo URL if needed
+GET /api/interview/session-id?repoUrl=https://github.com/owner/repo
 ```
 
 ---

@@ -23,10 +23,11 @@ sequenceDiagram
     Note over M: Phase 2: The Build
     M->>V: Stop Call (Save Costs)
     C->>G: Push Code
-    G->>M: Webhook (Tests Fail)
+    G->>G: Tests Run (GitHub Actions)
+    G->>M: API Call (Tests Fail)
     M->>M: Log "Activity"
     C->>G: Push Code (Tests Pass)
-    G->>M: Webhook (Tests Pass!)
+    G->>M: API Call (Tests Pass!)
     M->>M: Transition Phase
 
     Note over M: Phase 3: Bug Injection
@@ -43,7 +44,7 @@ sequenceDiagram
     - **Velocity Tracking:** Measures time-to-solution, not just completion.
 - **Automated Infrastructure:**
     - Integrates with existing repo access management.
-    - Tracks commits and test results via webhooks.
+    - Tracks commits and test results via API endpoints.
 
 ## Setup & Installation
 
@@ -61,7 +62,6 @@ Create a `.env.local` file in the root directory with the following variables:
 # Vapi Configuration (for Minerva)
 NEXT_PUBLIC_VAPI_PUBLIC_KEY=
 VAPI_ASSISTANT_ID=          # Single assistant ID for all phases (kickoff, bug_injection, post_mortem)
-MINERVA_WEBHOOK_URL=     # Public URL (e.g. https://minerva.app or ngrok) - for GitHub webhooks
 
 # GitHub Seed Repository (for Assessment Workspaces)
 GITHUB_SEED_REPO_OWNER=     # GitHub username or organization that owns the seed template repository
@@ -94,20 +94,12 @@ npm run dev
 
 ## Development Flow
 
-Since Minerva relies on GitHub Webhooks, you must expose your local server to the internet.
-
 1.  **Start Local Server:**
     ```bash
     npm run dev
     ```
 
-2.  **Start Ngrok Tunnel:**
-    ```bash
-    ngrok http 3000
-    ```
-
-3.  **Update Config:**
-    Set `MINERVA_WEBHOOK_URL` in `.env.local` to your ngrok URL (e.g., `https://a1b2.ngrok-free.app`).
+The interview UI runs locally. Phase transitions are triggered via API endpoints that the assessment repository calls directly from GitHub Actions workflows.
 
 ## Testing
 
@@ -117,10 +109,8 @@ We have dedicated simulation scripts to test the backend without a real candidat
     ```bash
     node --env-file=.env.local tests/test-interview-flow.js
     ```
-- **Webhook Security Test:**
-    ```bash
-    node --env-file=.env.local tests/test-webhook-setup.js
-    ```
+
+For API endpoint testing, see the [Interview API Endpoints documentation](docs/interview-api-endpoints.md).
 
 ## Project Structure
 
