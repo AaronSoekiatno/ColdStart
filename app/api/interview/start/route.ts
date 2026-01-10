@@ -101,6 +101,37 @@ export async function POST(request: NextRequest) {
         // Log error but don't fail interview start
         console.error('[Interview Start] Error creating repository:', repoError);
       }
+
+
+      // Provision Fly.io Container
+      // ============================================
+      try {
+        console.log('[Interview Start] Provisioning container for session:', data.sessionId);
+        const containerResponse = await fetch(`${origin}/api/topcandidates/provision-container`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': request.headers.get('Cookie') || '',
+          },
+          body: JSON.stringify({
+            sessionId: data.sessionId,
+          }),
+        });
+
+        if (containerResponse.ok) {
+          const containerData = await containerResponse.json();
+          console.log('[Interview Start] Container provisioned:', containerData.containerUrl);
+          
+          // Add container info to response
+          data.containerUrl = containerData.containerUrl;
+          data.containerPassword = containerData.containerPassword;
+          data.type = 'container'; // Signal to frontend to use container view
+        } else {
+          console.error('[Interview Start] Container provisioning failed:', await containerResponse.text());
+        }
+      } catch (containerError) {
+        console.error('[Interview Start] Error provisioning container:', containerError);
+      }
     }
 
     return NextResponse.json(data);

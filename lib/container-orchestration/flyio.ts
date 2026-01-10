@@ -12,6 +12,9 @@ export interface FlyMachineConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
   supabaseJwt: string; // The candidate-specific JWT
+  // Optional GitHub seed repo config
+  gitHubSeedRepoOwner?: string;
+  gitHubSeedRepoName?: string;
 }
 
 async function executeFlyCommand(command: string): Promise<any> {
@@ -84,6 +87,9 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
       `SUPABASE_ANON_KEY=${config.supabaseAnonKey}`,
       `SUPABASE_PRIVATE_KEY=${config.supabaseJwt}`,
       `GEMINI_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
+      // Add GitHub seed repo config if provided
+      ...(config.gitHubSeedRepoOwner ? [`GITHUB_SEED_REPO_OWNER=${config.gitHubSeedRepoOwner}`] : []),
+      ...(config.gitHubSeedRepoName ? [`GITHUB_SEED_REPO_NAME=${config.gitHubSeedRepoName}`] : []),
     ].map(v => `--env "${v}"`).join(' ');
 
     const region = 'hkg'; // Default region or make configurable

@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
       supabaseUrl: credentials.SUPABASE_URL,
       supabaseAnonKey: credentials.SUPABASE_ANON_KEY,
       supabaseJwt: credentials.SUPABASE_PRIVATE_KEY, // Schema-specific JWT
+      gitHubSeedRepoOwner: process.env.GITHUB_SEED_REPO_OWNER || 'Hermes-Startup',
+      gitHubSeedRepoName: process.env.GITHUB_SEED_REPO_NAME || 'AbsurdLangChain',
     });
 
     // Update interview session with container info

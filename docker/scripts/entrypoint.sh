@@ -25,25 +25,43 @@ git config --global init.defaultBranch main
 git config --global core.autocrlf input
 
 # ============================================
-# 2. Initialize workspace if needed
+# 2. Initialize workspace
 # ============================================
 if [ ! -d "/workspace/.git" ]; then
-    echo "📁 Initializing workspace repository..."
+    echo "📁 Initializing workspace..."
     cd /workspace
-    git init
-    
-    # Create initial README if workspace is empty
-    if [ ! -f "README.md" ]; then
-        echo "# Assessment Workspace" > README.md
-        echo "" >> README.md
-        echo "Your assessment environment is ready!" >> README.md
-        echo "" >> README.md
-        echo "## Quick Start" >> README.md
-        echo "1. Run \`npm install\` to install dependencies" >> README.md
-        echo "2. Run \`npm run dev\` to start the development server" >> README.md
-        echo "3. Run \`npm test\` to run tests" >> README.md
+
+    # Check if we should clone a seed repository
+    if [ -n "$GITHUB_SEED_REPO_OWNER" ] && [ -n "$GITHUB_SEED_REPO_NAME" ]; then
+        echo "⬇️ Cloning seed repository: ${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}..."
+        
+        # Use HTTPS cloning. If GITHUB_TOKEN is present, use it for auth.
+        if [ -n "$GITHUB_TOKEN" ]; then
+            REPO_URL="https://${GITHUB_TOKEN}@github.com/${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}.git"
+        else
+            REPO_URL="https://github.com/${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}.git"
+        fi
+
+        # Clone into current directory (.)
+        git clone "$REPO_URL" .
+        
+        # Reset origin to point to the CANDIDATE'S repo (if provided) or keep seed
+        # Usually for assessment, we might want to push to a NEW repo.
+        # For now, we'll leave origin as seed or remove it if we want isolation.
+        # echo "🔄 Resetting remote origin..."
+        # git remote remove origin
+    else
+        echo "✨ No seed repo configured. Creating fresh workspace..."
+        git init
+        
+        # Create initial README if workspace is empty
+        if [ ! -f "README.md" ]; then
+            echo "# Assessment Workspace" > README.md
+            echo "Your assessment environment is ready!" >> README.md
+        fi
     fi
     
+    # Ensure generated files are tracked
     git add -A 2>/dev/null || true
     git commit -m "Initial workspace setup" 2>/dev/null || true
 fi
