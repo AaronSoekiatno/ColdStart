@@ -24,11 +24,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
 # ============================================
 # 1. Install Claude Code CLI
 # ============================================
-RUN npm install -g @anthropic/claude-code
+RUN npm install -g @anthropic-ai/claude-code
 
 # ============================================
-# 2. Pre-authenticate using the Quartermaster logic
-# This ensures the agent is ready as soon as the candidate logs in
+# 2. Pre-configure Claude Code settings directory
+# This ensures the telemetry proxy config is ready
 # ============================================
 RUN mkdir -p /home/coder/.claude && \
     chown -R coder:coder /home/coder/.claude
