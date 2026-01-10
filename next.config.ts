@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
       if (Array.isArray(config.externals)) {
         config.externals = [
           ...config.externals.filter(
-            (external) => {
+            (external: unknown) => {
               if (typeof external === 'string') {
                 return external !== '@vapi-ai/web';
               }
@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
         ];
       } else if (typeof config.externals === 'function') {
         const originalExternals = config.externals;
-        config.externals = (ctx, callback) => {
+        config.externals = (ctx: any, callback: any) => {
           // Externalize native modules
           if (typeof ctx.request === 'string') {
             if (ctx.request.startsWith('@tailwindcss/oxide-') || ctx.request.startsWith('lightningcss-')) {
@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
             }
           }
           
-          originalExternals(ctx, (err, external) => {
+          originalExternals(ctx, (err: any, external: any) => {
             if (err || !external) {
               callback(err, external);
               return;

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  code-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: coldstart-code-server
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persist workspace data
+      - workspace-data:/workspace
+      # Optional: Mount local workspace for development
+      # - ./starter-workspace:/workspace
+    environment:
+      - PASSWORD=
+      - SUDO_PASSWORD=
+    restart: unless-stopped
+    # Resource limits (optional, uncomment to enable)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2'
+    #       memory: 4G
+
+volumes:
+  workspace-data:
+    driver: local
