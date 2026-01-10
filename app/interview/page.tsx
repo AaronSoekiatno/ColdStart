@@ -15,7 +15,7 @@ import type { User } from '@supabase/supabase-js';
 interface InterviewStatus {
   sessionId: string | null;
   phase: string | null;
-  status: 'idle' | 'starting' | 'connecting' | 'active' | 'ended' | 'error';
+  status: 'idle' | 'starting' | 'connecting' | 'active' | 'standby' | 'ended' | 'error';
 }
 
 export default function InterviewPage() {
@@ -70,38 +70,78 @@ export default function InterviewPage() {
       }
 
       if (!vapiEventCallbacksRef.current.onCallEnd) {
-        const callEndCallback = (callData: any) => {
+        const callEndCallback = async (callData: any) => {
           console.log('[Interview] Call ended event received:', callData);
-          setInterviewStatus((prev) => ({ ...prev, status: 'ended' }));
-          if (durationIntervalRef.current) {
-            clearInterval(durationIntervalRef.current);
-            durationIntervalRef.current = null;
-          }
-          toast({ title: 'Call ended', description: 'Interview session completed' });
           
-          // Send messages to server for storage
+          // Send messages to server for storage first
           if (callData?.sessionId && callData?.phaseId && callData?.messages) {
             console.log(`[Interview] Sending ${callData.messages.length} messages to server for storage...`);
-            fetch('/api/vapi/call-end', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sessionId: callData.sessionId,
-                phaseId: callData.phaseId,
-                callId: callData.callId,
-                duration: callData.duration,
-                messages: callData.messages
-              })
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+              const response = await fetch('/api/vapi/call-end', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  sessionId: callData.sessionId,
+                  phaseId: callData.phaseId,
+                  callId: callData.callId,
+                  duration: callData.duration,
+                  messages: callData.messages
+                })
+              });
+              const data = await response.json();
               console.log('[Interview] Messages stored successfully:', data);
-            })
-            .catch(error => {
+              
+              // Check if we're transitioning to a non-Vapi phase (BUILD, FIX)
+              // In that case, keep the UI in "standby" state rather than "ended"
+              if (data.phaseTransitioned && data.newPhase) {
+                // Phases BUILD and FIX don't have Vapi active, so show standby
+                // For other phases, we'll also use standby (better UX than "ended")
+                const nextPhaseId = data.newPhase;
+                const isNonVapiPhase = nextPhaseId === 'BUILD' || nextPhaseId === 'FIX';
+                
+                setInterviewStatus((prev) => ({ ...prev, status: 'standby' }));
+                if (isNonVapiPhase) {
+                  toast({ 
+                    title: 'Agent finished', 
+                    description: 'You can continue working on your code. The agent will call back when needed.' 
+                  });
+                } else {
+                  toast({ 
+                    title: 'Agent finished', 
+                    description: 'Interview continues...' 
+                  });
+                }
+                // Keep timer running for total interview duration
+                return; // Don't stop timer or show "call ended"
+              }
+              
+              // If no phase transition, check if this was the final phase
+              // If it's POST_MORTEM ending, that's the actual interview end
+              // Otherwise, use standby (better UX)
+              const currentPhaseId = callData.phaseId;
+              if (currentPhaseId === 'POST_MORTEM') {
+                // This is the actual interview end
+                setInterviewStatus((prev) => ({ ...prev, status: 'ended' }));
+                if (durationIntervalRef.current) {
+                  clearInterval(durationIntervalRef.current);
+                  durationIntervalRef.current = null;
+                }
+                toast({ title: 'Interview completed', description: 'Thank you for completing the assessment!' });
+              } else {
+                // Use standby for other phases ending
+                setInterviewStatus((prev) => ({ ...prev, status: 'standby' }));
+                toast({ title: 'Agent finished', description: 'Interview session continues' });
+              }
+              
+            } catch (error) {
               console.error('[Interview] Failed to store messages:', error);
-            });
+              // On error, still transition to standby (better UX than showing "ended")
+              setInterviewStatus((prev) => ({ ...prev, status: 'standby' }));
+            }
           } else {
             console.warn('[Interview] Missing data in callData:', callData);
+            // Default to standby instead of ended
+            setInterviewStatus((prev) => ({ ...prev, status: 'standby' }));
           }
         };
         vapiEventCallbacksRef.current.onCallEnd = callEndCallback;
@@ -242,46 +282,8 @@ export default function InterviewPage() {
           vapiClient.onEvent('onCallStart', callStartCallback);
         }
 
-        if (!vapiEventCallbacksRef.current.onCallEnd) {
-          const callEndCallback = (callData: any) => {
-            console.log('[Interview] Call ended with data:', callData);
-            
-            // Update UI
-            setInterviewStatus((prev) => ({ ...prev, status: 'ended' }));
-            if (durationIntervalRef.current) {
-              clearInterval(durationIntervalRef.current);
-              durationIntervalRef.current = null;
-            }
-            toast({ title: 'Call ended', description: 'Interview session completed' });
-            
-            // CRITICAL: Send messages to server for storage
-            if (callData?.sessionId && callData?.phaseId && callData?.messages) {
-              console.log(`[Interview] Sending ${callData.messages.length} messages to server for storage...`);
-              fetch('/api/vapi/call-end', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  sessionId: callData.sessionId,
-                  phaseId: callData.phaseId,
-                  callId: callData.callId,
-                  duration: callData.duration,
-                  messages: callData.messages
-                })
-              })
-              .then(response => response.json())
-              .then(data => {
-                console.log('[Interview] Messages stored successfully:', data);
-              })
-              .catch(error => {
-                console.error('[Interview] Failed to store messages:', error);
-              });
-            } else {
-              console.warn('[Interview] Missing data in callData:', callData);
-            }
-          };
-          vapiEventCallbacksRef.current.onCallEnd = callEndCallback;
-          vapiClient.onEvent('onCallEnd', callEndCallback);
-        }
+        // onCallEnd callback is registered in useEffect hook above
+        // No need to register again here - it's already set up
 
         if (!vapiEventCallbacksRef.current.onError) {
           const errorCallback = (error: any) => {
@@ -462,7 +464,7 @@ export default function InterviewPage() {
     );
   }
 
-  const isActive = interviewStatus.status === 'active' || interviewStatus.status === 'connecting';
+  const isActive = interviewStatus.status === 'active' || interviewStatus.status === 'connecting' || interviewStatus.status === 'standby';
   const canStart = interviewStatus.status === 'idle' || interviewStatus.status === 'ended' || interviewStatus.status === 'error';
 
   return (
@@ -493,7 +495,9 @@ export default function InterviewPage() {
               {isActive && (
                 <div className="text-right">
                   <div className="text-2xl font-mono font-bold">{formatDuration(callDuration)}</div>
-                  <div className="text-xs text-gray-400">Call Duration</div>
+                  <div className="text-xs text-gray-400">
+                    {interviewStatus.status === 'standby' ? 'Interview Duration' : 'Call Duration'}
+                  </div>
                 </div>
               )}
             </div>
@@ -515,6 +519,14 @@ export default function InterviewPage() {
                   </div>
                   <p className="text-gray-300 font-medium">Minerva is speaking...</p>
                   <p className="text-sm text-gray-500 mt-2">Listen carefully and respond naturally</p>
+                </div>
+              ) : interviewStatus.status === 'standby' ? (
+                <div className="text-center">
+                  <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center mx-auto mb-4">
+                    <Phone className="h-14 w-14 text-white" />
+                  </div>
+                  <p className="text-gray-300 font-medium">Call on standby</p>
+                  <p className="text-sm text-gray-500 mt-2">Minerva has finished speaking. You can work on your code - she'll call back when needed.</p>
                 </div>
               ) : interviewStatus.status === 'ended' ? (
                 <div className="text-center">
@@ -555,7 +567,7 @@ export default function InterviewPage() {
                     onClick={() => setIsMuted(!isMuted)}
                     variant="outline"
                     className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
-                    disabled={interviewStatus.status === 'ended' || interviewStatus.status === 'error'}
+                    disabled={interviewStatus.status === 'ended' || interviewStatus.status === 'error' || interviewStatus.status === 'standby'}
                   >
                     {isMuted ? (
                       <>
