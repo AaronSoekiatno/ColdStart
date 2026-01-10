@@ -141,4 +141,4 @@ echo "============================================"
 # 7. Start code-server
 # ============================================
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
-exec code-server --bind-addr 0.0.0.0:8080 /workspace
+exec code-server --bind-addr 0.0.0.0:8080 --auth none /workspace

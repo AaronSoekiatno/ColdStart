@@ -57,6 +57,8 @@ RUN chmod +x /usr/local/bin/*.sh
 RUN mkdir -p /home/coder/.local/share/code-server/User
 COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/
 
+RUN chown -R coder:coder /home/coder
+
 # Switch back to coder user
 USER coder
 
@@ -69,7 +71,7 @@ USER coder
 # TELEMETRY_URL: Hermes API base URL for telemetry reporting
 # AUTO_COMMIT_INTERVAL: Seconds between auto-commits (default: 120)
 # ============================================
-ENV PASSWORD=changeme
+# PASSWORD: Removed (using --auth none)
 ENV WORKSPACE_DIR=/workspace
 ENV AUTO_COMMIT_INTERVAL=120
 ENV TELEMETRY_URL=""
