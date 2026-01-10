@@ -194,6 +194,7 @@ async function provisionFlyContainer(config: {
   sessionId: string;
   password: string;
   telemetryUrl: string;
+  credentials: any; // Credentials from provisioning endpoint
 }): Promise<{ url: string }> {
   const appName = `assessment-${config.candidateId.slice(0, 12)}`;
   
@@ -214,6 +215,10 @@ async function provisionFlyContainer(config: {
         --env PASSWORD="${config.password}" \\
         --env TELEMETRY_URL="${config.telemetryUrl}" \\
         --env AUTO_COMMIT_INTERVAL="120" \\
+        --env SUPABASE_URL="${config.credentials.SUPABASE_URL}" \\
+        --env SUPABASE_ANON_KEY="${config.credentials.SUPABASE_ANON_KEY}" \\
+        --env SUPABASE_PRIVATE_KEY="${config.credentials.SUPABASE_PRIVATE_KEY}" \\
+        --env GEMINI_BASE_URL="${config.credentials.GEMINI_BASE_URL}" \\
         --ha=false \\
         --vm-size shared-cpu-1x \\
         --vm-memory 2048 \\

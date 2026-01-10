@@ -2,6 +2,11 @@
 
 This guide explains how to set up and use the containerized code-server environment for Minerva assessments.
 
+## Quick Links
+- **[Fly.io Deployment Guide](./flyio-deployment-guide.md)** (Recommended)
+- **[Integration Guide](./docker-integration-guide.md)**
+- **[Architecture Overview](#architecture)**
+
 ## Overview
 
 The Docker-based assessment environment provides:
