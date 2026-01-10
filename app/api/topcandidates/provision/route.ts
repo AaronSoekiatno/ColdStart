@@ -169,14 +169,15 @@ async function handler(request: NextRequest) {
     const proxyUrl = `${request.nextUrl.origin}/api/proxy/gemini`;
 
     return NextResponse.json({
+      CANDIDATE_ID: candidateId,
       SUPABASE_URL: supabaseUrl,
       SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       SUPABASE_PRIVATE_KEY: jwtToken,
       // The client should use this Base URL for Google/Gemini requests
       GEMINI_BASE_URL: proxyUrl,
-      GOOGLE_BASE_URL: proxyUrl, 
+      GOOGLE_BASE_URL: proxyUrl,
       // Legacy support or explicit "managed" flag
-      GOOGLE_API_KEY: 'managed-by-proxy', 
+      GOOGLE_API_KEY: 'managed-by-proxy',
     });
 
   } catch (error) {
