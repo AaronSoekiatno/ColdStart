@@ -43,7 +43,7 @@ RUN mkdir -p /workspace && chown coder:coder /workspace
 
 # Copy workspace package.json and pre-install dependencies
 COPY --chown=coder:coder workspace/package.json /workspace/
-RUN cd /workspace && npm install
+RUN cd /workspace && npm install --legacy-peer-deps
 
 # Copy configuration scripts
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
