@@ -42,7 +42,12 @@ async function handler(
     let jwtPayload: any;
     try {
       jwtPayload = verifyCandidateJWT(token);
-      candidateId = jwtPayload.candidateId;
+      // Try both candidate_id (standard) and candidateId (fallback)
+      candidateId = jwtPayload.candidate_id || jwtPayload.sub || jwtPayload.candidateId;
+      
+      if (!candidateId) {
+        console.warn('[Claude Proxy] Valid JWT but missing candidate ID in payload');
+      }
     } catch (error) {
       console.warn('[Claude Proxy] Invalid JWT token attempt');
       return NextResponse.json(
@@ -130,35 +135,49 @@ async function handler(
       console.warn('[Claude Proxy] Failed to parse response body');
     }
 
-    // 7. Log to admin_audit.prompt_logs
+    // 7. Log to admin_audit.prompt_logs via RPC
+    let logStatus = 'not-started';
     if (candidateId) {
       try {
-        const supabase = createClient(supabaseUrl, supabaseKey);
+        const sUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const sKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
         
-        await supabase
-          .from('prompt_logs')
-          .insert({
-            candidate_id: candidateId,
-            tool_name: 'claude-code',
-            provider: 'claude',
-            model_requested: modelRequested,
-            prompt_text: promptText.substring(0, 5000), // Truncate for preview
-            prompt_json: requestJson,
-            response_json: responseJson,
-            tokens_used: tokensUsed,
-            response_status: responseStatus,
-            response_time_ms: responseTime,
-            user_agent: request.headers.get('User-Agent') || null,
-            request_metadata: {
+        if (!sUrl || !sKey) {
+          logStatus = 'missing-env-vars';
+          console.error('[Claude Proxy] Supabase env vars missing in handler');
+        } else {
+          // Use default public schema for RPC
+          const supabase = createClient(sUrl, sKey);
+          
+          const { error: logError } = await supabase.rpc('log_claude_prompt', {
+            p_candidate_id: candidateId,
+            p_tool_name: 'claude-code',
+            p_provider: 'claude',
+            p_model_requested: modelRequested,
+            p_prompt_text: promptText,
+            p_prompt_json: requestJson,
+            p_response_json: responseJson,
+            p_tokens_used: tokensUsed,
+            p_response_status: responseStatus,
+            p_response_time_ms: responseTime,
+            p_user_agent: request.headers.get('User-Agent') || null,
+            p_request_metadata: {
               path: path,
               method: request.method,
             },
           });
-        
-        console.log(`[Claude Proxy] Logged prompt for candidate ${candidateId}`);
-      } catch (logError) {
-        console.error('[Claude Proxy] Failed to log prompt:', logError);
-        // Don't fail the request if logging fails
+          
+          if (logError) {
+            logStatus = `error-${logError.code || 'unknown'}`;
+            console.error('[Claude Proxy] Supabase RPC error:', logError);
+          } else {
+            logStatus = 'success';
+            console.log(`[Claude Proxy] Logged prompt via RPC for candidate ${candidateId}`);
+          }
+        }
+      } catch (logCatchError) {
+        logStatus = 'caught-error';
+        console.error('[Claude Proxy] Caught log error:', logCatchError);
       }
     }
 
