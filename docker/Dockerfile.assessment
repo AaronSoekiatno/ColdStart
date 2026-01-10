@@ -42,7 +42,8 @@ COPY --chown=coder:coder .claude/settings.local.json /home/coder/.claude/setting
 RUN mkdir -p /workspace && chown coder:coder /workspace
 
 # Copy workspace package.json and pre-install dependencies
-COPY --chown=coder:coder workspace/package.json /workspace/
+# Copy workspace source code and install dependencies
+COPY --chown=coder:coder workspace /workspace/
 RUN cd /workspace && npm install --legacy-peer-deps
 
 # Copy configuration scripts

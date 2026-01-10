@@ -1,0 +1,30 @@
+# Node modules in starter workspace
+starter-workspace/node_modules/
+starter-workspace/dist/
+starter-workspace/build/
+starter-workspace/.vite/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker volumes (if using local bind mount)
+workspace-data/
