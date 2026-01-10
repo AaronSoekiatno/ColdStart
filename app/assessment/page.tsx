@@ -242,8 +242,15 @@ export default function AssessmentPage() {
                 {/* Actions */}
                 <div className="flex flex-col gap-4 pt-4">
                   <Button
-                    onClick={() => router.push('/interview')}
+                    onClick={() => router.push('/ide')}
                     className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                  >
+                    💻 Open IDE
+                  </Button>
+                  <Button
+                    onClick={() => router.push('/interview')}
+                    variant="outline"
+                    className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
                   >
                     🎙️ Start Interview with Minerva
                   </Button>
