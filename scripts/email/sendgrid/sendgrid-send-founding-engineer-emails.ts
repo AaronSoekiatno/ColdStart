@@ -112,9 +112,9 @@ https://www.ycombinator.com/companies/afterquery/jobs
 https://www.ycombinator.com/companies/furtherai/jobs
 
 
-If this interests you please sign up for a 30-minute meeting where we can onboard you. 
+If this interests you please fill out this google form where we can onboard you.
 
-https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran`;
+https://docs.google.com/forms/d/e/1FAIpQLSeTfNYd-6DlZ0HNPvZ5DMMu1FHQO_hXZ1T3c2lfrZgkZ9lOCQ/viewform?usp=dialog`;
 
 interface WaitlistEntry {
   id: string;
