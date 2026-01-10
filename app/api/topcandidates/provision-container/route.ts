@@ -35,10 +35,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get candidate info
+    // Get candidate info including GitHub details
     const { data: candidate } = await supabase
       .from('candidates')
-      .select('id, email, provisioning_token')
+      .select('id, email, provisioning_token, assessment_repo_url, github_access_token')
       .eq('email', user.email)
       .single();
 
@@ -46,8 +46,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
     }
 
-    // Call existing provisioning endpoint to create schema + get credentials
-    // We pass the candidate's provisioning token to authenticate the internal request
+    // Determine which repo to clone:
+    // 1. If candidate has their own assessment repo, use that.
+    // 2. Fallback to seed repo from environment.
+    let repoOwner = process.env.GITHUB_SEED_REPO_OWNER || 'Hermes-Startup';
+    let repoName = process.env.GITHUB_SEED_REPO_NAME || 'AbsurdLangChain';
+    let gitHubToken = candidate.github_access_token;
+
+    if (candidate.assessment_repo_url) {
+        // Parse "https://github.com/Owner/Name" or "https://github.com/Owner/Name.git"
+        const cleanUrl = candidate.assessment_repo_url.replace(/\.git$/, '');
+        const parts = cleanUrl.split('/');
+        if (parts.length >= 2) {
+            repoName = parts.pop()!;
+            repoOwner = parts.pop()!;
+            console.log(`[Provision Container] Using candidate repo: ${repoOwner}/${repoName}`);
+        }
+    }
+
+    // Call existing provisioning endpoint...
     const origin = request.nextUrl.origin;
     const provisionResponse = await fetch(
       `${origin}/api/topcandidates/provision`,
@@ -61,6 +78,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (!provisionResponse.ok) {
+        // ... err handling ...
         const errorText = await provisionResponse.text();
         console.error('[Provision Container] Failed to provision schema:', errorText);
         throw new Error('Failed to provision candidate schema credentials');
@@ -68,7 +86,7 @@ export async function POST(request: NextRequest) {
 
     const credentials = await provisionResponse.json();
 
-    // Generate container password (simple random string)
+    // Generate container password
     const containerPassword = crypto.randomUUID().slice(0, 16);
     
     // Provision Fly.io container
@@ -81,8 +99,9 @@ export async function POST(request: NextRequest) {
       supabaseUrl: credentials.SUPABASE_URL,
       supabaseAnonKey: credentials.SUPABASE_ANON_KEY,
       supabaseJwt: credentials.SUPABASE_PRIVATE_KEY, // Schema-specific JWT
-      gitHubSeedRepoOwner: process.env.GITHUB_SEED_REPO_OWNER || 'Hermes-Startup',
-      gitHubSeedRepoName: process.env.GITHUB_SEED_REPO_NAME || 'AbsurdLangChain',
+      gitHubToken: gitHubToken,
+      gitHubSeedRepoOwner: repoOwner,
+      gitHubSeedRepoName: repoName,
     });
 
     // Update interview session with container info

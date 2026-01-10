@@ -12,7 +12,9 @@ export interface FlyMachineConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
   supabaseJwt: string; // The candidate-specific JWT
-  // Optional GitHub seed repo config
+  // GitHub integration for cloning the candidate's repo
+  gitHubToken?: string;
+  // Optional GitHub seed repo config (overridden if candidate repo exists)
   gitHubSeedRepoOwner?: string;
   gitHubSeedRepoName?: string;
 }
@@ -87,6 +89,8 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
       `SUPABASE_ANON_KEY=${config.supabaseAnonKey}`,
       `SUPABASE_PRIVATE_KEY=${config.supabaseJwt}`,
       `GEMINI_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
+      // Add GitHub credentials for cloning
+      ...(config.gitHubToken ? [`GITHUB_TOKEN=${config.gitHubToken}`] : []),
       // Add GitHub seed repo config if provided
       ...(config.gitHubSeedRepoOwner ? [`GITHUB_SEED_REPO_OWNER=${config.gitHubSeedRepoOwner}`] : []),
       ...(config.gitHubSeedRepoName ? [`GITHUB_SEED_REPO_NAME=${config.gitHubSeedRepoName}`] : []),

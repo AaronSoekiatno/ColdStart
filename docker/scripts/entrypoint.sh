@@ -42,14 +42,17 @@ if [ ! -d "/workspace/.git" ]; then
             REPO_URL="https://github.com/${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}.git"
         fi
 
-        # Clone into current directory (.)
-        git clone "$REPO_URL" .
+        # Clone into a temporary directory because /workspace contains pre-installed node_modules
+        git clone "$REPO_URL" /tmp/seed-repo
         
-        # Reset origin to point to the CANDIDATE'S repo (if provided) or keep seed
-        # Usually for assessment, we might want to push to a NEW repo.
-        # For now, we'll leave origin as seed or remove it if we want isolation.
-        # echo "🔄 Resetting remote origin..."
-        # git remote remove origin
+        # Move files to workspace (overwrite conflicts, preserve others)
+        # Using cp -a to preserve permissions
+        echo "🔄 applying seed content to workspace..."
+        cp -a /tmp/seed-repo/. /workspace/
+        rm -rf /tmp/seed-repo
+        
+        # We need to reset the git directory to point to the new content properly if we moved .git folder
+        # The cp -a command moves .git too, so it's a valid repo now.
     else
         echo "✨ No seed repo configured. Creating fresh workspace..."
         git init

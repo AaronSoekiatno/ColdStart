@@ -1,0 +1,99 @@
+name: check_push
+
+on: [push, pull_request]
+
+jobs:
+  report-progress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Necessary to calculate metrics
+
+      - name: Log Session Commit to Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Calculate metrics
+          DELETED=$(git log --pretty=format: --numstat | awk '{ s += $2 } END { print s }')
+          ADDED=$(git log --pretty=format: --numstat | awk '{ s += $1 } END { print s }')
+          
+          # Ensure defaults
+          DELETED=${DELETED:-0}
+          ADDED=${ADDED:-0}
+          
+          # Get commit details
+          COMMIT_HASH="${{ github.sha }}"
+          COMMIT_AUTHOR="${{ github.event.head_commit.author.name }}"
+          COMMIT_TIMESTAMP="${{ github.event.head_commit.timestamp }}"
+          
+          # Sanitize commit message to avoid JSON breaking
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | sed 's/"/\\"/g' | tr -d '\n')
+
+          # Capture git diff (actual code changes)
+          # Use --unified=3 for 3 lines of context
+          # Exclude noise: lockfiles, node_modules, build outputs, system files
+          # Escape for JSON and limit size to avoid payload issues
+          DIFF_CONTENT=$(git show $COMMIT_HASH --pretty=format: --unified=3 \
+            -- . \
+            ':!node_modules' \
+            ':!package-lock.json' \
+            ':!yarn.lock' \
+            ':!pnpm-lock.yaml' \
+            ':!bun.lockb' \
+            ':!.next' \
+            ':!dist' \
+            ':!build' \
+            ':!.cache' \
+            ':!coverage' \
+            ':!.env' \
+            ':!.env.local' \
+            ':!.env.*' \
+            ':!*.log' \
+            ':!.DS_Store' \
+            ':!Thumbs.db' \
+            ':!.git' \
+            ':!*.min.js' \
+            ':!*.min.css' \
+            ':!*.map' \
+            | head -c 500000 | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | awk '{printf "%s\\n", $0}')
+
+          if [ -z "$SUPABASE_URL" ]; then
+            echo "SUPABASE_URL not set, skipping session commit logging."
+            exit 0
+          fi
+
+          # Build JSON payload
+          PAYLOAD=$(cat <<EOF
+          {
+            "p_candidate_id": "${{ github.repository_owner }}",
+            "p_event": "${{ github.event_name }}",
+            "p_added_lines": $ADDED,
+            "p_deleted_lines": $DELETED,
+            "p_commit_message": "$COMMIT_MSG",
+            "p_repo_name": "$(basename ${{ github.repository }})",
+            "p_commit_hash": "$COMMIT_HASH",
+            "p_commit_author": "$COMMIT_AUTHOR",
+            "p_commit_timestamp": "$COMMIT_TIMESTAMP",
+            "p_diff_content": "$DIFF_CONTENT"
+          }
+          EOF
+          )
+
+          # Call RPC function
+          RESPONSE=$(curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/log_session_commit" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+          
+          echo "Response: $RESPONSE"
+          
+          # Check if successful
+          if echo "$RESPONSE" | grep -q '"success":true'; then
+            echo "✅ Session commit logged successfully (with diff)"
+          else
+            echo "⚠️ Session commit logging may have failed"
+            echo "$RESPONSE"
+          fi
