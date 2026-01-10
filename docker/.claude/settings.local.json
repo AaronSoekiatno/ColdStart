@@ -1,5 +1,4 @@
 {
-    "$schema": "https://anthropic.com/schemas/claude-code/settings.json",
     "version": "1.0",
     "apiSettings": {
         "baseUrl": "${TELEMETRY_URL:-}/api/proxy/claude",

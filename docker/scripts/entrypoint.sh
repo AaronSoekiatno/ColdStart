@@ -61,7 +61,23 @@ else
 fi
 
 # ============================================
-# 4. Start auto-commit daemon (background)
+# 4. Configure Claude Code settings (inject env vars)
+# ============================================
+if [ -f "/home/coder/.claude/settings.local.json" ]; then
+    echo "🔧 Configuring Claude Code with runtime environment..."
+    
+    # Replace environment variable placeholders in Claude settings
+    sed -i "s|\${TELEMETRY_URL:-}|${TELEMETRY_URL:-}|g" /home/coder/.claude/settings.local.json
+    sed -i "s|\${SESSION_ID:-}|${SESSION_ID:-}|g" /home/coder/.claude/settings.local.json
+    sed -i "s|\${CANDIDATE_ID:-}|${CANDIDATE_ID:-}|g" /home/coder/.claude/settings.local.json
+    
+    echo "   ✓ Claude Code configured"
+else
+    echo "⚠️  Claude Code settings not found at /home/coder/.claude/settings.local.json"
+fi
+
+# ============================================
+# 5. Start auto-commit daemon (background)
 # ============================================
 echo "⏰ Starting auto-commit daemon (every ${AUTO_COMMIT_INTERVAL:-120}s)..."
 /usr/local/bin/auto-commit.sh &
@@ -69,7 +85,7 @@ AUTO_COMMIT_PID=$!
 echo "   Auto-commit PID: $AUTO_COMMIT_PID"
 
 # ============================================
-# 5. Log startup info
+# 6. Log startup info
 # ============================================
 echo "============================================"
 echo "✅ Environment ready!"
@@ -80,7 +96,7 @@ echo "⏰ Auto-commit interval: ${AUTO_COMMIT_INTERVAL:-120}s"
 echo "============================================"
 
 # ============================================
-# 6. Start code-server
+# 7. Start code-server
 # ============================================
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 exec code-server --bind-addr 0.0.0.0:8080 /workspace
