@@ -20,7 +20,7 @@ yarn-error.log*
 Thumbs.db
 
 # IDE files
-.vscode/
+# Note: .vscode/ is NOT ignored - workspace settings are part of the starter template
 .idea/
 *.swp
 *.swo

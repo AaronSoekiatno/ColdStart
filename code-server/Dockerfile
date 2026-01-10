@@ -47,6 +47,10 @@ RUN echo "bind-addr: 0.0.0.0:8080" > /home/coder/.config/code-server/config.yaml
     && echo "auth: none" >> /home/coder/.config/code-server/config.yaml \
     && echo "cert: false" >> /home/coder/.config/code-server/config.yaml
 
+# Configure VS Code user settings for auto-configuration
+RUN mkdir -p /home/coder/.local/share/code-server/User
+COPY --chown=coder:coder settings.json /home/coder/.local/share/code-server/User/settings.json
+
 # Expose code-server port
 EXPOSE 8080
 
