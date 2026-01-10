@@ -1,0 +1,48 @@
+version: '3.8'
+
+# Docker Compose for Hermes Assessment Environment
+# Usage:
+#   docker-compose -f docker-compose.assessment.yml up --build
+#
+# Environment variables (set in .env or shell):
+#   ASSESSMENT_PASSWORD - code-server password
+#   CANDIDATE_ID - unique candidate identifier
+#   SESSION_ID - interview session ID
+#   TELEMETRY_URL - Hermes API base URL
+
+services:
+  code-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.assessment
+    container_name: hermes-assessment
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      # Persist workspace data between restarts
+      - workspace-data:/workspace
+      # Optional: Mount local directory for development/testing
+      # - ./candidate-work:/workspace/candidate
+    environment:
+      - PASSWORD=${ASSESSMENT_PASSWORD:-assessment123}
+      - CANDIDATE_ID=${CANDIDATE_ID:-}
+      - SESSION_ID=${SESSION_ID:-}
+      - TELEMETRY_URL=${TELEMETRY_URL:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - AUTO_COMMIT_INTERVAL=${AUTO_COMMIT_INTERVAL:-120}
+      - GIT_USER_NAME=${GIT_USER_NAME:-Candidate}
+      - GIT_USER_EMAIL=${GIT_USER_EMAIL:-candidate@assessment.local}
+    restart: unless-stopped
+    # Resource limits for consistent performance
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+
+volumes:
+  workspace-data:
+    driver: local

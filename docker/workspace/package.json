@@ -1,0 +1,42 @@
+{
+    "name": "hermes-assessment-workspace",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Pre-configured workspace for Hermes assessment with React and testing dependencies",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
+        "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+        "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+        "type-check": "tsc --noEmit"
+    },
+    "dependencies": {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0"
+    },
+    "devDependencies": {
+        "@testing-library/jest-dom": "^6.1.0",
+        "@testing-library/react": "^14.0.0",
+        "@testing-library/user-event": "^14.5.0",
+        "@types/react": "^18.2.0",
+        "@types/react-dom": "^18.2.0",
+        "@typescript-eslint/eslint-plugin": "^6.0.0",
+        "@typescript-eslint/parser": "^6.0.0",
+        "@vitejs/plugin-react": "^4.0.0",
+        "@vitest/coverage-v8": "^0.34.0",
+        "eslint": "^8.45.0",
+        "eslint-plugin-react": "^7.33.0",
+        "eslint-plugin-react-hooks": "^4.6.0",
+        "jsdom": "^22.1.0",
+        "typescript": "^5.1.0",
+        "vite": "^4.4.0",
+        "vitest": "^0.34.0"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    }
+}
