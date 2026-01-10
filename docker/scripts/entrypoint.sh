@@ -25,25 +25,46 @@ git config --global init.defaultBranch main
 git config --global core.autocrlf input
 
 # ============================================
-# 2. Initialize workspace if needed
+# 2. Initialize workspace
 # ============================================
 if [ ! -d "/workspace/.git" ]; then
-    echo "📁 Initializing workspace repository..."
+    echo "📁 Initializing workspace..."
     cd /workspace
-    git init
-    
-    # Create initial README if workspace is empty
-    if [ ! -f "README.md" ]; then
-        echo "# Assessment Workspace" > README.md
-        echo "" >> README.md
-        echo "Your assessment environment is ready!" >> README.md
-        echo "" >> README.md
-        echo "## Quick Start" >> README.md
-        echo "1. Run \`npm install\` to install dependencies" >> README.md
-        echo "2. Run \`npm run dev\` to start the development server" >> README.md
-        echo "3. Run \`npm test\` to run tests" >> README.md
+
+    # Check if we should clone a seed repository
+    if [ -n "$GITHUB_SEED_REPO_OWNER" ] && [ -n "$GITHUB_SEED_REPO_NAME" ]; then
+        echo "⬇️ Cloning seed repository: ${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}..."
+        
+        # Use HTTPS cloning. If GITHUB_TOKEN is present, use it for auth.
+        if [ -n "$GITHUB_TOKEN" ]; then
+            REPO_URL="https://${GITHUB_TOKEN}@github.com/${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}.git"
+        else
+            REPO_URL="https://github.com/${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}.git"
+        fi
+
+        # Clone into a temporary directory because /workspace contains pre-installed node_modules
+        git clone "$REPO_URL" /tmp/seed-repo
+        
+        # Move files to workspace (overwrite conflicts, preserve others)
+        # Using cp -a to preserve permissions
+        echo "🔄 applying seed content to workspace..."
+        cp -a /tmp/seed-repo/. /workspace/
+        rm -rf /tmp/seed-repo
+        
+        # We need to reset the git directory to point to the new content properly if we moved .git folder
+        # The cp -a command moves .git too, so it's a valid repo now.
+    else
+        echo "✨ No seed repo configured. Creating fresh workspace..."
+        git init
+        
+        # Create initial README if workspace is empty
+        if [ ! -f "README.md" ]; then
+            echo "# Assessment Workspace" > README.md
+            echo "Your assessment environment is ready!" >> README.md
+        fi
     fi
     
+    # Ensure generated files are tracked
     git add -A 2>/dev/null || true
     git commit -m "Initial workspace setup" 2>/dev/null || true
 fi
