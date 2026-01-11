@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
+import { TestRunner } from '@/components/assessment/TestRunner';
 import {
     Loader2,
     Clock,
@@ -21,6 +22,7 @@ export default function IDEPage() {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [containerUrl, setContainerUrl] = useState<string | null>(null);
+    const [sessionId, setSessionId] = useState<string | null>(null);
     const [containerStatus, setContainerStatus] = useState<'loading' | 'provisioning' | 'running' | 'error'>('loading');
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -81,6 +83,7 @@ export default function IDEPage() {
                     // Default to localhost for local development
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
+                    setSessionId('local-dev-docker'); // Mock session ID
                     return;
                 }
                 setContainerStatus('error');
@@ -93,11 +96,16 @@ export default function IDEPage() {
                 if (isLocalDev) {
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
+                    setContainerUrl('http://localhost:8080');
+                    setContainerStatus('running');
+                    setSessionId('local-dev-docker');
                 } else {
                     setContainerStatus('error');
                 }
                 return;
             }
+
+            setSessionId(session.session_id);
 
             // Handle container status
             if (session.container_status === 'running' && session.container_url) {
@@ -113,6 +121,7 @@ export default function IDEPage() {
                 if (isLocalDev) {
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
+                    setSessionId('local-dev-session');
                 } else {
                     setContainerStatus('error');
                 }
@@ -124,6 +133,7 @@ export default function IDEPage() {
             if (isLocalDev) {
                 setContainerUrl('http://localhost:8080');
                 setContainerStatus('running');
+                setSessionId('local-dev-docker');
             } else {
                 setContainerStatus('error');
             }
@@ -245,6 +255,13 @@ export default function IDEPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* Test Runner Component */}
+                    {sessionId && (
+                        <TestRunner sessionId={sessionId} />
+                    )}
+
+                    <div className="h-4 w-px bg-slate-600" />
+
                     <Button
                         onClick={toggleFullscreen}
                         variant="outline"
@@ -302,16 +319,22 @@ export default function IDEPage() {
                 </div>
             )}
 
-            {/* Code-Server Iframe */}
-            <div className="flex-1 relative">
-                <iframe
-                    ref={iframeRef}
-                    src={containerUrl}
-                    className="absolute inset-0 w-full h-full border-0"
-                    allow="clipboard-read; clipboard-write; microphone"
-                    sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-                    title="Code Server IDE"
-                />
+            {/* Main Content Area */}
+            <div className="flex-1 flex relative overflow-hidden">
+                {/* Code-Server Iframe */}
+                <div className="flex-1 relative">
+                    <iframe
+                        ref={iframeRef}
+                        src={containerUrl}
+                        className="absolute inset-0 w-full h-full border-0"
+                        allow="clipboard-read; clipboard-write; microphone"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+                        title="Code Server IDE"
+                    />
+                </div>
+
+                {/* Test Results Side Panel - REMOVED for compact view */}
+
             </div>
 
             {/* Bottom Status Bar */}
