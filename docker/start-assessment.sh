@@ -67,8 +67,17 @@ CONTAINER_ID=$(docker run -d \
     -e "CANDIDATE_ID=$CANDIDATE_ID" \
     -e "SESSION_ID=$SESSION_ID" \
     -e "TELEMETRY_URL=$TELEMETRY_URL" \
-    -e "AUTO_COMMIT_INTERVAL=120" \
+    -e "SUPABASE_URL=${SUPABASE_URL:-}" \
+    -e "SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}" \
+    -e "SUPABASE_PRIVATE_KEY=${SUPABASE_PRIVATE_KEY:-}" \
+    -e "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}" \
+    -e "GEMINI_BASE_URL=${GEMINI_BASE_URL:-$TELEMETRY_URL/api/proxy/gemini}" \
+    -e "GOOGLE_BASE_URL=${GOOGLE_BASE_URL:-$TELEMETRY_URL/api/proxy/gemini}" \
+    -e "GOOGLE_API_KEY=${GOOGLE_API_KEY:-managed-by-proxy}" \
+    -e "QUARTERMASTER_API_URL=${QUARTERMASTER_API_URL:-$TELEMETRY_URL/api/topcandidates/provision}" \
     hermes-assessment:latest)
+
+
 
 # Wait for startup
 echo "Waiting for container to be ready..."
