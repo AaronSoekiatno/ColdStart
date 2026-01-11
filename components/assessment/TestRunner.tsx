@@ -72,33 +72,7 @@ export function TestRunner({ sessionId, className }: TestRunnerProps) {
             if (data.results) {
                 setResults(data.results);
             }
-
-            if (data.success && data.results) {
-                toast({
-                    title: 'Tests Passed',
-                    description: `All ${data.results.numTotalTests || 0} tests passed.`,
-                    variant: 'default',
-                    className: 'bg-green-600 text-white border-green-700',
-                });
-            } else if (data.results) {
-                toast({
-                    title: 'Tests Failed',
-                    description: `${data.results.numFailedTests || 0} tests failed. Check details.`,
-                    variant: 'destructive',
-                });
-            } else {
-                toast({
-                    title: 'Test Execution Failed',
-                    description: 'Could not parse test results. Check console for output.',
-                    variant: 'destructive',
-                });
-            }
         } catch (error: any) {
-            toast({
-                title: 'Execution Error',
-                description: error.message,
-                variant: 'destructive',
-            });
             console.error('Test run failed:', error);
         } finally {
             setIsLoading(false);
