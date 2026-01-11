@@ -6,8 +6,7 @@
 # 1. Configures Git for the candidate
 # 2. Initializes the workspace repository
 # 3. Starts telemetry sidecar (background)
-# 4. Starts auto-commit daemon (background)
-# 5. Launches code-server
+# 4. Launches code-server
 # ============================================
 
 set -e
@@ -118,26 +117,17 @@ else
 fi
 
 # ============================================
-# 5. Start auto-commit daemon (background)
-# ============================================
-echo "⏰ Starting auto-commit daemon (every ${AUTO_COMMIT_INTERVAL:-120}s)..."
-/usr/local/bin/auto-commit.sh &
-AUTO_COMMIT_PID=$!
-echo "   Auto-commit PID: $AUTO_COMMIT_PID"
-
-# ============================================
-# 6. Log startup info
+# 5. Log startup info
 # ============================================
 echo "============================================"
 echo "✅ Environment ready!"
 echo "📝 Candidate ID: ${CANDIDATE_ID:-not-set}"
 echo "🔗 Session ID: ${SESSION_ID:-not-set}"
 echo "🌐 Telemetry URL: ${TELEMETRY_URL:-not-set}"
-echo "⏰ Auto-commit interval: ${AUTO_COMMIT_INTERVAL:-120}s"
 echo "============================================"
 
 # ============================================
-# 7. Start code-server
+# 6. Start code-server
 # ============================================
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 exec code-server --bind-addr 0.0.0.0:8080 --auth none /workspace

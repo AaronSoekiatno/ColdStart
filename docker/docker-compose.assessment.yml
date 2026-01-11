@@ -28,7 +28,6 @@ services:
       - CANDIDATE_ID=${CANDIDATE_ID:-}
       - SESSION_ID=${SESSION_ID:-}
       - TELEMETRY_URL=${TELEMETRY_URL:-}
-      - AUTO_COMMIT_INTERVAL=${AUTO_COMMIT_INTERVAL:-120}
       - GIT_USER_NAME=${GIT_USER_NAME:-Candidate}
       - GIT_USER_EMAIL=${GIT_USER_EMAIL:-candidate@assessment.local}
       # Supabase credentials
