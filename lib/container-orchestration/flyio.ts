@@ -83,7 +83,11 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
             `SUPABASE_URL=${config.supabaseUrl}`,
             `SUPABASE_ANON_KEY=${config.supabaseAnonKey}`,
             `SUPABASE_PRIVATE_KEY=${config.supabaseJwt}`,
+            `SUPABASE_SERVICE_ROLE_KEY=${config.supabaseJwt}`, // Alias for compatibility
             `GEMINI_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
+            `GOOGLE_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
+            `GOOGLE_API_KEY=managed-by-proxy`, // Indicates proxy-managed API key
+            `QUARTERMASTER_API_URL=${config.telemetryUrl}/api/topcandidates/provision`,
         ].map(v => `--env "${v}"`).join(' ');
 
         const region = 'hkg'; // Default region or make configurable
