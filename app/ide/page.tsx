@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import { TestResultsPanel } from '@/components/assessment/TestResultsPanel';
+import { TestRunner } from '@/components/assessment/TestRunner';
 import {
     Loader2,
     Clock,
@@ -13,8 +13,6 @@ import {
     Maximize2,
     Minimize2,
     X,
-    Beaker,
-    PanelRightClose
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
@@ -29,7 +27,6 @@ export default function IDEPage() {
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-    const [isTestPanelOpen, setIsTestPanelOpen] = useState(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const { toast } = useToast();
@@ -86,7 +83,7 @@ export default function IDEPage() {
                     // Default to localhost for local development
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
-                    setSessionId('local-dev-session'); // Mock session ID
+                    setSessionId('local-dev-docker'); // Mock session ID
                     return;
                 }
                 setContainerStatus('error');
@@ -99,7 +96,9 @@ export default function IDEPage() {
                 if (isLocalDev) {
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
-                    setSessionId('local-dev-session');
+                    setContainerUrl('http://localhost:8080');
+                    setContainerStatus('running');
+                    setSessionId('local-dev-docker');
                 } else {
                     setContainerStatus('error');
                 }
@@ -122,6 +121,7 @@ export default function IDEPage() {
                 if (isLocalDev) {
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
+                    setSessionId('local-dev-session');
                 } else {
                     setContainerStatus('error');
                 }
@@ -133,7 +133,7 @@ export default function IDEPage() {
             if (isLocalDev) {
                 setContainerUrl('http://localhost:8080');
                 setContainerStatus('running');
-                setSessionId('local-dev-session');
+                setSessionId('local-dev-docker');
             } else {
                 setContainerStatus('error');
             }
@@ -255,15 +255,10 @@ export default function IDEPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Button
-                        onClick={() => setIsTestPanelOpen(!isTestPanelOpen)}
-                        variant="outline"
-                        size="sm"
-                        className={`border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white ${isTestPanelOpen ? 'bg-slate-700 text-white' : 'bg-transparent'}`}
-                    >
-                        {isTestPanelOpen ? <PanelRightClose className="mr-2 h-4 w-4" /> : <Beaker className="mr-2 h-4 w-4" />}
-                        {isTestPanelOpen ? 'Hide Tests' : 'Run Tests'}
-                    </Button>
+                    {/* Test Runner Component */}
+                    {sessionId && (
+                        <TestRunner sessionId={sessionId} />
+                    )}
 
                     <div className="h-4 w-px bg-slate-600" />
 
@@ -338,12 +333,8 @@ export default function IDEPage() {
                     />
                 </div>
 
-                {/* Test Results Side Panel */}
-                {isTestPanelOpen && sessionId && (
-                    <div className="w-[400px] border-l border-slate-700 bg-white z-10 shadow-xl animate-in slide-in-from-right duration-300">
-                        <TestResultsPanel sessionId={sessionId} className="h-full" />
-                    </div>
-                )}
+                {/* Test Results Side Panel - REMOVED for compact view */}
+
             </div>
 
             {/* Bottom Status Bar */}

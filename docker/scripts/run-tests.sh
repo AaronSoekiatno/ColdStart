@@ -48,6 +48,9 @@ fi
 
 # Output the results file content for the caller to capture if needed
 # (or they can read the file directly)
+echo "" # Ensure newline separator
+echo "___JSON_START___"
 cat "$RESULTS_FILE"
+echo "___JSON_END___"
 
 exit $EXIT_CODE
