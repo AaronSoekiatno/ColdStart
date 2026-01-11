@@ -68,7 +68,10 @@ export function TestRunner({ sessionId, className }: TestRunnerProps) {
                 throw new Error(data.error || 'Failed to run tests');
             }
 
-            setResults(data.results);
+            // Only update results if we have valid data
+            if (data.results) {
+                setResults(data.results);
+            }
 
             if (data.success && data.results) {
                 toast({

@@ -253,16 +253,17 @@ export async function POST(request: NextRequest) {
         // run-tests.sh prints the JSON content at the end.
         // Let's look for the JSON blob in stdout.
 
-        // Find the last JSON object in output
+        // Find the JSON block between delimiters
         console.log('[API run-tests] Raw stdout from container:', stdout);
-        const jsonMatch = stdout.match(/\{[\s\S]*\}/);
+        
+        // Match content between ___JSON_START___ and ___JSON_END___
+        const jsonMatch = stdout.match(/___JSON_START___([\s\S]*?)___JSON_END___/);
         let testResults = null;
         let score = 0;
 
-        if (jsonMatch) {
+        if (jsonMatch && jsonMatch[1]) {
             try {
-                testResults = JSON.parse(jsonMatch[0]);
-
+                testResults = JSON.parse(jsonMatch[1].trim());
                 // Calculate score simple approximation
                 // Total points logic is in the test files, not in JSON reporter directly usually?
                 // Unless we use valid custom reporter.
