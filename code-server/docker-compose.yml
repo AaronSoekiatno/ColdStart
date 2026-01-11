@@ -16,6 +16,8 @@ services:
     environment:
       - PASSWORD=
       - SUDO_PASSWORD=
+      # Claude CLI API key - injected from .env file
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     restart: unless-stopped
     # Resource limits (optional, uncomment to enable)
     # deploy:

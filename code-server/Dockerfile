@@ -47,8 +47,27 @@ RUN echo "bind-addr: 0.0.0.0:8080" > /home/coder/.config/code-server/config.yaml
     && echo "auth: none" >> /home/coder/.config/code-server/config.yaml \
     && echo "cert: false" >> /home/coder/.config/code-server/config.yaml
 
+# Configure VS Code user settings for auto-configuration
+RUN mkdir -p /home/coder/.local/share/code-server/User
+COPY --chown=coder:coder settings.json /home/coder/.local/share/code-server/User/settings.json
+
+# Configure user-local npm global directory
+ENV NPM_CONFIG_PREFIX=/home/coder/.npm-global
+ENV PATH="/home/coder/.npm-global/bin:${PATH}"
+
+# Install Claude CLI
+# Using npm global install (package name is @anthropic-ai/claude-code)
+RUN mkdir -p /home/coder/.npm-global \
+    && npm install -g @anthropic-ai/claude-code
+
+# Copy entrypoint script (needs to be done as root, then fix permissions)
+USER root
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+USER coder
+
 # Expose code-server port
 EXPOSE 8080
 
-# Start code-server
-CMD ["code-server", "--bind-addr", "0.0.0.0:8080", "--auth", "none", "/workspace"]
+# Use entrypoint script to clear cached Claude credentials before starting
+ENTRYPOINT ["/entrypoint.sh"]
