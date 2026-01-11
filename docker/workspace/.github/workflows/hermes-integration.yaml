@@ -1,0 +1,96 @@
+name: Hermes Interview Integration
+
+on:
+  # Trigger on test completion (GitHub Actions check suite completion)
+  check_suite:
+    types: [completed]
+  # Also trigger on workflow_run completion as fallback
+  workflow_run:
+    workflows: ["Tests", "Score Assessment"]
+    types: [completed]
+
+jobs:
+  notify-hermes:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.check_suite.conclusion == 'success' ||
+      github.event.workflow_run.conclusion == 'success'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for commit info
+      
+      - name: Read session config
+        id: config
+        run: |
+          if [ ! -f .hermes/config.json ]; then
+            echo "⚠️  .hermes/config.json not found - skipping Hermes notification"
+            echo "ℹ️  This is normal for non-interview repositories"
+            exit 0
+          fi
+          
+          SESSION_ID=$(jq -r .sessionId .hermes/config.json)
+          API_BASE_URL=$(jq -r .apiBaseUrl .hermes/config.json)
+          
+          if [ "$SESSION_ID" == "null" ] || [ -z "$SESSION_ID" ] || [ "$SESSION_ID" == "session_EXAMPLE_REPLACE_WITH_ACTUAL_SESSION_ID" ]; then
+            echo "⚠️  Invalid or missing sessionId - skipping Hermes notification"
+            exit 0
+          fi
+          
+          if [ "$API_BASE_URL" == "null" ] || [ -z "$API_BASE_URL" ]; then
+            echo "⚠️  Invalid or missing apiBaseUrl - skipping Hermes notification"
+            exit 0
+          fi
+          
+          echo "session_id=$SESSION_ID" >> $GITHUB_OUTPUT
+          echo "api_base_url=$API_BASE_URL" >> $GITHUB_OUTPUT
+          echo "config_found=true" >> $GITHUB_OUTPUT
+      
+      - name: Get commit info
+        id: commit
+        if: steps.config.outputs.config_found == 'true'
+        run: |
+          HEAD_SHA=${{ github.event.check_suite.head_sha || github.event.workflow_run.head_sha || github.sha }}
+          COMMIT_MSG=$(git log -1 --pretty=%B "$HEAD_SHA" 2>/dev/null || echo "No commit message")
+          
+          echo "head_sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+          echo "commit_msg<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Notify Hermes - Test Success
+        if: steps.config.outputs.config_found == 'true'
+        run: |
+          echo "📤 Notifying Hermes orchestrator..."
+          echo "   Session ID: ${{ steps.config.outputs.session_id }}"
+          echo "   API URL: ${{ steps.config.outputs.api_base_url }}/test"
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${{ steps.config.outputs.api_base_url }}/test" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"sessionId\": \"${{ steps.config.outputs.session_id }}\",
+              \"testData\": {
+                \"status\": \"success\",
+                \"conclusion\": \"success\",
+                \"head_sha\": \"${{ steps.commit.outputs.head_sha }}\",
+                \"check_run_id\": \"${{ github.event.check_suite.id || github.event.workflow_run.id }}\",
+                \"workflow_run_id\": \"${{ github.run_id }}\",
+                \"details_url\": \"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",
+                \"repository\": \"${{ github.repository }}\",
+                \"event_type\": \"${{ github.event_name }}\"
+              }
+            }")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Hermes notification sent successfully (HTTP $HTTP_CODE)"
+            echo "Response: $BODY"
+          else
+            echo "⚠️  Hermes notification may have failed (HTTP $HTTP_CODE)"
+            echo "Response: $BODY"
+            # Don't fail the workflow - this is non-critical
+          fi

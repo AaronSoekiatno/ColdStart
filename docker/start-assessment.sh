@@ -36,7 +36,7 @@ fi
 
 # Set defaults
 TELEMETRY_URL="${TELEMETRY_URL:-http://host.docker.internal:3000}"
-ASSESSMENT_PASSWORD="${ASSESSMENT_PASSWORD:-$(openssl rand -base64 12)}"
+ASSESSMENT_PASSWORD="" # Auth is disabled
 PORT="${PORT:-8080}"
 
 echo ""
@@ -48,11 +48,10 @@ echo "  Port:         $PORT"
 echo "  Password:     $ASSESSMENT_PASSWORD"
 echo ""
 
-# Build the image if needed
-if ! docker images | grep -q "hermes-assessment"; then
-    echo -e "${YELLOW}Building Docker image...${NC}"
-    docker build -t hermes-assessment:latest -f "$DOCKER_DIR/Dockerfile.assessment" "$DOCKER_DIR"
-fi
+# Build the image (always build to pick up code changes)
+echo -e "${YELLOW}Building Docker image...${NC}"
+docker build -t hermes-assessment:latest -f "$DOCKER_DIR/Dockerfile.assessment" "$DOCKER_DIR"
+
 
 # Stop any existing container
 if docker ps -a | grep -q "hermes-assessment-$CANDIDATE_ID"; then
@@ -65,7 +64,6 @@ echo -e "${GREEN}Starting container...${NC}"
 CONTAINER_ID=$(docker run -d \
     --name "hermes-assessment-$CANDIDATE_ID" \
     -p "$PORT:8080" \
-    -e "PASSWORD=$ASSESSMENT_PASSWORD" \
     -e "CANDIDATE_ID=$CANDIDATE_ID" \
     -e "SESSION_ID=$SESSION_ID" \
     -e "TELEMETRY_URL=$TELEMETRY_URL" \
@@ -83,7 +81,7 @@ if docker exec "$CONTAINER_ID" curl -sf http://localhost:8080/healthz > /dev/nul
     echo ""
     echo "============================================"
     echo -e "🌐 URL:      ${GREEN}http://localhost:${PORT}${NC}"
-    echo -e "🔐 Password: ${GREEN}${ASSESSMENT_PASSWORD}${NC}"
+    echo -e "🔐 Password: ${GREEN}(Authentication Disabled)${NC}"
     echo "============================================"
     echo ""
     echo "To view logs:  docker logs -f hermes-assessment-$CANDIDATE_ID"

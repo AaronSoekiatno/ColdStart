@@ -31,38 +31,19 @@ if [ ! -d "/workspace/.git" ]; then
     echo "📁 Initializing workspace..."
     cd /workspace
 
-    # Check if we should clone a seed repository
-    if [ -n "$GITHUB_SEED_REPO_OWNER" ] && [ -n "$GITHUB_SEED_REPO_NAME" ]; then
-        echo "⬇️ Cloning seed repository: ${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}..."
-        
-        # Use HTTPS cloning. If GITHUB_TOKEN is present, use it for auth.
-        if [ -n "$GITHUB_TOKEN" ]; then
-            REPO_URL="https://${GITHUB_TOKEN}@github.com/${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}.git"
-        else
-            REPO_URL="https://github.com/${GITHUB_SEED_REPO_OWNER}/${GITHUB_SEED_REPO_NAME}.git"
-        fi
-
-        # Clone into a temporary directory because /workspace contains pre-installed node_modules
-        git clone "$REPO_URL" /tmp/seed-repo
-        
-        # Move files to workspace (overwrite conflicts, preserve others)
-        # Using cp -a to preserve permissions
-        echo "🔄 applying seed content to workspace..."
-        cp -a /tmp/seed-repo/. /workspace/
-        rm -rf /tmp/seed-repo
-        
-        # We need to reset the git directory to point to the new content properly if we moved .git folder
-        # The cp -a command moves .git too, so it's a valid repo now.
-    else
-        echo "✨ No seed repo configured. Creating fresh workspace..."
-        git init
-        
-        # Create initial README if workspace is empty
-        if [ ! -f "README.md" ]; then
-            echo "# Assessment Workspace" > README.md
-            echo "Your assessment environment is ready!" >> README.md
-        fi
+    echo "✨ Initializing workspace..."
+    # Initialize a fresh git repo to track the candidate's work locally
+    git init
+    
+    # Create initial README if workspace is empty (it shouldn't be now)
+    if [ ! -f "README.md" ]; then
+        echo "# Assessment Workspace" > README.md
+        echo "Your assessment environment is ready!" >> README.md
     fi
+    
+    # Configure git user
+    git config user.email "${GIT_USER_EMAIL:-candidate@hermes.com}"
+    git config user.name "${GIT_USER_NAME:-Candidate}"
     
     # Ensure generated files are tracked
     git add -A 2>/dev/null || true
@@ -98,7 +79,7 @@ COUNT=0
 for KEY in "${KEYS[@]}"; do
     if [ -n "${!KEY}" ]; then
         echo "$KEY=${!KEY}" >> "$ENV_FILE"
-        ((COUNT++))
+        COUNT=$((COUNT+1))
     fi
 done
 
@@ -160,4 +141,4 @@ echo "============================================"
 # 7. Start code-server
 # ============================================
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
-exec code-server --bind-addr 0.0.0.0:8080 /workspace
+exec code-server --bind-addr 0.0.0.0:8080 --auth none /workspace
