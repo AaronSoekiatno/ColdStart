@@ -79,7 +79,7 @@ COUNT=0
 for KEY in "${KEYS[@]}"; do
     if [ -n "${!KEY}" ]; then
         echo "$KEY=${!KEY}" >> "$ENV_FILE"
-        ((COUNT++))
+        COUNT=$((COUNT+1))
     fi
 done
 

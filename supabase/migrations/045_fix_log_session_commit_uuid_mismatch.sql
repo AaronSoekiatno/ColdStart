@@ -95,3 +95,4 @@ $$;
 GRANT EXECUTE ON FUNCTION public.log_session_commit TO anon;
 GRANT EXECUTE ON FUNCTION public.log_session_commit TO authenticated;
 GRANT EXECUTE ON FUNCTION public.log_session_commit TO service_role;
+s

@@ -68,8 +68,9 @@ export async function POST(request: NextRequest) {
 
     const credentials = await provisionResponse.json();
 
-    // Generate container password
-    const containerPassword = crypto.randomUUID().slice(0, 16);
+    // Generate container password - DISABLED (Using --auth none)
+    // const containerPassword = crypto.randomUUID().slice(0, 16);
+    const containerPassword = "";
 
     // Provision Fly.io container
     console.log(`[Provision Container] Starting Fly.io provisioning for session ${sessionId}`);
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
       .from('interview_sessions')
       .update({
         container_url: containerUrl,
-        container_password: containerPassword,
+        container_password: null, // Password auth disabled
         container_status: 'running',
         container_started_at: new Date().toISOString(),
       })
