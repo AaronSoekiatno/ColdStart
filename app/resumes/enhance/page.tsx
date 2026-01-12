@@ -28,7 +28,7 @@ interface ResumeSuggestion {
 function EnhanceResumePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const resumeId = searchParams.get("resumeId");
+  const resumeId = searchParams?.get("resumeId");
 
   const [user, setUser] = useState<User | null>(null);
   const [resumeSuggestions, setResumeSuggestions] = useState<ResumeSuggestion[]>([]);
@@ -182,19 +182,19 @@ function EnhanceResumePageContent() {
           suggestions
         );
         setStructuredResumeData(updatedData);
-        
+
         // For free users, only highlight the first 3 suggestions
         const visibleSuggestionsList = isPremium
           ? suggestions
           : suggestions.slice(0, FREE_SUGGESTION_LIMIT);
-        
+
         const visibleHighlightedPaths = new Set<ResumePath>();
         visibleSuggestionsList.forEach((s: ResumeSuggestion) => {
           if (s.patch?.path) {
             visibleHighlightedPaths.add(s.patch.path);
           }
         });
-        
+
         setHighlightedFields(visibleHighlightedPaths);
 
         // Set all as 'pending' initially (they're applied but not confirmed)
@@ -649,7 +649,7 @@ function EnhanceResumePageContent() {
             credentials: 'include',
             body: JSON.stringify({ resumeId }),
           });
-          
+
           if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             console.error('Failed to mark resume as enhanced:', errorData?.error || 'Unknown error');

@@ -9,8 +9,8 @@ import { CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
 function UnsubscribePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [email, setEmail] = useState(searchParams.get("email") || "");
-  const [token, setToken] = useState(searchParams.get("token") || "");
+  const [email, setEmail] = useState(searchParams?.get("email") || "");
+  const [token, setToken] = useState(searchParams?.get("token") || "");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "already_unsubscribed">("idle");
   const [message, setMessage] = useState("");
   const [canResubscribe, setCanResubscribe] = useState(false);
@@ -29,7 +29,7 @@ function UnsubscribePageContent() {
       const response = await fetch(
         `/api/unsubscribe?email=${encodeURIComponent(emailToUnsubscribe)}&token=${encodeURIComponent(tokenToValidate)}`
       );
-      
+
       const data = await response.json();
 
       if (response.ok && data.success) {
@@ -55,9 +55,9 @@ function UnsubscribePageContent() {
 
   // If email and token are in URL, auto-process unsubscribe
   useEffect(() => {
-    const urlEmail = searchParams.get("email");
-    const urlToken = searchParams.get("token");
-    
+    const urlEmail = searchParams?.get("email");
+    const urlToken = searchParams?.get("token");
+
     if (urlEmail && urlToken && status === "idle") {
       handleUnsubscribe(urlEmail, urlToken);
     }
