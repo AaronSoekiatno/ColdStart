@@ -187,56 +187,7 @@ export default function AssessmentPage() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Step 1: Clone */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Step 1: Clone the repository</h4>
-                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
-                      <code className="flex-1 break-all">
-                        git clone {cloneUrl}
-                      </code>
-                      <button
-                        onClick={() => handleCopy(`git clone ${cloneUrl}`, 'clone')}
-                        className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
-                        title="Copy clone command"
-                      >
-                        {copiedField === 'clone' ? (
-                          <Check className="h-4 w-4 text-green-400" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Step 2: Navigate */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Step 2: Navigate to the repository</h4>
-                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                      <code>cd {repoName}</code>
-                    </div>
-                  </div>
-
-                  {/* Step 3: Install */}
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install dependencies</h4>
-                    <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
-                      <code>yarn install</code>
-                      <button
-                        onClick={() => handleCopy('yarn install', 'start')}
-                        className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
-                        title="Copy command"
-                      >
-                        {copiedField === 'start' ? (
-                          <Check className="h-4 w-4 text-green-400" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-2">
-                      This installs the required packages and starts the assessment environment. Minerva will guide you through the interview.
-                    </p>
-                  </div>
+                  {/* Steps removed as per user request */}
                 </div>
 
                 {/* Actions */}
