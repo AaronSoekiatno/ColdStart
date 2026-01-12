@@ -5,12 +5,22 @@ import path from 'path';
 export default defineConfig({
     plugins: [react()],
     test: {
-        environment: 'jsdom',
+        environment: 'happy-dom',  // Faster than jsdom
         globals: true,
         setupFiles: ['./tests/setup.ts'],
-        testTimeout: 120000, // 2 minutes for build tests
-        hookTimeout: 30000,   // 30 seconds for setup/teardown
-        cache: false, // Disable cache to avoid permission issues
+        testTimeout: 10000,  // 10s default (was 120s)
+        hookTimeout: 5000,   // 5s for setup/teardown
+        pool: 'threads',
+        poolOptions: {
+            threads: {
+                singleThread: false,
+                minThreads: 1,
+                maxThreads: 4
+            }
+        },
+        cache: {
+            dir: './node_modules/.vitest'
+        },
     },
     resolve: {
         alias: {
