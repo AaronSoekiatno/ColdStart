@@ -16,11 +16,11 @@ import { BugReportModal } from "@/components/modals/BugReportModal";
 function GenerateEmailPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const startupId = searchParams.get("startupId");
-  const matchScoreParam = searchParams.get("matchScore");
+  const startupId = searchParams?.get("startupId");
+  const matchScoreParam = searchParams?.get("matchScore");
   const matchScore = matchScoreParam ? parseFloat(matchScoreParam) : 0;
-  const founderEmail = searchParams.get("founderEmail");
-  const personaParam = searchParams.get("persona");
+  const founderEmail = searchParams?.get("founderEmail");
+  const personaParam = searchParams?.get("persona");
 
   const [user, setUser] = useState<User | null>(null);
   const [isSending, setIsSending] = useState(false);
@@ -29,7 +29,7 @@ function GenerateEmailPageContent() {
   const [previewSubject, setPreviewSubject] = useState<string | null>(null);
   const [previewBody, setPreviewBody] = useState<string | null>(null);
   const [isPremium, setIsPremium] = useState(false);
-  const [resolvedFounderEmail, setResolvedFounderEmail] = useState<string | null>(founderEmail);
+  const [resolvedFounderEmail, setResolvedFounderEmail] = useState<string | null>(founderEmail || null);
   type EmailPersona = 'direct-ask' | 'genuine-fan' | 'value-first';
   // Initialize emailPersona from URL param if valid, otherwise no selection yet
   const [emailPersona, setEmailPersona] = useState<EmailPersona | null>(() => {
@@ -110,12 +110,12 @@ function GenerateEmailPageContent() {
               .split(',')
               .map((email: string) => email.trim())
               .filter((email: string) => email);
-            
+
             // If there's exactly 1 founder with an email, use it
             if (founderEmails.length === 1) {
               setResolvedFounderEmail(founderEmails[0]);
               // Update URL to include the founder email
-              const params = new URLSearchParams(Array.from(searchParams.entries()));
+              const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
               params.set('founderEmail', founderEmails[0]);
               router.replace(`/generate-email?${params.toString()}`, { scroll: false });
             }
@@ -515,7 +515,7 @@ function GenerateEmailPageContent() {
                     </Button>
                     <button
                       onClick={() => {
-                        const returnIndex = searchParams.get('returnIndex');
+                        const returnIndex = searchParams?.get('returnIndex');
                         if (returnIndex) {
                           // Store in sessionStorage before navigating
                           sessionStorage.setItem('matchesCurrentIndex', returnIndex);
@@ -556,7 +556,7 @@ function GenerateEmailPageContent() {
                         // Show loading animation immediately
                         setIsPreviewLoading(true);
                         setEmailPersona('value-first');
-                        const params = new URLSearchParams(Array.from(searchParams.entries()));
+                        const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
                         params.set('persona', 'value-first');
                         const query = params.toString();
                         router.replace(`/generate-email?${query}`, { scroll: false });
@@ -564,8 +564,8 @@ function GenerateEmailPageContent() {
                         await loadEmailPreview('value-first');
                       }}
                       className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${emailPersona === 'value-first'
-                            ? 'border-blue-500 bg-blue-50 text-gray-900'
-                            : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50 text-gray-900'
+                        : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
                         }`}
                     >
                       <div className="font-semibold mb-0.5">
@@ -591,7 +591,7 @@ function GenerateEmailPageContent() {
                         setEmailPersona('direct-ask');
 
                         // Sync persona into URL so future loads are consistent
-                        const params = new URLSearchParams(Array.from(searchParams.entries()));
+                        const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
                         params.set('persona', 'direct-ask');
                         const query = params.toString();
                         router.replace(`/generate-email?${query}`, { scroll: false });
@@ -600,8 +600,8 @@ function GenerateEmailPageContent() {
                         await loadEmailPreview('direct-ask');
                       }}
                       className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${emailPersona === 'direct-ask'
-                          ? 'border-blue-500 bg-blue-50 text-gray-900'
-                          : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50 text-gray-900'
+                        : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
                         }`}
                     >
                       <div className="font-semibold mb-0.5">Direct Ask</div>
@@ -622,7 +622,7 @@ function GenerateEmailPageContent() {
                         // Show loading animation immediately
                         setIsPreviewLoading(true);
                         setEmailPersona('genuine-fan');
-                        const params = new URLSearchParams(Array.from(searchParams.entries()));
+                        const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
                         params.set('persona', 'genuine-fan');
                         const query = params.toString();
                         router.replace(`/generate-email?${query}`, { scroll: false });
@@ -630,8 +630,8 @@ function GenerateEmailPageContent() {
                         await loadEmailPreview('genuine-fan');
                       }}
                       className={`flex-1 min-w-[140px] rounded-md border px-3 py-2 text-left text-[11px] sm:text-xs cursor-pointer ${emailPersona === 'genuine-fan'
-                            ? 'border-blue-500 bg-blue-50 text-gray-900'
-                            : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
+                        ? 'border-blue-500 bg-blue-50 text-gray-900'
+                        : 'border-blue-300 bg-white text-gray-800 hover:border-blue-400 hover:bg-gray-50'
                         }`}
                     >
                       <div className="font-semibold mb-0.5">

@@ -1,0 +1,19 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "/home/coder/.claude/hooks/log-prompt.sh"
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)"
+    ]
+  },
+  "apiKeyHelper": "/home/coder/.local/bin/get-claude-key"
+}

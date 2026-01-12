@@ -26,8 +26,11 @@ RUN apt-get update && apt-get install -y software-properties-common \
     && apt-get install -y python3.11 python3.11-venv python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install code-server (latest stable)
-RUN curl -fsSL https://code-server.dev/install.sh | sh
+# Install code-server (latest stable) with retry logic for flaky network
+RUN for i in 1 2 3 4 5; do \
+    curl -fsSL https://code-server.dev/install.sh | sh && break || \
+    echo "Attempt $i failed, retrying in 5s..." && sleep 5; \
+    done
 
 # Create a non-root user
 RUN useradd -m -s /bin/bash coder
@@ -37,6 +40,9 @@ WORKDIR /workspace
 
 # Copy starter project files
 COPY --chown=coder:coder starter-workspace/ /workspace/
+# Also copy to /opt/starter so we can force-update config files in entrypoint
+# (This ensures updates apply even if /workspace volume is old/persisted)
+COPY --chown=coder:coder starter-workspace/ /opt/starter/
 
 # Switch to non-root user
 USER coder
@@ -61,10 +67,15 @@ RUN mkdir -p /home/coder/.npm-global \
     && npm install -g @anthropic-ai/claude-code
 
 # Copy entrypoint script (needs to be done as root, then fix permissions)
+# Also convert Windows CRLF line endings to Unix LF
 USER root
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 USER coder
+
+# Install Claude Code Extension used for Agentic coding
+COPY --chown=coder:coder install_extension.py /tmp/install_extension.py
+RUN python3.11 /tmp/install_extension.py && rm /tmp/install_extension.py
 
 # Expose code-server port
 EXPOSE 8080

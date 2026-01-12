@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   code-server:
     build:
@@ -18,6 +16,11 @@ services:
       - SUDO_PASSWORD=
       # Claude CLI API key - injected from .env file
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Supabase credentials for prompt logging
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      # User identification for prompt logging
+      - CANDIDATE_ID=${CANDIDATE_ID}
     restart: unless-stopped
     # Resource limits (optional, uncomment to enable)
     # deploy:

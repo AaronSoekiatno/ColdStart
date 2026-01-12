@@ -76,23 +76,23 @@ export default function IDEPage() {
                 .single();
 
             if (error) {
-                console.error('[IDE] Failed to fetch session:', error);
-                // Check if we're in local dev mode
-                const isLocalDev = process.env.NODE_ENV === 'development';
+                // Check if we're in local dev mode (localhost or explicit dev URL)
+                const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 if (isLocalDev) {
-                    // Default to localhost for local development
+                    // Default to localhost for local development (no need to log error)
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
                     setSessionId('local-dev-docker'); // Mock session ID
                     return;
                 }
+                console.error('[IDE] Failed to fetch session:', error);
                 setContainerStatus('error');
                 return;
             }
 
             if (!session) {
                 // No session found - check if local dev
-                const isLocalDev = process.env.NODE_ENV === 'development';
+                const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 if (isLocalDev) {
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
@@ -117,7 +117,7 @@ export default function IDEPage() {
                 setTimeout(() => fetchContainerInfo(userId), 5000);
             } else {
                 // Fallback to localhost for local dev
-                const isLocalDev = process.env.NODE_ENV === 'development';
+                const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
                 if (isLocalDev) {
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
@@ -127,14 +127,14 @@ export default function IDEPage() {
                 }
             }
         } catch (error) {
-            console.error('[IDE] Error fetching container info:', error);
             // Fallback to localhost for local dev
-            const isLocalDev = process.env.NODE_ENV === 'development';
+            const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
             if (isLocalDev) {
                 setContainerUrl('http://localhost:8080');
                 setContainerStatus('running');
                 setSessionId('local-dev-docker');
             } else {
+                console.error('[IDE] Error fetching container info:', error);
                 setContainerStatus('error');
             }
         }

@@ -46,11 +46,11 @@ export async function POST(request: NextRequest) {
       headSha: testData.head_sha
     });
 
-    const result = await handleTestEvent(sessionId, testData);
+    const result = await handleTestEvent(sessionId, testData) as any;
 
     return NextResponse.json({
       success: true,
-      transitioned: result.shouldTransition || false,
+      transitioned: result.transition !== false,
       currentPhase: result.currentPhase?.id,
       phase: result.currentPhase
     });
