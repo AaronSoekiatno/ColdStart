@@ -29,19 +29,7 @@ Your assessment repository is **pre-configured** with credentials injected by ou
 
 ### 1. Clone Your Assessment Repository
 
-<<<<<<< HEAD
-2. **Install Dependencies**
-   ```bash
-   yarn install
-   ```
-   *(If `yarn` is not found, install it: `npm install -g yarn`)*
-   
-   > **Windows users:** If you encounter permission issues, try running your terminal as Administrator or use `npm install` instead.
-   
-   > **Note:** The setup script will automatically configure Cursor hooks for prompt tracking.
-=======
 You received a repository URL from the assessment platform. Clone it:
->>>>>>> 27e4298 (removed  moved MDs that could potentially help the candidate out too much)
 
 ```bash
 git clone <YOUR_ASSESSMENT_REPO_URL>
@@ -52,32 +40,9 @@ cd <repo-name>
 
 ### 2. Install Dependencies
 
-<<<<<<< HEAD
-6. **Setup Cursor Hooks (Automatic Prompt Tracking)**
-   
-   The setup script automatically configures Cursor hooks for tracking AI prompts. After `yarn install`:
-   
-   - ✅ Cursor hooks are automatically configured
-   - ⚠️ **IMPORTANT:** Restart Cursor IDE to activate hooks
-   
-   **What this means:**
-   - Use Cursor normally with your own API keys (GPT-4, Claude, Gemini, etc.)
-   - All prompts are tracked automatically in the background
-   - No Cursor settings configuration needed
-   - Hooks work with any AI model you use in Cursor
-   
-   **⚠️ Known Issue:** There's a known bug in Cursor (versions 2.1.25+ on Windows) where `beforeSubmitPrompt` hooks may be called but not receive prompt data. If prompts aren't being logged:
-   - Check Cursor's Output panel (Output tab → "Hooks" dropdown) to see what data Cursor is sending
-   - Update Cursor to the latest version
-   - Check `.cursor/logs/prompts-YYYYMMDD.log` for debug information
-
-7. **Open Your Browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-=======
 ```bash
 yarn install
 ```
->>>>>>> 27e4298 (removed  moved MDs that could potentially help the candidate out too much)
 
 **What happens automatically:**
 - All dependencies install
@@ -96,25 +61,11 @@ If auto-setup didn't complete or you need to refresh credentials:
 yarn mission:start
 ```
 
-<<<<<<< HEAD
-- **"yarn: command not found"** → Run `npm install -g yarn`
-- **"GOOGLE_API_KEY is not defined"** → Check your `.env.local` file exists and has the key
-- **Port 3000 already in use:**
-  - **macOS/Linux:** `PORT=3001 yarn dev`
-  - **Windows (PowerShell):** `$env:PORT=3001; yarn dev`
-  - **Windows (CMD):** `set PORT=3001 && yarn dev`
-- **Module not found errors** → Run `yarn install` again
-- **Windows: "touch is not recognized"** → Use `New-Item .env.local` in PowerShell or create the file manually
-- **Windows: Permission denied** → Run your terminal as Administrator or use a different port
-- **Cursor hooks not found** → Make sure the `.cursor/` directory with hooks exists in the repository
-- **Hooks not working** → Make sure you restarted Cursor IDE completely after setup
-=======
 **This script:**
 - Contacts the Quartermaster provisioning API
 - Fetches temporary credentials (Gemini API proxy + Supabase access)
 - Writes credentials to `.env.local`
 - Validates the configuration
->>>>>>> 27e4298 (removed  moved MDs that could potentially help the candidate out too much)
 
 **Expected output:**
 ```
@@ -166,7 +117,7 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## 📊 HOW SCORING WORKS
 
-Your assessment is **automatically scored** via Vitest tests that run on every push.
+Your assessment is **automatically scored** via Vitest tests.
 
 ### Scoring Breakdown
 
@@ -179,18 +130,7 @@ Your assessment is **automatically scored** via Vitest tests that run on every p
 
 **Total: 95 points** (75 automated + 20 manual)
 
-### Automated Testing
-
-Every time you push code, GitHub Actions runs:
-1. `yarn test:score` - Runs Vitest test suite
-2. Parses JSON results to calculate scores per category
-3. Applies penalties (e.g., -10 for removing SQL index from migrations)
-4. Submits scores to Supabase with full test artifacts
-5. Logs commit metrics (lines added/deleted, diff content) for forensic analysis
-
-**View your scores:** Check the Actions tab in your GitHub repository after pushing.
-
-### Test Locally
+### Running Tests
 
 ```bash
 # Run all assessment tests
@@ -199,7 +139,7 @@ yarn test
 # Watch mode (re-runs on changes)
 yarn test:watch
 
-# Generate JSON score report (what CI uses)
+# Generate JSON score report
 yarn test:score
 ```
 
@@ -213,11 +153,6 @@ Your assessment repository comes pre-configured with:
 
 - **`scripts/provision-key.js`** - Fetches credentials from Quartermaster API
 - **`scripts/auto-setup.js`** - Runs on `yarn install` to auto-provision
-
-### GitHub Actions Workflows
-
-- **`.github/workflows/check_push.yaml`** - Logs every commit to Supabase with diff content
-- **`.github/workflows/score_assessment.yaml`** - Runs tests and calculates scores on push
 
 ### Database Migrations
 
@@ -285,28 +220,6 @@ yarn build
 4. **No console errors** - Check browser DevTools
 5. **Loading states** - Shows loading indicator while fetching
 6. **Error handling** - Graceful degradation if API fails
-
-### 3. Check GitHub Actions
-
-1. Push your code to your repository
-2. Go to **Actions** tab on GitHub
-3. Wait for workflows to complete
-4. Check the **score_assessment.yaml** workflow output
-5. Review your automated score
-
-### 4. Verify Data Persistence
-
-Every push automatically logs:
-- Commit hash, author, timestamp, message
-- Lines added/deleted
-- Full diff content (excluding noise files)
-- Stored in `session_commits` table in Supabase
-
-This forensic data is used to:
-- Detect AI usage patterns
-- Track development velocity
-- Identify copy-paste behavior
-- Analyze problem-solving approach
 
 ---
 
@@ -379,9 +292,6 @@ Before you submit:
 - [ ] Performance data displays correctly
 - [ ] High performers are highlighted
 - [ ] No console errors in browser
-- [ ] Code is pushed to your GitHub repository
-- [ ] GitHub Actions workflows completed successfully
-- [ ] Reviewed your automated score in Actions tab
 
 **Mission:** Restore the Absurd Data Flywheel  
 **Priority:** P0 - Production Incident  
