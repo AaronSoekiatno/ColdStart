@@ -27,7 +27,8 @@
       "Bash(npm run dev:*)",
       "Bash(taskkill:*)",
       "Bash(timeout /t 2 /nobreak)",
-      "Bash(npm info:*)"
+      "Bash(npm info:*)",
+      "Bash(docker exec:*)"
     ],
     "deny": [],
     "ask": []
