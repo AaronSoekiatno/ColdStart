@@ -1,5 +1,6 @@
 {
   "name": "langchain-nextjs-template",
+  "$schema": "https://json.schemastore.org/package",
   "version": "0.0.0",
   "private": true,
   "packageManager": "yarn@3.5.1",
