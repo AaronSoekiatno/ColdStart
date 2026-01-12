@@ -3,7 +3,7 @@
     "UserPromptSubmit": [
       {
         "type": "command",
-        "command": "/workspace/.claude/hooks/log-prompt.sh"
+        "command": "/home/coder/.claude/hooks/log-prompt.sh"
       }
     ]
   },
@@ -14,5 +14,6 @@
       "Write(*)",
       "Edit(*)"
     ]
-  }
+  },
+  "apiKeyHelper": "/home/coder/.local/bin/get-claude-key"
 }

@@ -14,6 +14,37 @@ rm -rf /home/coder/.claude 2>/dev/null || true
 # Ensure .local/bin exists and is in PATH
 mkdir -p /home/coder/.local/bin
 
+# Create API key helper script for Claude Code
+cat > /home/coder/.local/bin/get-claude-key << 'HELPER'
+#!/bin/bash
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+    echo "$ANTHROPIC_API_KEY"
+else
+    exit 1
+fi
+HELPER
+chmod +x /home/coder/.local/bin/get-claude-key
+
+# Configure Claude Code global settings to use the helper
+# This ensures both the CLI and Extension use the ENV var without asking for login
+mkdir -p /home/coder/.claude
+cat > /home/coder/.claude/config.json << 'CONFIG'
+{
+    "apiKeyHelper": "/home/coder/.local/bin/get-claude-key"
+}
+CONFIG
+
+# Also write to settings.json in case it checks there
+if [ -f "/home/coder/.claude/settings.json" ]; then
+    # Merge using python if exists, else just overwrite/create (simple backup for now)
+    # Since we copy from workspace later, we'll just append or rely on config.json
+    # But let's verify if we need to set it in settings.json too.
+    # We will trust config.json is the primary for the CLI.
+    true
+else
+    cp /home/coder/.claude/config.json /home/coder/.claude/settings.json 2>/dev/null || true
+fi
+
 # Create Claude wrapper script that uses headless mode (no login required)
 # This allows users to use Claude without authentication
 cat > /home/coder/.local/bin/claude-code << 'WRAPPER'
@@ -154,8 +185,57 @@ chmod +x /home/coder/.local/bin/claude-code
 chmod +x /workspace/.claude/hooks/log-prompt.sh 2>/dev/null || true
 
 # Copy Claude settings to user's home directory (Claude Code looks here too)
+# Source from /opt/starter to ensure we get the latest config from the image
+# (avoiding stale config if /workspace volume is old)
 mkdir -p /home/coder/.claude
-cp /workspace/.claude/settings.json /home/coder/.claude/settings.json 2>/dev/null || true
+cp /opt/starter/.claude/settings.json /home/coder/.claude/settings.json 2>/dev/null || true
+
+# Force-append apiKeyHelper and env block to settings.json to guarantee auth config works
+# (jq is not installed by default in minimal images, so we use python)
+python3 -c '
+import json, os
+try:
+    path = "/home/coder/.claude/settings.json"
+    if os.path.exists(path):
+        with open(path, "r") as f:
+            data = json.load(f)
+    else:
+        data = {}
+    
+    # Force the helper path
+    data["apiKeyHelper"] = "/home/coder/.local/bin/get-claude-key"
+    
+    # Add env block with the API key from environment
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if api_key:
+        if "env" not in data:
+            data["env"] = {}
+        data["env"]["ANTHROPIC_API_KEY"] = api_key
+    
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    print("Updated settings.json with apiKeyHelper and env")
+except Exception as e:
+    print(f"Error updating settings: {e}")
+'
+
+# Ensure hooks are executable
+mkdir -p /home/coder/.claude/hooks
+if [ -f "/opt/starter/.claude/hooks/log-prompt.sh" ]; then
+    cp /opt/starter/.claude/hooks/log-prompt.sh /home/coder/.claude/hooks/log-prompt.sh
+    chmod +x /home/coder/.claude/hooks/log-prompt.sh
+fi
+
+# =============================================================================
+# Fix for Claude Code Extension ENOENT error
+# The extension expects specific project directories to exist based on workspace path
+# It seems to map /workspace to "-workspace" or similar hash
+# =============================================================================
+mkdir -p /home/coder/.claude/projects/-workspace
+mkdir -p /home/coder/.claude/projects/workspace
+# Create a default project folder for the workspace (using the default name hash often used)
+# We map the current workspace to a specific project folder if needed, but creating the base is critical.
+chown -R coder:coder /home/coder/.claude
 
 # =============================================================================
 # Binary replacement - ensures ALL claude invocations go through our wrapper

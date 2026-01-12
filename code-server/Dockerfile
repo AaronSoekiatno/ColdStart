@@ -28,8 +28,8 @@ RUN apt-get update && apt-get install -y software-properties-common \
 
 # Install code-server (latest stable) with retry logic for flaky network
 RUN for i in 1 2 3 4 5; do \
-        curl -fsSL https://code-server.dev/install.sh | sh && break || \
-        echo "Attempt $i failed, retrying in 5s..." && sleep 5; \
+    curl -fsSL https://code-server.dev/install.sh | sh && break || \
+    echo "Attempt $i failed, retrying in 5s..." && sleep 5; \
     done
 
 # Create a non-root user
@@ -40,6 +40,9 @@ WORKDIR /workspace
 
 # Copy starter project files
 COPY --chown=coder:coder starter-workspace/ /workspace/
+# Also copy to /opt/starter so we can force-update config files in entrypoint
+# (This ensures updates apply even if /workspace volume is old/persisted)
+COPY --chown=coder:coder starter-workspace/ /opt/starter/
 
 # Switch to non-root user
 USER coder
@@ -69,6 +72,10 @@ USER root
 COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 USER coder
+
+# Install Claude Code Extension used for Agentic coding
+COPY --chown=coder:coder install_extension.py /tmp/install_extension.py
+RUN python3.11 /tmp/install_extension.py && rm /tmp/install_extension.py
 
 # Expose code-server port
 EXPOSE 8080
