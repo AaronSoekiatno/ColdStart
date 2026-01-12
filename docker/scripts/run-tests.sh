@@ -37,6 +37,7 @@ log_commit_to_supabase() {
     fi
 
     echo "📝 Logging commit to Supabase..."
+    local COMMIT_START=$(date +%s.%N)
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] SUPABASE_URL: $SUPABASE_URL"
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] CANDIDATE_ID: ${CANDIDATE_ID:-unknown}"
 
@@ -77,6 +78,9 @@ log_commit_to_supabase() {
     DIFF_CONTENT=$(echo "$DIFF_CONTENT_RAW" | base64 | tr -d '\n')
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Diff content length (base64): ${#DIFF_CONTENT} characters"
 
+    local AFTER_GIT=$(date +%s.%N)
+    echo "   [TIMING] Git operations: $(echo "$AFTER_GIT - $COMMIT_START" | bc -l)s"
+
     # Build JSON payload
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Building JSON payload..."
     PAYLOAD=$(cat <<EOF
@@ -110,6 +114,9 @@ EOF
 
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Response received: $RESPONSE"
 
+    local AFTER_CURL=$(date +%s.%N)
+    echo "   [TIMING] API request: $(echo "$AFTER_CURL - $AFTER_GIT" | bc -l)s"
+
     # Check response (handle both "success":true and "success" : true with spaces)
     if echo "$RESPONSE" | grep -qE '"success"\s*:\s*true' 2>/dev/null; then
         echo "   ✓ Commit logged successfully"
@@ -119,10 +126,14 @@ EOF
         echo "   📋 Response: $RESPONSE"
     fi
 
+    local COMMIT_END=$(date +%s.%N)
+    echo "   [TIMING] Total commit logging: $(echo "$COMMIT_END - $COMMIT_START" | bc -l)s"
+
     return 0  # Always return success to allow tests to proceed
 }
 
 echo "🚀 Starting assessment tests (Mode: $MODE)..."
+START_TIME=$(date +%s.%N)
 cd "$WORKSPACE_DIR"
 
 # Ensure we have the necessary environment
@@ -131,8 +142,11 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Log commit before running tests
-log_commit_to_supabase
+# Log commit in parallel (background) so tests start immediately
+AFTER_SETUP=$(date +%s.%N)
+echo "[TIMING] Setup complete: $(echo "$AFTER_SETUP - $START_TIME" | bc -l)s"
+log_commit_to_supabase &
+COMMIT_LOG_PID=$!
 
 # Fix permissions for node_modules cache directory (vitest needs to write .vite cache)
 if [ -d "$WORKSPACE_DIR/node_modules" ]; then
@@ -141,6 +155,9 @@ fi
 
 # Clean previous results
 rm -f "$RESULTS_FILE"
+
+BEFORE_TESTS=$(date +%s.%N)
+echo "[TIMING] Ready to start tests: $(echo "$BEFORE_TESTS - $START_TIME" | bc -l)s"
 
 # Define test command based on mode
 if [ "$MODE" == "full" ]; then
@@ -155,12 +172,15 @@ else
 fi
 
 # Capture the exit code of tests (we rely on result file usually, but exit code is good for api)
-# But wait, || true masks the exit code. 
+# But wait, || true masks the exit code.
 # Better pattern:
 # npm test ... || EXIT_CODE=$?
 # Actually, npm test failure is "expected" if tests fail.
 # Let's just rely on the results JSON telling us success/fail.
 EXIT_CODE=0
+
+AFTER_TESTS=$(date +%s.%N)
+echo "[TIMING] Tests completed: $(echo "$AFTER_TESTS - $START_TIME" | bc -l)s"
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "✅ Tests passed successfully!"
@@ -172,6 +192,14 @@ fi
 if [ ! -f "$RESULTS_FILE" ]; then
     echo "{\"numTotalTestSuites\": 0, \"numPassedTestSuites\": 0, \"numFailedTestSuites\": 0, \"testResults\": [], \"success\": false, \"message\": \"Test runner crashed without producing output\"}" > "$RESULTS_FILE"
 fi
+
+# Wait for commit logging to finish (if still running)
+wait $COMMIT_LOG_PID 2>/dev/null || true
+AFTER_COMMIT=$(date +%s.%N)
+echo "[TIMING] Commit logging finished: $(echo "$AFTER_COMMIT - $START_TIME" | bc -l)s"
+
+TOTAL_TIME=$(echo "$AFTER_COMMIT - $START_TIME" | bc -l)
+echo "[TIMING] Total execution time: ${TOTAL_TIME}s"
 
 # Output the results file content for the caller to capture if needed
 # (or they can read the file directly)
