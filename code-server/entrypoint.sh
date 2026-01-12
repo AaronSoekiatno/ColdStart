@@ -73,14 +73,11 @@ log_prompt() {
     local preview=$(printf '%s' "$prompt" | head -c 500 | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
 
     # Log to Supabase via direct insert (using service key)
-    # Note: For schema-qualified tables, use Accept-Profile and Content-Profile headers
     local response=$(curl -s -X POST \
         "${SUPABASE_URL}/rest/v1/prompt_logs" \
         -H "apikey: ${SUPABASE_SERVICE_KEY}" \
         -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
         -H "Content-Type: application/json" \
-        -H "Accept-Profile: admin_audit" \
-        -H "Content-Profile: admin_audit" \
         -H "Prefer: return=representation" \
         -d "{
             \"candidate_id\": \"${CANDIDATE_ID}\",
@@ -113,8 +110,6 @@ update_log_response() {
         -H "apikey: ${SUPABASE_SERVICE_KEY}" \
         -H "Authorization: Bearer ${SUPABASE_SERVICE_KEY}" \
         -H "Content-Type: application/json" \
-        -H "Accept-Profile: admin_audit" \
-        -H "Content-Profile: admin_audit" \
         -d "{
             \"response_status\": ${exit_code},
             \"response_time_ms\": ${response_time_ms}

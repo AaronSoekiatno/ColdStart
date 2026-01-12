@@ -73,9 +73,6 @@ COPY entrypoint.sh /entrypoint.sh
 RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 USER coder
 
-# Install Claude Code Extension used for Agentic coding
-COPY --chown=coder:coder install_extension.py /tmp/install_extension.py
-RUN python3.11 /tmp/install_extension.py && rm /tmp/install_extension.py
 
 # Expose code-server port
 EXPOSE 8080
