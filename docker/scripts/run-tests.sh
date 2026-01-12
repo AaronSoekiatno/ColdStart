@@ -78,8 +78,7 @@ log_commit_to_supabase() {
     DIFF_CONTENT=$(echo "$DIFF_CONTENT_RAW" | base64 | tr -d '\n')
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Diff content length (base64): ${#DIFF_CONTENT} characters"
 
-    local AFTER_GIT=$(date +%s.%N)
-    echo "   [TIMING] Git operations: $(echo "$AFTER_GIT - $COMMIT_START" | bc -l)s"
+
 
     # Build JSON payload
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Building JSON payload..."
@@ -114,8 +113,7 @@ EOF
 
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Response received: $RESPONSE"
 
-    local AFTER_CURL=$(date +%s.%N)
-    echo "   [TIMING] API request: $(echo "$AFTER_CURL - $AFTER_GIT" | bc -l)s"
+
 
     # Check response (handle both "success":true and "success" : true with spaces)
     if echo "$RESPONSE" | grep -qE '"success"\s*:\s*true' 2>/dev/null; then
@@ -126,13 +124,13 @@ EOF
         echo "   📋 Response: $RESPONSE"
     fi
 
-    local COMMIT_END=$(date +%s.%N)
-    echo "   [TIMING] Total commit logging: $(echo "$COMMIT_END - $COMMIT_START" | bc -l)s"
+
 
     return 0  # Always return success to allow tests to proceed
 }
 
 echo "🚀 Starting assessment tests (Mode: $MODE)..."
+START_TIME=$(date +%s)
 cd "$WORKSPACE_DIR"
 
 # Ensure we have the necessary environment
@@ -182,6 +180,11 @@ if [ $EXIT_CODE -eq 0 ]; then
 else
     echo "⚠️  Some tests failed. Checking results..."
 fi
+
+# Calculate and display execution time
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+echo "⏱️  Total execution time: ${DURATION}s"
 
 # Ensure the results file exists even if tests crashed (create empty error json if missing)
 if [ ! -f "$RESULTS_FILE" ]; then
