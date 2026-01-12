@@ -122,6 +122,100 @@ EOF
     return 0  # Always return success to allow tests to proceed
 }
 
+# ============================================
+# Phase Transition API Call Function
+# ============================================
+call_test_api() {
+    # Guard clause: Check for required environment variables
+    if [ -z "$TELEMETRY_URL" ]; then
+        echo "   ⚠️  TELEMETRY_URL not set, skipping phase transition API call"
+        return 0
+    fi
+
+    if [ -z "$SESSION_ID" ]; then
+        echo "   ⚠️  SESSION_ID not set, skipping phase transition API call"
+        return 0
+    fi
+
+    echo "📡 Calling phase transition API endpoint..."
+
+    # Determine test conclusion from results file
+    if [ ! -f "$RESULTS_FILE" ]; then
+        echo "   ⚠️  Test results file not found, cannot determine conclusion"
+        return 0
+    fi
+
+    # Parse test results to determine conclusion
+    # Using jq if available, otherwise fallback to grep
+    if command -v jq >/dev/null 2>&1; then
+        TEST_SUCCESS=$(jq -r '.success // false' "$RESULTS_FILE" 2>/dev/null || echo "false")
+        NUM_FAILED=$(jq -r '.numFailedTestSuites // 0' "$RESULTS_FILE" 2>/dev/null || echo "0")
+    else
+        # Fallback: check if "success" : true appears in JSON
+        if grep -q '"success"\s*:\s*true' "$RESULTS_FILE" 2>/dev/null; then
+            TEST_SUCCESS="true"
+            NUM_FAILED="0"
+        else
+            TEST_SUCCESS="false"
+            NUM_FAILED="1"
+        fi
+    fi
+
+    # Get commit SHA
+    COMMIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "no-commit")
+
+    # Determine conclusion based on test results
+    if [ "$TEST_SUCCESS" = "true" ] && [ "$NUM_FAILED" = "0" ]; then
+        CONCLUSION="success"
+        STATUS="success"
+    else
+        CONCLUSION="failure"
+        STATUS="failure"
+    fi
+
+    echo "   📊 Test Results: status=$STATUS, conclusion=$CONCLUSION, commit=$COMMIT_SHA"
+
+    # Build JSON payload
+    PAYLOAD=$(cat <<EOF
+{
+  "sessionId": "$SESSION_ID",
+  "testData": {
+    "status": "$STATUS",
+    "conclusion": "$CONCLUSION",
+    "head_sha": "$COMMIT_SHA"
+  }
+}
+EOF
+)
+
+    # Call the API endpoint
+    RESPONSE=$(echo "$PAYLOAD" | curl -s -X POST "$TELEMETRY_URL/api/interview/test" \
+        -H "Content-Type: application/json" \
+        -d @- 2>&1) || true
+
+    # Check response
+    if echo "$RESPONSE" | grep -qE '"success"\s*:\s*true' 2>/dev/null; then
+        echo "   ✓ Phase transition API called successfully"
+        # Log if phase transition occurred
+        if echo "$RESPONSE" | grep -qE '"transitioned"\s*:\s*true' 2>/dev/null; then
+            # Extract currentPhase from response (using grep/sed as fallback if jq not available)
+            if command -v jq >/dev/null 2>&1; then
+                NEW_PHASE=$(echo "$RESPONSE" | jq -r '.currentPhase // "unknown"' 2>/dev/null || echo "unknown")
+            else
+                NEW_PHASE=$(echo "$RESPONSE" | grep -oE '"currentPhase"\s*:\s*"[^"]*"' | cut -d'"' -f4 || echo "unknown")
+            fi
+            echo "   🎯 Phase transitioned to: $NEW_PHASE"
+        else
+            echo "   ℹ️  No phase transition (tests may have failed or already in final phase)"
+        fi
+    else
+        echo "   ⚠️  API call may have failed (check logs for details)"
+        echo "   📋 Response: $RESPONSE"
+    fi
+
+    return 0  # Always return success to allow script to continue
+}
+
 echo "🚀 Starting assessment tests (Mode: $MODE)..."
 cd "$WORKSPACE_DIR"
 
@@ -172,6 +266,9 @@ fi
 if [ ! -f "$RESULTS_FILE" ]; then
     echo "{\"numTotalTestSuites\": 0, \"numPassedTestSuites\": 0, \"numFailedTestSuites\": 0, \"testResults\": [], \"success\": false, \"message\": \"Test runner crashed without producing output\"}" > "$RESULTS_FILE"
 fi
+
+# Call phase transition API after tests complete
+call_test_api
 
 # Output the results file content for the caller to capture if needed
 # (or they can read the file directly)
