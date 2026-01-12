@@ -64,6 +64,5 @@
     // Disable unnecessary features for faster startup
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
-    "workbench.enableExperiments": false,
-    "anthropic.claude-code.disableLoginPrompt": true
+    "workbench.enableExperiments": false
 }
