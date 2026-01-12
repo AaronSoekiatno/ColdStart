@@ -133,7 +133,6 @@ EOF
 }
 
 echo "🚀 Starting assessment tests (Mode: $MODE)..."
-START_TIME=$(date +%s.%N)
 cd "$WORKSPACE_DIR"
 
 # Ensure we have the necessary environment
@@ -143,8 +142,6 @@ if [ ! -f "package.json" ]; then
 fi
 
 # Log commit in parallel (background) so tests start immediately
-AFTER_SETUP=$(date +%s.%N)
-echo "[TIMING] Setup complete: $(echo "$AFTER_SETUP - $START_TIME" | bc -l)s"
 log_commit_to_supabase &
 COMMIT_LOG_PID=$!
 
@@ -156,8 +153,7 @@ fi
 # Clean previous results
 rm -f "$RESULTS_FILE"
 
-BEFORE_TESTS=$(date +%s.%N)
-echo "[TIMING] Ready to start tests: $(echo "$BEFORE_TESTS - $START_TIME" | bc -l)s"
+
 
 # Define test command based on mode
 if [ "$MODE" == "full" ]; then
@@ -179,8 +175,7 @@ fi
 # Let's just rely on the results JSON telling us success/fail.
 EXIT_CODE=0
 
-AFTER_TESTS=$(date +%s.%N)
-echo "[TIMING] Tests completed: $(echo "$AFTER_TESTS - $START_TIME" | bc -l)s"
+
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "✅ Tests passed successfully!"
@@ -195,11 +190,6 @@ fi
 
 # Wait for commit logging to finish (if still running)
 wait $COMMIT_LOG_PID 2>/dev/null || true
-AFTER_COMMIT=$(date +%s.%N)
-echo "[TIMING] Commit logging finished: $(echo "$AFTER_COMMIT - $START_TIME" | bc -l)s"
-
-TOTAL_TIME=$(echo "$AFTER_COMMIT - $START_TIME" | bc -l)
-echo "[TIMING] Total execution time: ${TOTAL_TIME}s"
 
 # Output the results file content for the caller to capture if needed
 # (or they can read the file directly)
