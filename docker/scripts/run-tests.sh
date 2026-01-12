@@ -37,6 +37,7 @@ log_commit_to_supabase() {
     fi
 
     echo "📝 Logging commit to Supabase..."
+    local COMMIT_START=$(date +%s.%N)
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] SUPABASE_URL: $SUPABASE_URL"
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] CANDIDATE_ID: ${CANDIDATE_ID:-unknown}"
 
@@ -77,6 +78,8 @@ log_commit_to_supabase() {
     DIFF_CONTENT=$(echo "$DIFF_CONTENT_RAW" | base64 | tr -d '\n')
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Diff content length (base64): ${#DIFF_CONTENT} characters"
 
+
+
     # Build JSON payload
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Building JSON payload..."
     PAYLOAD=$(cat <<EOF
@@ -110,6 +113,8 @@ EOF
 
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Response received: $RESPONSE"
 
+
+
     # Check response (handle both "success":true and "success" : true with spaces)
     if echo "$RESPONSE" | grep -qE '"success"\s*:\s*true' 2>/dev/null; then
         echo "   ✓ Commit logged successfully"
@@ -118,6 +123,8 @@ EOF
         echo "   ⚠️  Commit logging may have failed (tests will continue)"
         echo "   📋 Response: $RESPONSE"
     fi
+
+
 
     return 0  # Always return success to allow tests to proceed
 }
@@ -217,6 +224,7 @@ EOF
 }
 
 echo "🚀 Starting assessment tests (Mode: $MODE)..."
+START_TIME=$(date +%s)
 cd "$WORKSPACE_DIR"
 
 # Ensure we have the necessary environment
@@ -225,8 +233,9 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-# Log commit before running tests
-log_commit_to_supabase
+# Log commit in parallel (background) so tests start immediately
+log_commit_to_supabase &
+COMMIT_LOG_PID=$!
 
 # Fix permissions for node_modules cache directory (vitest needs to write .vite cache)
 if [ -d "$WORKSPACE_DIR/node_modules" ]; then
@@ -235,6 +244,8 @@ fi
 
 # Clean previous results
 rm -f "$RESULTS_FILE"
+
+
 
 # Define test command based on mode
 if [ "$MODE" == "full" ]; then
@@ -249,12 +260,14 @@ else
 fi
 
 # Capture the exit code of tests (we rely on result file usually, but exit code is good for api)
-# But wait, || true masks the exit code. 
+# But wait, || true masks the exit code.
 # Better pattern:
 # npm test ... || EXIT_CODE=$?
 # Actually, npm test failure is "expected" if tests fail.
 # Let's just rely on the results JSON telling us success/fail.
 EXIT_CODE=0
+
+
 
 if [ $EXIT_CODE -eq 0 ]; then
     echo "✅ Tests passed successfully!"
@@ -262,11 +275,18 @@ else
     echo "⚠️  Some tests failed. Checking results..."
 fi
 
+# Calculate and display execution time
+END_TIME=$(date +%s)
+DURATION=$((END_TIME - START_TIME))
+echo "⏱️  Total execution time: ${DURATION}s"
+
 # Ensure the results file exists even if tests crashed (create empty error json if missing)
 if [ ! -f "$RESULTS_FILE" ]; then
     echo "{\"numTotalTestSuites\": 0, \"numPassedTestSuites\": 0, \"numFailedTestSuites\": 0, \"testResults\": [], \"success\": false, \"message\": \"Test runner crashed without producing output\"}" > "$RESULTS_FILE"
 fi
 
+# Wait for commit logging to finish (if still running)
+wait $COMMIT_LOG_PID 2>/dev/null || true
 # Call phase transition API after tests complete
 call_test_api
 
