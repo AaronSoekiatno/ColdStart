@@ -14,14 +14,14 @@ export interface FlyMachineConfig {
     supabaseJwt: string; // The candidate-specific JWT
 }
 
-async function executeFlyCommand(command: string): Promise<any> {
+async function executeFlyCommand(command: string, options: { json?: boolean } = { json: true }): Promise<any> {
     const token = process.env.FLY_API_TOKEN;
     if (!token) {
         throw new Error('FLY_API_TOKEN is not configured');
     }
 
-    // Ensure JSON output for easier parsing
-    const fullCommand = `flyctl ${command} --json`;
+    // Ensure JSON output for easier parsing, unless disabled
+    const fullCommand = options.json ? `flyctl ${command} --json` : `flyctl ${command}`;
 
     try {
         const { stdout, stderr } = await execAsync(fullCommand, {
@@ -31,12 +31,15 @@ async function executeFlyCommand(command: string): Promise<any> {
             },
         });
 
-        try {
-            return JSON.parse(stdout);
-        } catch (parseError) {
-            console.warn('[Fly.io] Failed to parse JSON output:', stdout);
-            return stdout;
+        if (options.json) {
+            try {
+                return JSON.parse(stdout);
+            } catch (parseError) {
+                console.warn('[Fly.io] Failed to parse JSON output:', stdout);
+                return stdout;
+            }
         }
+        return stdout;
     } catch (error: any) {
         console.error('[Fly.io] Command failed:', error.message);
         if (error.stderr) {
@@ -50,15 +53,16 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     // Using explicit app name to ensure uniqueness/traceability
     // Truncating IDs to keep hostname length reasonable
     const appName = `assessment-${config.candidateId.slice(0, 12)}-${config.sessionId.slice(0, 6)}`.toLowerCase();
-    const orgSlug = 'hermes-assessments';
-    const image = 'ghcr.io/hermes-startup/hermes-assessment:latest';
+    const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
+    // Using the specifically deployed image from Fly Registry
+    const image = 'registry.fly.io/hermes-assessment-production:deployment-01KEV69778P6KNX5SBTZ9SDFW9';
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
 
-    // Check for GitHub Container Registry token
+    // Check for GitHub Container Registry token (Optional now that we use Fly Registry)
     const ghcrToken = process.env.GITHUB_CONTAINER_REGISTRY_TOKEN;
     if (!ghcrToken) {
-        console.warn('[Fly.io] GITHUB_CONTAINER_REGISTRY_TOKEN not set. Private image pulls may fail.');
+        // console.warn('[Fly.io] GITHUB_CONTAINER_REGISTRY_TOKEN not set. Private image pulls may fail.');
     }
 
     try {
@@ -109,7 +113,7 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
             `QUARTERMASTER_API_URL=${config.telemetryUrl}/api/topcandidates/provision`,
         ].map(v => `--env "${v}"`).join(' ');
 
-        const region = 'hkg'; // Default region or make configurable
+        const region = 'sjc'; // Default region (San Jose)
 
         // We use --detach to not wait specifically for health checks if we want speed,
         // but waiting is safer.
@@ -122,7 +126,7 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
       --vm-cpu-kind shared --vm-cpus 1 --vm-memory 2048 \
       --autostart --autostop`;
 
-        const machineValues = await executeFlyCommand(runCommand);
+        const machineValues = await executeFlyCommand(runCommand, { json: false });
 
         // Machine run returns the machine object
         const url = `https://${appName}.fly.dev`;
@@ -140,5 +144,5 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
 
 export async function destroyFlyMachine(appName: string) {
     console.log(`[Fly.io] Destroying app ${appName}`);
-    await executeFlyCommand(`apps destroy ${appName} --yes`);
+    await executeFlyCommand(`apps destroy ${appName} --yes`, { json: false });
 }
