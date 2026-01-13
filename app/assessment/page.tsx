@@ -58,28 +58,32 @@ export default function AssessmentPage() {
   const handleStartAssessment = async () => {
     setIsCreatingRepo(true);
     try {
-      const response = await fetch('/api/topcandidates/create-assessment-repo', {
+      // Call interview start which handles:
+      // 1. Session creation
+      // 2. Repository creation/setup
+      // 3. Fly.io container provisioning
+      const response = await fetch('/api/interview/start', {
         method: 'POST',
         credentials: 'include',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create assessment repository');
+        throw new Error(errorData.error || 'Failed to start assessment session');
       }
 
       const data = await response.json();
 
       toast({
-        title: "Assessment repository created!",
-        description: "Your private workspace is ready.",
+        title: "Assessment started!",
+        description: "Your secure workspace is being provisioned.",
       });
 
-      // Refresh status
-      await fetchAssessmentStatus();
+      // Redirect to IDE page which handles provisioning status display
+      router.push('/ide');
     } catch (error) {
-      console.error('Error creating assessment repo:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create repository';
+      console.error('Error starting assessment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start assessment';
       toast({
         title: "Error",
         description: errorMessage,

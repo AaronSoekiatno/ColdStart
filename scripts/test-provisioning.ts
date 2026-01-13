@@ -36,8 +36,8 @@ async function testProvisioning() {
     console.log('\n✅ Success!');
     console.log(`URL: ${result.url}`);
     
-    console.log('\n🧹 Cleaning up in 10 seconds...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
+    console.log('\n🧹 Cleaning up in 120 seconds (2 mins)... GO CHECK THE URL NOW!');
+    await new Promise(resolve => setTimeout(resolve, 120000));
     
     const appName = result.url.replace('https://', '').replace('.fly.dev', '');
     await destroyFlyMachine(appName);
