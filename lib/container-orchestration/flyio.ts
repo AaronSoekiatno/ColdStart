@@ -73,38 +73,30 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     }
 
     try {
-        // 1. Create App
+        // 1. Create App (delete existing if needed)
         try {
             await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
         } catch (error: any) {
-            // If error is "taken", we assume we own it or it's a collision.
-            if (!error.stderr?.includes('taken') && !error.message?.includes('taken')) {
+            // If error is "taken", delete the old app and try again
+            if (error.stderr?.includes('taken') || error.message?.includes('taken')) {
+                console.log(`[Fly.io] App ${appName} already exists, deleting and recreating...`);
+                try {
+                    await executeFlyCommand(`apps destroy ${appName} --yes`, { json: false });
+                    // Wait a moment for deletion to complete
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Try creating again
+                    await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
+                } catch (retryError: any) {
+                    console.error('[Fly.io] Failed to recreate app after deletion:', retryError);
+                    throw retryError;
+                }
+            } else {
                 throw error;
             }
-            console.log(`[Fly.io] App ${appName} might already exist, proceeding...`);
         }
 
-        // 2. Set up registry authentication for private GHCR images
-        console.log(`[Fly.io] Configuring Docker authentication for ghcr.io as ${ghcrUsername}...`);
-        const authString = Buffer.from(`${ghcrUsername}:${ghcrToken}`).toString('base64');
-        const dockerAuthConfig = JSON.stringify({
-            auths: {
-                'ghcr.io': {
-                    auth: authString
-                }
-            }
-        });
-        
-        try {
-            await executeFlyCommand(
-                `secrets set DOCKER_AUTH_CONFIG='${dockerAuthConfig}' --app ${appName}`,
-                { json: false }
-            );
-            console.log(`[Fly.io] Docker authentication configured successfully`);
-        } catch (error: any) {
-            console.error('[Fly.io] Failed to set registry auth:', error.message);
-            throw new Error('Cannot proceed without registry authentication');
-        }
+        // Docker authentication: SKIPPED - Image is public
+        // No need to set DOCKER_AUTH_CONFIG since ghcr.io/hermes-startup/hermes is public
 
         // 2. Launch Machine (using 'machine run' instead of 'deploy' for speed/single-instance)
         // We construct the env vars list
