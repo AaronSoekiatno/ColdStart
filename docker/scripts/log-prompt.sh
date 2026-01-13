@@ -54,6 +54,16 @@ if [ -z "$PROMPT_TEXT" ]; then
     exit 0
 fi
 
+# Enforce token limit (approx 4 chars per token)
+MAX_TOKENS=${CLAUDE_PROMPT_TOKEN_LIMIT:-5000}
+EST_TOKENS=$((${#PROMPT_TEXT} / 4))
+
+if [ $EST_TOKENS -gt $MAX_TOKENS ]; then
+    debug_log "Prompt exceeds limit ($EST_TOKENS > $MAX_TOKENS). Aborting."
+    echo "Error: Prompt exceeds token limit of $MAX_TOKENS tokens." >&2
+    exit 1
+fi
+
 # Escape strings for JSON
 ESCAPED_PROMPT=$(printf '%s' "$PROMPT_TEXT" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
 PREVIEW=$(printf '%s' "$PROMPT_TEXT" | head -c 500 | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
