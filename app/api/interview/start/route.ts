@@ -67,44 +67,20 @@ export async function POST(request: NextRequest) {
 
     const data = await startResponse.json();
     
-    // After interview session is created, create repository if it doesn't exist
-    // and inject sessionId into .hermes/config.json
+    // ============================================
+    // GitHub Repo Creation - DISABLED
+    // ============================================
+    // Not needed for containerized assessments since all code is pre-baked in the Docker image.
+    // The container already has the mission code, tests, and auto-commit logic.
+    // Candidates work entirely in the browser IDE.
+    
+    // If you want to re-enable GitHub repo tracking:
+    // 1. Uncomment the repo creation code below
+    // 2. Update the container to clone from the candidate's repo instead of using pre-baked code
+    
+    // Provision Fly.io Container
+    // ============================================
     if (data.sessionId && candidate) {
-      try {
-        // Create or update repository with sessionId
-        const repoResponse = await fetch(`${origin}/api/topcandidates/create-assessment-repo`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': request.headers.get('Cookie') || '',
-          },
-          body: JSON.stringify({
-            sessionId: data.sessionId, // Pass sessionId to repo creation
-          }),
-        });
-
-        if (repoResponse.ok) {
-          const repoData = await repoResponse.json();
-          console.log('[Interview Start] Repository created/updated with sessionId:', data.sessionId);
-          
-          return NextResponse.json({
-            ...data,
-            repoUrl: repoData.repoUrl,
-            cloneUrl: repoData.cloneUrl,
-          });
-        } else {
-          // Log error but don't fail interview start if repo creation fails
-          const errorData = await repoResponse.json().catch(() => ({ error: 'Unknown error' }));
-          console.warn('[Interview Start] Failed to create/update repository:', errorData.error);
-        }
-      } catch (repoError) {
-        // Log error but don't fail interview start
-        console.error('[Interview Start] Error creating repository:', repoError);
-      }
-
-
-      // Provision Fly.io Container
-      // ============================================
       try {
         console.log('[Interview Start] Provisioning container for session:', data.sessionId);
         const containerResponse = await fetch(`${origin}/api/topcandidates/provision-container`, {
