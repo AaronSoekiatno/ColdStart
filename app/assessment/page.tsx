@@ -115,10 +115,6 @@ export default function AssessmentPage() {
     );
   }
 
-  const hasRepo = assessmentStatus?.repoUrl !== null;
-  const repoName = assessmentStatus?.repoUrl?.split('/').pop() || 'hermes-assessment-*';
-  const cloneUrl = assessmentStatus?.repoUrl ? `${assessmentStatus.repoUrl}.git` : '';
-
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
@@ -129,78 +125,49 @@ export default function AssessmentPage() {
             {/* Header */}
             <div className="text-center mb-8">
               <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                {hasRepo ? "Your Assessment Workspace" : "Start Your 20-Minute Assessment"}
+                Start Your 20-Minute Assessment
               </h1>
               <p className="text-gray-600 text-lg">
-                {hasRepo
-                  ? "Your private workspace is ready. Clone the repository and start your assessment."
-                  : "Start a 20-minute technical assessment to showcase your skills to potential employers"}
+                Start a 20-minute technical assessment to showcase your skills to potential employers
               </p>
             </div>
 
-            {!hasRepo ? (
-              /* Not Started State */
-              <div className="space-y-6">
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
-                  <ul className="space-y-2 text-gray-700 list-disc list-inside">
-                    <li>Work in a private GitHub repository</li>
-                    <li>Complete database tasks in your isolated workspace</li>
-                    <li>Demonstrate your problem-solving skills</li>
-                    <li>Showcase your technical abilities</li>
-                    <li>Get guided by Minerva, your voice AI assistant</li>
-                  </ul>
-                </div>
-
-                <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
-                  <p className="text-gray-700">Approximately 20 minutes</p>
-                </div>
-
-                <Button
-                  onClick={handleStartAssessment}
-                  disabled={isCreatingRepo}
-                  className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
-                >
-                  {isCreatingRepo ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Creating workspace...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="mr-2 h-5 w-5" />
-                      Start Assessment
-                    </>
-                  )}
-                </Button>
+            {/* Start Assessment */}
+            <div className="space-y-6">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
+                <ul className="space-y-2 text-gray-700 list-disc list-inside">
+                  <li>Work in a cloud-based IDE</li>
+                  <li>Complete coding tasks in your isolated workspace</li>
+                  <li>Demonstrate your problem-solving skills</li>
+                  <li>Showcase your technical abilities</li>
+                  <li>Get guided by AI assistant</li>
+                </ul>
               </div>
-            ) : (
-              /* Assessment Started - Just open IDE */
-              <div className="space-y-6">
-                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="text-green-600 text-2xl">✓</div>
-                    <h3 className="font-semibold text-lg text-gray-900">
-                      Assessment Ready
-                    </h3>
-                  </div>
-                  <p className="text-gray-700 mb-4">
-                    Your cloud-based coding environment is ready to go. Click below to open the IDE and start coding!
-                  </p>
-                </div>
 
-                {/* Actions */}
-                <div className="flex flex-col gap-4 pt-4">
-                  <Button
-                    onClick={() => router.push('/ide')}
-                    className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
-                  >
-                    💻 Open Cloud IDE
-                  </Button>
-                </div>
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
+                <p className="text-gray-700">Approximately 20 minutes</p>
               </div>
-            )}
+
+              <Button
+                onClick={handleStartAssessment}
+                disabled={isCreatingRepo}
+                className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+              >
+                {isCreatingRepo ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Launching workspace...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-5 w-5" />
+                    Start Assessment
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </section>

@@ -196,8 +196,10 @@ export default function IDEPage() {
             if (session.container_status === 'running' && session.container_url) {
                 setContainerUrl(session.container_url);
                 setContainerStatus('running');
-            } else if (session.container_status === 'provisioning') {
+            } else if (session.container_status === 'provisioning' || !session.container_url) {
+                // Poll if explicitly provisioning OR if session exists but no container URL yet
                 setContainerStatus('provisioning');
+                console.log('[IDE] Container not ready yet, polling in 5s...');
                 // Poll every 5 seconds until running
                 setTimeout(() => fetchContainerInfo(userId), 5000);
             } else {
