@@ -83,6 +83,7 @@ CONTAINER_ID=$(docker run -d \
     -e "GEMINI_BASE_URL=${GEMINI_BASE_URL:-$TELEMETRY_URL/api/proxy/gemini}" \
     -e "GOOGLE_BASE_URL=${GOOGLE_BASE_URL:-$TELEMETRY_URL/api/proxy/gemini}" \
     -e "GOOGLE_API_KEY=${GOOGLE_API_KEY:-managed-by-proxy}" \
+    -e "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}" \
     -e "QUARTERMASTER_API_URL=${QUARTERMASTER_API_URL:-$TELEMETRY_URL/api/topcandidates/provision}" \
     hermes-assessment:latest)
 

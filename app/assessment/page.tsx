@@ -199,13 +199,6 @@ export default function AssessmentPage() {
                     💻 Open IDE
                   </Button>
                   <Button
-                    onClick={() => router.push('/interview')}
-                    variant="outline"
-                    className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-                  >
-                    🎙️ Start Interview with Minerva
-                  </Button>
-                  <Button
                     onClick={() => window.open(assessmentStatus?.repoUrl || '', '_blank')}
                     variant="outline"
                     className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"

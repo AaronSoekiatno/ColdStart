@@ -30,11 +30,17 @@ rm -rf /home/coder/.claude 2>/dev/null || true
 mkdir -p /home/coder/.claude
 mkdir -p /home/coder/.local/bin
 
-# Create API key helper script
+# Save API key to a file for the helper to use
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+    echo "$ANTHROPIC_API_KEY" > /home/coder/.claude/.api-key
+    chmod 600 /home/coder/.claude/.api-key
+fi
+
+# Create API key helper script that reads from the file
 cat > /home/coder/.local/bin/get-claude-key << 'HELPER'
 #!/bin/bash
-if [ -n "$ANTHROPIC_API_KEY" ]; then
-    echo "$ANTHROPIC_API_KEY"
+if [ -f "/home/coder/.claude/.api-key" ]; then
+    cat "/home/coder/.claude/.api-key"
 else
     exit 1
 fi
@@ -44,7 +50,10 @@ chmod +x /home/coder/.local/bin/get-claude-key
 # Configure Claude Code global settings to use the helper
 cat > /home/coder/.claude/config.json << 'CONFIG'
 {
-    "apiKeyHelper": "/home/coder/.local/bin/get-claude-key"
+    "apiKeyHelper": "/home/coder/.local/bin/get-claude-key",
+    "hooks": {
+        "UserPromptSubmit": "/home/coder/.claude/hooks/log-prompt.sh"
+    }
 }
 CONFIG
 
@@ -57,7 +66,7 @@ if [ -f "/home/coder/.claude/settings.local.json" ]; then
     sed -i "s|\${CANDIDATE_ID:-}|${CANDIDATE_ID:-}|g" /home/coder/.claude/settings.json
 fi
 
-# Force-append apiKey helper to settings.json using python
+# Force-append apiKey helper and hooks to settings.json using python
 python3 -c '
 import json, os
 try:
@@ -71,12 +80,10 @@ try:
     # Force the helper path
     data["apiKeyHelper"] = "/home/coder/.local/bin/get-claude-key"
     
-    # Add env block with the API key from environment (redundancy)
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if api_key:
-        if "env" not in data:
-            data["env"] = {}
-        data["env"]["ANTHROPIC_API_KEY"] = api_key
+    # Configure hooks for prompt logging
+    if "hooks" not in data:
+        data["hooks"] = {}
+    data["hooks"]["UserPromptSubmit"] = "/home/coder/.claude/hooks/log-prompt.sh"
 
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
@@ -197,31 +204,13 @@ chmod +x /home/coder/.local/bin/claude-code
 # ============================================
 # 3. Binary Replacement & Aliases
 # ============================================
-# Ensure we capture ALL calls, even direct ones
-ORIGINAL_CLAUDE=$(which claude 2>/dev/null || echo "/usr/local/bin/claude")
-# If it's a symlink or file
-if [ -f "$ORIGINAL_CLAUDE" ] && [ ! -f "${ORIGINAL_CLAUDE}-real" ]; then
-    mv "$ORIGINAL_CLAUDE" "${ORIGINAL_CLAUDE}-real"
-    cat > "$ORIGINAL_CLAUDE" << 'BINARY_WRAPPER'
-#!/bin/bash
-SCRIPT_DIR="$(dirname "$0")"
-# If headless flag detected, use our wrapper
-if [[ "$*" == *"-p"* ]] || [ $# -gt 0 ]; then
-    if [ -f "/home/coder/.local/bin/claude-code" ]; then
-        exec /home/coder/.local/bin/claude-code "$@"
-    fi
-fi
-# Interactive mode: just run real binary (hooks will capture prompts)
-exec "${SCRIPT_DIR}/claude-real" "$@"
-BINARY_WRAPPER
-    chmod +x "$ORIGINAL_CLAUDE"
-fi
+# (Handled in Dockerfile to ensure root permissions)
 
 # Add aliases to bashrc
 cat >> /home/coder/.bashrc << 'BASHRC'
 export PATH="$HOME/.local/bin:$PATH"
-alias claude='claude-code'
-alias ask='claude-code'
+# alias claude='claude-code'
+# alias ask='claude-code'
 BASHRC
 
 # ============================================
@@ -283,4 +272,5 @@ echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 # Final ownership check
 chown -R coder:coder /home/coder/.claude
 
-exec code-server --bind-addr 0.0.0.0:8080 --auth none /workspace
+# Launch code-server without ANTHROPIC_API_KEY in environment to avoid conflict
+exec env -u ANTHROPIC_API_KEY code-server --bind-addr 0.0.0.0:8080 --auth none /workspace

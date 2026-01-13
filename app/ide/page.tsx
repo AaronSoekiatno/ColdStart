@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { TestRunner } from '@/components/assessment/TestRunner';
+import { MinervaVoiceIndicator } from '@/components/assessment/MinervaVoiceIndicator';
 import {
     Loader2,
     Clock,
@@ -27,8 +28,10 @@ export default function IDEPage() {
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+    const [currentPhase, setCurrentPhase] = useState<string | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
+    const phasePollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const { toast } = useToast();
 
     // Timer for elapsed time
@@ -43,6 +46,87 @@ export default function IDEPage() {
             }
         };
     }, []);
+
+    // Poll for phase changes and auto-start POST_MORTEM call
+    useEffect(() => {
+        if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
+            return;
+        }
+
+        const pollPhaseChanges = async () => {
+            try {
+                const { data: session, error } = await supabase
+                    .from('interview_sessions')
+                    .select('current_phase')
+                    .eq('session_id', sessionId)
+                    .single();
+
+                if (error) {
+                    console.error('[IDE] Error polling phase:', error);
+                    return;
+                }
+
+                const newPhase = session?.current_phase || null;
+                
+                // If phase changed to POST_MORTEM and no call is active, start the call
+                if (newPhase === 'POST_MORTEM' && currentPhase !== 'POST_MORTEM') {
+                    console.log('[IDE] Phase transitioned to POST_MORTEM, checking if call should start...');
+                    
+                    // Check if Vapi call is already active
+                    try {
+                        const vapiModule = await import('@/vapi-client.js');
+                        const vapiClient = vapiModule.default || vapiModule;
+                        
+                        if (vapiClient.isCallActive && !vapiClient.isCallActive()) {
+                            console.log('[IDE] Starting POST_MORTEM call automatically...');
+                            
+                            // Get conversation history for context
+                            const { data: sessionData } = await supabase
+                                .from('interview_sessions')
+                                .select('conversation_history')
+                                .eq('session_id', sessionId)
+                                .single();
+                            
+                            const conversationHistory = sessionData?.conversation_history || [];
+                            
+                            // Start the POST_MORTEM call
+                            if (vapiClient.startPhaseCall) {
+                                await vapiClient.startPhaseCall(
+                                    sessionId,
+                                    'POST_MORTEM',
+                                    'post_mortem',
+                                    conversationHistory
+                                );
+                                
+                                toast({
+                                    title: 'Minerva is calling',
+                                    description: 'Post-mortem phase has started. Minerva will ask you reflection questions.',
+                                });
+                            }
+                        }
+                    } catch (vapiError) {
+                        console.error('[IDE] Error starting POST_MORTEM call:', vapiError);
+                    }
+                }
+                
+                setCurrentPhase(newPhase);
+            } catch (error) {
+                console.error('[IDE] Error in phase polling:', error);
+            }
+        };
+
+        // Poll every 3 seconds for phase changes
+        phasePollIntervalRef.current = setInterval(pollPhaseChanges, 3000);
+        
+        // Initial check
+        pollPhaseChanges();
+
+        return () => {
+            if (phasePollIntervalRef.current) {
+                clearInterval(phasePollIntervalRef.current);
+            }
+        };
+    }, [sessionId, currentPhase, toast]);
 
     // Check auth and fetch container info
     useEffect(() => {
@@ -106,6 +190,7 @@ export default function IDEPage() {
             }
 
             setSessionId(session.session_id);
+            setCurrentPhase(session.current_phase || null);
 
             // Handle container status
             if (session.container_status === 'running' && session.container_url) {
@@ -252,6 +337,11 @@ export default function IDEPage() {
                         <Clock className="h-4 w-4" />
                         <span className="font-mono text-sm">{formatTime(elapsedTime)}</span>
                     </div>
+                </div>
+
+                {/* Minerva Voice Indicator - Center */}
+                <div className="flex-1 flex justify-center items-center">
+                    <MinervaVoiceIndicator />
                 </div>
 
                 <div className="flex items-center gap-3">
