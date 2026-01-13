@@ -54,28 +54,30 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     // Truncating IDs to keep hostname length reasonable
     const appName = `assessment-${config.candidateId.slice(0, 12)}-${config.sessionId.slice(0, 6)}`.toLowerCase();
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
-    // Using the specifically deployed image from Fly Registry
-    const image = 'registry.fly.io/hermes-assessment-production:deployment-01KEV69778P6KNX5SBTZ9SDFW9';
+    
+    // Use GitHub Container Registry image (built by CI)
+    // Format: ghcr.io/owner/repo:tag
+    const ghcrOwner = process.env.GITHUB_REPOSITORY_OWNER || 'hermes-startup';
+    const image = `ghcr.io/${ghcrOwner.toLowerCase()}/hermes:latest`;
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
+    console.log(`[Fly.io] Using image: ${image}`);
 
-    // Check for GitHub Container Registry token (Optional now that we use Fly Registry)
+    // GitHub Container Registry authentication is REQUIRED for private packages
     const ghcrToken = process.env.GITHUB_CONTAINER_REGISTRY_TOKEN;
+    const ghcrUsername = process.env.GITHUB_USERNAME || ghcrOwner;
+    
     if (!ghcrToken) {
-        // console.warn('[Fly.io] GITHUB_CONTAINER_REGISTRY_TOKEN not set. Private image pulls may fail.');
+        console.warn('[Fly.io] GITHUB_CONTAINER_REGISTRY_TOKEN not set. Private image pulls will fail!');
+        throw new Error('GITHUB_CONTAINER_REGISTRY_TOKEN is required to pull private images from GHCR');
     }
 
     try {
         // 1. Create App
-        // Check if exists first or just try create (create fails if exists)
-        // We'll try create and catch specific error if needed, or check list.
-        // Simpler to just try create.
         try {
             await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
         } catch (error: any) {
             // If error is "taken", we assume we own it or it's a collision.
-            // For now, let's assume if it fails, we might want to fail hard or clean up.
-            // But if we are retrying, we might want to proceed.
             if (!error.stderr?.includes('taken') && !error.message?.includes('taken')) {
                 throw error;
             }
@@ -83,16 +85,25 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
         }
 
         // 2. Set up registry authentication for private GHCR images
-        if (ghcrToken) {
-            try {
-                console.log(`[Fly.io] Setting up GitHub Container Registry authentication...`);
-                await executeFlyCommand(
-                    `secrets set DOCKER_AUTH_CONFIG='{"auths":{"ghcr.io":{"auth":"${Buffer.from(`hermes-startup:${ghcrToken}`).toString('base64')}"}}}' --app ${appName}`
-                );
-            } catch (error: any) {
-                console.error('[Fly.io] Failed to set registry auth:', error.message);
-                // Continue anyway, might work if image is public
+        console.log(`[Fly.io] Configuring Docker authentication for ghcr.io as ${ghcrUsername}...`);
+        const authString = Buffer.from(`${ghcrUsername}:${ghcrToken}`).toString('base64');
+        const dockerAuthConfig = JSON.stringify({
+            auths: {
+                'ghcr.io': {
+                    auth: authString
+                }
             }
+        });
+        
+        try {
+            await executeFlyCommand(
+                `secrets set DOCKER_AUTH_CONFIG='${dockerAuthConfig}' --app ${appName}`,
+                { json: false }
+            );
+            console.log(`[Fly.io] Docker authentication configured successfully`);
+        } catch (error: any) {
+            console.error('[Fly.io] Failed to set registry auth:', error.message);
+            throw new Error('Cannot proceed without registry authentication');
         }
 
         // 2. Launch Machine (using 'machine run' instead of 'deploy' for speed/single-instance)
