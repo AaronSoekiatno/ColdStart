@@ -55,6 +55,12 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
 
+    // Check for GitHub Container Registry token
+    const ghcrToken = process.env.GITHUB_CONTAINER_REGISTRY_TOKEN;
+    if (!ghcrToken) {
+        console.warn('[Fly.io] GITHUB_CONTAINER_REGISTRY_TOKEN not set. Private image pulls may fail.');
+    }
+
     try {
         // 1. Create App
         // Check if exists first or just try create (create fails if exists)
@@ -63,13 +69,26 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
         try {
             await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
         } catch (error: any) {
-            // If error is "taken", we assume we own it or it's a collision. 
+            // If error is "taken", we assume we own it or it's a collision.
             // For now, let's assume if it fails, we might want to fail hard or clean up.
             // But if we are retrying, we might want to proceed.
             if (!error.stderr?.includes('taken') && !error.message?.includes('taken')) {
                 throw error;
             }
             console.log(`[Fly.io] App ${appName} might already exist, proceeding...`);
+        }
+
+        // 2. Set up registry authentication for private GHCR images
+        if (ghcrToken) {
+            try {
+                console.log(`[Fly.io] Setting up GitHub Container Registry authentication...`);
+                await executeFlyCommand(
+                    `secrets set DOCKER_AUTH_CONFIG='{"auths":{"ghcr.io":{"auth":"${Buffer.from(`hermes-startup:${ghcrToken}`).toString('base64')}"}}}' --app ${appName}`
+                );
+            } catch (error: any) {
+                console.error('[Fly.io] Failed to set registry auth:', error.message);
+                // Continue anyway, might work if image is public
+            }
         }
 
         // 2. Launch Machine (using 'machine run' instead of 'deploy' for speed/single-instance)
