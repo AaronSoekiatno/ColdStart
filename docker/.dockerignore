@@ -1,0 +1,8 @@
+workspace/node_modules
+workspace/.next
+workspace/dist
+workspace/build
+workspace/.cache
+workspace/*.log
+.git
+.DS_Store
