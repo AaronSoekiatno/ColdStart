@@ -65,8 +65,6 @@ KEYS=(
     "SESSION_ID"
     "SUPABASE_URL"
     "SUPABASE_ANON_KEY"
-    "SUPABASE_PRIVATE_KEY"
-    "SUPABASE_SERVICE_ROLE_KEY"
     "GEMINI_BASE_URL"
     "GOOGLE_BASE_URL"
     "GOOGLE_API_KEY"
@@ -125,6 +123,39 @@ echo "📝 Candidate ID: ${CANDIDATE_ID:-not-set}"
 echo "🔗 Session ID: ${SESSION_ID:-not-set}"
 echo "🌐 Telemetry URL: ${TELEMETRY_URL:-not-set}"
 echo "============================================"
+
+# ============================================
+# 5b. Install Token Limit Wrapper
+# ============================================
+echo "🛡️  Installing Claude token limit wrapper..."
+mkdir -p /home/coder/.local/bin
+REAL_CLAUDE_PATH=$(which claude || echo "/usr/local/bin/claude")
+
+cat > /home/coder/.local/bin/claude-wrapper <<EOF
+#!/bin/bash
+# Token Limit Wrapper
+MAX_TOKENS=\${CLAUDE_PROMPT_TOKEN_LIMIT:-5000}
+PROMPT="\$*"
+
+if [ -n "\$PROMPT" ]; then
+    EST_TOKENS=\$((\${#PROMPT} / 4))
+    if [ \$EST_TOKENS -gt \$MAX_TOKENS ]; then
+        echo "Error: Prompt exceeds token limit."
+        echo "Limit: \$MAX_TOKENS tokens (approx)"
+        echo "Your prompt: ~\$EST_TOKENS tokens"
+        exit 1
+    fi
+fi
+
+exec "$REAL_CLAUDE_PATH" "\$@"
+EOF
+
+chmod +x /home/coder/.local/bin/claude-wrapper
+chown coder:coder /home/coder/.local/bin/claude-wrapper
+# Create shadowing symlink
+ln -sf /home/coder/.local/bin/claude-wrapper /home/coder/.local/bin/claude
+# Add to PATH
+echo 'export PATH="/home/coder/.local/bin:$PATH"' >> /home/coder/.bashrc
 
 # ============================================
 # 6. Start code-server

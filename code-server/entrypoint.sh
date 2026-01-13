@@ -145,6 +145,18 @@ if [ -z "$PROMPT" ]; then
     exit 1
 fi
 
+# Enforce token limit (approx 4 chars per token)
+# Default: 5000 tokens (~20k chars)
+MAX_TOKENS=${CLAUDE_PROMPT_TOKEN_LIMIT:-5000}
+EST_TOKENS=$((${#PROMPT} / 4))
+
+if [ $EST_TOKENS -gt $MAX_TOKENS ]; then
+    echo "Error: Prompt exceeds token limit."
+    echo "Limit: $MAX_TOKENS tokens (approx)"
+    echo "Your prompt: ~$EST_TOKENS tokens"
+    exit 1
+fi
+
 # Record start time (milliseconds)
 START_TIME=$(date +%s%3N)
 
