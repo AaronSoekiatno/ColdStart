@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import { Loader2, Copy, Check, Play, Github } from 'lucide-react';
+import { Loader2, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
 
@@ -176,22 +176,18 @@ export default function AssessmentPage() {
                 </Button>
               </div>
             ) : (
-              /* Has Repository - Show Instructions */
+              /* Assessment Started - Just open IDE */
               <div className="space-y-6">
                 <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="text-green-600 text-2xl">✓</div>
                     <h3 className="font-semibold text-lg text-gray-900">
-                      Repository Created Successfully
+                      Assessment Ready
                     </h3>
                   </div>
                   <p className="text-gray-700 mb-4">
-                    Your private assessment workspace is ready. Follow these steps to get started:
+                    Your cloud-based coding environment is ready to go. Click below to open the IDE and start coding!
                   </p>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Steps removed as per user request */}
                 </div>
 
                 {/* Actions */}
@@ -200,15 +196,7 @@ export default function AssessmentPage() {
                     onClick={() => router.push('/ide')}
                     className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
                   >
-                    💻 Open IDE
-                  </Button>
-                  <Button
-                    onClick={() => window.open(assessmentStatus?.repoUrl || '', '_blank')}
-                    variant="outline"
-                    className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-                  >
-                    <Github className="mr-2 h-4 w-4" />
-                    Open Repository
+                    💻 Open Cloud IDE
                   </Button>
                 </div>
               </div>
