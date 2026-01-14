@@ -7,7 +7,6 @@ DROP INDEX IF EXISTS idx_sessions_repo_name;
 -- Drop the columns and remove comments (using DO block to check existence first)
 DO $$ 
 BEGIN
-  -- Drop repo_name column if it exists
   IF EXISTS (
     SELECT 1 
     FROM information_schema.columns 
