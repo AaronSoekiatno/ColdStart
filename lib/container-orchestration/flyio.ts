@@ -52,7 +52,8 @@ async function executeFlyCommand(command: string, options: { json?: boolean } = 
 export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ url: string }> {
     // Using explicit app name to ensure uniqueness/traceability
     // Truncating IDs to keep hostname length reasonable
-    const appName = `assessment-${config.candidateId.slice(0, 12)}-${config.sessionId.slice(0, 6)}`.toLowerCase();
+    // Use more of the session ID to ensure uniqueness across multiple tests
+    const appName = `assessment-${config.candidateId.slice(0, 8)}-${config.sessionId.slice(0, 12)}`.toLowerCase();
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
     
     // Use GitHub Container Registry image (built by CI)

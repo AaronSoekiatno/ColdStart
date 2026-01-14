@@ -189,6 +189,13 @@ export default function IDEPage() {
                 return;
             }
 
+            console.log('[IDE] Fetched session:', {
+                session_id: session?.session_id,
+                container_url: session?.container_url,
+                container_status: session?.container_status,
+                hasSession: !!session
+            });
+
             setSessionId(session.session_id);
             setCurrentPhase(session.current_phase || null);
 
