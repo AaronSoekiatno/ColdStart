@@ -1,3 +1,8 @@
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
 export interface FlyMachineConfig {
     candidateId: string;
     sessionId: string;
@@ -9,46 +14,38 @@ export interface FlyMachineConfig {
     supabaseJwt: string; // The candidate-specific JWT
 }
 
-const FLY_API_BASE = 'https://api.machines.dev/v1';
-
-async function flyApiRequest(
-    method: 'GET' | 'POST' | 'DELETE',
-    path: string,
-    body?: object
-): Promise<any> {
+async function executeFlyCommand(command: string, options: { json?: boolean } = { json: true }): Promise<any> {
     const token = process.env.FLY_API_TOKEN;
     if (!token) {
         throw new Error('FLY_API_TOKEN is not configured');
     }
 
-    const url = `${FLY_API_BASE}${path}`;
-    console.log(`[Fly.io API] ${method} ${url}`);
-
-    const response = await fetch(url, {
-        method,
-        headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-        body: body ? JSON.stringify(body) : undefined,
-    });
-
-    const text = await response.text();
-
-    if (!response.ok) {
-        console.error(`[Fly.io API] Error ${response.status}: ${text}`);
-        throw new Error(`Fly.io API error ${response.status}: ${text}`);
-    }
-
-    // Some endpoints return empty response
-    if (!text) {
-        return null;
-    }
+    // Ensure JSON output for easier parsing, unless disabled
+    const fullCommand = options.json ? `flyctl ${command} --json` : `flyctl ${command}`;
 
     try {
-        return JSON.parse(text);
-    } catch {
-        return text;
+        const { stdout, stderr } = await execAsync(fullCommand, {
+            env: {
+                ...process.env,
+                FLY_API_TOKEN: token,
+            },
+        });
+
+        if (options.json) {
+            try {
+                return JSON.parse(stdout);
+            } catch (parseError) {
+                console.warn('[Fly.io] Failed to parse JSON output:', stdout);
+                return stdout;
+            }
+        }
+        return stdout;
+    } catch (error: any) {
+        console.error('[Fly.io] Command failed:', error.message);
+        if (error.stderr) {
+            console.error('[Fly.io] Stderr:', error.stderr);
+        }
+        throw error;
     }
 }
 
@@ -59,140 +56,101 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     const sessionPart = config.sessionId.replace('session_', '').replace(/_/g, '-').slice(0, 16);
     const appName = `assess-${config.candidateId.slice(0, 8)}-${sessionPart}`.toLowerCase();
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
-
+    
     // Use GitHub Container Registry image (built by CI)
+    // Format: ghcr.io/owner/repo:tag
     const ghcrOwner = process.env.GITHUB_REPOSITORY_OWNER || 'hermes-startup';
-    const image = `ghcr.io/${ghcrOwner.toLowerCase()}/hermes:latest`;
+    const image = `ghcr.io/${ghcrOwner.toLowerCase()}/hermes-assessment:latest`;
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
     console.log(`[Fly.io] Using image: ${image}`);
 
-    const region = 'sjc'; // Default region (San Jose)
-
-    // Environment variables for the container
-    const envVars: Record<string, string> = {
-        CANDIDATE_ID: config.candidateId,
-        SESSION_ID: config.sessionId,
-        PASSWORD: config.password,
-        TELEMETRY_URL: config.telemetryUrl,
-        AUTO_COMMIT_INTERVAL: '120',
-        SUPABASE_URL: config.supabaseUrl,
-        SUPABASE_ANON_KEY: config.supabaseAnonKey,
-        SUPABASE_PRIVATE_KEY: config.supabaseJwt,
-        SUPABASE_SERVICE_ROLE_KEY: config.supabaseJwt,
-        GEMINI_BASE_URL: `${config.telemetryUrl}/api/proxy/gemini`,
-        GOOGLE_BASE_URL: `${config.telemetryUrl}/api/proxy/gemini`,
-        GOOGLE_API_KEY: 'managed-by-proxy',
-        ANTHROPIC_BASE_URL: `${config.telemetryUrl}/api/proxy/claude`,
-        ANTHROPIC_API_KEY: 'managed-by-proxy',
-        QUARTERMASTER_API_URL: `${config.telemetryUrl}/api/topcandidates/provision`,
-    };
+    // Image is now public - no authentication required
+    console.log(`[Fly.io] Using public image from GHCR`);
 
     try {
-        // 1. Create App via API (delete existing if needed)
+        // 1. Create App (delete existing if needed)
         try {
-            await flyApiRequest('POST', '/apps', {
-                app_name: appName,
-                org_slug: orgSlug,
-            });
-            console.log(`[Fly.io] Created app: ${appName}`);
+            await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
         } catch (error: any) {
-            // If app already exists, delete and recreate
-            if (error.message?.includes('already exists') || error.message?.includes('taken')) {
+            // If error is "taken", delete the old app and try again
+            if (error.stderr?.includes('taken') || error.message?.includes('taken')) {
                 console.log(`[Fly.io] App ${appName} already exists, deleting and recreating...`);
-                await flyApiRequest('DELETE', `/apps/${appName}`);
-                // Wait a moment for deletion to complete
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                await flyApiRequest('POST', '/apps', {
-                    app_name: appName,
-                    org_slug: orgSlug,
-                });
-                console.log(`[Fly.io] Recreated app: ${appName}`);
+                try {
+                    await executeFlyCommand(`apps destroy ${appName} --yes`, { json: false });
+                    // Wait a moment for deletion to complete
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    // Try creating again
+                    await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
+                } catch (retryError: any) {
+                    console.error('[Fly.io] Failed to recreate app after deletion:', retryError);
+                    throw retryError;
+                }
             } else {
                 throw error;
             }
         }
 
-        // 2. Allocate shared IPv4 address via GraphQL API
-        // The Machines API doesn't have a direct endpoint for this, so we use the GraphQL API
+        // Allocate shared IPv4 address (required for public accessibility)
+        // Shared IPs are free, dedicated IPs cost $2/mo
         try {
-            const graphqlResponse = await fetch('https://api.fly.io/graphql', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${process.env.FLY_API_TOKEN}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query: `
-                        mutation($input: AllocateIPAddressInput!) {
-                            allocateIpAddress(input: $input) {
-                                ipAddress {
-                                    id
-                                    address
-                                    type
-                                }
-                            }
-                        }
-                    `,
-                    variables: {
-                        input: {
-                            appId: appName,
-                            type: 'shared_v4',
-                        },
-                    },
-                }),
-            });
-            const graphqlResult = await graphqlResponse.json();
-            if (graphqlResult.errors) {
-                console.warn('[Fly.io] GraphQL IP allocation warning:', graphqlResult.errors);
-            } else {
-                console.log('[Fly.io] Allocated shared IPv4 address');
-            }
+            await executeFlyCommand(`ips allocate-v4 --shared --app ${appName}`, { json: false });
+            console.log(`[Fly.io] Allocated shared IPv4 address`);
         } catch (error: any) {
+            // Log but don't fail - app might already have an IP
             console.warn('[Fly.io] Failed to allocate IPv4 (might already have one):', error.message);
         }
 
-        // 3. Create and start a Machine via API
-        const machineConfig = {
-            image,
-            env: envVars,
-            services: [
-                {
-                    ports: [
-                        { port: 443, handlers: ['tls', 'http'] },
-                        { port: 80, handlers: ['http'] },
-                    ],
-                    protocol: 'tcp',
-                    internal_port: 8080,
-                },
-            ],
-            guest: {
-                cpu_kind: 'shared',
-                cpus: 1,
-                memory_mb: 2048,
-            },
-            auto_destroy: false,
-        };
+        // 2. Launch Machine (using 'machine run' instead of 'deploy' for speed/single-instance)
+        // We construct the env vars list
+        const envVars = [
+            `CANDIDATE_ID=${config.candidateId}`,
+            `SESSION_ID=${config.sessionId}`,
+            `PASSWORD=${config.password}`,
+            `TELEMETRY_URL=${config.telemetryUrl}`,
+            `AUTO_COMMIT_INTERVAL=120`,
+            `SUPABASE_URL=${config.supabaseUrl}`,
+            `SUPABASE_ANON_KEY=${config.supabaseAnonKey}`,
+            `SUPABASE_PRIVATE_KEY=${config.supabaseJwt}`,
+            `SUPABASE_SERVICE_ROLE_KEY=${config.supabaseJwt}`, // Alias for compatibility
+            `GEMINI_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
+            `GOOGLE_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
+            `GOOGLE_API_KEY=managed-by-proxy`, // Indicates proxy-managed API key
+            `ANTHROPIC_BASE_URL=${config.telemetryUrl}/api/proxy/claude`,
+            `ANTHROPIC_API_KEY=managed-by-proxy`, // Indicates proxy-managed API key
+            `QUARTERMASTER_API_URL=${config.telemetryUrl}/api/topcandidates/provision`,
+        ].map(v => `--env "${v}"`).join(' ');
 
-        const machine = await flyApiRequest('POST', `/apps/${appName}/machines`, {
-            config: machineConfig,
-            region,
-        });
+        const region = 'sjc'; // Default region (San Jose)
 
-        console.log(`[Fly.io] Machine created: ${machine?.id}`);
+        // Use machine run with --detach=false to wait for machine to start
+        const runCommand = `machine run ${image} \
+      --app ${appName} \
+      --region ${region} \
+      ${envVars} \
+      --port 443:8080/tcp:http:tls \
+      --port 80:8080/tcp:http \
+      --vm-cpu-kind shared --vm-cpus 1 --vm-memory 2048 \
+      --detach=false`;
 
+        console.log(`[Fly.io] Starting machine...`);
+        await executeFlyCommand(runCommand, { json: false });
+
+        // Machine is now running
         const url = `https://${appName}.fly.dev`;
-        console.log(`[Fly.io] Machine launched. URL: ${url}`);
+        console.log(`[Fly.io] Machine started and running. URL: ${url}`);
 
         return { url };
 
     } catch (error) {
         console.error('[Fly.io] Provisioning procedure failed:', error);
+        // Cleanup on failure?
+        // await destroyFlyMachine(appName); // risky if it was a "taken" error from someone else
         throw error;
     }
 }
 
 export async function destroyFlyMachine(appName: string) {
     console.log(`[Fly.io] Destroying app ${appName}`);
-    await flyApiRequest('DELETE', `/apps/${appName}`);
+    await executeFlyCommand(`apps destroy ${appName} --yes`, { json: false });
 }
