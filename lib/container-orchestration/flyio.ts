@@ -60,19 +60,13 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     // Use GitHub Container Registry image (built by CI)
     // Format: ghcr.io/owner/repo:tag
     const ghcrOwner = process.env.GITHUB_REPOSITORY_OWNER || 'hermes-startup';
-    const image = `ghcr.io/${ghcrOwner.toLowerCase()}/hermes:latest`;
+    const image = `ghcr.io/${ghcrOwner.toLowerCase()}/hermes-assessment:latest`;
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
     console.log(`[Fly.io] Using image: ${image}`);
 
-    // GitHub Container Registry authentication is REQUIRED for private packages
-    const ghcrToken = process.env.GITHUB_CONTAINER_REGISTRY_TOKEN;
-    const ghcrUsername = process.env.GITHUB_USERNAME || ghcrOwner;
-    
-    if (!ghcrToken) {
-        console.warn('[Fly.io] GITHUB_CONTAINER_REGISTRY_TOKEN not set. Private image pulls will fail!');
-        throw new Error('GITHUB_CONTAINER_REGISTRY_TOKEN is required to pull private images from GHCR');
-    }
+    // Image is now public - no authentication required
+    console.log(`[Fly.io] Using public image from GHCR`);
 
     try {
         // 1. Create App (delete existing if needed)
@@ -106,9 +100,6 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
             // Log but don't fail - app might already have an IP
             console.warn('[Fly.io] Failed to allocate IPv4 (might already have one):', error.message);
         }
-
-        // Docker authentication: SKIPPED - Image is public
-        // No need to set DOCKER_AUTH_CONFIG since ghcr.io/hermes-startup/hermes is public
 
         // 2. Launch Machine (using 'machine run' instead of 'deploy' for speed/single-instance)
         // We construct the env vars list
