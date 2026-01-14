@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
     // ============================================
     if (data.sessionId && candidate) {
       try {
+        const origin = request.nextUrl.origin;
         console.log('[Interview Start] Provisioning container for session:', data.sessionId);
         const requestOrigin = request.headers.get('origin') || request.headers.get('host') || 'localhost:3000';
         const protocol = requestOrigin.includes('localhost') ? 'http' : 'https';
@@ -106,7 +107,8 @@ export async function POST(request: NextRequest) {
           data.containerPassword = containerData.containerPassword;
           data.type = 'container'; // Signal to frontend to use container view
         } else {
-          console.error('[Interview Start] Container provisioning failed:', await containerResponse.text());
+          const errorText = await containerResponse.text();
+          console.error('[Interview Start] Container provisioning failed:', errorText);
         }
       } catch (containerError) {
         console.error('[Interview Start] Error provisioning container:', containerError);

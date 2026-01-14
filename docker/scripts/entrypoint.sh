@@ -2,36 +2,31 @@
 # ============================================
 # Hermes Assessment Environment Entrypoint
 # ============================================
-# Combined entrypoint for Code Server + Claude Code + Assessments
-#
-# Features:
-# 1. Configures Claude Auth (Headless & Interactive)
-# 2. Sets up Prompt Logging to Supabase
-# 3. Initializes Git & Workspace
-# 4. Starts Telemetry Sidecar
-# 5. Launches code-server
+# CRITICAL: Start code-server FIRST for fast port binding
+# Then run setup tasks in background
 # ============================================
-
-set -e
 
 echo "🚀 Starting Hermes Assessment Environment..."
 echo "============================================"
 
-# Ensure Supabase Service Key is available (map from role key if needed)
+# Ensure Supabase Service Key is available
 export SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-$SUPABASE_SERVICE_ROLE_KEY}
 
 # ============================================
-# 1. Claude Authentication & Configuration
+# BACKGROUND SETUP FUNCTION
+# Runs AFTER code-server starts
 # ============================================
-echo "🔐 Configuring Claude Authentication..."
+run_background_setup() {
+    echo "⏳ Running background setup..."
 
-# Clear any cached OAuth credentials to prevent conflicts
-rm -rf /home/coder/.claude 2>/dev/null || true
-mkdir -p /home/coder/.claude
-mkdir -p /home/coder/.local/bin
+    # 1. Claude Authentication & Configuration
+    echo "🔐 Configuring Claude Authentication..."
+    rm -rf /home/coder/.claude 2>/dev/null || true
+    mkdir -p /home/coder/.claude
+    mkdir -p /home/coder/.local/bin
 
-# Create API key helper script
-cat > /home/coder/.local/bin/get-claude-key << 'HELPER'
+    # Create API key helper script
+    cat > /home/coder/.local/bin/get-claude-key << 'HELPER'
 #!/bin/bash
 if [ -n "$ANTHROPIC_API_KEY" ]; then
     echo "$ANTHROPIC_API_KEY"
@@ -39,26 +34,25 @@ else
     exit 1
 fi
 HELPER
-chmod +x /home/coder/.local/bin/get-claude-key
+    chmod +x /home/coder/.local/bin/get-claude-key
 
-# Configure Claude Code global settings to use the helper
-cat > /home/coder/.claude/config.json << 'CONFIG'
+    # Configure Claude Code global settings
+    cat > /home/coder/.claude/config.json << 'CONFIG'
 {
     "apiKeyHelper": "/home/coder/.local/bin/get-claude-key"
 }
 CONFIG
 
-# Initialize settings.json (copy from local if exists, or create new)
-if [ -f "/home/coder/.claude/settings.local.json" ]; then
-    cp /home/coder/.claude/settings.local.json /home/coder/.claude/settings.json
-    # Inject env vars into settings.json
-    sed -i "s|\${TELEMETRY_URL:-}|${TELEMETRY_URL:-}|g" /home/coder/.claude/settings.json
-    sed -i "s|\${SESSION_ID:-}|${SESSION_ID:-}|g" /home/coder/.claude/settings.json
-    sed -i "s|\${CANDIDATE_ID:-}|${CANDIDATE_ID:-}|g" /home/coder/.claude/settings.json
-fi
+    # Initialize settings.json
+    if [ -f "/home/coder/.claude/settings.local.json" ]; then
+        cp /home/coder/.claude/settings.local.json /home/coder/.claude/settings.json
+        sed -i "s|\${TELEMETRY_URL:-}|${TELEMETRY_URL:-}|g" /home/coder/.claude/settings.json
+        sed -i "s|\${SESSION_ID:-}|${SESSION_ID:-}|g" /home/coder/.claude/settings.json
+        sed -i "s|\${CANDIDATE_ID:-}|${CANDIDATE_ID:-}|g" /home/coder/.claude/settings.json
+    fi
 
-# Force-append apiKey helper to settings.json using python
-python3 -c '
+    # Force-append apiKey helper to settings.json
+    python3 -c '
 import json, os
 try:
     path = "/home/coder/.claude/settings.json"
@@ -67,45 +61,32 @@ try:
             data = json.load(f)
     else:
         data = {}
-    
-    # Force the helper path
     data["apiKeyHelper"] = "/home/coder/.local/bin/get-claude-key"
-    
-    # Add env block with the API key from environment (redundancy)
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if api_key:
         if "env" not in data:
             data["env"] = {}
         data["env"]["ANTHROPIC_API_KEY"] = api_key
-
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
 except Exception as e:
     print(f"Error updating settings: {e}")
 '
 
-# ============================================
-# 2. Claude Headless Wrapper (Prompt Logging)
-# ============================================
-echo "🛡️  Installing Claude Code Wrapper..."
-
-cat > /home/coder/.local/bin/claude-code << 'WRAPPER'
+    # 2. Claude Headless Wrapper
+    echo "🛡️  Installing Claude Code Wrapper..."
+    cat > /home/coder/.local/bin/claude-code << 'WRAPPER'
 #!/bin/bash
 # Claude Code wrapper - logs prompts to Supabase
-# Usage: claude-code "your prompt here"
 
-# Logging function
 log_prompt() {
     local prompt="$1"
     local start_time="$2"
-
     if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ] || [ -z "$CANDIDATE_ID" ]; then
         return 0
     fi
-
     local escaped_prompt=$(printf '%s' "$prompt" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
     local preview=$(printf '%s' "$prompt" | head -c 500 | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
-
     local response=$(curl -s -X POST \
         "${SUPABASE_URL}/rest/v1/prompt_logs" \
         -H "apikey: ${SUPABASE_SERVICE_KEY}" \
@@ -120,7 +101,6 @@ log_prompt() {
             \"prompt_text_preview\": ${preview},
             \"request_metadata\": {\"workspace\": \"$(pwd)\", \"timestamp\": \"$(date -Iseconds)\"}
         }" 2>/dev/null)
-
     echo "$response" | python3 -c 'import json,sys; data=json.load(sys.stdin); print(data[0]["id"] if isinstance(data, list) and len(data) > 0 else "")' 2>/dev/null
 }
 
@@ -128,11 +108,9 @@ update_log_response() {
     local log_id="$1"
     local exit_code="$2"
     local response_time_ms="$3"
-
     if [ -z "$log_id" ] || [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
         return 0
     fi
-
     curl -s -X PATCH \
         "${SUPABASE_URL}/rest/v1/prompt_logs?id=eq.${log_id}" \
         -H "apikey: ${SUPABASE_SERVICE_KEY}" \
@@ -144,7 +122,6 @@ update_log_response() {
         }" > /dev/null 2>&1
 }
 
-# Main Wrapper Logic
 if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo "Error: ANTHROPIC_API_KEY not configured"
     exit 1
@@ -191,78 +168,69 @@ update_log_response "$LOG_ID" "$EXIT_CODE" "$RESPONSE_TIME_MS"
 
 exit $EXIT_CODE
 WRAPPER
+    chmod +x /home/coder/.local/bin/claude-code
 
-chmod +x /home/coder/.local/bin/claude-code
-
-# ============================================
-# 3. Binary Replacement & Aliases
-# ============================================
-# (Handled in Dockerfile to ensure root permissions)
-
-# Add aliases to bashrc
-cat >> /home/coder/.bashrc << 'BASHRC'
+    # 3. Bash aliases
+    cat >> /home/coder/.bashrc << 'BASHRC'
 export PATH="$HOME/.local/bin:$PATH"
 alias claude='claude-code'
 alias ask='claude-code'
 BASHRC
 
-# ============================================
-# 4. Interactive Mode logging hooks
-# ============================================
-# Install the hook script
-mkdir -p /home/coder/.claude/hooks
-if [ -f "/usr/local/bin/log-prompt.sh" ]; then
-    cp /usr/local/bin/log-prompt.sh /home/coder/.claude/hooks/log-prompt.sh
-    chmod +x /home/coder/.claude/hooks/log-prompt.sh
-fi
-
-# ============================================
-# 5. Git & Workspace Initialization
-# ============================================
-echo "📝 Configuring Git..."
-git config --global user.name "${GIT_USER_NAME:-Candidate}"
-git config --global user.email "${GIT_USER_EMAIL:-candidate@assessment.local}"
-git config --global init.defaultBranch main
-
-if [ ! -d "/workspace/.git" ]; then
-    echo "📁 Initializing workspace..."
-    cd /workspace
-    git init
-    # Configure git user
-    git config user.email "${GIT_USER_EMAIL:-candidate@hermes.com}"
-    git config user.name "${GIT_USER_NAME:-Candidate}"
-    
-    # Ensure generated files are tracked
-    git add -A 2>/dev/null || true
-    git commit -m "Initial workspace setup" 2>/dev/null || true
-fi
-
-# ============================================
-# 6. Generate .env.local
-# ============================================
-echo "🔑 Provisioning credentials to .env.local..."
-ENV_FILE="/workspace/.env.local"
-echo "# Auto-generated by Hermes Assessment Environment" > "$ENV_FILE"
-KEYS=("CANDIDATE_ID" "SESSION_ID" "SUPABASE_URL" "SUPABASE_ANON_KEY" "GEMINI_BASE_URL" "GOOGLE_BASE_URL" "GOOGLE_API_KEY" "QUARTERMASTER_API_URL")
-
-for KEY in "${KEYS[@]}"; do
-    if [ -n "${!KEY}" ]; then
-        echo "$KEY=${!KEY}" >> "$ENV_FILE"
+    # 4. Interactive Mode logging hooks
+    mkdir -p /home/coder/.claude/hooks
+    if [ -f "/usr/local/bin/log-prompt.sh" ]; then
+        cp /usr/local/bin/log-prompt.sh /home/coder/.claude/hooks/log-prompt.sh
+        chmod +x /home/coder/.claude/hooks/log-prompt.sh
     fi
-done
+
+    # 5. Git & Workspace Initialization
+    echo "📝 Configuring Git..."
+    git config --global user.name "${GIT_USER_NAME:-Candidate}"
+    git config --global user.email "${GIT_USER_EMAIL:-candidate@assessment.local}"
+    git config --global init.defaultBranch main
+
+    if [ ! -d "/workspace/.git" ]; then
+        echo "📁 Initializing workspace..."
+        cd /workspace
+        git init
+        git config user.email "${GIT_USER_EMAIL:-candidate@hermes.com}"
+        git config user.name "${GIT_USER_NAME:-Candidate}"
+        git add -A 2>/dev/null || true
+        git commit -m "Initial workspace setup" 2>/dev/null || true
+    fi
+
+    # 6. Generate .env.local
+    echo "🔑 Provisioning credentials to .env.local..."
+    ENV_FILE="/workspace/.env.local"
+    echo "# Auto-generated by Hermes Assessment Environment" > "$ENV_FILE"
+    KEYS=("CANDIDATE_ID" "SESSION_ID" "SUPABASE_URL" "SUPABASE_ANON_KEY" "GEMINI_BASE_URL" "GOOGLE_BASE_URL" "GOOGLE_API_KEY" "QUARTERMASTER_API_URL")
+
+    for KEY in "${KEYS[@]}"; do
+        if [ -n "${!KEY}" ]; then
+            echo "$KEY=${!KEY}" >> "$ENV_FILE"
+        fi
+    done
+
+    # 7. Start Telemetry Sidecar
+    if [ -n "$TELEMETRY_URL" ] && [ -n "$SESSION_ID" ]; then
+        echo "📊 Starting telemetry sidecar..."
+        /usr/local/bin/telemetry-sidecar.sh &
+    fi
+
+    # Final ownership check
+    chown -R coder:coder /home/coder/.claude 2>/dev/null || true
+
+    echo "✅ Background setup complete!"
+}
 
 # ============================================
-# 7. Start Telemetry & Code Server
+# MAIN: Start code-server IMMEDIATELY
 # ============================================
-if [ -n "$TELEMETRY_URL" ] && [ -n "$SESSION_ID" ]; then
-    echo "📊 Starting telemetry sidecar..."
-    /usr/local/bin/telemetry-sidecar.sh &
-fi
-
-echo "✅ Environment ready!"
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 
-# Final ownership check
-chown -R coder:coder /home/coder/.claude
+# Run background setup after code-server starts (non-blocking)
+run_background_setup &
 
+# Start code-server (this blocks and keeps container running)
 exec code-server --bind-addr 0.0.0.0:8080 --auth none /workspace
