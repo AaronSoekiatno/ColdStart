@@ -329,13 +329,78 @@ export default function IDEPage() {
 
     if (containerStatus === 'provisioning') {
         return (
-            <div className="min-h-screen flex flex-col bg-slate-900">
+            <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
-                    <div className="text-center">
-                        <Loader2 className="h-12 w-12 animate-spin text-blue-400 mx-auto mb-4" />
-                        <p className="text-slate-300 text-lg mb-2">Provisioning your assessment environment...</p>
-                        <p className="text-slate-400 text-sm">This may take up to 30 seconds</p>
+                    <div className="max-w-2xl w-full">
+                        {/* Main Loading Card */}
+                        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
+                            {/* Animated Logo/Icon */}
+                            <div className="flex justify-center mb-8">
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
+                                    <Loader2 className="h-16 w-16 animate-spin text-blue-400 relative" />
+                                </div>
+                            </div>
+
+                            {/* Main Title */}
+                            <h2 className="text-2xl font-bold text-white text-center mb-3">
+                                Setting Up Your Environment
+                            </h2>
+                            <p className="text-slate-400 text-center mb-8">
+                                We're provisioning your cloud IDE powered by Fly.io
+                            </p>
+
+                            {/* Progress Steps */}
+                            <div className="space-y-4 mb-8">
+                                <div className="flex items-center gap-3 text-slate-300">
+                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                    <span className="text-sm">Allocating compute resources</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-slate-300">
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                                    <span className="text-sm">Loading VS Code environment</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-slate-300">
+                                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                                    <span className="text-sm">Installing dependencies</span>
+                                </div>
+                                <div className="flex items-center gap-3 text-slate-400">
+                                    <div className="w-2 h-2 rounded-full bg-slate-600" />
+                                    <span className="text-sm">Starting container</span>
+                                </div>
+                            </div>
+
+                            {/* Time Estimate */}
+                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+                                <div className="flex items-start gap-3">
+                                    <Clock className="h-5 w-5 text-blue-400 mt-0.5" />
+                                    <div>
+                                        <p className="text-blue-300 font-medium text-sm mb-1">
+                                            Typical setup time: 20-40 seconds
+                                        </p>
+                                        <p className="text-blue-400/70 text-xs">
+                                            First-time provisioning may take slightly longer
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Helpful Tips */}
+                            <div className="text-center">
+                                <p className="text-slate-500 text-xs mb-2">💡 Pro Tip</p>
+                                <p className="text-slate-400 text-sm">
+                                    Your environment includes Claude Code, auto-save, and full terminal access
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Bottom Timer */}
+                        <div className="text-center mt-6">
+                            <p className="text-slate-500 text-sm">
+                                Elapsed time: <span className="font-mono text-slate-400">{formatTime(elapsedTime)}</span>
+                            </p>
+                        </div>
                     </div>
                 </section>
             </div>
