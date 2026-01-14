@@ -227,6 +227,9 @@ echo "🚀 Starting assessment tests (Mode: $MODE)..."
 START_TIME=$(date +%s)
 cd "$WORKSPACE_DIR"
 
+# Update last test activity timestamp for auto-destruct monitoring
+date +%s > /tmp/last_test_activity || true
+
 # Ensure we have the necessary environment
 if [ ! -f "package.json" ]; then
     echo "❌ Error: package.json not found in $WORKSPACE_DIR"
