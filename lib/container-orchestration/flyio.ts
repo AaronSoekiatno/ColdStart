@@ -125,6 +125,8 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
             `GEMINI_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
             `GOOGLE_BASE_URL=${config.telemetryUrl}/api/proxy/gemini`,
             `GOOGLE_API_KEY=managed-by-proxy`, // Indicates proxy-managed API key
+            `ANTHROPIC_BASE_URL=${config.telemetryUrl}/api/proxy/claude`,
+            `ANTHROPIC_API_KEY=managed-by-proxy`, // Indicates proxy-managed API key
             `QUARTERMASTER_API_URL=${config.telemetryUrl}/api/topcandidates/provision`,
         ].map(v => `--env "${v}"`).join(' ');
 
