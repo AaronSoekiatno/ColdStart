@@ -99,34 +99,30 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
             console.warn('[Fly.io] Failed to allocate IPv4 (might already have one):', error.message);
         }
 
-        // 3. Create and start a Machine via API
-        const machineConfig = {
-            image,
-            env: envVars,
-            services: [
-                {
-                    ports: [
-                        { port: 443, handlers: ['tls', 'http'] },
-                        { port: 80, handlers: ['http'] },
-                    ],
-                    protocol: 'tcp',
-                    internal_port: 8080,
-                },
-            ],
-            guest: {
-                cpu_kind: 'shared',
-                cpus: 1,
-                memory_mb: 2048,
-            },
-            auto_destroy: true, // Auto-delete machine when process stops
+        // 3. Create and start a Machine via CLI
+        const envVars: Record<string, string> = {
+            PASSWORD: config.password,
+            SESSION_ID: config.sessionId,
+            TELEMETRY_URL: config.telemetryUrl,
+            NEXT_PUBLIC_SUPABASE_URL: config.supabaseUrl,
+            NEXT_PUBLIC_SUPABASE_ANON_KEY: config.supabaseAnonKey,
+            SUPABASE_JWT: config.supabaseJwt,
         };
 
-        const machine = await flyApiRequest('POST', `/apps/${appName}/machines`, {
-            config: machineConfig,
-            region,
-        });
+        if (process.env.ANTHROPIC_API_KEY) {
+            envVars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+        }
 
-        console.log(`[Fly.io] Starting machine...`);
+        const envFlags = Object.entries(envVars)
+            .map(([k, v]) => `--env ${k}=${JSON.stringify(v)}`)
+            .join(' ');
+
+        const region = 'sjc';
+
+        console.log(`[Fly.io] Starting machine in ${region}...`);
+
+        const runCommand = `machine run ${image} --app ${appName} --region ${region} --cpus 1 --memory 2048 --port 443:8080/tcp:tls:http --port 80:8080/tcp:http --autostart --detach=false ${envFlags}`;
+
         await executeFlyCommand(runCommand, { json: false });
 
         // Machine is now running
