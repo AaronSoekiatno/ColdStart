@@ -60,9 +60,8 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     const appName = `assess-${config.candidateId.slice(0, 8)}-${sessionPart}`.toLowerCase();
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
 
-    // Use GitHub Container Registry image (built by CI)
-    const ghcrOwner = process.env.GITHUB_REPOSITORY_OWNER || 'hermes-startup';
-    const image = `ghcr.io/${ghcrOwner.toLowerCase()}/hermes:latest`;
+    // Use Fly.io Registry image (pushed manually via flyctl auth docker)
+    const image = `registry.fly.io/hermes-assessment-image-host:latest`;
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
     console.log(`[Fly.io] Using image: ${image}`);
@@ -171,7 +170,7 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
                 cpus: 1,
                 memory_mb: 2048,
             },
-            auto_destroy: false,
+            auto_destroy: true, // Auto-delete machine when process stops
         };
 
         const machine = await flyApiRequest('POST', `/apps/${appName}/machines`, {

@@ -5,7 +5,7 @@ import { destroyFlyMachine } from '@/lib/container-orchestration/flyio';
 /**
  * GET /api/cron/cleanup-containers
  * 
- * Cron job that destroys containers older than 3 hours
+ * Cron job that destroys containers older than 1 hour
  * Should be called by Vercel Cron or similar scheduler
  */
 export async function GET(request: NextRequest) {
@@ -16,14 +16,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Find containers older than 3 hours that are still running
-    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    // Find containers older than 1 hour that are still running
+    const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
     
+    // Verify Supabase Admin client is available
+    if (!supabaseAdmin) {
+      console.error('[Cleanup] Supabase Admin client not available (check SUPABASE_SERVICE_ROLE_KEY)');
+      return NextResponse.json({ error: 'Configuration Error' }, { status: 500 });
+    }
+
     const { data: sessions, error } = await supabaseAdmin
       .from('interview_sessions')
       .select('session_id, container_url, container_started_at')
       .eq('container_status', 'running')
-      .lt('container_started_at', threeHoursAgo);
+      .lt('container_started_at', oneHourAgo);
 
     if (error) {
       console.error('[Cleanup] Error fetching sessions:', error);

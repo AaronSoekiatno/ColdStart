@@ -238,8 +238,10 @@ log_commit_to_supabase &
 COMMIT_LOG_PID=$!
 
 # Fix permissions for node_modules cache directory (vitest needs to write .vite cache)
+# Optimization: Don't recursivley scan all of node_modules, just ensure .vite is writable
 if [ -d "$WORKSPACE_DIR/node_modules" ]; then
-    chmod -R u+w "$WORKSPACE_DIR/node_modules" 2>/dev/null || true
+    mkdir -p "$WORKSPACE_DIR/node_modules/.vite"
+    chmod -R u+w "$WORKSPACE_DIR/node_modules/.vite" 2>/dev/null || true
 fi
 
 # Clean previous results
