@@ -28,7 +28,8 @@
       "Bash(taskkill:*)",
       "Bash(timeout /t 2 /nobreak)",
       "Bash(npm info:*)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

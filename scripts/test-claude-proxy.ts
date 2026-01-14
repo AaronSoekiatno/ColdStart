@@ -4,8 +4,8 @@
  * Generates a valid JWT and tests the /api/proxy/claude endpoint
  */
 
-import * as jwt from 'jsonwebtoken';
-import * as dotenv from 'dotenv';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 

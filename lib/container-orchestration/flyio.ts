@@ -53,8 +53,17 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     // Using explicit app name to ensure uniqueness/traceability
     // Truncating IDs to keep hostname length reasonable (Fly.io limit: 63 chars)
     // Strip "session_" prefix and replace underscores with dashes (Fly.io requires lowercase letters, numbers, and dashes only)
-    const sessionPart = config.sessionId.replace('session_', '').replace(/_/g, '-').slice(0, 16);
-    const appName = `assess-${config.candidateId.slice(0, 8)}-${sessionPart}`.toLowerCase();
+    // Also remove leading/trailing dashes resulting from replacement or truncation
+    let sessionPart = config.sessionId.replace('session_', '').replace(/_/g, '-').slice(0, 16);
+    // Remove trailing dash if present
+    if (sessionPart.endsWith('-')) {
+        sessionPart = sessionPart.slice(0, -1);
+    }
+    
+    // Ensure candidateId part is safe too
+    const candidatePart = config.candidateId.slice(0, 8).replace(/_/g, '-');
+    
+    const appName = `assess-${candidatePart}-${sessionPart}`.toLowerCase();
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
 
     // Use Fly.io Registry image (pushed manually via flyctl auth docker)

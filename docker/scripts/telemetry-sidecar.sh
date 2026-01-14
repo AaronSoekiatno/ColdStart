@@ -87,6 +87,12 @@ while true; do
     if [ $((HEARTBEAT_COUNT % 10)) -eq 0 ]; then
         echo "[Telemetry] Heartbeat #${HEARTBEAT_COUNT}"
     fi
+
+    # Shutdown the machine if no activity for 5 minutes or if session is 'completed'
+    if [[ $(curl -s ${TELEMETRY_URL}/api/interview/status/${SESSION_ID}) == "completed" ]]; then
+      echo "Mission complete. Powering down."
+      poweroff -f
+    fi
     
     send_event "heartbeat" "$(get_metrics)"
 done
