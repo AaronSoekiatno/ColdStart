@@ -24,29 +24,29 @@ log_commit_to_supabase() {
     fi
 
     # Guard clause: Check for required environment variables
-    if [ -z "$SUPABASE_URL" ]; then
-        echo "   ⚠️  SUPABASE_URL not set, skipping commit logging"
+    if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+        echo "   ⚠️  NEXT_PUBLIC_SUPABASE_URL not set, skipping commit logging"
         [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Available env vars: CANDIDATE_ID=${CANDIDATE_ID:-unset}"
         return 0
     fi
 
-    if [ -z "$SUPABASE_ANON_KEY" ]; then
-        echo "   ⚠️  SUPABASE_ANON_KEY not set, skipping commit logging"
-        [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] SUPABASE_URL is set to: $SUPABASE_URL"
+    if [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ]; then
+        echo "   ⚠️  NEXT_PUBLIC_SUPABASE_ANON_KEY not set, skipping commit logging"
+        [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] NEXT_PUBLIC_SUPABASE_URL is set to: $NEXT_PUBLIC_SUPABASE_URL"
         return 0
     fi
 
     echo "📝 Logging commit to Supabase..."
     local COMMIT_START=$(date +%s.%N)
-    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] SUPABASE_URL: $SUPABASE_URL"
+    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] NEXT_PUBLIC_SUPABASE_URL: $NEXT_PUBLIC_SUPABASE_URL"
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] CANDIDATE_ID: ${CANDIDATE_ID:-unknown}"
 
-    # Calculate git metrics
-    DELETED=$(git log --pretty=format: --numstat 2>/dev/null | awk '{ s += $2 } END { print s }')
-    ADDED=$(git log --pretty=format: --numstat 2>/dev/null | awk '{ s += $1 } END { print s }')
+    # Calculate git metrics for the latest commit only (not cumulative)
+    ADDED=$(git show HEAD --numstat --pretty=format: 2>/dev/null | awk '{ s += $1 } END { print s }')
+    DELETED=$(git show HEAD --numstat --pretty=format: 2>/dev/null | awk '{ s += $2 } END { print s }')
     DELETED=${DELETED:-0}
     ADDED=${ADDED:-0}
-    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Git metrics - Added: $ADDED, Deleted: $DELETED"
+    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Git metrics (HEAD commit) - Added: $ADDED, Deleted: $DELETED"
 
     # Get commit details
     COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "no-commit")
@@ -102,12 +102,12 @@ EOF
 
     # Call Supabase RPC function
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Calling Supabase RPC endpoint..."
-    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Endpoint: $SUPABASE_URL/rest/v1/rpc/log_session_commit"
+    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Endpoint: $NEXT_PUBLIC_SUPABASE_URL/rest/v1/rpc/log_session_commit"
 
     # Use echo + pipe to avoid "Argument list too long" error with large payloads
-    RESPONSE=$(echo "$PAYLOAD" | curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/log_session_commit" \
-        -H "apikey: $SUPABASE_ANON_KEY" \
-        -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+    RESPONSE=$(echo "$PAYLOAD" | curl -s -X POST "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/rpc/log_session_commit" \
+        -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+        -H "Authorization: Bearer $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
         -H "Content-Type: application/json" \
         -d @- 2>&1) || true
 

@@ -15,10 +15,10 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          # Calculate metrics
-          DELETED=$(git log --pretty=format: --numstat | awk '{ s += $2 } END { print s }')
-          ADDED=$(git log --pretty=format: --numstat | awk '{ s += $1 } END { print s }')
-          
+          # Calculate metrics for this commit only (not cumulative)
+          ADDED=$(git show ${{ github.sha }} --numstat --pretty=format: | awk '{ s += $1 } END { print s }')
+          DELETED=$(git show ${{ github.sha }} --numstat --pretty=format: | awk '{ s += $2 } END { print s }')
+
           # Ensure defaults
           DELETED=${DELETED:-0}
           ADDED=${ADDED:-0}
