@@ -9,6 +9,7 @@ import { TrustBadge } from "@/components/shared/TrustBadge";
 import { UniversityCarousel } from "@/components/landing/StartupsCarousel";
 import { StartupLogoDeck } from "@/components/landing/StartupLogoDeck";
 import { DemoMatchCard } from "@/components/features/matches/DemoMatchCard";
+import { AIAgentSection } from "@/components/landing/AIAgentSection";
 import { NewHowItWorks } from "@/components/landing/NewHowItWorks";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { Footer } from "@/components/layout/Footer";
@@ -620,6 +621,7 @@ export function NewLandingPage() {
             <NewHero onGetStarted={handleGetStarted} />
             <TrustBadge />
             <UniversityCarousel />
+            <AIAgentSection />
           </div>
         </div>
 
