@@ -51,9 +51,10 @@ async function executeFlyCommand(command: string, options: { json?: boolean } = 
 
 export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ url: string }> {
     // Using explicit app name to ensure uniqueness/traceability
-    // Truncating IDs to keep hostname length reasonable
-    // Use more of the session ID to ensure uniqueness across multiple tests
-    const appName = `assessment-${config.candidateId.slice(0, 8)}-${config.sessionId.slice(0, 12)}`.toLowerCase();
+    // Truncating IDs to keep hostname length reasonable (Fly.io limit: 63 chars)
+    // Strip "session_" prefix and replace underscores with dashes (Fly.io requires lowercase letters, numbers, and dashes only)
+    const sessionPart = config.sessionId.replace('session_', '').replace(/_/g, '-').slice(0, 16);
+    const appName = `assess-${config.candidateId.slice(0, 8)}-${sessionPart}`.toLowerCase();
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
     
     // Use GitHub Container Registry image (built by CI)
