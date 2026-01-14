@@ -157,8 +157,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Determine execution method (Local Docker vs Fly.io)
-        // We infer this based on the container URL or environment
-        const isProduction = process.env.NODE_ENV === 'production' && !session.container_url.includes('localhost');
+        // Check if container is on Fly.io based on URL (works in both dev and prod)
+        const isFlyIo = session.container_url.includes('fly.dev');
 
         let stdout = '';
         let stderr = '';
@@ -166,20 +166,40 @@ export async function POST(request: NextRequest) {
 
         const testCommand = `/usr/local/bin/run-tests.sh ${testType}`;
 
-        if (isProduction) {
-            // Fly.io Execution (Placeholder - usually requires flyctl or Machines API exec)
-            // For this MVP, we might need a specific implementation or assume local for now if not fully set up
-            // Attempting to use flyctl via exec if installed, or error out
+        if (isFlyIo) {
+            // Fly.io Execution via SSH
             try {
+                // Extract app name from URL (e.g., https://assess-xxx.fly.dev -> assess-xxx)
                 const appName = session.container_url.replace('https://', '').replace('.fly.dev', '');
-                // Note: This requires flyctl to be available and auth'd on the server
-                const command = `fly machines exec --app ${appName} "${testCommand}"`;
-                const result = await execAsync(command);
+                console.log(`[API run-tests] Executing on Fly.io app: ${appName}`);
+                
+                // Use flyctl ssh console to execute the test script
+                // The -C flag runs a command and exits
+                const command = `flyctl ssh console -a ${appName} -C "${testCommand}"`;
+                console.log(`[API run-tests] Command: ${command}`);
+                
+                const result = await execAsync(command, { 
+                    maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large test output
+                    timeout: 280000 // 280s timeout (just under the 300s route timeout)
+                });
                 stdout = result.stdout;
                 stderr = result.stderr;
+                console.log(`[API run-tests] Fly.io execution completed`);
             } catch (e: any) {
-                console.error('Fly execution failed:', e);
-                return NextResponse.json({ error: 'Remote execution failed', details: e.message }, { status: 500 });
+                console.error('[API run-tests] Fly.io execution failed:', e);
+                // Capture stdout/stderr even if command failed (tests might fail)
+                if (e.stdout || e.stderr) {
+                    stdout = e.stdout || '';
+                    stderr = e.stderr || '';
+                    exitCode = e.code || 1;
+                    console.log(`[API run-tests] Captured output from failed execution (exit code: ${exitCode})`);
+                } else {
+                    return NextResponse.json({ 
+                        error: 'Remote execution failed', 
+                        details: e.message,
+                        hint: 'Ensure flyctl is authenticated and the Fly.io app is running'
+                    }, { status: 500 });
+                }
             }
         } else {
             // Local Docker Execution

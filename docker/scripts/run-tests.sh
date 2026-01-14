@@ -89,7 +89,7 @@ log_commit_to_supabase() {
   "p_added_lines": $ADDED,
   "p_deleted_lines": $DELETED,
   "p_commit_message": "$COMMIT_MSG",
-  "p_repo_name": "workspace",
+  "p_session_id": "${SESSION_ID:-unknown}",
   "p_commit_hash": "$COMMIT_HASH",
   "p_commit_author": "$COMMIT_AUTHOR",
   "p_commit_timestamp": "$COMMIT_TIMESTAMP",
