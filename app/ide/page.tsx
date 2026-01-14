@@ -142,19 +142,35 @@ export default function IDEPage() {
             setIsLoading(false);
 
             // Fetch container info
-            fetchContainerInfo(currentUser.id);
+            fetchContainerInfo(currentUser);
         };
         checkAuth();
     }, [router]);
 
     // Fetch container information from the database
-    const fetchContainerInfo = async (userId: string) => {
+    const fetchContainerInfo = async (authUser: { id: string; email?: string }) => {
         try {
+            // First, get the candidate_id from the candidates table (different from auth user ID)
+            const { data: candidate, error: candidateError } = await supabase
+                .from('candidates')
+                .select('id')
+                .eq('email', authUser.email)
+                .single();
+
+            if (candidateError || !candidate) {
+                console.error('[IDE] Failed to find candidate for user:', authUser.email, candidateError);
+                setContainerStatus('error');
+                return;
+            }
+
+            const candidateId = candidate.id;
+            console.log('[IDE] Resolved candidate_id:', candidateId, 'for auth user:', authUser.id);
+
             // Get user's latest session with container info
             const { data: session, error } = await supabase
                 .from('interview_sessions')
                 .select('container_url, container_status, container_password, session_id, current_phase')
-                .eq('candidate_id', userId)
+                .eq('candidate_id', candidateId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
@@ -208,7 +224,7 @@ export default function IDEPage() {
                 setContainerStatus('provisioning');
                 console.log('[IDE] Container not ready yet, polling in 5s...');
                 // Poll every 5 seconds until running
-                setTimeout(() => fetchContainerInfo(userId), 5000);
+                setTimeout(() => fetchContainerInfo(authUser), 5000);
             } else {
                 // Fallback to localhost for local dev
                 const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
