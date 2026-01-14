@@ -112,14 +112,20 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
         const envVars: Record<string, string> = {
             PASSWORD: config.password,
             SESSION_ID: config.sessionId,
+            CANDIDATE_ID: config.candidateId,
             TELEMETRY_URL: config.telemetryUrl,
             NEXT_PUBLIC_SUPABASE_URL: config.supabaseUrl,
+            SUPABASE_URL: config.supabaseUrl, // Required for telemetry scripts
             NEXT_PUBLIC_SUPABASE_ANON_KEY: config.supabaseAnonKey,
             SUPABASE_JWT: config.supabaseJwt,
+            // Critical for telemetry logging
+            SUPABASE_SERVICE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
         };
 
         if (process.env.ANTHROPIC_API_KEY) {
             envVars.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+        } else {
+            console.warn('[Fly.io] ANTHROPIC_API_KEY is missing in environment! Claude will not work.');
         }
 
         const envFlags = Object.entries(envVars)
