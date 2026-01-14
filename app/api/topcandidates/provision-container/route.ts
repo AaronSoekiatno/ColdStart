@@ -94,7 +94,6 @@ export async function POST(request: NextRequest) {
       .from('interview_sessions')
       .update({
         container_url: containerUrl,
-        container_password: null, // Password auth disabled
         container_status: 'running',
         container_started_at: new Date().toISOString(),
       })

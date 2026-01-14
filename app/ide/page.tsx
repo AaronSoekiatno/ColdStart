@@ -169,39 +169,21 @@ export default function IDEPage() {
             // Get user's latest session with container info
             const { data: session, error } = await supabase
                 .from('interview_sessions')
-                .select('container_url, container_status, container_password, session_id, current_phase')
+                .select('container_url, container_status, session_id, current_phase')
                 .eq('candidate_id', candidateId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
 
             if (error) {
-                // Check if we're in local dev mode (localhost or explicit dev URL)
-                const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                if (isLocalDev) {
-                    // Default to localhost for local development (no need to log error)
-                    setContainerUrl('http://localhost:8080');
-                    setContainerStatus('running');
-                    setSessionId('local-dev-docker'); // Mock session ID
-                    return;
-                }
                 console.error('[IDE] Failed to fetch session:', error);
                 setContainerStatus('error');
                 return;
             }
 
             if (!session) {
-                // No session found - check if local dev
-                const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                if (isLocalDev) {
-                    setContainerUrl('http://localhost:8080');
-                    setContainerStatus('running');
-                    setContainerUrl('http://localhost:8080');
-                    setContainerStatus('running');
-                    setSessionId('local-dev-docker');
-                } else {
-                    setContainerStatus('error');
-                }
+                // No session found
+                setContainerStatus('error');
                 return;
             }
 
@@ -237,16 +219,8 @@ export default function IDEPage() {
                 }
             }
         } catch (error) {
-            // Fallback to localhost for local dev
-            const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            if (isLocalDev) {
-                setContainerUrl('http://localhost:8080');
-                setContainerStatus('running');
-                setSessionId('local-dev-docker');
-            } else {
-                console.error('[IDE] Error fetching container info:', error);
-                setContainerStatus('error');
-            }
+            console.error('[IDE] Error fetching container info:', error);
+            setContainerStatus('error');
         }
     };
 
