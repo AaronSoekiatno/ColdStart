@@ -187,7 +187,7 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
                         title: 'Interview started',
                         description: 'Minerva is connecting...',
                     });
-                });
+                }
             }
 
             // Note: We're already on the IDE page, so no navigation needed
