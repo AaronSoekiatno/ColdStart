@@ -114,70 +114,86 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
         if (isStarting || isCallActive) return;
 
         setIsStarting(true);
+        
+        // Step 1: Request microphone permission FIRST (before anything else)
         try {
-            // Start the interview session
-            const response = await fetch('/api/interview/start', {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            stream.getTracks().forEach(track => track.stop());
+        } catch (permError) {
+            toast({
+                title: 'Microphone Permission Required',
+                description: 'Please allow microphone access to start the interview.',
+                variant: 'destructive',
+            });
+            setIsStarting(false);
+            return;
+        }
+
+        try {
+            // Step 2: Pre-load VAPI client and Supabase client while API call is happening
+            const [vapiModule, supabaseModule] = await Promise.all([
+                import('@/vapi-client.js'),
+                import('@supabase/supabase-js')
+            ]);
+
+            const vapiClient = vapiModule.default || vapiModule;
+            
+            // Initialize VAPI listeners immediately
+            if (vapiClient.initializeVapiListeners) {
+                await vapiClient.initializeVapiListeners();
+            }
+
+            // Step 3: Start API call (creates session and provisions container)
+            const apiResponse = await fetch('/api/interview/start', {
                 method: 'POST',
                 credentials: 'include',
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
+            if (!apiResponse.ok) {
+                const errorData = await apiResponse.json();
                 throw new Error(errorData.error || 'Failed to start interview');
             }
 
-            const data = await response.json();
+            const data = await apiResponse.json();
 
-            // Import and initialize Vapi client
-            if (typeof window !== 'undefined') {
-                const vapiModule = await import('@/vapi-client.js');
-                const vapiClient = vapiModule.default || vapiModule;
+            // Step 4: Get user info for personalization
+            const supabase = supabaseModule.createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
+            const { data: { user } } = await supabase.auth.getUser();
+            const candidateName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Candidate';
 
-                // Initialize listeners if needed
-                if (vapiClient.initializeVapiListeners) {
-                    await vapiClient.initializeVapiListeners();
-                }
-
-                // Get user info for personalization
-                const { createClient } = await import('@supabase/supabase-js');
-                const supabase = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                );
-                const { data: { user } } = await supabase.auth.getUser();
-                const candidateName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Candidate';
-
-                // Request microphone permission
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    stream.getTracks().forEach(track => track.stop());
-                } catch (permError) {
-                    toast({
-                        title: 'Microphone Permission Required',
-                        description: 'Please allow microphone access to start the interview.',
-                        variant: 'destructive',
-                    });
-                    setIsStarting(false);
-                    return;
-                }
-
-                // Start the Vapi call
-                if (vapiClient.startPhaseCall) {
-                    await vapiClient.startPhaseCall(
-                        data.sessionId,
-                        'KICK_OFF',
-                        'kickoff',
-                        [],
-                        null,
-                        { candidateName } as any
-                    );
-                    setIsCallActive(true);
+            // Step 5: Start VAPI call IMMEDIATELY - Minerva starts speaking right away
+            // Container provisioning happens in parallel and IDE will load when ready
+            if (vapiClient.startPhaseCall && data.sessionId) {
+                setIsCallActive(true); // Set active immediately for better UX
+                
+                vapiClient.startPhaseCall(
+                    data.sessionId,
+                    'KICK_OFF',
+                    'kickoff',
+                    [],
+                    null,
+                    { candidateName } as any
+                ).then(() => {
                     toast({
                         title: 'Interview started',
-                        description: 'Minerva is connecting...',
+                        description: 'Minerva is speaking...',
                     });
-                }
+                }).catch((vapiError) => {
+                    console.error('[MinervaVoiceIndicator] VAPI call start error:', vapiError);
+                    setIsCallActive(false);
+                    toast({
+                        title: 'Voice call failed',
+                        description: 'The interview started but voice call could not be established.',
+                        variant: 'destructive',
+                    });
+                });
             }
+
+            // Note: We're already on the IDE page, so no navigation needed
+            // The IDE page will automatically detect the session and load the container
         } catch (error) {
             console.error('[MinervaVoiceIndicator] Failed to start interview:', error);
             toast({
@@ -185,6 +201,7 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
                 description: error instanceof Error ? error.message : 'An error occurred',
                 variant: 'destructive',
             });
+            setIsCallActive(false);
         } finally {
             setIsStarting(false);
         }
