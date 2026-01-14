@@ -130,7 +130,7 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
 
         console.log(`[Fly.io] Starting machine in ${region}...`);
 
-        const runCommand = `machine run ${image} --app ${appName} --region ${region} --cpus 1 --memory 2048 --port 443:8080/tcp:tls:http --port 80:8080/tcp:http --autostart --detach=false ${envFlags}`;
+        const runCommand = `machine run ${image} --app ${appName} --region ${region} --cpus 1 --memory 2048 --port 443:8080/tcp:tls:http --port 80:8080/tcp:http --port 3000:3000/tcp:tls:http --port 5173:5173/tcp:tls:http --autostart --detach=false ${envFlags}`;
 
         await executeFlyCommand(runCommand, { json: false });
 

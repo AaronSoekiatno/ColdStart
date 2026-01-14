@@ -162,11 +162,19 @@ exit $EXIT_CODE
 WRAPPER
     chmod +x /home/coder/.local/bin/claude-code
 
-    # 3. Bash aliases
+    # 3. Bash aliases and Welcome Message
     cat >> /home/coder/.bashrc << 'BASHRC'
 export PATH="$HOME/.local/bin:$PATH"
 alias claude='claude-code'
 alias ask='claude-code'
+
+# Welcome Message
+echo -e "\n\033[1;34m🚀 Welcome to Hermes Assessment Environment!\033[0m"
+echo -e "\033[0;32m------------------------------------------\033[0m"
+echo -e "To start your application, run: \033[1;33mnpm run dev\033[0m"
+echo -e "To preview your app visually, click the \033[1;34m'Preview App'\033[0m button at the top of the IDE."
+echo -e "Your app will be available on \033[1;36mport 3000\033[0m by default."
+echo -e "\033[0;32m------------------------------------------\033[0m\n"
 BASHRC
 
     # 4. Interactive Mode logging hooks
@@ -203,6 +211,10 @@ BASHRC
             echo "$KEY=${!KEY}" >> "$ENV_FILE"
         fi
     done
+    
+    # Force development servers to bind to all interfaces for external access
+    echo "HOST=0.0.0.0" >> "$ENV_FILE"
+    echo "PORT=3000" >> "$ENV_FILE"
 
     # 7. Start Telemetry Sidecar
     if [ -n "$TELEMETRY_URL" ] && [ -n "$SESSION_ID" ]; then

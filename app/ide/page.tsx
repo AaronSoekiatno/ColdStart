@@ -14,6 +14,7 @@ import {
     Maximize2,
     Minimize2,
     X,
+    Eye,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
@@ -447,6 +448,23 @@ export default function IDEPage() {
                             <Maximize2 className="h-4 w-4" />
                         )}
                     </Button>
+                    <Button
+                        onClick={() => {
+                            if (containerUrl) {
+                                // Use code-server's built-in proxy which works on the same port (443)
+                                // This avoids Fly.io shared IP port mapping limitations
+                                const url = containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`;
+                                window.open(`${url}proxy/3000/`, '_blank');
+                            }
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="bg-blue-600 border-blue-500 text-white hover:bg-blue-700 hover:text-white"
+                    >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Preview App (Port 3000)
+                    </Button>
+                    <div className="h-4 w-px bg-slate-600" />
                     <Button
                         onClick={handleSubmit}
                         className="bg-green-600 hover:bg-green-700 text-white"
