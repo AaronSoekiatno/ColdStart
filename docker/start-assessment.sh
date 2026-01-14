@@ -57,9 +57,19 @@ echo "  Port:         $PORT"
 echo "  Password:     $ASSESSMENT_PASSWORD"
 echo ""
 
+# Sync mission code into workspace before building
+echo -e "${YELLOW}Syncing mission: AbsurdLangChain...${NC}"
+# Use rsync if available, otherwise cp
+if command -v rsync >/dev/null 2>&1; then
+    rsync -av --delete "$PROJECT_ROOT/missions/AbsurdLangChain/" "$DOCKER_DIR/workspace/" --exclude node_modules --exclude .next
+else
+    cp -R "$PROJECT_ROOT/missions/AbsurdLangChain/." "$DOCKER_DIR/workspace/"
+fi
+
 # Build the image (always build to pick up code changes)
 echo -e "${YELLOW}Building Docker image...${NC}"
 docker build -t hermes-assessment:latest -f "$DOCKER_DIR/Dockerfile.assessment" "$DOCKER_DIR"
+
 
 
 # Stop any existing container
