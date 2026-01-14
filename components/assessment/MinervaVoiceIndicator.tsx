@@ -115,18 +115,40 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
 
         setIsStarting(true);
         try {
-            // Start the interview session
-            const response = await fetch('/api/interview/start', {
-                method: 'POST',
-                credentials: 'include',
-            });
+            // Get current session ID from Supabase (should already exist if on IDE page)
+            const { createClient } = await import('@supabase/supabase-js');
+            const supabase = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+            );
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to start interview');
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                throw new Error('Not authenticated');
             }
 
-            const data = await response.json();
+            // Get candidate's latest session
+            const { data: candidate } = await supabase
+                .from('candidates')
+                .select('id')
+                .eq('email', user.email)
+                .single();
+
+            if (!candidate) {
+                throw new Error('Candidate not found');
+            }
+
+            const { data: session } = await supabase
+                .from('interview_sessions')
+                .select('session_id')
+                .eq('candidate_id', candidate.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (!session) {
+                throw new Error('No active session found. Please start an assessment first.');
+            }
 
             // Import and initialize Vapi client
             if (typeof window !== 'undefined') {
@@ -138,13 +160,6 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
                     await vapiClient.initializeVapiListeners();
                 }
 
-                // Get user info for personalization
-                const { createClient } = await import('@supabase/supabase-js');
-                const supabase = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                );
-                const { data: { user } } = await supabase.auth.getUser();
                 const candidateName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Candidate';
 
                 // Request microphone permission
@@ -161,10 +176,10 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
                     return;
                 }
 
-                // Start the Vapi call
+                // Start the Vapi call with existing session
                 if (vapiClient.startPhaseCall) {
                     await vapiClient.startPhaseCall(
-                        data.sessionId,
+                        session.session_id,
                         'KICK_OFF',
                         'kickoff',
                         [],
@@ -208,7 +223,7 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
 
             setIsCallActive(false);
             setIsSpeaking(false);
-            
+
             toast({
                 title: 'Interview ended',
                 description: 'Minerva call has been terminated',

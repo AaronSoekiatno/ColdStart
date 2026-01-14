@@ -123,8 +123,7 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
 
         const region = 'sjc'; // Default region (San Jose)
 
-        // We use --detach to not wait specifically for health checks if we want speed,
-        // but waiting is safer.
+        // Use machine run with --detach=false to wait for machine to start
         const runCommand = `machine run ${image} \
       --app ${appName} \
       --region ${region} \
@@ -132,13 +131,14 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
       --port 443:8080/tcp:http:tls \
       --port 80:8080/tcp:http \
       --vm-cpu-kind shared --vm-cpus 1 --vm-memory 2048 \
-      --autostart --autostop`;
+      --detach=false`;
 
-        const machineValues = await executeFlyCommand(runCommand, { json: false });
+        console.log(`[Fly.io] Starting machine...`);
+        await executeFlyCommand(runCommand, { json: false });
 
-        // Machine run returns the machine object
+        // Machine is now running
         const url = `https://${appName}.fly.dev`;
-        console.log(`[Fly.io] Machine launched. URL: ${url}`);
+        console.log(`[Fly.io] Machine started and running. URL: ${url}`);
 
         return { url };
 
