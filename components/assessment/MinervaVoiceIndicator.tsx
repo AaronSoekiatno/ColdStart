@@ -187,8 +187,11 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
                         title: 'Interview started',
                         description: 'Minerva is connecting...',
                     });
-                }
+                });
             }
+
+            // Note: We're already on the IDE page, so no navigation needed
+            // The IDE page will automatically detect the session and load the container
         } catch (error) {
             console.error('[MinervaVoiceIndicator] Failed to start interview:', error);
             toast({
@@ -196,6 +199,7 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
                 description: error instanceof Error ? error.message : 'An error occurred',
                 variant: 'destructive',
             });
+            setIsCallActive(false);
         } finally {
             setIsStarting(false);
         }
