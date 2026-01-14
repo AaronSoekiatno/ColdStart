@@ -6,11 +6,11 @@
 # However, this file is useful for testing a single instance
 # or as a base reference.
 
-app = "hermes-assessment-template"
+app = "hermes-assessment-production"
 primary_region = "sjc" # San Jose, CA (adjust as needed)
 
-[build]
-  image = "ghcr.io/hermes-startup/hermes-assessment:latest"
+# [build]
+#   image = "ghcr.io/hermes-startup/hermes-assessment:latest"
 
 [http_service]
   internal_port = 8080

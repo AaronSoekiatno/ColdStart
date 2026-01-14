@@ -18,15 +18,10 @@
     "ingest": "tsx scripts/data-ingestion/ingest-csv.ts",
     "ingest-supabase": "tsx scripts/data-ingestion/ingest-csv-supabase.ts",
     "ingest:waitlist": "tsx scripts/data-ingestion/ingest-waitlist-emails.ts",
-    "scrape-techcrunch": "tsx scripts/scrapers/scrape_techcrunch.ts",
-    "test-scrape-techcrunch": "tsx scripts/tests/test_scrape_techcrunch.ts",
-    "scrape-and-ingest-techcrunch": "tsx scripts/scrapers/scrape_techcrunch_supabase_pinecone.ts",
-    "scrape-techcrunch-supabase": "tsx scripts/scrapers/scrape_techcrunch_supabase_pinecone.ts",
     "ingest-pinecone": "tsx scripts/data-ingestion/ingest-startups-to-pinecone.ts",
     "rematch-all": "tsx scripts/matching/rematch-all-candidates.ts",
     "re-embed-all": "tsx scripts/cleanup/re-embed-all-candidates.ts",
     "delete-pinecone-embeddings": "tsx scripts/utils/delete-all-startup-embeddings.ts",
-    "test-techcrunch": "tsx scripts/tests/test_techcrunch_quick.ts",
     "enrich-startups": "tsx scripts/enrichment/enrich_startup_data.ts",
     "enrich-startup": "tsx scripts/enrichment/enrich_startup_data.ts",
     "enrich:backgrounds": "tsx scripts/enrichment/enrich_founder_backgrounds_only.ts",
@@ -131,8 +126,7 @@
     "sodium-javascript": "^0.8.0",
     "stripe": "^20.0.0",
     "swr": "^2.3.8",
-    "tailwind-merge": "^3.4.0",
-    "techcrunch-api": "^1.1.1"
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

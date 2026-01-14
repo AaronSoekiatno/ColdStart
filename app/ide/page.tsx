@@ -142,19 +142,35 @@ export default function IDEPage() {
             setIsLoading(false);
 
             // Fetch container info
-            fetchContainerInfo(currentUser.id);
+            fetchContainerInfo(currentUser);
         };
         checkAuth();
     }, [router]);
 
     // Fetch container information from the database
-    const fetchContainerInfo = async (userId: string) => {
+    const fetchContainerInfo = async (authUser: { id: string; email?: string }) => {
         try {
+            // First, get the candidate_id from the candidates table (different from auth user ID)
+            const { data: candidate, error: candidateError } = await supabase
+                .from('candidates')
+                .select('id')
+                .eq('email', authUser.email)
+                .single();
+
+            if (candidateError || !candidate) {
+                console.error('[IDE] Failed to find candidate for user:', authUser.email, candidateError);
+                setContainerStatus('error');
+                return;
+            }
+
+            const candidateId = candidate.id;
+            console.log('[IDE] Resolved candidate_id:', candidateId, 'for auth user:', authUser.id);
+
             // Get user's latest session with container info
             const { data: session, error } = await supabase
                 .from('interview_sessions')
                 .select('container_url, container_status, container_password, session_id, current_phase')
-                .eq('candidate_id', userId)
+                .eq('candidate_id', candidateId)
                 .order('created_at', { ascending: false })
                 .limit(1)
                 .single();
@@ -189,6 +205,13 @@ export default function IDEPage() {
                 return;
             }
 
+            console.log('[IDE] Fetched session:', {
+                session_id: session?.session_id,
+                container_url: session?.container_url,
+                container_status: session?.container_status,
+                hasSession: !!session
+            });
+
             setSessionId(session.session_id);
             setCurrentPhase(session.current_phase || null);
 
@@ -196,10 +219,12 @@ export default function IDEPage() {
             if (session.container_status === 'running' && session.container_url) {
                 setContainerUrl(session.container_url);
                 setContainerStatus('running');
-            } else if (session.container_status === 'provisioning') {
+            } else if (session.container_status === 'provisioning' || !session.container_url) {
+                // Poll if explicitly provisioning OR if session exists but no container URL yet
                 setContainerStatus('provisioning');
+                console.log('[IDE] Container not ready yet, polling in 5s...');
                 // Poll every 5 seconds until running
-                setTimeout(() => fetchContainerInfo(userId), 5000);
+                setTimeout(() => fetchContainerInfo(authUser), 5000);
             } else {
                 // Fallback to localhost for local dev
                 const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -231,14 +256,33 @@ export default function IDEPage() {
             description: 'Saving your work and creating snapshot...',
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        try {
+            // Destroy the container to save costs
+            if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
+                await fetch('/api/topcandidates/provision-container', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionId }),
+                });
+            }
 
-        toast({
-            title: 'Assessment Submitted',
-            description: 'Your work has been saved successfully.',
-        });
+            await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        router.push('/assessment?submitted=true');
+            toast({
+                title: 'Assessment Submitted',
+                description: 'Your work has been saved successfully.',
+            });
+
+            router.push('/assessment?submitted=true');
+        } catch (error) {
+            console.error('[IDE] Error during submission:', error);
+            // Still navigate even if cleanup fails
+            toast({
+                title: 'Assessment Submitted',
+                description: 'Your work has been saved.',
+            });
+            router.push('/assessment?submitted=true');
+        }
     };
 
     const toggleFullscreen = () => {

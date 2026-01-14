@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import { Loader2, Copy, Check, Play, Github } from 'lucide-react';
+import { Loader2, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
 
@@ -58,28 +58,32 @@ export default function AssessmentPage() {
   const handleStartAssessment = async () => {
     setIsCreatingRepo(true);
     try {
-      const response = await fetch('/api/topcandidates/create-assessment-repo', {
+      // Call interview start which handles:
+      // 1. Session creation
+      // 2. Repository creation/setup
+      // 3. Fly.io container provisioning
+      const response = await fetch('/api/interview/start', {
         method: 'POST',
         credentials: 'include',
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create assessment repository');
+        throw new Error(errorData.error || 'Failed to start assessment session');
       }
 
       const data = await response.json();
 
       toast({
-        title: "Assessment repository created!",
-        description: "Your private workspace is ready.",
+        title: "Assessment started!",
+        description: "Your secure workspace is being provisioned.",
       });
 
-      // Refresh status
-      await fetchAssessmentStatus();
+      // Redirect to IDE page which handles provisioning status display
+      router.push('/ide');
     } catch (error) {
-      console.error('Error creating assessment repo:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create repository';
+      console.error('Error starting assessment:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start assessment';
       toast({
         title: "Error",
         description: errorMessage,
@@ -111,10 +115,6 @@ export default function AssessmentPage() {
     );
   }
 
-  const hasRepo = assessmentStatus?.repoUrl !== null;
-  const repoName = assessmentStatus?.repoUrl?.split('/').pop() || 'hermes-assessment-*';
-  const cloneUrl = assessmentStatus?.repoUrl ? `${assessmentStatus.repoUrl}.git` : '';
-
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
       <Header initialUser={user} />
@@ -125,90 +125,49 @@ export default function AssessmentPage() {
             {/* Header */}
             <div className="text-center mb-8">
               <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                {hasRepo ? "Your Assessment Workspace" : "Start Your 20-Minute Assessment"}
+                Start Your 20-Minute Assessment
               </h1>
               <p className="text-gray-600 text-lg">
-                {hasRepo
-                  ? "Your private workspace is ready. Clone the repository and start your assessment."
-                  : "Start a 20-minute technical assessment to showcase your skills to potential employers"}
+                Start a 20-minute technical assessment to showcase your skills to potential employers
               </p>
             </div>
 
-            {!hasRepo ? (
-              /* Not Started State */
-              <div className="space-y-6">
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
-                  <ul className="space-y-2 text-gray-700 list-disc list-inside">
-                    <li>Work in a private GitHub repository</li>
-                    <li>Complete database tasks in your isolated workspace</li>
-                    <li>Demonstrate your problem-solving skills</li>
-                    <li>Showcase your technical abilities</li>
-                    <li>Get guided by Minerva, your voice AI assistant</li>
-                  </ul>
-                </div>
-
-                <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
-                  <p className="text-gray-700">Approximately 20 minutes</p>
-                </div>
-
-                <Button
-                  onClick={handleStartAssessment}
-                  disabled={isCreatingRepo}
-                  className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
-                >
-                  {isCreatingRepo ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Creating workspace...
-                    </>
-                  ) : (
-                    <>
-                      <Play className="mr-2 h-5 w-5" />
-                      Start Assessment
-                    </>
-                  )}
-                </Button>
+            {/* Start Assessment */}
+            <div className="space-y-6">
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
+                <ul className="space-y-2 text-gray-700 list-disc list-inside">
+                  <li>Work in a cloud-based IDE</li>
+                  <li>Complete coding tasks in your isolated workspace</li>
+                  <li>Demonstrate your problem-solving skills</li>
+                  <li>Showcase your technical abilities</li>
+                  <li>Get guided by AI assistant</li>
+                </ul>
               </div>
-            ) : (
-              /* Has Repository - Show Instructions */
-              <div className="space-y-6">
-                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="text-green-600 text-2xl">✓</div>
-                    <h3 className="font-semibold text-lg text-gray-900">
-                      Repository Created Successfully
-                    </h3>
-                  </div>
-                  <p className="text-gray-700 mb-4">
-                    Your private assessment workspace is ready. Follow these steps to get started:
-                  </p>
-                </div>
 
-                <div className="space-y-4">
-                  {/* Steps removed as per user request */}
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col gap-4 pt-4">
-                  <Button
-                    onClick={() => router.push('/ide')}
-                    className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
-                  >
-                    💻 Open IDE
-                  </Button>
-                  <Button
-                    onClick={() => window.open(assessmentStatus?.repoUrl || '', '_blank')}
-                    variant="outline"
-                    className="w-full text-gray-900 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-                  >
-                    <Github className="mr-2 h-4 w-4" />
-                    Open Repository
-                  </Button>
-                </div>
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
+                <p className="text-gray-700">Approximately 20 minutes</p>
               </div>
-            )}
+
+              <Button
+                onClick={handleStartAssessment}
+                disabled={isCreatingRepo}
+                className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+              >
+                {isCreatingRepo ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Launching workspace...
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-5 w-5" />
+                    Start Assessment
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </section>

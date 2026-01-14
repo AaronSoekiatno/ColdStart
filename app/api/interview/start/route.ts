@@ -61,9 +61,19 @@ export async function POST(request: NextRequest) {
       phase: result.phase,
     };
     
-    // Provision Docker Container
     // ============================================
-    const origin = request.nextUrl.origin;
+    // GitHub Repo Creation - DISABLED
+    // ============================================
+    // Not needed for containerized assessments since all code is pre-baked in the Docker image.
+    // The container already has the mission code, tests, and auto-commit logic.
+    // Candidates work entirely in the browser IDE.
+    
+    // If you want to re-enable GitHub repo tracking:
+    // 1. Uncomment the repo creation code below
+    // 2. Update the container to clone from the candidate's repo instead of using pre-baked code
+    
+    // Provision Fly.io Container
+    // ============================================
     if (data.sessionId && candidate) {
       try {
         console.log('[Interview Start] Provisioning container for session:', data.sessionId);
