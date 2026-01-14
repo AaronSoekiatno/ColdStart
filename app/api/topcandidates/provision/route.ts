@@ -53,47 +53,10 @@ async function handler(request: NextRequest) {
       }
     }
 
-    // 2. Try Authentication via Provisioning Token (Script/Header)
-    if (!candidateId) {
-      let token = null;
-
-      // Check Authorization header
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-      }
-
-      // If not found, check custom header (which might be passed by some clients)
-      if (!token) {
-        token = request.headers.get('X-Provisioning-Token');
-      }
-
-      // If still not found, check query parameter (easy for scripts)
-      if (!token) {
-        token = request.nextUrl.searchParams.get('token');
-      }
-
-      if (token) {
-        // Validate token against candidates table
-        const { data: tokenCandidate, error: tokenError } = await supabaseAdmin!
-          .from('candidates')
-          .select('id, email')
-          .eq('provisioning_token', token)
-          .single();
-
-        if (!tokenError && tokenCandidate) {
-          candidateId = tokenCandidate.id;
-          candidateEmail = tokenCandidate.email;
-          console.log(`[Provision] Authenticated via provisioning token for candidate: ${candidateEmail}`);
-        } else {
-          console.warn(`[Provision] Invalid provisioning token attempt: ${token}`);
-        }
-      }
-    }
-
+    // Authentication is now session-based only (no provisioning tokens)
     if (!candidateId) {
       return NextResponse.json(
-        { error: 'Unauthorized. Please sign in or provide a valid provisioning token.' },
+        { error: 'Unauthorized. Please sign in to access the assessment environment.' },
         { status: 401 }
       );
     }

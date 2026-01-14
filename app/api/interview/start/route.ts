@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate } from '@/lib/supabase';
+import { startInterview, initializeOrchestrator } from '@/lib/vapi-orchestrator';
 
 /**
  * POST /api/interview/start
  * Start an interview for the authenticated user
- * Gets the provisioning token from the candidate record and starts the interview
+ * Creates a new interview session and provisions a Docker container
  */
 export async function POST(request: NextRequest) {
   try {
@@ -37,35 +38,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get candidate record with provisioning token
+    // Get candidate record
     const candidate = await getCandidate(user.email, true);
-    if (!candidate || !candidate.provisioning_token) {
+    if (!candidate) {
       return NextResponse.json(
-        { error: 'No assessment access found. Please start an assessment first.' },
+        { error: 'Candidate profile not found. Please complete onboarding first.' },
         { status: 404 }
       );
     }
 
-    // Call the token-based start endpoint
-    const origin = request.nextUrl.origin;
-    const startResponse = await fetch(`${origin}/api/interview/start-by-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${candidate.provisioning_token}`,
-      },
-      body: JSON.stringify({}),
+    // Initialize orchestrator
+    initializeOrchestrator();
+
+    // Start interview directly using authenticated user's candidate ID
+    const result = await startInterview(candidate.id, {
+      name: candidate.name,
+      email: candidate.email,
     });
 
-    if (!startResponse.ok) {
-      const errorData = await startResponse.json();
-      return NextResponse.json(
-        { error: errorData.error || 'Failed to start interview' },
-        { status: startResponse.status }
-      );
-    }
-
-    const data = await startResponse.json();
+    const data = {
+      sessionId: result.sessionId,
+      phase: result.phase,
+    };
     
     // ============================================
     // GitHub Repo Creation - DISABLED

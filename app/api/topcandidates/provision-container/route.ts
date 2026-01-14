@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // Get candidate info
     const { data: candidate } = await supabase
       .from('candidates')
-      .select('id, email, provisioning_token')
+      .select('id, email')
       .eq('email', user.email)
       .single();
 
@@ -46,15 +46,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
     }
 
-    // Call existing provisioning endpoint...
+    // Call provisioning endpoint using authenticated session
+    // The provision endpoint will authenticate via the session cookie
     const origin = request.nextUrl.origin;
     const provisionResponse = await fetch(
       `${origin}/api/topcandidates/provision`,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${candidate.provisioning_token}`,
           'Content-Type': 'application/json',
+          'Cookie': request.headers.get('Cookie') || '',
         },
       }
     );
