@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-      - fly  # Include your current branch
+      - fly
+      - minerva
     paths:
       - 'docker/**'
       - '.github/workflows/docker-build-push.yml'
