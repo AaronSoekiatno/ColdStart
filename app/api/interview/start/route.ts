@@ -56,7 +56,13 @@ export async function POST(request: NextRequest) {
       email: candidate.email,
     });
 
-    const data = {
+    const data: {
+      sessionId: string;
+      phase: any;
+      containerUrl?: string;
+      containerPassword?: string;
+      type?: string;
+    } = {
       sessionId: result.sessionId,
       phase: result.phase,
     };
@@ -76,6 +82,7 @@ export async function POST(request: NextRequest) {
     // ============================================
     if (data.sessionId && candidate) {
       try {
+        const origin = request.nextUrl.origin;
         console.log('[Interview Start] Provisioning container for session:', data.sessionId);
         const containerResponse = await fetch(`${origin}/api/topcandidates/provision-container`, {
           method: 'POST',

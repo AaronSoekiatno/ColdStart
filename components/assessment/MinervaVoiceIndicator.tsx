@@ -116,11 +116,7 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
         setIsStarting(true);
         try {
             // Get current session ID from Supabase (should already exist if on IDE page)
-            const { createClient } = await import('@supabase/supabase-js');
-            const supabase = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            );
+            const { supabase } = await import('@/lib/supabase');
 
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) {
