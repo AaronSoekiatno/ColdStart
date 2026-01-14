@@ -80,9 +80,9 @@ The telemetry sidecar reports:
 
 ### Claude Code Integration
 
-Claude Code is pre-configured to route through the telemetry proxy at `${TELEMETRY_URL}/api/proxy/claude`. This enables:
+Claude Code is pre-installed with a wrapper script that logs all prompts and responses to Supabase. This enables:
 
-- Prompt/response logging
+- Prompt/response logging via bash wrapper
 - Token usage tracking
 - Session-linked AI interactions
 
@@ -169,8 +169,6 @@ docker/
 │   └── package.json         # Pre-installed dependencies
 ├── config/
 │   └── settings.json        # VS Code settings
-└── .claude/
-    └── settings.local.json  # Claude Code telemetry config
 ```
 
 ## Security Notes

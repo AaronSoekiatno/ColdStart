@@ -43,14 +43,6 @@ HELPER
 }
 CONFIG
 
-    # Initialize settings.json
-    if [ -f "/home/coder/.claude/settings.local.json" ]; then
-        cp /home/coder/.claude/settings.local.json /home/coder/.claude/settings.json
-        sed -i "s|\${TELEMETRY_URL:-}|${TELEMETRY_URL:-}|g" /home/coder/.claude/settings.json
-        sed -i "s|\${SESSION_ID:-}|${SESSION_ID:-}|g" /home/coder/.claude/settings.json
-        sed -i "s|\${CANDIDATE_ID:-}|${CANDIDATE_ID:-}|g" /home/coder/.claude/settings.json
-    fi
-
     # Force-append apiKey helper to settings.json
     python3 -c '
 import json, os

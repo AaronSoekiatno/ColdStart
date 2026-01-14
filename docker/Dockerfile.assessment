@@ -34,15 +34,9 @@ RUN npm install -g @anthropic-ai/claude-code && \
 
 # ============================================
 # 2. Pre-configure Claude Code settings directory
-# This ensures the telemetry proxy config is ready
 # ============================================
 RUN mkdir -p /home/coder/.claude && \
     chown -R coder:coder /home/coder/.claude
-
-# ============================================
-# 3. Inject Claude Code settings (telemetry proxy config)
-# ============================================
-COPY --chown=coder:coder .claude/settings.local.json /home/coder/.claude/settings.local.json
 
 # Create workspace directory
 RUN mkdir -p /workspace && chown coder:coder /workspace
