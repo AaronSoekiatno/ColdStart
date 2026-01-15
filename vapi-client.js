@@ -163,11 +163,10 @@ if (typeof window === 'undefined') {
 // Note: In browser context, must use NEXT_PUBLIC_ prefix or pass from server
 const VAPI_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || process.env.VAPI_ASSISTANT_ID || 'vapi-assistant-placeholder';
 
-// Assistant IDs mapping - all phases use the same assistant
+// Assistant IDs mapping - phases use the same assistant
 const ASSISTANT_IDS = {
     kickoff: VAPI_ASSISTANT_ID,
-    bug_injection: VAPI_ASSISTANT_ID,
-    post_mortem: VAPI_ASSISTANT_ID
+    reflection: VAPI_ASSISTANT_ID
 };
 
 // Track active call state

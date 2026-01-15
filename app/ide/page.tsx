@@ -113,7 +113,7 @@ export default function IDEPage() {
         };
     }, []);
 
-    // Poll for phase changes and auto-start POST_MORTEM call
+    // Poll for phase changes and auto-start REFLECTION call
     useEffect(() => {
         if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
             return;
@@ -134,9 +134,9 @@ export default function IDEPage() {
 
                 const newPhase = session?.current_phase || null;
 
-                // If phase changed to POST_MORTEM and no call is active, start the call
-                if (newPhase === 'POST_MORTEM' && currentPhase !== 'POST_MORTEM') {
-                    console.log('[IDE] Phase transitioned to POST_MORTEM, checking if call should start...');
+                // If phase changed to REFLECTION and no call is active, start the call
+                if (newPhase === 'REFLECTION' && currentPhase !== 'REFLECTION') {
+                    console.log('[IDE] Phase transitioned to REFLECTION, checking if call should start...');
 
                     // Check if Vapi call is already active
                     try {
@@ -144,7 +144,7 @@ export default function IDEPage() {
                         const vapiClient = vapiModule.default || vapiModule;
 
                         if (vapiClient.isCallActive && !vapiClient.isCallActive()) {
-                            console.log('[IDE] Starting POST_MORTEM call automatically...');
+                            console.log('[IDE] Starting REFLECTION call automatically...');
 
                             // Get conversation history for context
                             const { data: sessionData } = await supabase
@@ -155,12 +155,12 @@ export default function IDEPage() {
 
                             const conversationHistory = sessionData?.conversation_history || [];
 
-                            // Start the POST_MORTEM call
+                            // Start the REFLECTION call
                             if (vapiClient.startPhaseCall) {
                                 await vapiClient.startPhaseCall(
                                     sessionId,
-                                    'POST_MORTEM',
-                                    'post_mortem',
+                                    'REFLECTION',
+                                    'reflection',
                                     conversationHistory
                                 );
 
@@ -171,7 +171,7 @@ export default function IDEPage() {
                             }
                         }
                     } catch (vapiError) {
-                        console.error('[IDE] Error starting POST_MORTEM call:', vapiError);
+                        console.error('[IDE] Error starting REFLECTION call:', vapiError);
                     }
                 }
 
@@ -194,7 +194,7 @@ export default function IDEPage() {
         };
     }, [sessionId, currentPhase, toast]);
 
-    // Listen for POST_MORTEM call end to complete the assessment
+    // Listen for REFLECTION call end to complete the assessment
     useEffect(() => {
         if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
             return;
@@ -209,9 +209,9 @@ export default function IDEPage() {
                 vapiClient = vapiModule.default || vapiModule;
 
                 callEndCallback = async () => {
-                    // Check if we're in POST_MORTEM phase when call ends
-                    if (currentPhase === 'POST_MORTEM') {
-                        console.log('[IDE] POST_MORTEM call ended, completing assessment...');
+                    // Check if we're in REFLECTION phase when call ends
+                    if (currentPhase === 'REFLECTION') {
+                        console.log('[IDE] REFLECTION call ended, completing assessment...');
 
                         toast({
                             title: 'Assessment Complete',
@@ -241,7 +241,7 @@ export default function IDEPage() {
                     vapiClient.onEvent('onCallEnd', callEndCallback);
                 }
             } catch (error) {
-                console.error('[IDE] Error setting up POST_MORTEM end listener:', error);
+                console.error('[IDE] Error setting up REFLECTION end listener:', error);
             }
         };
 
@@ -444,7 +444,7 @@ export default function IDEPage() {
 
     if (isLoading || containerStatus === 'loading') {
         return (
-            <div className="min-h-screen flex flex-col bg-slate-900">
+            <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="text-center">
@@ -458,7 +458,7 @@ export default function IDEPage() {
 
     if (containerStatus === 'provisioning') {
         return (
-            <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+            <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="max-w-2xl w-full">
@@ -538,7 +538,7 @@ export default function IDEPage() {
 
     if (containerStatus === 'error' || !containerUrl) {
         return (
-            <div className="min-h-screen flex flex-col bg-slate-900">
+            <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="text-center max-w-md">
@@ -562,7 +562,7 @@ export default function IDEPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-900">
+        <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
             {/* Compact Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
                 <div className="flex items-center gap-4">

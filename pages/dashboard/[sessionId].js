@@ -29,24 +29,24 @@ export default function Dashboard() {
 
     // Start Vapi call when dashboard loads and phase requires it
     const [vapiStartAttempted, setVapiStartAttempted] = useState(false);
-    
+
     useEffect(() => {
         if (!status || !status.session || !status.currentPhase) return;
-        
+
         const { currentPhase, session } = status;
-        
+
         // Only start Vapi if:
         // 1. Phase requires Vapi (vapiActive is true)
         // 2. Vapi is not already active
         // 3. We're in the browser
         // 4. We haven't already attempted to start it
-        if (currentPhase.vapiActive && 
-            status.vapi?.status === 'idle' && 
+        if (currentPhase.vapiActive &&
+            status.vapi?.status === 'idle' &&
             !status.vapi?.active &&
             typeof window !== 'undefined' &&
             session.status === 'active' &&
             !vapiStartAttempted) {
-            
+
             const startVapiCall = async () => {
                 try {
                     setVapiStartAttempted(true);
@@ -55,11 +55,8 @@ export default function Dashboard() {
                     await startPhaseCall(
                         sessionId,
                         currentPhase.id,
-                        currentPhase.id === 'KICK_OFF' ? 'kickoff' : 
-                        currentPhase.id === 'BUG_INJECTION' ? 'bug_injection' : 'post_mortem',
-                        [], // No previous messages for now
-                        null,
-                        { candidateName }
+                        currentPhase.id === 'KICK_OFF' ? 'kickoff' : 'reflection',
+                        [] // No previous messages for now
                     );
                     console.log('[Dashboard] Successfully started Vapi call for phase:', currentPhase.id);
                 } catch (error) {
@@ -67,12 +64,12 @@ export default function Dashboard() {
                     setVapiStartAttempted(false); // Allow retry on error
                 }
             };
-            
+
             // Small delay to ensure everything is loaded
             const timer = setTimeout(startVapiCall, 1000);
             return () => clearTimeout(timer);
         }
-        
+
         // Reset attempt flag if Vapi becomes active (call succeeded)
         if (status.vapi?.active) {
             setVapiStartAttempted(false);
@@ -89,8 +86,8 @@ export default function Dashboard() {
                     <p style={{ marginTop: '1rem', fontSize: '0.9rem', opacity: 0.7 }}>
                         Session ID: {sessionId}
                     </p>
-                    <button 
-                        className="btn btn-primary" 
+                    <button
+                        className="btn btn-primary"
                         style={{ marginTop: '1rem' }}
                         onClick={() => router.push('/')}
                     >
@@ -103,12 +100,12 @@ export default function Dashboard() {
     if (!status || !status.session) return <div className="container">Loading dashboard...</div>;
 
     const { session, currentPhase, timer, vapi } = status;
-    
+
     // Ensure session has required fields with defaults
     if (!session.status) {
         session.status = 'created';
     }
-    const PHASES = ['KICK_OFF', 'BUILD', 'BUG_INJECTION', 'FIX', 'POST_MORTEM'];
+    const PHASES = ['KICK_OFF', 'BUILD', 'REFLECTION'];
 
     const handleControl = async (action, payload = {}) => {
         setControlLoading(true);
@@ -247,7 +244,7 @@ export default function Dashboard() {
                             className="btn btn-danger"
                             style={{ width: '100%', marginBottom: '1rem' }}
                             onClick={() => {
-                                const target = prompt('Type the phase ID to jump to (e.g. BUG_INJECTION or FIX):');
+                                const target = prompt('Type the phase ID to jump to (e.g. BUILD or REFLECTION):');
                                 if (target) handleControl('next_phase', { targetPhase: target.toUpperCase() });
                             }}
                         >
