@@ -73,9 +73,6 @@ export default function IDEPage() {
                 await vapiClient.initializeVapiListeners();
             }
 
-            // Get candidate name for personalization
-            const candidateName = userEmail?.split('@')[0] || 'Candidate';
-
             // Start the KICK_OFF phase call
             if (vapiClient.startPhaseCall) {
                 console.log('[IDE] Auto-starting KICK_OFF call for session:', sessionId);
@@ -83,9 +80,7 @@ export default function IDEPage() {
                     sessionId,
                     'KICK_OFF',
                     'kickoff',
-                    [], // No previous context for first phase
-                    null,
-                    { candidateName }
+                    [] // No previous context for first phase
                 );
 
                 toast({
@@ -613,20 +608,7 @@ export default function IDEPage() {
                         onClick={handleSubmit}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                        <Send className="mr-2 h-4 w-4" />
-                        Submit Assessment
-                    </Button>
-                    <Button
-                        onClick={toggleFullscreen}
-                        variant="outline"
-                        size="sm"
-                        className="bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white"
-                    >
-                        {isFullscreen ? (
-                            <Minimize2 className="h-4 w-4" />
-                        ) : (
-                            <Maximize2 className="h-4 w-4" />
-                        )}
+                        Submit
                     </Button>
                     <Button
                         onClick={() => {
@@ -643,6 +625,18 @@ export default function IDEPage() {
                     >
                         <Eye className="mr-2 h-4 w-4" />
                         Preview App
+                    </Button>
+                    <Button
+                        onClick={toggleFullscreen}
+                        variant="outline"
+                        size="sm"
+                        className="bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white"
+                    >
+                        {isFullscreen ? (
+                            <Minimize2 className="h-4 w-4" />
+                        ) : (
+                            <Maximize2 className="h-4 w-4" />
+                        )}
                     </Button>
                     <Button
                         onClick={handleClose}
