@@ -17,6 +17,7 @@ import {
     X,
     Eye,
     MessageSquare,
+    Mic,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
@@ -33,10 +34,76 @@ export default function IDEPage() {
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
     const [showAgentChat, setShowAgentChat] = useState(false);
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
+    const [kickOffStarted, setKickOffStarted] = useState(false);
+    const [iframeLoaded, setIframeLoaded] = useState(false);
+    const kickOffStartedRef = useRef(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const phasePollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const { toast } = useToast();
+
+    // Auto-start KICK_OFF Vapi call when container is ready
+    const startKickOffCall = async (sessionId: string, userEmail?: string) => {
+        if (kickOffStartedRef.current) return;
+        kickOffStartedRef.current = true;
+        setKickOffStarted(true);
+
+        try {
+            // Request microphone permission first
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                stream.getTracks().forEach(track => track.stop());
+            } catch (permError) {
+                console.error('[IDE] Microphone permission denied:', permError);
+                toast({
+                    title: 'Microphone Permission Required',
+                    description: 'Please allow microphone access for the interview.',
+                    variant: 'destructive',
+                });
+                kickOffStartedRef.current = false;
+                setKickOffStarted(false);
+                return;
+            }
+
+            // Import and initialize Vapi client
+            const vapiModule = await import('@/vapi-client.js');
+            const vapiClient = vapiModule.default || vapiModule;
+
+            if (vapiClient.initializeVapiListeners) {
+                await vapiClient.initializeVapiListeners();
+            }
+
+            // Get candidate name for personalization
+            const candidateName = userEmail?.split('@')[0] || 'Candidate';
+
+            // Start the KICK_OFF phase call
+            if (vapiClient.startPhaseCall) {
+                console.log('[IDE] Auto-starting KICK_OFF call for session:', sessionId);
+                await vapiClient.startPhaseCall(
+                    sessionId,
+                    'KICK_OFF',
+                    'kickoff',
+                    [], // No previous context for first phase
+                    null,
+                    { candidateName }
+                );
+
+                toast({
+                    title: 'Interview Starting',
+                    description: 'Minerva is connecting...',
+                });
+            }
+        } catch (error) {
+            console.error('[IDE] Failed to start KICK_OFF call:', error);
+            toast({
+                title: 'Failed to Start Interview',
+                description: 'Could not connect to Minerva. Please try again.',
+                variant: 'destructive',
+            });
+            kickOffStartedRef.current = false;
+            setKickOffStarted(false);
+        }
+    };
 
     // Timer for elapsed time
     useEffect(() => {
@@ -132,6 +199,66 @@ export default function IDEPage() {
         };
     }, [sessionId, currentPhase, toast]);
 
+    // Listen for POST_MORTEM call end to complete the assessment
+    useEffect(() => {
+        if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
+            return;
+        }
+
+        let callEndCallback: (() => void) | null = null;
+        let vapiClient: any = null;
+
+        const setupPostMortemEndListener = async () => {
+            try {
+                const vapiModule = await import('@/vapi-client.js');
+                vapiClient = vapiModule.default || vapiModule;
+
+                callEndCallback = async () => {
+                    // Check if we're in POST_MORTEM phase when call ends
+                    if (currentPhase === 'POST_MORTEM') {
+                        console.log('[IDE] POST_MORTEM call ended, completing assessment...');
+
+                        toast({
+                            title: 'Assessment Complete',
+                            description: 'Thank you for completing the assessment. Redirecting...',
+                        });
+
+                        // Destroy the container
+                        try {
+                            await fetch('/api/topcandidates/provision-container', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ sessionId }),
+                            });
+                            console.log('[IDE] Container destroyed successfully');
+                        } catch (error) {
+                            console.error('[IDE] Error destroying container:', error);
+                        }
+
+                        // Redirect to assessment page with completed flag
+                        setTimeout(() => {
+                            router.push('/assessment?completed=true');
+                        }, 2000);
+                    }
+                };
+
+                if (vapiClient.onEvent) {
+                    vapiClient.onEvent('onCallEnd', callEndCallback);
+                }
+            } catch (error) {
+                console.error('[IDE] Error setting up POST_MORTEM end listener:', error);
+            }
+        };
+
+        setupPostMortemEndListener();
+
+        return () => {
+            if (vapiClient && vapiClient.offEvent && callEndCallback) {
+                vapiClient.offEvent('onCallEnd', callEndCallback);
+            }
+        };
+    }, [sessionId, currentPhase, toast, router]);
+
     // Check auth and fetch container info
     useEffect(() => {
         const checkAuth = async () => {
@@ -205,6 +332,12 @@ export default function IDEPage() {
             if (session.container_status === 'running' && session.container_url) {
                 setContainerUrl(session.container_url);
                 setContainerStatus('running');
+
+                // Auto-start KICK_OFF call when container is ready and we're in KICK_OFF phase
+                if (session.current_phase === 'KICK_OFF' && !kickOffStartedRef.current) {
+                    console.log('[IDE] Container ready, auto-starting KICK_OFF call...');
+                    startKickOffCall(session.session_id, authUser.email);
+                }
             } else if (session.container_status === 'provisioning' || !session.container_url) {
                 // Poll if explicitly provisioning OR if session exists but no container URL yet
                 setContainerStatus('provisioning');
@@ -228,6 +361,23 @@ export default function IDEPage() {
         }
     };
 
+    // Stop Vapi call if active
+    const stopVapiCall = async (reason: string) => {
+        try {
+            const vapiModule = await import('@/vapi-client.js');
+            const vapiClient = vapiModule.default || vapiModule;
+
+            if (vapiClient.isCallActive && vapiClient.isCallActive()) {
+                console.log(`[IDE] Stopping Vapi call: ${reason}`);
+                if (vapiClient.stopCall) {
+                    await vapiClient.stopCall(reason);
+                }
+            }
+        } catch (error) {
+            console.error('[IDE] Error stopping Vapi call:', error);
+        }
+    };
+
     const handleSubmit = async () => {
         toast({
             title: 'Submitting Assessment',
@@ -235,6 +385,9 @@ export default function IDEPage() {
         });
 
         try {
+            // Stop Vapi call if active
+            await stopVapiCall('assessment_submitted');
+
             // Destroy the container to save costs
             if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
                 await fetch('/api/topcandidates/provision-container', {
@@ -277,7 +430,10 @@ export default function IDEPage() {
         setShowCloseConfirm(true);
     };
 
-    const confirmClose = () => {
+    const confirmClose = async () => {
+        // Stop Vapi call if active
+        await stopVapiCall('session_closed');
+
         toast({
             title: 'Session Closed',
             description: 'Your progress has been saved. You can continue later.',
@@ -454,6 +610,13 @@ export default function IDEPage() {
                     <div className="h-4 w-px bg-slate-600" />
 
                     <Button
+                        onClick={handleSubmit}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        <Send className="mr-2 h-4 w-4" />
+                        Submit Assessment
+                    </Button>
+                    <Button
                         onClick={toggleFullscreen}
                         variant="outline"
                         size="sm"
@@ -530,7 +693,58 @@ export default function IDEPage() {
             {/* Main Content Area */}
             <div className="flex-1 flex relative overflow-hidden">
                 {/* Code-Server Iframe */}
-                <div className={`flex-1 relative transition-all duration-300 ${showAgentChat ? 'mr-96' : ''}`}>
+                <div className="flex-1 relative">
+                    {/* Loading Overlay - Shows while IDE is loading */}
+                    {!iframeLoaded && (
+                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                            <div className="max-w-md w-full mx-4">
+                                <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
+                                    {/* Animated Icon */}
+                                    <div className="flex justify-center mb-6">
+                                        <div className="relative">
+                                            <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
+                                            <Loader2 className="h-14 w-14 animate-spin text-blue-400 relative" />
+                                        </div>
+                                    </div>
+
+                                    {/* Title */}
+                                    <h2 className="text-xl font-bold text-white text-center mb-2">
+                                        Loading Your IDE
+                                    </h2>
+                                    <p className="text-slate-400 text-center text-sm mb-6">
+                                        Setting up VS Code in the cloud...
+                                    </p>
+
+                                    {/* Minerva Status */}
+                                    {kickOffStarted && (
+                                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="relative">
+                                                    <Mic className="h-5 w-5 text-blue-400" />
+                                                    <div className="absolute inset-0 bg-blue-400/50 rounded-full animate-ping" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-blue-300 font-medium text-sm">
+                                                        Minerva is speaking
+                                                    </p>
+                                                    <p className="text-blue-400/70 text-xs">
+                                                        Listen while your IDE loads
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Progress indicator */}
+                                    <div className="flex items-center justify-center gap-2 text-slate-500 text-xs">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        <span>Almost ready...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <iframe
                         ref={iframeRef}
                         src={containerUrl}
@@ -538,6 +752,7 @@ export default function IDEPage() {
                         allow="clipboard-read; clipboard-write; microphone"
                         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
                         title="Code Server IDE"
+                        onLoad={() => setIframeLoaded(true)}
                     />
                 </div>
 
