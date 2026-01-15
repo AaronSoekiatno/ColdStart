@@ -60,6 +60,10 @@ COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-serv
 
 RUN chown -R coder:coder /home/coder
 
+# Uninstall GitHub Copilot extensions if present
+RUN code-server --uninstall-extension GitHub.copilot 2>/dev/null || true && \
+    code-server --uninstall-extension GitHub.copilot-chat 2>/dev/null || true
+
 # Switch back to coder user
 USER coder
 

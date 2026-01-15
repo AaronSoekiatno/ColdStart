@@ -33,7 +33,10 @@
     },
     "github.copilot.editor.enableAutoCompletions": false,
     "github.copilot-chat.editor.enableAutoCompletions": false,
+    "github.copilot.inlineSuggest.enable": false,
+    "github.copilot.chat.enabled": false,
     "chat.commandCenter.enabled": false,
     "workbench.panel.defaultLocation": "bottom",
-    "terminal.integrated.defaultLocation": "editor"
+    "terminal.integrated.defaultLocation": "editor",
+    "npm.packageManager": "npm"
 }

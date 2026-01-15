@@ -161,12 +161,13 @@ if (typeof window === 'undefined') {
 
 // Assistant ID (single assistant for all phases, loaded from environment)
 // Note: In browser context, must use NEXT_PUBLIC_ prefix or pass from server
-const VAPI_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || process.env.VAPI_ASSISTANT_ID || 'vapi-assistant-placeholder';
+const VAPI_KICKOFF_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || process.env.VAPI_ASSISTANT_ID || 'vapi-assistant-placeholder';
+const VAPI_REFLECTION_ID = process.env.NEXT_PUBLIC_VAPI_REFLECTION_ASSISTANT_ID || '9c68493e-6e1d-444b-a66d-f0069df8f782';
 
-// Assistant IDs mapping - phases use the same assistant
+// Assistant IDs mapping - kickoff and reflection use separate assistants
 const ASSISTANT_IDS = {
-    kickoff: VAPI_ASSISTANT_ID,
-    reflection: VAPI_ASSISTANT_ID
+    kickoff: VAPI_KICKOFF_ID,
+    reflection: VAPI_REFLECTION_ID
 };
 
 // Track active call state
