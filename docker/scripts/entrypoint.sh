@@ -153,6 +153,8 @@ if [ -z "$PROMPT" ]; then
     exit 1
 fi
 
+# Check initial prompt size (rough estimate: 1 token ≈ 4 chars)
+# Note: This doesn't account for tokens from files Claude reads during execution
 MAX_TOKENS=${CLAUDE_PROMPT_TOKEN_LIMIT:-5000}
 EST_TOKENS=$((${#PROMPT} / 4))
 
@@ -174,15 +176,17 @@ fi
 # Cost-saving configuration (can be overridden via environment variables)
 CLAUDE_MODEL="${CLAUDE_MODEL:-claude-3-5-haiku-latest}"  # Haiku is ~12x cheaper than Sonnet
 CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-5}"  # Limit agentic loops to prevent runaway costs
-CLAUDE_MAX_TOKENS="${CLAUDE_MAX_OUTPUT_TOKENS:-4096}"  # Limit output token count
+CLAUDE_MAX_OUTPUT_TOKENS="${CLAUDE_MAX_OUTPUT_TOKENS:-4096}"  # Limit output token count
+CLAUDE_MAX_READ_SIZE="${CLAUDE_MAX_READ_SIZE:-2000}"  # Limit lines per file read
 
 # Scoped Read access: only source files, excluding build artifacts and dependencies
 $CLAUDE_BIN -p "$PROMPT" \
     --model "$CLAUDE_MODEL" \
     --max-turns "$CLAUDE_MAX_TURNS" \
+    --max-tokens "$CLAUDE_MAX_OUTPUT_TOKENS" \
     --allowedTools \
     "Bash(*)" \
-    "Read(/workspace/**/*.{ts,tsx,js,jsx,json,md,css,html},!**/node_modules/**,!**/.next/**,!**/dist/**,!**/build/**,!**/.git/**)" \
+    "Read(/workspace/**/*.{ts,tsx,js,jsx,json,md,css,html},!**/node_modules/**,!**/.next/**,!**/dist/**,!**/build/**,!**/.git/**,limit=$CLAUDE_MAX_READ_SIZE)" \
     "Write(*)" \
     "Edit(*)"
 EXIT_CODE=$?
