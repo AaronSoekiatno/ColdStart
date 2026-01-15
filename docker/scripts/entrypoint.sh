@@ -119,6 +119,27 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     exit 1
 fi
 
+# Session call limit to prevent runaway costs
+CALL_COUNTER_FILE="/tmp/claude_call_counter_${SESSION_ID:-default}"
+CALL_LIMIT=${CLAUDE_SESSION_CALL_LIMIT:-50}  # Max 50 calls per session by default
+
+# Initialize or read current count
+if [ -f "$CALL_COUNTER_FILE" ]; then
+    CURRENT_COUNT=$(cat "$CALL_COUNTER_FILE" 2>/dev/null || echo "0")
+else
+    CURRENT_COUNT=0
+fi
+
+# Check if limit exceeded
+if [ "$CURRENT_COUNT" -ge "$CALL_LIMIT" ]; then
+    echo "Error: Session call limit reached ($CALL_LIMIT calls)."
+    echo "This limit helps manage API costs. Contact support if you need more."
+    exit 1
+fi
+
+# Increment counter
+echo $((CURRENT_COUNT + 1)) > "$CALL_COUNTER_FILE"
+
 if [ $# -eq 0 ]; then
     echo "Claude Code (Headless Mode)"
     echo "Enter your prompt (Ctrl+D to submit):"
@@ -150,8 +171,16 @@ if [ ! -f "$CLAUDE_BIN" ]; then
     CLAUDE_BIN=$(which claude-real 2>/dev/null || which claude)
 fi
 
+# Cost-saving configuration (can be overridden via environment variables)
+CLAUDE_MODEL="${CLAUDE_MODEL:-claude-3-5-haiku-latest}"  # Haiku is ~12x cheaper than Sonnet
+CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-5}"  # Limit agentic loops to prevent runaway costs
+CLAUDE_MAX_TOKENS="${CLAUDE_MAX_OUTPUT_TOKENS:-4096}"  # Limit output token count
+
 # Scoped Read access: only source files, excluding build artifacts and dependencies
-$CLAUDE_BIN -p "$PROMPT" --allowedTools \
+$CLAUDE_BIN -p "$PROMPT" \
+    --model "$CLAUDE_MODEL" \
+    --max-turns "$CLAUDE_MAX_TURNS" \
+    --allowedTools \
     "Bash(*)" \
     "Read(/workspace/**/*.{ts,tsx,js,jsx,json,md,css,html},!**/node_modules/**,!**/.next/**,!**/dist/**,!**/build/**,!**/.git/**)" \
     "Write(*)" \
