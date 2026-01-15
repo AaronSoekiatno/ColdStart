@@ -136,7 +136,7 @@ export default function AgentChat({ sessionId, containerReady }: AgentChatProps)
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {messages.length === 0 && (
                     <div className="text-center text-slate-400 mt-12">
                         <p className="text-lg mb-2">👋 Hi! I'm your AI coding assistant</p>
@@ -188,7 +188,7 @@ export default function AgentChat({ sessionId, containerReady }: AgentChatProps)
                         onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                         placeholder={
                             containerReady
-                                ? 'Ask me to write code, fix bugs, or explain concepts...'
+                                ? 'Ask me anything...'
                                 : 'Waiting for container...'
                         }
                         disabled={isLoading || !containerReady}
@@ -197,18 +197,12 @@ export default function AgentChat({ sessionId, containerReady }: AgentChatProps)
                     <button
                         onClick={sendMessage}
                         disabled={isLoading || !input.trim() || !containerReady}
-                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl px-6 py-3 font-medium transition-all flex items-center gap-2"
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl px-4 py-3 font-medium transition-all flex items-center justify-center"
                     >
                         {isLoading ? (
-                            <>
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                                Thinking...
-                            </>
+                            <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                            <>
-                                <Send className="w-5 h-5" />
-                                Send
-                            </>
+                            <Send className="w-5 h-5" />
                         )}
                     </button>
                 </div>

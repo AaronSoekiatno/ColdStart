@@ -642,15 +642,7 @@ export default function IDEPage() {
                         className="bg-blue-600 border-blue-500 text-white hover:bg-blue-700 hover:text-white"
                     >
                         <Eye className="mr-2 h-4 w-4" />
-                        Preview App (Port 3000)
-                    </Button>
-                    <div className="h-4 w-px bg-slate-600" />
-                    <Button
-                        onClick={handleSubmit}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                        <Send className="mr-2 h-4 w-4" />
-                        Submit Assessment
+                        Preview App
                     </Button>
                     <Button
                         onClick={handleClose}
@@ -758,7 +750,7 @@ export default function IDEPage() {
 
                 {/* Agent Chat Sliding Panel */}
                 <div
-                    className={`absolute top-0 right-0 bottom-0 w-96 bg-slate-900 border-l border-slate-700 transform transition-transform duration-300 ${showAgentChat ? 'translate-x-0' : 'translate-x-full'
+                    className={`absolute top-0 right-0 bottom-0 w-[480px] bg-slate-900 border-l border-slate-700 transform transition-transform duration-300 ${showAgentChat ? 'translate-x-0' : 'translate-x-full'
                         }`}
                 >
                     {sessionId && (

@@ -207,11 +207,6 @@ export default function AssessmentPage() {
                 </ul>
               </div>
 
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-                <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
-                <p className="text-gray-700">Approximately 20 minutes</p>
-              </div>
-
               <Button
                 onClick={handleStartAssessment}
                 disabled={isCreatingRepo}
