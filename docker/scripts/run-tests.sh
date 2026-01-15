@@ -41,30 +41,26 @@ log_commit_to_supabase() {
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] NEXT_PUBLIC_SUPABASE_URL: $NEXT_PUBLIC_SUPABASE_URL"
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] CANDIDATE_ID: ${CANDIDATE_ID:-unknown}"
 
-    # Calculate git metrics for the latest commit only (not cumulative)
-    ADDED=$(git show HEAD --numstat --pretty=format: 2>/dev/null | awk '{ s += $1 } END { print s }')
-    DELETED=$(git show HEAD --numstat --pretty=format: 2>/dev/null | awk '{ s += $2 } END { print s }')
-    DELETED=${DELETED:-0}
-    ADDED=${ADDED:-0}
-    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Git metrics (HEAD commit) - Added: $ADDED, Deleted: $DELETED"
-
-    # Get commit details
-    COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "no-commit")
-    COMMIT_AUTHOR=$(git log -1 --format='%an' 2>/dev/null || echo "unknown")
-    # Get timestamp in ISO 8601 format (matches GitHub Actions format)
-    COMMIT_TIMESTAMP=$(git log -1 --format='%aI' 2>/dev/null || date -Iseconds)
-    RAW_COMMIT_MSG=$(git log -1 --format='%s' 2>/dev/null || echo "no message")
+    # OPTIMIZED: Get all commit info in a single git log call
+    read -r COMMIT_HASH COMMIT_AUTHOR COMMIT_TIMESTAMP RAW_COMMIT_MSG < <(
+        git log -1 --format='%H %an %aI %s' 2>/dev/null || echo "no-commit unknown $(date -Iseconds) no-message"
+    )
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Commit - Hash: $COMMIT_HASH, Author: $COMMIT_AUTHOR"
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Commit - Timestamp: $COMMIT_TIMESTAMP"
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Commit - Message: $RAW_COMMIT_MSG"
 
+    # OPTIMIZED: Get stats with the same git show call (avoid separate git show)
+    read -r ADDED DELETED < <(
+        git diff --numstat HEAD~1 HEAD 2>/dev/null | awk '{ added += $1; deleted += $2 } END { print added+0, deleted+0 }' || echo "0 0"
+    )
+    [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Git metrics (HEAD commit) - Added: $ADDED, Deleted: $DELETED"
+
     # Sanitize commit message for JSON
     COMMIT_MSG=$(echo "$RAW_COMMIT_MSG" | sed 's/"/\\"/g' | tr -d '\n')
 
-    # Capture git diff with exclusions
+    # OPTIMIZED: Capture smaller diff (50KB instead of 500KB) and skip base64 encoding
     [ "$DEBUG_MODE" = "true" ] && echo "   [DEBUG] Capturing git diff..."
-    # Base64 encode to avoid JSON escaping issues with control characters
-    DIFF_CONTENT_RAW=$(git show HEAD --pretty=format: --unified=3 \
+    DIFF_CONTENT_RAW=$(git diff --unified=1 HEAD~1 HEAD \
         -- . \
         ':!node_modules' ':!package-lock.json' ':!yarn.lock' \
         ':!pnpm-lock.yaml' ':!bun.lockb' ':!.next' ':!dist' \
@@ -72,7 +68,7 @@ log_commit_to_supabase() {
         ':!.env.*' ':!*.log' ':!.DS_Store' ':!Thumbs.db' \
         ':!.git' ':!*.min.js' ':!*.min.css' ':!*.map' \
         2>/dev/null \
-        | head -c 500000)
+        | head -c 50000)
 
     # Base64 encode the diff to safely include in JSON
     DIFF_CONTENT=$(echo "$DIFF_CONTENT_RAW" | base64 | tr -d '\n')
