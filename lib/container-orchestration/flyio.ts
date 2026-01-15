@@ -135,10 +135,25 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
         const region = 'sjc';
 
         console.log(`[Fly.io] Starting machine in ${region}...`);
+        console.log(`[Fly.io] Image will be pulled fresh from GHCR: ${image}`);
 
         const runCommand = `machine run ${image} --app ${appName} --region ${region} --cpus 1 --memory 2048 --port 443:8080/tcp:tls:http --port 80:8080/tcp:http --port 3000:3000/tcp:tls:http --port 5173:5173/tcp:tls:http --autostart --detach=false ${envFlags}`;
 
-        await executeFlyCommand(runCommand, { json: false });
+        const runOutput = await executeFlyCommand(runCommand, { json: false });
+        console.log(`[Fly.io] Machine provisioning output:`, runOutput);
+
+        // Get machine details to verify image digest
+        try {
+            const machines = await executeFlyCommand(`machine list --app ${appName}`);
+            if (machines && machines.length > 0) {
+                const machine = machines[0];
+                console.log(`[Fly.io] Machine ID: ${machine.id}`);
+                console.log(`[Fly.io] Image digest: ${machine.image_ref?.digest || 'N/A'}`);
+                console.log(`[Fly.io] Machine created at: ${machine.created_at}`);
+            }
+        } catch (e) {
+            console.warn('[Fly.io] Could not fetch machine details:', e);
+        }
 
         // Machine is now running
         const url = `https://${appName}.fly.dev`;
