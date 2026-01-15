@@ -20,13 +20,38 @@ fi
 # Ensure Supabase Service Key is available
 export SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-$SUPABASE_SERVICE_ROLE_KEY}
 
-# ============================================
-# BACKGROUND SETUP FUNCTION
-# Runs AFTER code-server starts
-# ============================================
-run_background_setup() {
-    echo "⏳ Running background setup..."
+# Disable file watchers to reduce CPU usage
+export CHOKIDAR_USEPOLLING=false
+export WATCHPACK_POLLING=false
+export NEXT_TELEMETRY_DISABLED=1
 
+# ============================================
+# PERFORMANCE LOGGING
+# ============================================
+log_metric() {
+    local name="$1"
+    local duration="$2"
+    local extra="${3:-}"
+    echo "METRIC::${name}::${duration}ms ${extra}"
+}
+
+measure_step() {
+    local step_name="$1"
+    shift
+    local start_ts=$(date +%s%3N)
+    "$@"
+    local ret=$?
+    local end_ts=$(date +%s%3N)
+    local duration=$((end_ts - start_ts))
+    log_metric "$step_name" "$duration"
+    return $ret
+}
+
+# ============================================
+# SETUP FUNCTIONS
+# ============================================
+
+setup_claude_auth() {
     # 1. Claude Authentication & Configuration
     echo "🔐 Configuring Claude Authentication..."
     rm -rf /home/coder/.claude 2>/dev/null || true
@@ -72,7 +97,9 @@ try:
 except Exception as e:
     print(f"Error updating settings: {e}")
 '
+}
 
+setup_claude_wrapper() {
     # 2. Claude Headless Wrapper
     echo "🛡️  Installing Claude Code Wrapper..."
     cat > /home/coder/.local/bin/claude-code << 'WRAPPER'
@@ -204,10 +231,15 @@ RESPONSE_TIME_MS=$((END_TIME - START_TIME))
 
 update_log_response "$LOG_ID" "$EXIT_CODE" "$RESPONSE_TIME_MS"
 
+# Log compute metric to stdout for scraping
+echo "METRIC::claude_execution::${RESPONSE_TIME_MS}ms exit_code:${EXIT_CODE}"
+
 exit $EXIT_CODE
 WRAPPER
     chmod +x /home/coder/.local/bin/claude-code
+}
 
+setup_bash_config() {
     # 3. Bash aliases and Welcome Message
     cat >> /home/coder/.bashrc << 'BASHRC'
 export PATH="$HOME/.local/bin:$PATH"
@@ -229,7 +261,9 @@ BASHRC
         cp /usr/local/bin/log-prompt.sh /home/coder/.claude/hooks/log-prompt.sh
         chmod +x /home/coder/.claude/hooks/log-prompt.sh
     fi
+}
 
+setup_git() {
     # 5. Git & Workspace Initialization
     echo "📝 Configuring Git..."
     git config --global user.name "${GIT_USER_NAME:-Candidate}"
@@ -245,7 +279,9 @@ BASHRC
         git add -A 2>/dev/null || true
         git commit -m "Initial workspace setup" 2>/dev/null || true
     fi
+}
 
+setup_env_local() {
     # 6. Generate .env.local
     echo "🔑 Provisioning credentials to .env.local..."
     ENV_FILE="/workspace/.env.local"
@@ -261,12 +297,29 @@ BASHRC
     # Force development servers to bind to all interfaces for external access
     echo "HOST=0.0.0.0" >> "$ENV_FILE"
     echo "PORT=3000" >> "$ENV_FILE"
+}
 
+setup_telemetry() {
     # 7. Start Telemetry Sidecar
     if [ -n "$TELEMETRY_URL" ] && [ -n "$SESSION_ID" ]; then
         echo "📊 Starting telemetry sidecar..."
         /usr/local/bin/telemetry-sidecar.sh &
     fi
+}
+
+# ============================================
+# BACKGROUND SETUP FUNCTION
+# Runs AFTER code-server starts
+# ============================================
+run_background_setup() {
+    echo "⏳ Running background setup..."
+
+    measure_step "setup_claude_auth" setup_claude_auth
+    measure_step "setup_claude_wrapper" setup_claude_wrapper
+    measure_step "setup_bash_config" setup_bash_config
+    measure_step "setup_git" setup_git
+    measure_step "setup_env_local" setup_env_local
+    measure_step "setup_telemetry" setup_telemetry
 
     # Final ownership check
     chown -R coder:coder /home/coder/.claude 2>/dev/null || true

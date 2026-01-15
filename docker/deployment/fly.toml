@@ -28,7 +28,6 @@ primary_region = "sjc" # San Jose, CA (adjust as needed)
 [env]
   # Default environment variables
   # These are usually overridden during deployment/provisioning
-  AUTO_COMMIT_INTERVAL = "120"
   GIT_USER_NAME = "Candidate"
   GIT_USER_EMAIL = "candidate@assessment.local"
   

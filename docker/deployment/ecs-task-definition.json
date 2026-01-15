@@ -20,10 +20,6 @@
             ],
             "environment": [
                 {
-                    "name": "AUTO_COMMIT_INTERVAL",
-                    "value": "120"
-                },
-                {
                     "name": "GIT_USER_NAME",
                     "value": "Candidate"
                 },
