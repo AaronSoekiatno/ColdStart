@@ -57,8 +57,8 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     const appName = `assess-${config.candidateId.slice(0, 8)}-${sessionPart}`.toLowerCase();
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
 
-    // Use Fly.io Registry image (pushed manually via flyctl auth docker)
-    const image = `registry.fly.io/hermes-assessment-image-host:latest`;
+    // Use GHCR image (built via GitHub Actions)
+    const image = `ghcr.io/hermes-startup/hermes-assessment:latest`;
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
     console.log(`[Fly.io] Using image: ${image}`);
