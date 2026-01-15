@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getContainerBySessionId,
   executeClaudeInFlyContainer,
-  executeClaudeInDockerContainer,
 } from '@/lib/agent-executor';
 
 export const runtime = 'edge';
@@ -32,20 +31,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute claude-code in the container based on environment
-    let stream: ReadableStream;
-
-    if (container.environment === 'flyio' && container.fly_app_name) {
-      // Fly.io production environment
-      stream = await executeClaudeInFlyContainer(
-        container.fly_app_name,
-        container.container_id,
-        message
+    // Execute claude-code in Fly.io container
+    if (!container.fly_app_name) {
+      return NextResponse.json(
+        { error: 'Container is not running on Fly.io. Chat only works in production.' },
+        { status: 400 }
       );
-    } else {
-      // Local Docker development
-      stream = executeClaudeInDockerContainer(container.container_id, message);
     }
+
+    const stream = await executeClaudeInFlyContainer(
+      container.fly_app_name,
+      container.container_id,
+      message
+    );
 
     // Stream response back to frontend
     return new Response(stream, {

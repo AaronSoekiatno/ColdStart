@@ -1,5 +1,3 @@
-import { execSync } from 'child_process';
-
 /**
  * Executes claude-code wrapper in a Fly.io container
  * Used by the chat interface API endpoint
@@ -38,37 +36,6 @@ export async function executeClaudeInFlyContainer(
   }
 
   return response.body!;
-}
-
-/**
- * Executes claude-code wrapper in a local Docker container
- * Used for local development
- */
-export function executeClaudeInDockerContainer(
-  containerId: string,
-  prompt: string
-): ReadableStream {
-  const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/\$/g, '\\$');
-  
-  try {
-    // Use docker exec with streaming output
-    const command = `docker exec -i ${containerId} bash -c "claude-code \\"${escapedPrompt}\\""`;
-    
-    const output = execSync(command, {
-      encoding: 'utf-8',
-      maxBuffer: 10 * 1024 * 1024, // 10MB
-    });
-
-    // Convert output to stream
-    return new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(output));
-        controller.close();
-      },
-    });
-  } catch (error: any) {
-    throw new Error(`Docker exec failed: ${error.message}`);
-  }
 }
 
 /**
