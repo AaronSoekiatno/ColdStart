@@ -5,7 +5,7 @@ This directory contains the containerized IDE environment for Minerva assessment
 ## 📂 Key Files
 
 - **`Dockerfile.assessment`**: Main image definition (Code-server + Claude Code + Tools)
-- **`scripts/`**: Runtime scripts (`entrypoint.sh`, `auto-commit.sh`, `telemetry-sidecar.sh`)
+- **`scripts/`**: Runtime scripts (`entrypoint.sh`, `telemetry-sidecar.sh`, `run-tests.sh`)
 - **`deployment/`**: Deployment configurations (`fly.toml`, `deploy.sh`)
 
 ## 🚀 Deployment Guides

@@ -13,14 +13,15 @@ export default defineConfig({
         pool: 'threads',
         poolOptions: {
             threads: {
-                singleThread: false,
+                singleThread: true,  // Single thread for 1 vCPU
                 minThreads: 1,
-                maxThreads: 4
+                maxThreads: 1        // Prevent thread contention
             }
         },
-        cache: {
-            dir: './node_modules/.vitest'
-        },
+        // Disable cache to save memory
+        cache: false,
+        // Disable file watching in production container
+        watch: false,
     },
     resolve: {
         alias: {

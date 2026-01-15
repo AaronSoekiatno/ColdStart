@@ -1,8 +1,8 @@
 {
     "files.autoSave": "afterDelay",
     "files.autoSaveDelay": 1000,
-    "editor.formatOnSave": true,
-    "editor.formatOnPaste": true,
+    "editor.formatOnSave": false,
+    "editor.formatOnPaste": false,
     "editor.tabSize": 2,
     "editor.insertSpaces": true,
     "editor.wordWrap": "on",
@@ -18,7 +18,7 @@
     "terminal.integrated.fontSize": 14,
     "workbench.startupEditor": "readme",
     "workbench.colorTheme": "Default Dark Modern",
-    "git.autofetch": true,
+    "git.autofetch": false,
     "git.enableSmartCommit": true,
     "git.confirmSync": false,
     "typescript.updateImportsOnFileMove.enabled": "always",
@@ -35,5 +35,25 @@
     "github.copilot-chat.editor.enableAutoCompletions": false,
     "chat.commandCenter.enabled": false,
     "workbench.panel.defaultLocation": "bottom",
-    "terminal.integrated.defaultLocation": "editor"
+    "terminal.integrated.defaultLocation": "editor",
+    "typescript.tsserver.maxTsServerMemory": 1024,
+    "typescript.disableAutomaticTypeAcquisition": true,
+    "typescript.suggest.enabled": false,
+    "typescript.validate.enable": false,
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/.next/**": true,
+        "**/dist/**": true,
+        "**/build/**": true,
+        "**/.cache/**": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/.next": true,
+        "**/dist": true,
+        "**/build": true
+    }
 }
