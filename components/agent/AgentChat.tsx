@@ -68,7 +68,11 @@ export default function AgentChat({ sessionId, containerReady }: AgentChatProps)
                 }),
             });
 
-            if (!response.ok) throw new Error('Failed to get response');
+            if (!response.ok) {
+                // Try to get error message from response
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to get response');
+            }
 
             const reader = response.body?.getReader();
             const decoder = new TextDecoder();
@@ -101,12 +105,13 @@ export default function AgentChat({ sessionId, containerReady }: AgentChatProps)
             );
         } catch (error) {
             console.error('Error sending message:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Failed to get response from agent';
             setMessages((prev) =>
                 prev.map((msg) =>
                     msg.id === assistantMessageId
                         ? {
                             ...msg,
-                            content: 'Error: Failed to get response from agent',
+                            content: `❌ Error: ${errorMessage}`,
                             status: 'error',
                         }
                         : msg
@@ -149,8 +154,8 @@ export default function AgentChat({ sessionId, containerReady }: AgentChatProps)
                     >
                         <div
                             className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
-                                    ? 'bg-purple-600 text-white'
-                                    : 'bg-slate-800/50 backdrop-blur-sm text-slate-100 border border-purple-500/20'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-slate-800/50 backdrop-blur-sm text-slate-100 border border-purple-500/20'
                                 }`}
                         >
                             <div className="flex items-start gap-2">
