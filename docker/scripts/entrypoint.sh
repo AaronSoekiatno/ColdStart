@@ -150,7 +150,12 @@ if [ ! -f "$CLAUDE_BIN" ]; then
     CLAUDE_BIN=$(which claude-real 2>/dev/null || which claude)
 fi
 
-$CLAUDE_BIN -p "$PROMPT" --allowedTools "Bash(*)" "Read(*)" "Write(*)" "Edit(*)"
+# Scoped Read access: only source files, excluding build artifacts and dependencies
+$CLAUDE_BIN -p "$PROMPT" --allowedTools \
+    "Bash(*)" \
+    "Read(/workspace/**/*.{ts,tsx,js,jsx,json,md,css,html},!**/node_modules/**,!**/.next/**,!**/dist/**,!**/build/**,!**/.git/**)" \
+    "Write(*)" \
+    "Edit(*)"
 EXIT_CODE=$?
 
 END_TIME=$(date +%s%3N)
