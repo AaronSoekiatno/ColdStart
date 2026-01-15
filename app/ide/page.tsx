@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { TestRunner } from '@/components/assessment/TestRunner';
 import { MinervaVoiceIndicator } from '@/components/assessment/MinervaVoiceIndicator';
+import AgentChat from '@/components/agent/AgentChat';
 import {
     Loader2,
     Clock,
@@ -15,6 +16,7 @@ import {
     Minimize2,
     X,
     Eye,
+    MessageSquare,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
@@ -29,6 +31,7 @@ export default function IDEPage() {
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+    const [showAgentChat, setShowAgentChat] = useState(false);
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -434,6 +437,20 @@ export default function IDEPage() {
                         <TestRunner sessionId={sessionId} />
                     )}
 
+                    {/* AI Chat Toggle */}
+                    <Button
+                        onClick={() => setShowAgentChat(!showAgentChat)}
+                        variant="outline"
+                        size="sm"
+                        className={`${showAgentChat
+                            ? 'bg-purple-600 border-purple-500 text-white hover:bg-purple-700'
+                            : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white'
+                            }`}
+                    >
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        AI Chat
+                    </Button>
+
                     <div className="h-4 w-px bg-slate-600" />
 
                     <Button
@@ -513,7 +530,7 @@ export default function IDEPage() {
             {/* Main Content Area */}
             <div className="flex-1 flex relative overflow-hidden">
                 {/* Code-Server Iframe */}
-                <div className="flex-1 relative">
+                <div className={`flex-1 relative transition-all duration-300 ${showAgentChat ? 'mr-96' : ''}`}>
                     <iframe
                         ref={iframeRef}
                         src={containerUrl}
@@ -524,8 +541,18 @@ export default function IDEPage() {
                     />
                 </div>
 
-                {/* Test Results Side Panel - REMOVED for compact view */}
-
+                {/* Agent Chat Sliding Panel */}
+                <div
+                    className={`absolute top-0 right-0 bottom-0 w-96 bg-slate-900 border-l border-slate-700 transform transition-transform duration-300 ${showAgentChat ? 'translate-x-0' : 'translate-x-full'
+                        }`}
+                >
+                    {sessionId && (
+                        <AgentChat
+                            sessionId={sessionId}
+                            containerReady={containerStatus === 'running'}
+                        />
+                    )}
+                </div>
             </div>
 
             {/* Bottom Status Bar */}
