@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getContainerBySessionId,
-  executeClaudeInFlyContainer,
-} from '@/lib/agent-executor';
+import { getContainerBySessionId } from '@/lib/agent-executor';
+import { executeClaudeInFlyContainer } from '@/app/actions/execute-claude';
 
-export const runtime = 'edge';
+// Use Node.js runtime instead of Edge for SSH support
+export const runtime = 'nodejs';
 export const maxDuration = 300; // 5 minutes for long agent tasks
 
 /**
  * POST /api/agent/chat
- * Executes Claude Code wrapper in the container and streams response
+ * Executes Claude Code wrapper in the container via SSH and streams response
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Execute claude-code in Fly.io container
+    // Execute claude-code in Fly.io container via SSH
     if (!container.fly_app_name) {
       return NextResponse.json(
         { error: 'Container is not running on Fly.io. Chat only works in production.' },
@@ -39,13 +38,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const stream = await executeClaudeInFlyContainer(
+    // Execute the command (this will take some time)
+    const output = await executeClaudeInFlyContainer(
       container.fly_app_name,
-      container.container_id,
       message
     );
 
-    // Stream response back to frontend
+    // Return the output as a stream for consistency with the UI
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(output));
+        controller.close();
+      },
+    });
+
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
