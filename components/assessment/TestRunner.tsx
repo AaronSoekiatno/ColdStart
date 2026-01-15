@@ -104,7 +104,7 @@ export function TestRunner({ sessionId, className }: TestRunnerProps) {
                         onClick={() => runTests('quick')}
                         variant="outline"
                         size="sm"
-                        className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
+                        className="bg-green-600 border-green-500 text-white hover:bg-green-700 hover:border-green-600"
                     >
                         <Play className="mr-2 h-4 w-4" />
                         Run Tests

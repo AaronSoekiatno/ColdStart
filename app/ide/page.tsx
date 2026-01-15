@@ -195,6 +195,66 @@ export default function IDEPage() {
         };
     }, [sessionId, currentPhase, toast]);
 
+    // Listen for POST_MORTEM call end to complete the assessment
+    useEffect(() => {
+        if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
+            return;
+        }
+
+        let callEndCallback: (() => void) | null = null;
+        let vapiClient: any = null;
+
+        const setupPostMortemEndListener = async () => {
+            try {
+                const vapiModule = await import('@/vapi-client.js');
+                vapiClient = vapiModule.default || vapiModule;
+
+                callEndCallback = async () => {
+                    // Check if we're in POST_MORTEM phase when call ends
+                    if (currentPhase === 'POST_MORTEM') {
+                        console.log('[IDE] POST_MORTEM call ended, completing assessment...');
+
+                        toast({
+                            title: 'Assessment Complete',
+                            description: 'Thank you for completing the assessment. Redirecting...',
+                        });
+
+                        // Destroy the container
+                        try {
+                            await fetch('/api/topcandidates/provision-container', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ sessionId }),
+                            });
+                            console.log('[IDE] Container destroyed successfully');
+                        } catch (error) {
+                            console.error('[IDE] Error destroying container:', error);
+                        }
+
+                        // Redirect to assessment page with completed flag
+                        setTimeout(() => {
+                            router.push('/assessment?completed=true');
+                        }, 2000);
+                    }
+                };
+
+                if (vapiClient.onEvent) {
+                    vapiClient.onEvent('onCallEnd', callEndCallback);
+                }
+            } catch (error) {
+                console.error('[IDE] Error setting up POST_MORTEM end listener:', error);
+            }
+        };
+
+        setupPostMortemEndListener();
+
+        return () => {
+            if (vapiClient && vapiClient.offEvent && callEndCallback) {
+                vapiClient.offEvent('onCallEnd', callEndCallback);
+            }
+        };
+    }, [sessionId, currentPhase, toast, router]);
+
     // Check auth and fetch container info
     useEffect(() => {
         const checkAuth = async () => {
@@ -532,6 +592,13 @@ export default function IDEPage() {
                     <div className="h-4 w-px bg-slate-600" />
 
                     <Button
+                        onClick={handleSubmit}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        <Send className="mr-2 h-4 w-4" />
+                        Submit Assessment
+                    </Button>
+                    <Button
                         onClick={toggleFullscreen}
                         variant="outline"
                         size="sm"
@@ -542,13 +609,6 @@ export default function IDEPage() {
                         ) : (
                             <Maximize2 className="h-4 w-4" />
                         )}
-                    </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                        <Send className="mr-2 h-4 w-4" />
-                        Submit Assessment
                     </Button>
                     <Button
                         onClick={handleClose}

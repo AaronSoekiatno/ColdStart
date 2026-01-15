@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import { Loader2, Play } from 'lucide-react';
+import { Loader2, Play, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
 
@@ -18,6 +18,8 @@ interface AssessmentStatus {
 
 export default function AssessmentPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isCompleted = searchParams.get('completed') === 'true';
   const [user, setUser] = useState<User | null>(null);
   const [assessmentStatus, setAssessmentStatus] = useState<AssessmentStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +112,66 @@ export default function AssessmentPage() {
         <Header initialUser={user} />
         <section className="flex-1 flex items-center justify-center px-4">
           <Loader2 className="h-12 w-12 animate-spin text-blue-300" />
+        </section>
+      </div>
+    );
+  }
+
+  // Show completion message if assessment was just completed
+  if (isCompleted) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
+        <Header initialUser={user} />
+        <section className="flex-1 pt-16 sm:pt-20 md:pt-24 pb-8 sm:pb-12 md:pb-20">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <div className="bg-white rounded-2xl md:rounded-3xl border border-gray-200 shadow-sm p-6 sm:p-8 md:p-12">
+              {/* Success Icon */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-green-500/20 rounded-full blur-xl animate-pulse" />
+                  <CheckCircle2 className="h-20 w-20 text-green-500 relative" />
+                </div>
+              </div>
+
+              {/* Header */}
+              <div className="text-center mb-8">
+                <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
+                  Assessment Complete!
+                </h1>
+                <p className="text-gray-600 text-lg">
+                  Thank you for completing your technical assessment with Hermes.
+                </p>
+              </div>
+
+              {/* What's Next */}
+              <div className="space-y-6">
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-3">What happens next:</h3>
+                  <ul className="space-y-2 text-gray-700 list-disc list-inside">
+                    <li>Our team will review your assessment</li>
+                    <li>You'll receive feedback via email</li>
+                    <li>Top candidates will be matched with employers</li>
+                  </ul>
+                </div>
+
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 text-center">
+                  <p className="text-gray-700">
+                    Questions? Contact us at{' '}
+                    <a href="mailto:support@joinhermes.co" className="text-blue-600 hover:underline">
+                      support@joinhermes.co
+                    </a>
+                  </p>
+                </div>
+
+                <Button
+                  onClick={() => router.push('/')}
+                  className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                >
+                  Return to Home
+                </Button>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     );
