@@ -56,15 +56,33 @@ export async function readWorkspaceFile(
         ...process.env,
         FLY_API_TOKEN: process.env.FLY_API_TOKEN,
       },
-      timeout: 30000, // 30s timeout
-      maxBuffer: 5 * 1024 * 1024, // 5MB max
+      timeout: 30000,
+      maxBuffer: 5 * 1024 * 1024,
     });
 
-    if (stderr && stderr.includes('No such file')) {
+    // Clean up Fly.io noise from stdout/stderr
+    // Remove "Connecting to..." and SSH session details
+    const cleanupNoise = (text: string) => {
+      return text
+        .split('\n')
+        .filter(line => !line.startsWith('Connecting to'))
+        .filter(line => !line.includes('Error: ssh shell: Process exited with status'))
+        .join('\n')
+        .trim();
+    };
+
+    const cleanStdout = cleanupNoise(stdout);
+    const cleanStderr = cleanupNoise(stderr);
+
+    if (cleanStderr && (cleanStderr.includes('No such file') || cleanStderr.includes('not found'))) {
       throw new Error(`File not found: ${path}`);
     }
 
-    return stdout;
+    if (!cleanStdout && cleanStderr) {
+      throw new Error(cleanStderr);
+    }
+
+    return cleanStdout;
   } catch (error: any) {
     if (error.message.includes('File not found')) {
       throw error;
@@ -92,16 +110,26 @@ export async function listWorkspaceDirectory(
     const lsCommand = recursive ? 'ls -laR' : 'ls -la';
     const command = `flyctl ssh console -a ${flyAppName} -C "${lsCommand} ${dirPath}"`;
 
-    const { stdout } = await execAsync(command, {
+    const { stdout, stderr } = await execAsync(command, {
       env: {
         ...process.env,
         FLY_API_TOKEN: process.env.FLY_API_TOKEN,
       },
       timeout: 30000,
-      maxBuffer: 2 * 1024 * 1024, // 2MB max
+      maxBuffer: 2 * 1024 * 1024,
     });
 
-    return stdout;
+    const cleanupNoise = (text: string) => {
+      return text
+        .split('\n')
+        .filter(line => !line.startsWith('Connecting to'))
+        .filter(line => !line.includes('Error: ssh shell: Process exited with status'))
+        .join('\n')
+        .trim();
+    };
+
+    const cleanStdout = cleanupNoise(stdout);
+    return cleanStdout;
   } catch (error: any) {
     throw new Error(`Failed to list directory: ${error.message}`);
   }
@@ -126,7 +154,7 @@ export async function searchWorkspaceCode(
     // Use grep with line numbers and context
     const command = `flyctl ssh console -a ${flyAppName} -C "cd /workspace && grep -rn ${caseFlag} '${escapedQuery}' --include='${pattern}' . 2>/dev/null | head -n 50"`;
 
-    const { stdout } = await execAsync(command, {
+    const { stdout, stderr } = await execAsync(command, {
       env: {
         ...process.env,
         FLY_API_TOKEN: process.env.FLY_API_TOKEN,
@@ -135,11 +163,22 @@ export async function searchWorkspaceCode(
       maxBuffer: 2 * 1024 * 1024,
     });
 
-    if (!stdout || stdout.trim() === '') {
+    const cleanupNoise = (text: string) => {
+      return text
+        .split('\n')
+        .filter(line => !line.startsWith('Connecting to'))
+        .filter(line => !line.includes('Error: ssh shell: Process exited with status'))
+        .join('\n')
+        .trim();
+    };
+
+    const cleanStdout = cleanupNoise(stdout);
+
+    if (!cleanStdout || cleanStdout === '') {
       return `No matches found for "${query}"`;
     }
 
-    return stdout;
+    return cleanStdout;
   } catch (error: any) {
     // grep returns exit code 1 if no matches, which is not an error
     if (error.code === 1) {

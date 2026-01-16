@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       flyAppName,
       messageLength: message.length,
       estimatedTokens,
+      hasFlyToken: !!process.env.FLY_API_TOKEN,
     });
 
     // Build conversation messages
@@ -120,7 +121,7 @@ export async function POST(request: NextRequest) {
                 toolResult = `Unknown tool: ${block.name}`;
             }
 
-            console.log('[Chat V2] Tool result length:', toolResult.length);
+            console.log(`[Chat V2] Tool result (${block.name}):`, toolResult.substring(0, 100) + (toolResult.length > 100 ? '...' : ''));
           } catch (error: any) {
             toolResult = `Error: ${error.message}`;
             console.error('[Chat V2] Tool error:', error);
