@@ -43,6 +43,7 @@ export default function IDEPage() {
     const testRunnerRef = useRef<TestRunnerRef>(null);
     const buildPhaseStartedRef = useRef(false);
     const reflectionStartedRef = useRef(false);
+    const finalTestsRunRef = useRef(false); // Prevent duplicate final test runs
     const { toast } = useToast();
 
     // Auto-start KICK_OFF Vapi call when container is ready
@@ -226,8 +227,15 @@ export default function IDEPage() {
                 vapiClient = vapiModule.default || vapiModule;
 
                 callEndCallback = async () => {
+                    // Prevent duplicate test runs (React Strict Mode + multiple listeners)
+                    if (finalTestsRunRef.current) {
+                        console.log('[IDE] Final tests already triggered, skipping duplicate');
+                        return;
+                    }
+
                     // Check if we're in REFLECTION phase when call ends
                     if (currentPhase === 'REFLECTION') {
+                        finalTestsRunRef.current = true;
                         console.log('[IDE] REFLECTION call ended, starting background test run...');
 
                         toast({
@@ -267,7 +275,7 @@ export default function IDEPage() {
                 vapiClient.offEvent('onCallEnd', callEndCallback);
             }
         };
-    }, [sessionId, currentPhase, toast, router]);
+    }, [sessionId, toast, router]); // Removed currentPhase from deps to prevent re-registering listeners
 
     // Check auth and fetch container info
     useEffect(() => {
