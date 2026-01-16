@@ -228,24 +228,26 @@ export default function IDEPage() {
                 callEndCallback = async () => {
                     // Check if we're in REFLECTION phase when call ends
                     if (currentPhase === 'REFLECTION') {
-                        console.log('[IDE] REFLECTION call ended, running final tests...');
+                        console.log('[IDE] REFLECTION call ended, starting background test run...');
 
                         toast({
                             title: 'Reflection Complete',
-                            description: 'Running final validation (includes TypeScript check)...',
+                            description: 'Final validation is running in the background...',
                         });
 
-                        // Run FULL test suite after reflection ends (includes build.test.ts TypeScript validation)
+                        // Fire-and-forget: Run FULL test suite in the background
+                        // Don't block the UI - validation can take several minutes
                         if (testRunnerRef.current) {
-                            try {
-                                await testRunnerRef.current.runTests('full');
-                                toast({
-                                    title: 'Final Validation Complete',
-                                    description: 'Review your test results above.',
+                            testRunnerRef.current.runTests('full')
+                                .then(() => {
+                                    toast({
+                                        title: 'Final Validation Complete',
+                                        description: 'Review your test results above.',
+                                    });
+                                })
+                                .catch(error => {
+                                    console.error('[IDE] Background test run failed:', error);
                                 });
-                            } catch (error) {
-                                console.error('[IDE] Error running final tests:', error);
-                            }
                         }
                     }
                 };
@@ -389,41 +391,42 @@ export default function IDEPage() {
     const handleSubmit = async () => {
         toast({
             title: 'Submitting Assessment',
-            description: 'Running final validation (includes TypeScript check)...',
+            description: 'Finalizing your submission...',
         });
 
         try {
-            // Run FULL test suite before submission (includes build.test.ts TypeScript validation)
+            // Fire-and-forget: Run FULL test suite in the background
+            // Don't await - this can take 4-5 minutes and we don't want candidates waiting
+            // Results will still be logged to the database asynchronously
             if (testRunnerRef.current) {
-                try {
-                    await testRunnerRef.current.runTests('full');
-                    toast({
-                        title: 'Validation Complete',
-                        description: 'Finalizing submission...',
-                    });
-                } catch (error) {
-                    console.error('[IDE] Error running final tests:', error);
-                    // Continue with submission even if tests fail
-                }
+                console.log('[IDE] Starting background test run (fire-and-forget)...');
+                testRunnerRef.current.runTests('full').catch(error => {
+                    console.error('[IDE] Background test run failed:', error);
+                });
             }
 
             // Stop Vapi call if active
             await stopVapiCall('assessment_submitted');
 
-            // Destroy the container to save costs
+            // Fire-and-forget: Destroy the container in the background
+            // Don't block the user waiting for container cleanup
             if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
-                await fetch('/api/topcandidates/provision-container', {
+                console.log('[IDE] Scheduling container cleanup (fire-and-forget)...');
+                fetch('/api/topcandidates/provision-container', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionId }),
+                }).catch(error => {
+                    console.error('[IDE] Background container cleanup failed:', error);
                 });
             }
 
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Brief delay for toast visibility, then redirect
+            await new Promise((resolve) => setTimeout(resolve, 500));
 
             toast({
                 title: 'Assessment Submitted',
-                description: 'Your work has been saved successfully.',
+                description: 'Your work has been saved. Final validation is running in the background.',
             });
 
             router.push('/assessment?submitted=true');
