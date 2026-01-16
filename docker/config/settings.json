@@ -33,27 +33,15 @@
     },
     "github.copilot.editor.enableAutoCompletions": false,
     "github.copilot-chat.editor.enableAutoCompletions": false,
+    "github.copilot.inlineSuggest.enable": false,
+    "github.copilot.chat.enabled": false,
+    "github.copilot.chat.startOnOpen": false,
+    "github.copilot.chat.startConversation": false,
     "chat.commandCenter.enabled": false,
+    "chat.editor.defaultScope": "selection",
     "workbench.panel.defaultLocation": "bottom",
     "terminal.integrated.defaultLocation": "editor",
-    "typescript.tsserver.maxTsServerMemory": 1024,
-    "typescript.disableAutomaticTypeAcquisition": true,
-    "typescript.suggest.enabled": false,
-    "typescript.validate.enable": false,
-    "files.watcherExclude": {
-        "**/.git/objects/**": true,
-        "**/.git/subtree-cache/**": true,
-        "**/node_modules/**": true,
-        "**/.next/**": true,
-        "**/dist/**": true,
-        "**/build/**": true,
-        "**/.cache/**": true
-    },
-    "search.exclude": {
-        "**/node_modules": true,
-        "**/bower_components": true,
-        "**/.next": true,
-        "**/dist": true,
-        "**/build": true
-    }
+    "npm.packageManager": "npm",
+    "claude.startChatOnOpen": false,
+    "claude.autoStartConversation": false
 }

@@ -161,13 +161,13 @@ if (typeof window === 'undefined') {
 
 // Assistant ID (single assistant for all phases, loaded from environment)
 // Note: In browser context, must use NEXT_PUBLIC_ prefix or pass from server
-const VAPI_ASSISTANT_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || process.env.VAPI_ASSISTANT_ID || 'vapi-assistant-placeholder';
+const VAPI_KICKOFF_ID = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || process.env.VAPI_ASSISTANT_ID || 'vapi-assistant-placeholder';
+const VAPI_REFLECTION_ID = process.env.NEXT_PUBLIC_VAPI_REFLECTION_ASSISTANT_ID || '9c68493e-6e1d-444b-a66d-f0069df8f782';
 
-// Assistant IDs mapping - all phases use the same assistant
+// Assistant IDs mapping - kickoff and reflection use separate assistants
 const ASSISTANT_IDS = {
-    kickoff: VAPI_ASSISTANT_ID,
-    bug_injection: VAPI_ASSISTANT_ID,
-    post_mortem: VAPI_ASSISTANT_ID
+    kickoff: VAPI_KICKOFF_ID,
+    reflection: VAPI_REFLECTION_ID
 };
 
 // Track active call state
@@ -254,18 +254,48 @@ export async function initializeVapiListeners() {
         eventCallbacks.onCallStart.forEach(cb => cb(activeCall));
     });
 
-    initializedVapi.on("call-end", () => {
+    initializedVapi.on("call-end", async () => {
         const duration = activeCall.startTime
             ? Math.floor((Date.now() - activeCall.startTime) / 1000)
             : 0;
 
         console.log(`[Vapi] Call ended for phase ${activeCall.phaseId}, duration: ${duration}s`);
+        console.log(`[Vapi] Collected ${activeCall.messageBuffer.length} messages to store`);
 
         const callData = {
             ...activeCall,
             duration,
             messages: [...activeCall.messageBuffer] // Include collected messages
         };
+
+        // Store messages via API (critical for persistence!)
+        if (activeCall.sessionId && activeCall.phaseId) {
+            try {
+                console.log(`[Vapi] Sending ${activeCall.messageBuffer.length} messages to /api/vapi/call-end`);
+                const response = await fetch(`/api/vapi/call-end`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: activeCall.sessionId,
+                        phaseId: activeCall.phaseId,
+                        callId: activeCall.callId,
+                        duration,
+                        messages: activeCall.messageBuffer
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(`[Vapi] ✅ Successfully stored ${result.messagesStored || 0} messages`);
+                } else {
+                    console.error('[Vapi] ❌ Failed to store messages:', await response.text());
+                }
+            } catch (error) {
+                console.error('[Vapi] ❌ Failed to call /api/vapi/call-end:', error);
+            }
+        } else {
+            console.warn('[Vapi] Cannot store messages - missing sessionId or phaseId');
+        }
 
         activeCall = {
             callId: null,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Send, Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
 
 interface Message {
     id: string;
@@ -14,9 +14,10 @@ interface Message {
 interface AgentChatProps {
     sessionId: string;
     containerReady: boolean;
+    onClose?: () => void;
 }
 
-export default function AgentChat({ sessionId, containerReady }: AgentChatProps) {
+export default function AgentChat({ sessionId, containerReady, onClose }: AgentChatProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -126,11 +127,21 @@ export default function AgentChat({ sessionId, containerReady }: AgentChatProps)
         <div className="flex flex-col h-full bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
             {/* Header */}
             <div className="bg-slate-800/50 backdrop-blur-sm border-b border-purple-500/20 p-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
-                    <h2 className="text-lg font-semibold text-white">AI Coding Agent</h2>
-                    {!containerReady && (
-                        <span className="text-xs text-amber-400">Container starting...</span>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full bg-purple-500 animate-pulse" />
+                        <h2 className="text-lg font-semibold text-white">AI Coding Agent</h2>
+                        {!containerReady && (
+                            <span className="text-xs text-amber-400">Container starting...</span>
+                        )}
+                    </div>
+                    {onClose && (
+                        <button
+                            onClick={onClose}
+                            className="p-1 text-slate-400 hover:text-white transition-colors"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
                     )}
                 </div>
             </div>

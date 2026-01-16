@@ -178,9 +178,7 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
                         session.session_id,
                         'KICK_OFF',
                         'kickoff',
-                        [],
-                        null,
-                        { candidateName } as any
+                        []
                     );
                     setIsCallActive(true);
                     toast({
@@ -243,88 +241,53 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
         }
     };
 
-    // Show start button when no call is active
+    // Don't show anything when no call is active (auto-start handles this)
     if (!isCallActive) {
-        return (
-            <Button
-                onClick={startInterview}
-                disabled={isStarting}
-                className={cn(
-                    'flex items-center gap-2 px-4 py-1.5 h-auto bg-blue-600 hover:bg-blue-700 text-white border-0',
-                    className
-                )}
-            >
-                {isStarting ? (
-                    <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span className="text-xs font-medium">Starting...</span>
-                    </>
-                ) : (
-                    <>
-                        <Phone className="h-4 w-4" />
-                        <span className="text-xs font-medium">Start Interview</span>
-                    </>
-                )}
-            </Button>
-        );
+        return null;
     }
 
+    // Only show the speaking/listening indicator (no end button)
     return (
-        <div className="flex items-center gap-2">
-            <div
-                className={cn(
-                    'flex items-center gap-2 px-4 py-1.5 rounded-md border transition-all duration-300',
-                    isSpeaking
-                        ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-500/20'
-                        : 'bg-slate-700/50 border-slate-600/50',
-                    className
-                )}
-            >
-                <div className="relative">
-                    {isSpeaking ? (
-                        <Volume2
-                            className={cn(
-                                'h-4 w-4 transition-colors duration-300',
-                                isSpeaking ? 'text-blue-400' : 'text-slate-400'
-                            )}
-                        />
-                    ) : (
-                        <Mic
-                            className={cn(
-                                'h-4 w-4 transition-colors duration-300',
-                                'text-slate-400'
-                            )}
-                        />
-                    )}
-                    {isSpeaking && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="absolute w-6 h-6 rounded-full bg-blue-400/30 animate-ping" />
-                            <div className="absolute w-4 h-4 rounded-full bg-blue-400/50 animate-pulse" />
-                        </div>
-                    )}
-                </div>
-                <span
-                    className={cn(
-                        'text-xs font-medium transition-colors duration-300',
-                        isSpeaking ? 'text-blue-300' : 'text-slate-300'
-                    )}
-                >
-                    {isSpeaking ? 'Minerva Speaking' : 'Minerva Active'}
-                </span>
-            </div>
-            <Button
-                onClick={endInterview}
-                disabled={isEnding}
-                variant="outline"
-                size="sm"
-                className="bg-slate-700/50 border-slate-600/50 text-slate-300 hover:bg-red-600/20 hover:border-red-500/50 hover:text-red-300 h-auto px-3 py-1.5"
-            >
-                {isEnding ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <div
+            className={cn(
+                'flex items-center gap-2 px-4 py-1.5 rounded-md border transition-all duration-300',
+                isSpeaking
+                    ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-500/20'
+                    : 'bg-slate-700/50 border-slate-600/50',
+                className
+            )}
+        >
+            <div className="relative">
+                {isSpeaking ? (
+                    <Volume2
+                        className={cn(
+                            'h-4 w-4 transition-colors duration-300',
+                            isSpeaking ? 'text-blue-400' : 'text-slate-400'
+                        )}
+                    />
                 ) : (
-                    <PhoneOff className="h-3.5 w-3.5" />
+                    <Mic
+                        className={cn(
+                            'h-4 w-4 transition-colors duration-300',
+                            'text-slate-400'
+                        )}
+                    />
                 )}
-            </Button>
+                {isSpeaking && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="absolute w-6 h-6 rounded-full bg-blue-400/30 animate-ping" />
+                        <div className="absolute w-4 h-4 rounded-full bg-blue-400/50 animate-pulse" />
+                    </div>
+                )}
+            </div>
+            <span
+                className={cn(
+                    'text-xs font-medium transition-colors duration-300',
+                    isSpeaking ? 'text-blue-300' : 'text-slate-300'
+                )}
+            >
+                {isSpeaking ? 'Minerva Speaking' : 'Minerva Active'}
+            </span>
         </div>
     );
 }

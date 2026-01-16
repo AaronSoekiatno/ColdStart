@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import { TestRunner } from '@/components/assessment/TestRunner';
+import { TestRunner, TestRunnerRef } from '@/components/assessment/TestRunner';
 import { MinervaVoiceIndicator } from '@/components/assessment/MinervaVoiceIndicator';
 import AgentChat from '@/components/agent/AgentChat';
 import {
@@ -31,7 +31,7 @@ export default function IDEPage() {
     const [containerStatus, setContainerStatus] = useState<'loading' | 'provisioning' | 'running' | 'error'>('loading');
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
     const [showAgentChat, setShowAgentChat] = useState(false);
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
     const [kickOffStarted, setKickOffStarted] = useState(false);
@@ -40,6 +40,9 @@ export default function IDEPage() {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const phasePollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const testRunnerRef = useRef<TestRunnerRef>(null);
+    const buildPhaseStartedRef = useRef(false);
+    const reflectionStartedRef = useRef(false);
     const { toast } = useToast();
 
     // Auto-start KICK_OFF Vapi call when container is ready
@@ -100,12 +103,27 @@ export default function IDEPage() {
         }
     };
 
-    // Timer for elapsed time
+    // Timer for elapsed time - only starts when BUILD phase begins
     useEffect(() => {
-        timerRef.current = setInterval(() => {
-            setElapsedTime((prev) => prev + 1);
-        }, 1000);
+        // Start timer when BUILD phase begins
+        if (currentPhase === 'BUILD' && !buildPhaseStartedRef.current) {
+            buildPhaseStartedRef.current = true;
+        }
 
+        // Only run timer if BUILD phase has started
+        if (buildPhaseStartedRef.current && !timerRef.current) {
+            timerRef.current = setInterval(() => {
+                setElapsedTime((prev) => prev + 1);
+            }, 1000);
+        }
+
+        return () => {
+            // Don't clear timer on phase change, only on unmount
+        };
+    }, [currentPhase]);
+
+    // Cleanup timer on unmount
+    useEffect(() => {
         return () => {
             if (timerRef.current) {
                 clearInterval(timerRef.current);
@@ -113,7 +131,7 @@ export default function IDEPage() {
         };
     }, []);
 
-    // Poll for phase changes and auto-start POST_MORTEM call
+    // Poll for phase changes and auto-start REFLECTION call
     useEffect(() => {
         if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
             return;
@@ -134,9 +152,16 @@ export default function IDEPage() {
 
                 const newPhase = session?.current_phase || null;
 
-                // If phase changed to POST_MORTEM and no call is active, start the call
-                if (newPhase === 'POST_MORTEM' && currentPhase !== 'POST_MORTEM') {
-                    console.log('[IDE] Phase transitioned to POST_MORTEM, checking if call should start...');
+                // If phase changed to REFLECTION and no call is active, start the call
+                if (newPhase === 'REFLECTION' && currentPhase !== 'REFLECTION') {
+                    console.log('[IDE] Phase transitioned to REFLECTION, checking if call should start...');
+
+                    // Prevent duplicate REFLECTION call attempts
+                    if (reflectionStartedRef.current) {
+                        console.log('[IDE] REFLECTION call already started, skipping duplicate');
+                        setCurrentPhase(newPhase);
+                        return;
+                    }
 
                     // Check if Vapi call is already active
                     try {
@@ -144,24 +169,16 @@ export default function IDEPage() {
                         const vapiClient = vapiModule.default || vapiModule;
 
                         if (vapiClient.isCallActive && !vapiClient.isCallActive()) {
-                            console.log('[IDE] Starting POST_MORTEM call automatically...');
+                            reflectionStartedRef.current = true;
+                            console.log('[IDE] Starting REFLECTION call automatically...');
 
-                            // Get conversation history for context
-                            const { data: sessionData } = await supabase
-                                .from('interview_sessions')
-                                .select('conversation_history')
-                                .eq('session_id', sessionId)
-                                .single();
-
-                            const conversationHistory = sessionData?.conversation_history || [];
-
-                            // Start the POST_MORTEM call
+                            // Start the REFLECTION call (without history for now to isolate 400 error)
                             if (vapiClient.startPhaseCall) {
                                 await vapiClient.startPhaseCall(
                                     sessionId,
-                                    'POST_MORTEM',
-                                    'post_mortem',
-                                    conversationHistory
+                                    'REFLECTION',
+                                    'reflection',
+                                    [] // Empty history to test if that's causing the 400
                                 );
 
                                 toast({
@@ -171,7 +188,7 @@ export default function IDEPage() {
                             }
                         }
                     } catch (vapiError) {
-                        console.error('[IDE] Error starting POST_MORTEM call:', vapiError);
+                        console.error('[IDE] Error starting REFLECTION call:', vapiError);
                     }
                 }
 
@@ -194,7 +211,7 @@ export default function IDEPage() {
         };
     }, [sessionId, currentPhase, toast]);
 
-    // Listen for POST_MORTEM call end to complete the assessment
+    // Listen for REFLECTION call end to complete the assessment
     useEffect(() => {
         if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
             return;
@@ -209,31 +226,27 @@ export default function IDEPage() {
                 vapiClient = vapiModule.default || vapiModule;
 
                 callEndCallback = async () => {
-                    // Check if we're in POST_MORTEM phase when call ends
-                    if (currentPhase === 'POST_MORTEM') {
-                        console.log('[IDE] POST_MORTEM call ended, completing assessment...');
+                    // Check if we're in REFLECTION phase when call ends
+                    if (currentPhase === 'REFLECTION') {
+                        console.log('[IDE] REFLECTION call ended, running final tests...');
 
                         toast({
-                            title: 'Assessment Complete',
-                            description: 'Thank you for completing the assessment. Redirecting...',
+                            title: 'Reflection Complete',
+                            description: 'Running final tests to verify your work...',
                         });
 
-                        // Destroy the container
-                        try {
-                            await fetch('/api/topcandidates/provision-container', {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ sessionId }),
-                            });
-                            console.log('[IDE] Container destroyed successfully');
-                        } catch (error) {
-                            console.error('[IDE] Error destroying container:', error);
+                        // Run tests using the TestRunner ref - this will show results in the popover
+                        if (testRunnerRef.current) {
+                            try {
+                                await testRunnerRef.current.runTests('quick');
+                                toast({
+                                    title: 'Tests Complete',
+                                    description: 'Review your test results above.',
+                                });
+                            } catch (error) {
+                                console.error('[IDE] Error running final tests:', error);
+                            }
                         }
-
-                        // Redirect to assessment page with completed flag
-                        setTimeout(() => {
-                            router.push('/assessment?completed=true');
-                        }, 2000);
                     }
                 };
 
@@ -241,7 +254,7 @@ export default function IDEPage() {
                     vapiClient.onEvent('onCallEnd', callEndCallback);
                 }
             } catch (error) {
-                console.error('[IDE] Error setting up POST_MORTEM end listener:', error);
+                console.error('[IDE] Error setting up REFLECTION end listener:', error);
             }
         };
 
@@ -421,21 +434,6 @@ export default function IDEPage() {
         }
     };
 
-    const handleClose = () => {
-        setShowCloseConfirm(true);
-    };
-
-    const confirmClose = async () => {
-        // Stop Vapi call if active
-        await stopVapiCall('session_closed');
-
-        toast({
-            title: 'Session Closed',
-            description: 'Your progress has been saved. You can continue later.',
-        });
-        router.push('/assessment');
-    };
-
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -444,7 +442,7 @@ export default function IDEPage() {
 
     if (isLoading || containerStatus === 'loading') {
         return (
-            <div className="min-h-screen flex flex-col bg-slate-900">
+            <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="text-center">
@@ -458,7 +456,7 @@ export default function IDEPage() {
 
     if (containerStatus === 'provisioning') {
         return (
-            <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+            <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="max-w-2xl w-full">
@@ -538,7 +536,7 @@ export default function IDEPage() {
 
     if (containerStatus === 'error' || !containerUrl) {
         return (
-            <div className="min-h-screen flex flex-col bg-slate-900">
+            <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="text-center max-w-md">
@@ -562,10 +560,11 @@ export default function IDEPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-900">
+        <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
             {/* Compact Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
-                <div className="flex items-center gap-4">
+                {/* Left section - fixed width to prevent overlap */}
+                <div className="flex items-center gap-4 shrink-0">
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
                         <span className="text-sm text-slate-300 font-medium">IDE Connected</span>
@@ -575,18 +574,25 @@ export default function IDEPage() {
                         <Clock className="h-4 w-4" />
                         <span className="font-mono text-sm">{formatTime(elapsedTime)}</span>
                     </div>
-                </div>
-
-                {/* Minerva Voice Indicator - Center */}
-                <div className="flex-1 flex justify-center items-center">
+                    <div className="h-4 w-px bg-slate-600" />
+                    {/* Minerva Voice Indicator */}
                     <MinervaVoiceIndicator />
                 </div>
 
-                <div className="flex items-center gap-3">
+                {/* Center: Run Tests, Submit, AI Chat */}
+                <div className="flex-1 flex items-center justify-center gap-3">
                     {/* Test Runner Component */}
                     {sessionId && (
-                        <TestRunner sessionId={sessionId} />
+                        <TestRunner ref={testRunnerRef} sessionId={sessionId} />
                     )}
+
+                    <Button
+                        onClick={handleSubmit}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        size="sm"
+                    >
+                        Submit
+                    </Button>
 
                     {/* AI Chat Toggle */}
                     <Button
@@ -601,16 +607,11 @@ export default function IDEPage() {
                         <MessageSquare className="mr-2 h-4 w-4" />
                         AI Chat
                     </Button>
+                </div>
 
-                    <div className="h-4 w-px bg-slate-600" />
-
-                    <Button
-                        onClick={handleSubmit}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                        Submit
-                    </Button>
-                    <Button
+                {/* Right: Preview and Maximize buttons */}
+                <div className="flex items-center gap-2">
+                    <button
                         onClick={() => {
                             if (containerUrl) {
                                 // Use code-server's built-in proxy which works on the same port (443)
@@ -619,62 +620,18 @@ export default function IDEPage() {
                                 window.open(`${url}proxy/3000/`, '_blank');
                             }
                         }}
-                        variant="outline"
-                        size="sm"
-                        className="bg-blue-600 border-blue-500 text-white hover:bg-blue-700 hover:text-white"
+                        className="p-2 text-slate-400 hover:text-white transition-colors"
                     >
-                        <Eye className="mr-2 h-4 w-4" />
-                        Preview App
-                    </Button>
-                    <Button
+                        <Eye className="h-4 w-4" />
+                    </button>
+                    <button
                         onClick={toggleFullscreen}
-                        variant="outline"
-                        size="sm"
-                        className="bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white"
+                        className="p-2 text-slate-400 hover:text-white transition-colors"
                     >
-                        {isFullscreen ? (
-                            <Minimize2 className="h-4 w-4" />
-                        ) : (
-                            <Maximize2 className="h-4 w-4" />
-                        )}
-                    </Button>
-                    <Button
-                        onClick={handleClose}
-                        variant="outline"
-                        size="sm"
-                        className="bg-slate-700 border-slate-600 text-slate-300 hover:bg-red-600 hover:border-red-600 hover:text-white"
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
+                        <Maximize2 className="h-4 w-4" />
+                    </button>
                 </div>
             </div>
-
-            {/* Close Confirmation Modal */}
-            {showCloseConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-                    <div className="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-md mx-4 shadow-2xl">
-                        <h3 className="text-lg font-semibold text-white mb-2">Close IDE?</h3>
-                        <p className="text-slate-400 mb-6">
-                            Your progress will be saved and you can continue later from the assessment page.
-                        </p>
-                        <div className="flex gap-3 justify-end">
-                            <Button
-                                onClick={() => setShowCloseConfirm(false)}
-                                variant="outline"
-                                className="bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={confirmClose}
-                                className="bg-red-600 hover:bg-red-700 text-white"
-                            >
-                                Close IDE
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Main Content Area */}
             <div className="flex-1 flex relative overflow-hidden">
@@ -751,6 +708,7 @@ export default function IDEPage() {
                         <AgentChat
                             sessionId={sessionId}
                             containerReady={containerStatus === 'running'}
+                            onClose={() => setShowAgentChat(false)}
                         />
                     )}
                 </div>

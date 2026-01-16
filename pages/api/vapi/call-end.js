@@ -32,12 +32,28 @@ export default async function handler(req, res) {
         // Check if this phase should transition on vapi_end
         const phase = getPhase(phaseId);
         if (phase && phase.transitionTrigger === TRANSITION_TRIGGER.VAPI_END) {
+            // Idempotency check: Get current phase from session to prevent duplicate transitions
+            const currentSession = await sessionManager.getSession(sessionId);
+            const currentPhase = currentSession?.current_phase;
+
+            // If we've already moved past this phase, don't transition again
+            if (currentPhase && currentPhase !== phaseId) {
+                console.log(`[API] Phase already transitioned from ${phaseId} to ${currentPhase}, skipping duplicate transition`);
+                return res.status(200).json({
+                    success: true,
+                    messagesStored: messages?.length || 0,
+                    phaseTransitioned: false,
+                    reason: 'already_transitioned',
+                    currentPhase
+                });
+            }
+
             console.log(`[API] Phase ${phaseId} transitions on vapi_end, triggering transition...`);
             try {
                 const transitionResult = await transitionPhase(sessionId, 'vapi_end');
                 console.log(`[API] Successfully transitioned from ${phaseId} to ${transitionResult.currentPhase?.id || 'next phase'}`);
-                return res.status(200).json({ 
-                    success: true, 
+                return res.status(200).json({
+                    success: true,
                     messagesStored: messages?.length || 0,
                     phaseTransitioned: true,
                     newPhase: transitionResult.currentPhase?.id
@@ -45,8 +61,8 @@ export default async function handler(req, res) {
             } catch (transitionError) {
                 console.error(`[API] Error transitioning phase:`, transitionError);
                 // Don't fail the request - messages are already stored
-                return res.status(200).json({ 
-                    success: true, 
+                return res.status(200).json({
+                    success: true,
                     messagesStored: messages?.length || 0,
                     phaseTransitionError: transitionError.message
                 });
