@@ -324,6 +324,11 @@ start_dev_server() {
 run_background_setup() {
     echo "⏳ Running background setup..."
 
+    # Fix workspace permissions FIRST (critical for npm run dev)
+    # The .next directory may be owned by root from Docker build
+    echo "🔧 Fixing workspace permissions..."
+    sudo chown -R coder:coder /workspace 2>/dev/null || true
+
     measure_step "setup_claude_auth" setup_claude_auth
     measure_step "setup_claude_wrapper" setup_claude_wrapper
     measure_step "setup_bash_config" setup_bash_config
@@ -342,10 +347,6 @@ run_background_setup() {
 # MAIN: Start code-server IMMEDIATELY
 # ============================================
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
-
-# Fix workspace permissions (critical for npm run dev)
-# The .next directory may be owned by root from Docker build
-sudo chown -R coder:coder /workspace 2>/dev/null || true
 
 # Run background setup after code-server starts (non-blocking)
 run_background_setup &
