@@ -307,6 +307,16 @@ setup_telemetry() {
     fi
 }
 
+start_dev_server() {
+    # 8. Auto-start the development server
+    echo "🚀 Starting development server..."
+    cd /workspace
+    # Start npm run dev in the background, redirect output to a log file
+    nohup npm run dev > /workspace/.dev-server.log 2>&1 &
+    echo "✅ Development server starting on port 3000"
+    echo "   Logs: /workspace/.dev-server.log"
+}
+
 # ============================================
 # BACKGROUND SETUP FUNCTION
 # Runs AFTER code-server starts
@@ -320,6 +330,7 @@ run_background_setup() {
     measure_step "setup_git" setup_git
     measure_step "setup_env_local" setup_env_local
     measure_step "setup_telemetry" setup_telemetry
+    measure_step "start_dev_server" start_dev_server
 
     # Final ownership check
     chown -R coder:coder /home/coder/.claude 2>/dev/null || true
@@ -331,6 +342,10 @@ run_background_setup() {
 # MAIN: Start code-server IMMEDIATELY
 # ============================================
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
+
+# Fix workspace permissions (critical for npm run dev)
+# The .next directory may be owned by root from Docker build
+sudo chown -R coder:coder /workspace 2>/dev/null || true
 
 # Run background setup after code-server starts (non-blocking)
 run_background_setup &
