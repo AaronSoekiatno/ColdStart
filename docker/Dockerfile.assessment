@@ -46,10 +46,6 @@ RUN mkdir -p /workspace && chown coder:coder /workspace
 COPY --chown=coder:coder workspace /workspace/
 RUN cd /workspace && npm install --legacy-peer-deps
 
-# Pre-build Next.js to eliminate cold start compilation
-# This creates the .next directory with pre-compiled code
-RUN cd /workspace && npm run build
-
 # Copy configuration scripts
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/telemetry-sidecar.sh /usr/local/bin/

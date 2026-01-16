@@ -1,9 +1,10 @@
 import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
+import react from '@vitejs/plugin-react-swc';  // SWC is ~20x faster than Babel
 import path from 'path';
 
 export default defineConfig({
     plugins: [react()],
+    cacheDir: '.vitest-cache',  // Vite cache directory (includes Vitest cache)
     test: {
         environment: 'happy-dom',  // Faster than jsdom
         globals: true,
@@ -18,8 +19,6 @@ export default defineConfig({
                 maxThreads: 1        // Prevent thread contention
             }
         },
-        // Disable cache to save memory
-        cache: false,
         // Disable file watching in production container
         watch: false,
     },

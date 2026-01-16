@@ -351,4 +351,4 @@ sudo chown -R coder:coder /workspace 2>/dev/null || true
 run_background_setup &
 
 # Start code-server (this blocks and keeps container running)
-exec code-server --bind-addr 0.0.0.0:8080 --auth none /workspace
+exec code-server --bind-addr 0.0.0.0:8080 --auth none --disable-workspace-trust /workspace

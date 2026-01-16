@@ -209,16 +209,6 @@ export const TestRunner = forwardRef<TestRunnerRef, TestRunnerProps>(
                             ))}
                         </div>
                     </ScrollArea>
-                    <div className="p-2 border-t border-slate-800 bg-slate-900/50 flex justify-between">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => runTests('full')}
-                            className="text-slate-400 hover:text-white"
-                        >
-                            Run Full Suite (Slow)
-                        </Button>
-                    </div>
                 </PopoverContent>
             </Popover>
         );

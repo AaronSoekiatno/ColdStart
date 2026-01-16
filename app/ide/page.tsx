@@ -232,15 +232,15 @@ export default function IDEPage() {
 
                         toast({
                             title: 'Reflection Complete',
-                            description: 'Running final tests to verify your work...',
+                            description: 'Running final validation (includes TypeScript check)...',
                         });
 
-                        // Run tests using the TestRunner ref - this will show results in the popover
+                        // Run FULL test suite after reflection ends (includes build.test.ts TypeScript validation)
                         if (testRunnerRef.current) {
                             try {
-                                await testRunnerRef.current.runTests('quick');
+                                await testRunnerRef.current.runTests('full');
                                 toast({
-                                    title: 'Tests Complete',
+                                    title: 'Final Validation Complete',
                                     description: 'Review your test results above.',
                                 });
                             } catch (error) {
@@ -389,10 +389,24 @@ export default function IDEPage() {
     const handleSubmit = async () => {
         toast({
             title: 'Submitting Assessment',
-            description: 'Saving your work and creating snapshot...',
+            description: 'Running final validation (includes TypeScript check)...',
         });
 
         try {
+            // Run FULL test suite before submission (includes build.test.ts TypeScript validation)
+            if (testRunnerRef.current) {
+                try {
+                    await testRunnerRef.current.runTests('full');
+                    toast({
+                        title: 'Validation Complete',
+                        description: 'Finalizing submission...',
+                    });
+                } catch (error) {
+                    console.error('[IDE] Error running final tests:', error);
+                    // Continue with submission even if tests fail
+                }
+            }
+
             // Stop Vapi call if active
             await stopVapiCall('assessment_submitted');
 
