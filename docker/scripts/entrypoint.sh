@@ -12,7 +12,7 @@ echo "============================================"
 # Display build version
 if [ -f "/home/coder/.hermes-version.json" ]; then
     echo "📦 Container Version:"
-    cat /home/coder/.hermes-version.json | python3 -c 'import sys, json; d=json.load(sys.stdin); print(f"   Built: {d[\"built_at\"]}")'
+    cat /home/coder/.hermes-version.json | python3 -c 'import sys, json; d=json.load(sys.stdin); print("   Built: " + d["built_at"])'
     echo "============================================"
 fi
 
