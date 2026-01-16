@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
     // Execute the command (this will take some time)
     const output = await executeClaudeInFlyContainer(
       container.fly_app_name,
-      message
+      message,
+      sessionId
     );
 
     // Return the output as a stream for consistency with the UI

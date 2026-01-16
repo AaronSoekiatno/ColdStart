@@ -11,7 +11,8 @@ const execAsync = promisify(exec);
  */
 export async function executeClaudeInFlyContainer(
   flyAppName: string,
-  prompt: string
+  prompt: string,
+  sessionId?: string
 ): Promise<string> {
   const apiToken = process.env.FLY_API_TOKEN;
   
@@ -29,7 +30,9 @@ export async function executeClaudeInFlyContainer(
   try {
     // Use echo to pipe prompt - avoids stdin waiting issues
     // Run as root with HOME set to /home/coder so paths work
-    const command = `flyctl ssh console -a ${flyAppName} -C "bash -c 'export HOME=/home/coder PATH=/home/coder/.local/bin:/home/coder/.npm-global/bin:/usr/bin:/bin && echo \\"${escapedPrompt}\\" | /home/coder/.local/bin/claude-code'"`;
+    // Export SESSION_ID if provided to ensure correct cost tracking context
+    const sessionEnv = sessionId ? `export SESSION_ID=${sessionId} &&` : '';
+    const command = `flyctl ssh console -a ${flyAppName} -C "bash -c 'export HOME=/home/coder PATH=/home/coder/.local/bin:/home/coder/.npm-global/bin:/usr/bin:/bin && ${sessionEnv} echo \\"${escapedPrompt}\\" | /home/coder/.local/bin/claude-code'"`;
     
     console.log('[Execute Claude] Starting command for app:', flyAppName);
     console.log('[Execute Claude] Prompt:', prompt.substring(0, 100));

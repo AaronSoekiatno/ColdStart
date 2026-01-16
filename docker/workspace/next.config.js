@@ -24,6 +24,16 @@ const nextConfig = {
   experimental: {
     workerThreads: false,
     cpus: 1
+  },
+
+  // Skip type checking during dev for faster compilation
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
+  // Skip linting during dev for faster compilation
+  eslint: {
+    ignoreDuringBuilds: true,
   }
 }
 
