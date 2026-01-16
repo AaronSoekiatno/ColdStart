@@ -315,6 +315,23 @@ start_dev_server() {
     nohup npm run dev > /workspace/.dev-server.log 2>&1 &
     echo "✅ Development server starting on port 3000"
     echo "   Logs: /workspace/.dev-server.log"
+
+    # Pre-compile main routes in background to speed up first access
+    (
+        echo "⏳ Waiting for dev server to be ready..."
+        # Wait for Next.js to be ready (max 30s)
+        for i in {1..30}; do
+            if curl -s http://localhost:3000 > /dev/null 2>&1; then
+                echo "✅ Dev server ready, pre-compiling routes..."
+                # Pre-compile main routes
+                curl -s http://localhost:3000 > /dev/null 2>&1 &
+                curl -s http://localhost:3000/insights > /dev/null 2>&1 &
+                echo "✅ Routes pre-compilation started"
+                break
+            fi
+            sleep 1
+        done
+    ) &
 }
 
 # ============================================
