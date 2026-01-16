@@ -88,6 +88,7 @@
     "extract-majors:populate:dry-run": "tsx scripts/data/extract-candidate-majors.ts --populate --dry-run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@google/generative-ai": "^0.24.1",
     "@pinecone-database/pinecone": "^6.1.3",
     "@radix-ui/react-dialog": "^1.1.15",
