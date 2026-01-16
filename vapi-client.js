@@ -254,18 +254,48 @@ export async function initializeVapiListeners() {
         eventCallbacks.onCallStart.forEach(cb => cb(activeCall));
     });
 
-    initializedVapi.on("call-end", () => {
+    initializedVapi.on("call-end", async () => {
         const duration = activeCall.startTime
             ? Math.floor((Date.now() - activeCall.startTime) / 1000)
             : 0;
 
         console.log(`[Vapi] Call ended for phase ${activeCall.phaseId}, duration: ${duration}s`);
+        console.log(`[Vapi] Collected ${activeCall.messageBuffer.length} messages to store`);
 
         const callData = {
             ...activeCall,
             duration,
             messages: [...activeCall.messageBuffer] // Include collected messages
         };
+
+        // Store messages via API (critical for persistence!)
+        if (activeCall.sessionId && activeCall.phaseId) {
+            try {
+                console.log(`[Vapi] Sending ${activeCall.messageBuffer.length} messages to /api/vapi/call-end`);
+                const response = await fetch(`/api/vapi/call-end`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionId: activeCall.sessionId,
+                        phaseId: activeCall.phaseId,
+                        callId: activeCall.callId,
+                        duration,
+                        messages: activeCall.messageBuffer
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log(`[Vapi] ✅ Successfully stored ${result.messagesStored || 0} messages`);
+                } else {
+                    console.error('[Vapi] ❌ Failed to store messages:', await response.text());
+                }
+            } catch (error) {
+                console.error('[Vapi] ❌ Failed to call /api/vapi/call-end:', error);
+            }
+        } else {
+            console.warn('[Vapi] Cannot store messages - missing sessionId or phaseId');
+        }
 
         activeCall = {
             callId: null,

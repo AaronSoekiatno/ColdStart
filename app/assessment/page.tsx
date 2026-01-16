@@ -19,7 +19,7 @@ interface AssessmentStatus {
 export default function AssessmentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isCompleted = searchParams.get('completed') === 'true';
+  const isCompleted = searchParams?.get('completed') === 'true';
   const [user, setUser] = useState<User | null>(null);
   const [assessmentStatus, setAssessmentStatus] = useState<AssessmentStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -190,7 +190,7 @@ export default function AssessmentPage() {
                 Start Your 20-Minute Assessment
               </h1>
               <p className="text-gray-600 text-lg">
-                Start a 20-minute technical assessment to showcase your skills to potential employers
+                Prove you can build features in limited time to potential startups
               </p>
             </div>
 
