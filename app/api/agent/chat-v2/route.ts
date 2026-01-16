@@ -91,25 +91,28 @@ export async function POST(request: NextRequest) {
             // Execute tool
             switch (block.name) {
               case 'read_file':
+                const readInput = block.input as any;
                 toolResult = await readWorkspaceFile(flyAppName, {
-                  path: block.input.path,
-                  startLine: block.input.start_line,
-                  endLine: block.input.end_line,
+                  path: readInput.path,
+                  startLine: readInput.start_line,
+                  endLine: readInput.end_line,
                 });
                 break;
 
               case 'list_directory':
+                const listInput = block.input as any;
                 toolResult = await listWorkspaceDirectory(flyAppName, {
-                  path: block.input.path,
-                  recursive: block.input.recursive,
+                  path: listInput.path,
+                  recursive: listInput.recursive,
                 });
                 break;
 
               case 'search_code':
+                const searchInput = block.input as any;
                 toolResult = await searchWorkspaceCode(flyAppName, {
-                  query: block.input.query,
-                  filePattern: block.input.file_pattern,
-                  caseSensitive: block.input.case_sensitive,
+                  query: searchInput.query,
+                  filePattern: searchInput.file_pattern,
+                  caseSensitive: searchInput.case_sensitive,
                 });
                 break;
 

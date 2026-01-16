@@ -66,7 +66,7 @@ export async function* streamClaudeResponse(
             content: '',
             toolCall: {
               name: chunk.content_block.name,
-              input: chunk.content_block.input,
+              input: chunk.content_block.input as Record<string, any>,
             },
           };
         }
@@ -84,7 +84,7 @@ export async function* streamClaudeResponse(
           content: '',
           toolCall: {
             name: block.name,
-            input: block.input,
+            input: block.input as Record<string, any>,
           },
         };
       }
