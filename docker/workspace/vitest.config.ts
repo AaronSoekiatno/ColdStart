@@ -6,6 +6,7 @@ export default defineConfig({
     plugins: [react()],
     cacheDir: '.vitest-cache',  // Vite cache directory (includes Vitest cache)
     test: {
+        include: ['tests/**/*.test.{ts,tsx}'],  // Only run assessment tests, not node_modules
         environment: 'happy-dom',  // Faster than jsdom
         globals: true,
         setupFiles: ['./tests/setup.ts'],
