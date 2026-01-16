@@ -324,10 +324,27 @@ start_dev_server() {
 run_background_setup() {
     echo "⏳ Running background setup..."
 
-    # Fix workspace permissions in background (can take time on large directories)
-    # The .next directory may be owned by root from Docker build
+    # Fix workspace permissions - OPTIMIZED to avoid recursing through node_modules
+    # Only fix ownership on specific directories that may be owned by root from Docker build
     echo "🔧 Fixing workspace permissions..."
-    (sudo chown -R coder:coder /workspace 2>/dev/null || true) &
+    (
+        # Fix top-level files and specific directories only
+        sudo chown coder:coder /workspace 2>/dev/null || true
+        sudo chown coder:coder /workspace/.* 2>/dev/null || true
+        
+        # Fix specific directories that need write access (exclude node_modules)
+        for dir in .next .cache dist build app components lib utils tests scripts supabase; do
+            if [ -d "/workspace/$dir" ]; then
+                sudo chown -R coder:coder "/workspace/$dir" 2>/dev/null || true
+            fi
+        done
+        
+        # Fix package files
+        sudo chown coder:coder /workspace/package*.json 2>/dev/null || true
+        sudo chown coder:coder /workspace/*.config.* 2>/dev/null || true
+        sudo chown coder:coder /workspace/tsconfig.json 2>/dev/null || true
+        sudo chown coder:coder /workspace/.env* 2>/dev/null || true
+    ) &
 
     measure_step "setup_claude_auth" setup_claude_auth
     measure_step "setup_claude_wrapper" setup_claude_wrapper
