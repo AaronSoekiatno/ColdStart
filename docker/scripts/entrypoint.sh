@@ -324,26 +324,32 @@ start_dev_server() {
 run_background_setup() {
     echo "⏳ Running background setup..."
 
-    # Fix workspace permissions - OPTIMIZED to avoid recursing through node_modules
-    # Only fix ownership on specific directories that may be owned by root from Docker build
+    # Fix workspace permissions - ULTRA-OPTIMIZED
+    # Only fix directories that ACTUALLY need write access during runtime
+    # Source code directories (app, components, lib, utils, tests, scripts, supabase) are READ-ONLY
     echo "🔧 Fixing workspace permissions..."
     (
-        # Fix top-level files and specific directories only
+        # Fix top-level directory
         sudo chown coder:coder /workspace 2>/dev/null || true
-        sudo chown coder:coder /workspace/.* 2>/dev/null || true
         
-        # Fix specific directories that need write access (exclude node_modules)
-        for dir in .next .cache dist build app components lib utils tests scripts supabase; do
+        # Only fix directories that need WRITE access during runtime/testing
+        # .next - Next.js build cache
+        # .vitest-cache - Vitest cache
+        # .git - Git operations during testing
+        for dir in .next .vitest-cache .git; do
             if [ -d "/workspace/$dir" ]; then
                 sudo chown -R coder:coder "/workspace/$dir" 2>/dev/null || true
             fi
         done
         
-        # Fix package files
-        sudo chown coder:coder /workspace/package*.json 2>/dev/null || true
-        sudo chown coder:coder /workspace/*.config.* 2>/dev/null || true
-        sudo chown coder:coder /workspace/tsconfig.json 2>/dev/null || true
+        # Fix root-level files that need write access
+        sudo chown coder:coder /workspace/test-results.json 2>/dev/null || true
         sudo chown coder:coder /workspace/.env* 2>/dev/null || true
+        sudo chown coder:coder /workspace/*.log 2>/dev/null || true
+        sudo chown coder:coder /workspace/tsconfig.tsbuildinfo 2>/dev/null || true
+        
+        # Note: node_modules/.vite is handled separately in run-tests.sh
+        # Source code dirs (app, components, lib, utils, tests, scripts, supabase) are read-only - no chown needed
     ) &
 
     measure_step "setup_claude_auth" setup_claude_auth
