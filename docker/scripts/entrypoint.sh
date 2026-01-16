@@ -324,10 +324,10 @@ start_dev_server() {
 run_background_setup() {
     echo "⏳ Running background setup..."
 
-    # Fix workspace permissions FIRST (critical for npm run dev)
+    # Fix workspace permissions in background (can take time on large directories)
     # The .next directory may be owned by root from Docker build
     echo "🔧 Fixing workspace permissions..."
-    sudo chown -R coder:coder /workspace 2>/dev/null || true
+    (sudo chown -R coder:coder /workspace 2>/dev/null || true) &
 
     measure_step "setup_claude_auth" setup_claude_auth
     measure_step "setup_claude_wrapper" setup_claude_wrapper

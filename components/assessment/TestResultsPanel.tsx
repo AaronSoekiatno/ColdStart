@@ -119,22 +119,13 @@ export function TestResultsPanel({ sessionId, className }: TestResultsPanelProps
                 </div>
                 <div className="flex gap-2">
                     <Button
-                        variant="outline"
+                        variant="default"
                         size="sm"
                         onClick={() => runTests('quick')}
                         disabled={isLoading}
                     >
-                        {isLoading && testType === 'quick' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                        Quick Run
-                    </Button>
-                    <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => runTests('full')}
-                        disabled={isLoading}
-                    >
-                        {isLoading && testType === 'full' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
-                        Full Validation
+                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                        Run Tests
                     </Button>
                 </div>
             </div>
