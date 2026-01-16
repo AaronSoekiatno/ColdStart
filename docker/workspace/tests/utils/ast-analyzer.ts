@@ -1,12 +1,28 @@
 /**
  * AST Utilities for Code Analysis
- * 
+ *
  * Uses TypeScript's AST to verify actual code patterns, not just text matching.
  * This prevents false positives from comments or strings containing keywords.
+ *
+ * Performance: Results are cached to avoid re-parsing the same file multiple times.
  */
 
 import { parse } from '@typescript-eslint/typescript-estree';
 import type { TSESTree } from '@typescript-eslint/typescript-estree';
+
+// Cache for AST analysis results (keyed by code content hash)
+const astCache = new Map<string, ASTAnalysisResult>();
+
+// Simple hash function for cache keys
+function hashCode(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+}
 
 export interface ASTAnalysisResult {
     hasFetchCall: boolean;
@@ -36,8 +52,16 @@ export interface ASTAnalysisResult {
 
 /**
  * Parse TypeScript/TSX code and analyze for specific patterns
+ * Results are cached to avoid re-parsing the same code multiple times.
  */
 export function analyzeCode(code: string): ASTAnalysisResult {
+    // Check cache first
+    const cacheKey = hashCode(code);
+    const cached = astCache.get(cacheKey);
+    if (cached) {
+        return cached;
+    }
+
     const result: ASTAnalysisResult = {
         hasFetchCall: false,
         hasUseEffectCall: false,
@@ -73,6 +97,9 @@ export function analyzeCode(code: string): ASTAnalysisResult {
 
         // Walk the AST
         walkNode(ast, result);
+
+        // Cache the result
+        astCache.set(cacheKey, result);
     } catch (error) {
         console.error('AST parsing error:', error);
     }

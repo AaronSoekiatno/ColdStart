@@ -78,7 +78,7 @@ describe('Error Handling & UX (15 points)', () => {
                 });
 
                 expect(hasError).toBe(true);
-            }, { timeout: 3000 });
+            }, { timeout: 1000 });
         });
 
         it('should not crash when API returns 500', async () => {
