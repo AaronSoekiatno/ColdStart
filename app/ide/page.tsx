@@ -27,6 +27,7 @@ export default function IDEPage() {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [containerUrl, setContainerUrl] = useState<string | null>(null);
+    const [flyAppName, setFlyAppName] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [containerStatus, setContainerStatus] = useState<'loading' | 'provisioning' | 'running' | 'error'>('loading');
     const [elapsedTime, setElapsedTime] = useState(0);
@@ -351,6 +352,18 @@ export default function IDEPage() {
                 setContainerUrl(session.container_url);
                 setContainerStatus('running');
 
+                // Extract app name from URL (e.g. https://assess-xxx.fly.dev -> assess-xxx)
+                try {
+                    const url = new URL(session.container_url);
+                    const appName = url.hostname.split('.')[0];
+                    if (appName && appName !== 'localhost') {
+                        setFlyAppName(appName);
+                        console.log('[IDE] Set flyAppName for agent:', appName);
+                    }
+                } catch (e) {
+                    console.error('[IDE] Failed to parse app name from URL:', session.container_url);
+                }
+
                 // Auto-start KICK_OFF call when container is ready and we're in KICK_OFF phase
                 if (session.current_phase === 'KICK_OFF' && !kickOffStartedRef.current) {
                     console.log('[IDE] Container ready, auto-starting KICK_OFF call...');
@@ -369,6 +382,8 @@ export default function IDEPage() {
                     setContainerUrl('http://localhost:8080');
                     setContainerStatus('running');
                     setSessionId('local-dev-session');
+                    // For local dev, we might not have a fly app, but if testing against a real fly app, set it here manually if needed
+                    // setFlyAppName('assess-...'); 
                 } else {
                     setContainerStatus('error');
                 }
@@ -732,6 +747,7 @@ export default function IDEPage() {
                     {sessionId && (
                         <AgentChat
                             sessionId={sessionId}
+                            flyAppName={flyAppName}
                             containerReady={containerStatus === 'running'}
                             onClose={() => setShowAgentChat(false)}
                         />

@@ -5,6 +5,8 @@ import {
   readWorkspaceFile,
   listWorkspaceDirectory,
   searchWorkspaceCode,
+  writeWorkspaceFile,
+  runWorkspaceCommand,
 } from '@/lib/workspace/file-access';
 import {
   checkSessionLimits,
@@ -18,10 +20,15 @@ import {
  * Fast, cost-effective alternative to SSH + claude-code CLI
  */
 
+import { logPrompt, updateLogResponse } from '@/lib/claude/logger';
+
 export async function POST(request: NextRequest) {
+  let logId: string | null = null;
+  const startTime = Date.now();
+
   try {
     const body = await request.json();
-    const { message, sessionId, flyAppName, conversationHistory = [] } = body;
+    const { message, sessionId, flyAppName, candidateId, conversationHistory = [] } = body;
 
     // Validate required fields
     if (!message || !sessionId || !flyAppName) {
@@ -31,29 +38,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // --- DETAILED LOGGING START ---
+    console.log('\n💬 [Chat V2 UI] Request Received:');
+    console.log('  Message:', message.substring(0, 100) + (message.length > 100 ? '...' : ''));
+    console.log('  Session:', sessionId);
+    console.log('  App:', flyAppName || '(No App)');
+
+    // Log to Supabase (Database)
+    try {
+      logId = await logPrompt({
+        candidateId, // Explicitly pass if provided
+        sessionId,
+        prompt: message,
+        metadata: { 
+            flyAppName, 
+            historyLength: conversationHistory.length 
+        }
+      });
+      if (logId) console.log('  📝 [Logger] Logged to DB ID:', logId);
+    } catch (e) {
+      console.error('  ⚠️ [Logger] Failed to start log:', e);
+    }
+    
     // Check cost limits
     const estimatedTokens = estimateTokenCount(message);
     const limitCheck = checkSessionLimits(sessionId, estimatedTokens);
 
     if (!limitCheck.allowed) {
-      return Response.json(
-        {
-          error: 'Cost limit exceeded',
-          reason: limitCheck.reason,
-          usage: getSessionUsage(sessionId),
-        },
-        { status: 429 }
-      );
+      console.log('❌ [Chat V2 UI] Cost limit exceeded:', limitCheck.reason);
+      
+      const responsePayload = {
+        error: 'Cost limit exceeded',
+        reason: limitCheck.reason,
+        usage: getSessionUsage(sessionId),
+      };
+
+      if (logId) {
+        updateLogResponse({
+            logId,
+            responseStatus: 429,
+            responseTimeMs: Date.now() - startTime,
+            responseText: JSON.stringify(responsePayload)
+        }).catch(console.error);
+      }
+
+      return Response.json(responsePayload, { status: 429 });
     }
-
-    console.log('[Chat V2] Request:', {
-      sessionId,
-      flyAppName,
-      messageLength: message.length,
-      estimatedTokens,
-      hasFlyToken: !!process.env.FLY_API_TOKEN,
-    });
-
+    
     // Build conversation messages
     const messages: ClaudeMessage[] = [
       ...conversationHistory,
@@ -78,13 +109,14 @@ export async function POST(request: NextRequest) {
       iterations < maxIterations
     ) {
       iterations++;
-
+      
       // Extract tool calls from response
       const toolResults = [];
 
       for (const block of response.content) {
         if (block.type === 'tool_use') {
-          console.log('[Chat V2] Tool call:', block.name, block.input);
+          console.log(`\n🛠️  [Chat V2 UI] Tool Call (${iterations}): ${block.name}`);
+          // console.log('  Input:', JSON.stringify(block.input));
 
           let toolResult: string;
 
@@ -93,6 +125,7 @@ export async function POST(request: NextRequest) {
             switch (block.name) {
               case 'read_file':
                 const readInput = block.input as any;
+                console.log(`  Target: ${readInput.path}`);
                 toolResult = await readWorkspaceFile(flyAppName, {
                   path: readInput.path,
                   startLine: readInput.start_line,
@@ -102,6 +135,7 @@ export async function POST(request: NextRequest) {
 
               case 'list_directory':
                 const listInput = block.input as any;
+                console.log(`  Target: ${listInput.path}`);
                 toolResult = await listWorkspaceDirectory(flyAppName, {
                   path: listInput.path,
                   recursive: listInput.recursive,
@@ -110,6 +144,7 @@ export async function POST(request: NextRequest) {
 
               case 'search_code':
                 const searchInput = block.input as any;
+                console.log(`  Query: "${searchInput.query}" in ${searchInput.file_pattern || '*'}`);
                 toolResult = await searchWorkspaceCode(flyAppName, {
                   query: searchInput.query,
                   filePattern: searchInput.file_pattern,
@@ -117,14 +152,31 @@ export async function POST(request: NextRequest) {
                 });
                 break;
 
+              case 'write_file':
+                const writeInput = block.input as any;
+                console.log(`  Target: ${writeInput.path} (${writeInput.content.length} bytes)`);
+                toolResult = await writeWorkspaceFile(flyAppName, {
+                  path: writeInput.path,
+                  content: writeInput.content,
+                });
+                break;
+
+              case 'run_command':
+                const runInput = block.input as any;
+                console.log(`  Command: ${runInput.command}`);
+                toolResult = await runWorkspaceCommand(flyAppName, {
+                  command: runInput.command,
+                });
+                break;
+
               default:
                 toolResult = `Unknown tool: ${block.name}`;
             }
 
-            console.log(`[Chat V2] Tool result (${block.name}):`, toolResult.substring(0, 100) + (toolResult.length > 100 ? '...' : ''));
+            console.log(`  ✅ Result: ${toolResult.length} chars`);
           } catch (error: any) {
             toolResult = `Error: ${error.message}`;
-            console.error('[Chat V2] Tool error:', error);
+            console.error(`  ❌ Error: ${error.message}`);
           }
 
           toolResults.push({
@@ -176,12 +228,29 @@ export async function POST(request: NextRequest) {
     // Track token usage
     const tokensUsed = response.usage.input_tokens + response.usage.output_tokens;
     trackTokenUsage(sessionId, tokensUsed);
+    
+    const duration = Date.now() - startTime;
+    const costPerMillion = 0.25; // Haiku input pricing roughly
+    const estCost = (tokensUsed / 1_000_000) * costPerMillion;
 
-    console.log('[Chat V2] Success:', {
-      tokensUsed,
-      iterations,
-      responseLength: finalText.length,
-    });
+    console.log('\n✅ [Chat V2 UI] Success Response');
+    console.log(`  Response: "${finalText.substring(0, 50)}..."`);
+    console.log(`  Tokens: ${tokensUsed} (${response.usage.input_tokens} in / ${response.usage.output_tokens} out)`);
+    console.log(`  Cost: ~$${estCost.toFixed(6)}`);
+    console.log(`  Time: ${duration}ms`);
+    console.log('-------------------------------------------');
+
+    // Update DB Log (Fire and Forget)
+    if (logId) {
+        updateLogResponse({
+            logId,
+            responseStatus: 200,
+            responseTimeMs: duration,
+            responseText: finalText,
+            inputTokens: response.usage.input_tokens,
+            outputTokens: response.usage.output_tokens
+        }).catch(e => console.error('  ❌ [Logger] Failed to update log:', e));
+    }
 
     return Response.json({
       response: finalText,
@@ -194,7 +263,18 @@ export async function POST(request: NextRequest) {
       toolCallCount: iterations,
     });
   } catch (error: any) {
-    console.error('[Chat V2] Error:', error);
+    console.error('❌ [Chat V2 UI] Error:', error);
+
+    // Update DB Log with Error
+    if (logId) {
+        updateLogResponse({
+            logId,
+            responseStatus: 500,
+            responseTimeMs: Date.now() - startTime,
+            responseText: `Error: ${error.message}`
+        }).catch(e => console.error('  ❌ [Logger] Failed to update error log:', e));
+    }
+
     return Response.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

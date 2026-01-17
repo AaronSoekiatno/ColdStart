@@ -69,6 +69,40 @@ export const SEARCH_CODE_TOOL: Anthropic.Tool = {
   },
 };
 
+export const WRITE_FILE_TOOL: Anthropic.Tool = {
+  name: 'write_file',
+  description: 'Write content to a file in the workspace. This will create the file if it doesn\'t exist, or overwrite it if it does. Use this to create new files or completely replace existing ones.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        description: 'Relative path to the file from workspace root (e.g., "app/components/Button.tsx")',
+      },
+      content: {
+        type: 'string',
+        description: 'The complete content to write to the file',
+      },
+    },
+    required: ['path', 'content'],
+  },
+};
+
+export const RUN_COMMAND_TOOL: Anthropic.Tool = {
+  name: 'run_command',
+  description: 'Execute a shell command in the workspace. Use this to run tests, build the project, or execute other development commands. Commands run with a 30-second timeout.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      command: {
+        type: 'string',
+        description: 'The shell command to execute (e.g., "npm test", "npm run build")',
+      },
+    },
+    required: ['command'],
+  },
+};
+
 /**
  * Get all available tools
  */
@@ -77,6 +111,8 @@ export function getWorkspaceTools(): Anthropic.Tool[] {
     READ_FILE_TOOL,
     LIST_DIRECTORY_TOOL,
     SEARCH_CODE_TOOL,
+    WRITE_FILE_TOOL,
+    RUN_COMMAND_TOOL,
   ];
 }
 
@@ -89,12 +125,16 @@ You have access to their workspace through tools. Use these tools to:
 - Read files to understand their code
 - List directories to explore project structure  
 - Search for specific code patterns
+- Write files to create or modify code
+- Run commands to test or build the project
 
 Guidelines:
 - Be concise and helpful
 - Only read files when necessary to answer the question
 - Suggest specific code changes when appropriate
 - If you need to see code, use the read_file tool rather than asking the candidate to paste it
+- When writing code, always show the candidate what you're doing
+- After making changes, offer to run tests to verify the fix
 - Focus on helping them solve problems, not doing the work for them
 
 The workspace is a Next.js application with TypeScript. Common directories:
