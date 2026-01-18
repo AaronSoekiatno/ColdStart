@@ -27,7 +27,7 @@
     "workbench.colorTheme": "Default Dark Modern",
     "workbench.activityBar.visible": false,
     "workbench.statusBar.visible": true,
-    "workbench.sideBar.location": "right",
+    "workbench.sideBar.location": "left",
     "git.autofetch": false,
     "git.enableSmartCommit": true,
     "git.confirmSync": false,
