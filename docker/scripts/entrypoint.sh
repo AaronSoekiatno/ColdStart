@@ -197,7 +197,7 @@ run_background_setup() {
     measure_step "setup_git" setup_git
     measure_step "setup_env_local" setup_env_local
     measure_step "setup_telemetry" setup_telemetry
-    measure_step "start_dev_server" start_dev_server
+    # measure_step "start_dev_server" start_dev_server
 
     # Final ownership check
     chown -R coder:coder /home/coder/.claude 2>/dev/null || true
