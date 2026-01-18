@@ -46,6 +46,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             case 'run_command': return <Terminal className="w-3 h-3 text-amber-400" />;
             case 'read_file':
             case 'write_file':
+            case 'undo_change':
             case 'list_directory': return <FileText className="w-3 h-3 text-blue-400" />;
             case 'search_code': return <Search className="w-3 h-3 text-green-400" />;
             default: return <Code className="w-3 h-3 text-slate-400" />;
@@ -58,6 +59,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                 case 'run_command': return act.input.command;
                 case 'read_file': return `Read ${act.input.path}`;
                 case 'write_file': return `Update ${act.input.path}`;
+                case 'undo_change': return `Revert ${act.input.path}`;
                 case 'list_directory': return `List ${act.input.path}`;
                 case 'search_code': return `Search "${act.input.query}"`;
                 default: return JSON.stringify(act.input).substring(0, 50);
@@ -68,68 +70,94 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     };
 
     const handleUndo = async (path: string, originalContent: string) => {
-        // Trigger a write_file to restore content
-        const restoreMessage = `Undo changes to ${path}`;
-        setMessages((prev) => [...prev, {
-            id: crypto.randomUUID(),
+        // Create a synthetic user message for "Undo"
+        const undoMessageId = crypto.randomUUID();
+        const undoText = `Undo changes to ${path}`;
+
+        const undoMsg: Message = {
+            id: undoMessageId,
             role: 'user',
-            content: restoreMessage,
+            content: undoText,
             timestamp: new Date(),
             status: 'complete'
-        }]);
-        setInput('');
+        };
+
+        setMessages((prev) => [...prev, undoMsg]);
         setIsLoading(true);
 
-        // This is a special "Undo" triggered message. 
-        // We act like the user asked to revert, but we provide the content directly via tool use in the backend?
-        // Actually, easiest is to just ask the agent to do it, OR we can manually call the API with a system instruction.
-        // Let's just ask the agent naturally for now, but pre-fill the context?
-        // Better: We explicitly tell the agent "Revert ${path} to this content: \n\n${originalContent}"
-        // But context window might be an issue for large files. 
-
-        // Alternative: New tool `write_file` directly from client? No, unsafe. 
-        // Let's send a prompted message.
-        const undoPrompt = `Revert changes to ${path}. I will provide the original content. Please write this content back to ${path}:\n\n${originalContent}`;
-
-        // Call the chat API normally
+        // Create a synthetic assistant message to show the action
         const assistantMessageId = crypto.randomUUID();
-        setMessages((prev) => [
-            ...prev,
-            {
-                id: assistantMessageId,
-                role: 'assistant',
-                content: '',
-                timestamp: new Date(),
-                status: 'pending',
-            },
-        ]);
+        const assistantMsg: Message = {
+            id: assistantMessageId,
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+            status: 'streaming', // Start as streaming/running
+            toolActivity: [{
+                toolName: 'undo_change', // Custom internal tool name for display
+                input: { path },
+                status: 'running',
+                result: ''
+            }]
+        };
+
+        setMessages((prev) => [...prev, assistantMsg]);
 
         try {
-            const conversationHistory = messages.map(m => ({
-                role: m.role,
-                content: m.content
-            }));
-            // Omit the massive undo prompt from history to save tokens?? No, need it to know what to write.
-
-            const response = await fetch('/api/agent/chat-v2', {
+            const response = await fetch('/api/agent/undo', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    sessionId,
-                    message: undoPrompt,
                     flyAppName,
-                    conversationHistory
+                    path,
+                    content: originalContent || '' // Ensure string
                 }),
             });
 
-            // ... handle response stream (reuse logic below or extract) ...
-            // For brevity in this diff, assuming we reuse the main loop logic. 
-            // We'll need to refactor sendMessage to accept an argument or just call it.
-            // Refactoring sendMessage to be reusable:
-            processResponseStream(response, assistantMessageId);
+            const data = await response.json();
 
-        } catch (error) {
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to undo changes');
+            }
+
+            // Update success state
+            setMessages((prev) =>
+                prev.map(msg => {
+                    if (msg.id !== assistantMessageId) return msg;
+                    return {
+                        ...msg,
+                        status: 'complete',
+                        toolActivity: [{
+                            toolName: 'undo_change',
+                            input: { path },
+                            status: 'complete',
+                            result: 'Successfully reverted changes.' // Simple success message
+                        }],
+                        content: `Reverted ${path} to its previous state.`
+                    };
+                })
+            );
+
+        } catch (error: any) {
             console.error('Error undoing:', error);
+            // Update error state
+            setMessages((prev) =>
+                prev.map(msg => {
+                    if (msg.id !== assistantMessageId) return msg;
+                    return {
+                        ...msg,
+                        status: 'error',
+                        toolActivity: [{
+                            toolName: 'undo_change',
+                            input: { path },
+                            status: 'error',
+                            result: error.message
+                        }],
+                        content: `Failed to undo changes: ${error.message}`
+                    };
+                })
+            );
+        } finally {
             setIsLoading(false);
         }
     };
