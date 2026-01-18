@@ -1222,3 +1222,125 @@ export async function getOrCreateEmailPreferences(
   
   return preferences;
 }
+
+// ==================== SNAPSHOT FUNCTIONS ====================
+
+export interface SnapshotRecord {
+  id: string; // UUID
+  session_id: string;
+  candidate_github_username: string;
+  repo_name: string;
+  event_type: string;
+  commit_hash?: string;
+  commit_message?: string;
+  commit_author?: string;
+  commit_timestamp?: string;
+  added_lines: number;
+  deleted_lines: number;
+  net_lines: number;
+  snapshot_storage_path?: string;
+  snapshot_size_bytes?: number;
+  created_at: string;
+}
+
+/**
+ * Get all snapshots for a session
+ * Returns snapshots ordered by creation time (newest first)
+ * @param sessionId - Session ID
+ * @returns Array of snapshot records
+ */
+export async function getSessionSnapshots(sessionId: string): Promise<SnapshotRecord[]> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('session_commits')
+    .select('*')
+    .eq('session_id', sessionId)
+    .not('snapshot_storage_path', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get session snapshots: ${error.message}`);
+  }
+
+  return (data || []) as SnapshotRecord[];
+}
+
+/**
+ * Get the latest snapshot for a session
+ * @param sessionId - Session ID
+ * @returns Latest snapshot record or null if none found
+ */
+export async function getLatestSnapshot(sessionId: string): Promise<SnapshotRecord | null> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('session_commits')
+    .select('*')
+    .eq('session_id', sessionId)
+    .not('snapshot_storage_path', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get latest snapshot: ${error.message}`);
+  }
+
+  return data as SnapshotRecord;
+}
+
+/**
+ * Get snapshot by commit ID
+ * @param commitId - Session commit UUID
+ * @returns Snapshot record or null if not found
+ */
+export async function getSnapshotByCommitId(commitId: string): Promise<SnapshotRecord | null> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('session_commits')
+    .select('*')
+    .eq('id', commitId)
+    .not('snapshot_storage_path', 'is', null)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return null; // Not found
+    }
+    throw new Error(`Failed to get snapshot by commit ID: ${error.message}`);
+  }
+
+  return data as SnapshotRecord;
+}
+
+/**
+ * Get snapshots by trigger type
+ * @param sessionId - Session ID
+ * @param trigger - Event type (e.g., 'test_completion', 'phase_transition', 'manual')
+ * @returns Array of snapshot records
+ */
+export async function getSnapshotsByTrigger(
+  sessionId: string,
+  trigger: string
+): Promise<SnapshotRecord[]> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('session_commits')
+    .select('*')
+    .eq('session_id', sessionId)
+    .eq('event_type', trigger)
+    .not('snapshot_storage_path', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get snapshots by trigger: ${error.message}`);
+  }
+
+  return (data || []) as SnapshotRecord[];
+}

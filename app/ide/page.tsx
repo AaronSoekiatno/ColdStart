@@ -158,6 +158,31 @@ export default function IDEPage() {
                 if (newPhase === 'REFLECTION' && currentPhase !== 'REFLECTION') {
                     console.log('[IDE] Phase transitioned to REFLECTION, checking if call should start...');
 
+                    // Trigger snapshot creation on BUILD → REFLECTION transition (fire-and-forget)
+                    // This captures the final code state before reflection phase
+                    if (currentPhase === 'BUILD') {
+                        console.log('[IDE] Triggering snapshot for BUILD → REFLECTION transition');
+                        fetch('/api/snapshots/create', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                sessionId,
+                                trigger: 'phase_transition',
+                                message: 'Snapshot at BUILD → REFLECTION phase transition',
+                            }),
+                        }).then(response => {
+                            if (response.ok) {
+                                console.log('[IDE] Snapshot creation triggered successfully');
+                            } else {
+                                console.warn('[IDE] Snapshot creation failed:', response.statusText);
+                            }
+                        }).catch(error => {
+                            console.warn('[IDE] Snapshot creation error:', error);
+                        });
+                    }
+
                     // Prevent duplicate REFLECTION call attempts
                     if (reflectionStartedRef.current) {
                         console.log('[IDE] REFLECTION call already started, skipping duplicate');

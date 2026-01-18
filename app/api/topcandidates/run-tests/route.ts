@@ -326,6 +326,34 @@ export async function POST(request: NextRequest) {
             console.warn('NOTE: You may need to apply migration 049_add_test_logging_rpc.sql');
         }
 
+        // Trigger snapshot creation after full test completion (fire-and-forget)
+        // Only create snapshot for full test runs to capture final state
+        if (testType === 'full' && sessionId !== 'local-dev-session' && sessionId !== 'local-dev-docker') {
+            console.log('[API run-tests] Triggering snapshot creation after test completion');
+
+            // Fire-and-forget: don't await the snapshot creation
+            fetch(`${process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin}/api/snapshots/create`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cookie': request.headers.get('Cookie') || '',
+                },
+                body: JSON.stringify({
+                    sessionId,
+                    trigger: 'test_completion',
+                    message: `Snapshot after ${testType} test completion`,
+                }),
+            }).then(response => {
+                if (response.ok) {
+                    console.log('[API run-tests] Snapshot creation triggered successfully');
+                } else {
+                    console.warn('[API run-tests] Snapshot creation failed:', response.statusText);
+                }
+            }).catch(error => {
+                console.warn('[API run-tests] Snapshot creation error:', error);
+            });
+        }
+
         return NextResponse.json({
             success: exitCode === 0,
             output: stdout,
