@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, CheckCircle2, XCircle, X } from 'lucide-react';
+import { Send, Loader2, CheckCircle2, XCircle, X, Terminal, FileText, Search, Code, Cpu, ChevronDown, ChevronRight } from 'lucide-react';
+
+interface ToolLog {
+    toolName: string;
+    input: any;
+    result: string;
+}
 
 interface Message {
     id: string;
@@ -9,6 +15,7 @@ interface Message {
     content: string;
     timestamp: Date;
     status?: 'pending' | 'complete' | 'error';
+    toolActivity?: ToolLog[];
 }
 
 interface AgentChatProps {
@@ -31,6 +38,28 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    const getToolIcon = (name: string) => {
+        switch (name) {
+            case 'run_command': return <Terminal className="w-3 h-3 text-amber-400" />;
+            case 'read_file':
+            case 'write_file':
+            case 'list_directory': return <FileText className="w-3 h-3 text-blue-400" />;
+            case 'search_code': return <Search className="w-3 h-3 text-green-400" />;
+            default: return <Code className="w-3 h-3 text-slate-400" />;
+        }
+    };
+
+    const getToolSummary = (act: ToolLog) => {
+        switch (act.toolName) {
+            case 'run_command': return act.input.command;
+            case 'read_file': return `Read ${act.input.path}`;
+            case 'write_file': return `Wrote to ${act.input.path}`;
+            case 'list_directory': return `List ${act.input.path}`;
+            case 'search_code': return `Search "${act.input.query}"`;
+            default: return JSON.stringify(act.input).substring(0, 50);
+        }
+    };
 
     const sendMessage = async () => {
         if (!input.trim() || isLoading || !containerReady) return;
@@ -91,7 +120,8 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                         ? {
                             ...msg,
                             content: data.response,
-                            status: 'complete'
+                            status: 'complete',
+                            toolActivity: data.toolActivity
                         }
                         : msg
                 )
@@ -164,6 +194,25 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                         >
                             <div className="flex items-start gap-2">
                                 <div className="flex-1">
+                                    {message.toolActivity && message.toolActivity.length > 0 && (
+                                        <div className="mb-3 bg-slate-900/40 rounded-lg overflow-hidden border border-slate-700/50">
+                                            <div className="p-2 space-y-1.5">
+                                                <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                                    <Cpu className="w-3 h-3" />
+                                                    Agent Thoughts
+                                                </div>
+                                                {message.toolActivity.map((act, i) => (
+                                                    <div key={i} className="flex items-start gap-2 text-xs font-mono text-slate-300 bg-slate-900/50 p-1.5 rounded border border-slate-800">
+                                                        <span className="mt-0.5 shrink-0">{getToolIcon(act.toolName)}</span>
+                                                        <div className="flex-1 overflow-hidden break-all">
+                                                            <span className="text-purple-400 mr-2 font-semibold">{act.toolName}</span>
+                                                            <span className="opacity-75">{getToolSummary(act)}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                     <p className="whitespace-pre-wrap">{message.content}</p>
                                 </div>
                                 {message.status === 'pending' && (

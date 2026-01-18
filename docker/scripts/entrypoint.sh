@@ -20,9 +20,7 @@ fi
 # Ensure Supabase Service Key is available
 export SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-$SUPABASE_SERVICE_ROLE_KEY}
 
-# Disable file watchers to reduce CPU usage
-export CHOKIDAR_USEPOLLING=false
-export WATCHPACK_POLLING=false
+
 export NEXT_TELEMETRY_DISABLED=1
 
 # ============================================

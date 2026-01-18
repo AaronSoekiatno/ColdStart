@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "CHOKIDAR_USEPOLLING=true WATCHPACK_POLLING=true next dev",
+    "dev": "CHOKIDAR_USEPOLLING=true WATCHPACK_POLLING=true next dev --turbo",
     "dev:prod": "next start",
     "build": "next build --turbo",
     "start": "next start",

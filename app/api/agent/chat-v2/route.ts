@@ -25,6 +25,7 @@ import { logPrompt, updateLogResponse } from '@/lib/claude/logger';
 export async function POST(request: NextRequest) {
   let logId: string | null = null;
   const startTime = Date.now();
+  const toolResultsLog: { toolName: string; input: any; result: string }[] = [];
 
   try {
     const body = await request.json();
@@ -179,6 +180,12 @@ export async function POST(request: NextRequest) {
             console.error(`  ❌ Error: ${error.message}`);
           }
 
+          toolResultsLog.push({
+            toolName: block.name,
+            input: block.input,
+            result: toolResult
+          });
+
           toolResults.push({
             type: 'tool_result' as const,
             tool_use_id: block.id,
@@ -254,6 +261,7 @@ export async function POST(request: NextRequest) {
 
     return Response.json({
       response: finalText,
+      toolActivity: toolResultsLog, // Return the collected tool activity
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
