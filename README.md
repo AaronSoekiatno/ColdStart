@@ -45,6 +45,18 @@ sequenceDiagram
 - **Automated Infrastructure:**
     - Integrates with existing repo access management.
     - Tracks commits and test results via API endpoints.
+    - **Snapshot System:** Automatically captures workspace state at critical phases (test completion, phase transitions) for review and debugging.
+
+## Snapshot System
+
+The project includes a comprehensive snapshot system that captures the candidate's workspace state.
+
+- **Documentation**: See [Snapshot System Setup Guide](docs/snapshot-system-setup.md) for detailed setup instructions.
+- **Features**: 
+  - Automatic capture on test completion and phase transitions.
+  - Manual trigger via Admin UI.
+  - Efficient storage using `.tar.gz` and Supabase Storage.
+
 
 ## Setup & Installation
 

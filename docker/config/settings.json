@@ -23,7 +23,7 @@
     "terminal.integrated.gpuAcceleration": "off",
     "terminal.integrated.tabs.enabled": false,
     "terminal.integrated.shellIntegration.enabled": false,
-    "workbench.startupEditor": "none",
+    "workbench.startupEditor": "readme",
     "workbench.colorTheme": "Default Dark Modern",
     "workbench.activityBar.visible": false,
     "workbench.statusBar.visible": true,
