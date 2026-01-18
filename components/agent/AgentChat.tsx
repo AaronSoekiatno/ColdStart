@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, CheckCircle2, XCircle, X, Terminal, FileText, Search, Code, Cpu, ChevronDown, ChevronRight } from 'lucide-react';
+import { Send, Loader2, CheckCircle2, XCircle, X, Terminal, FileText, Search, Code, Cpu, ChevronDown, ChevronRight, RotateCcw } from 'lucide-react';
 
 interface ToolLog {
     toolName: string;
@@ -57,7 +57,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             switch (act.toolName) {
                 case 'run_command': return act.input.command;
                 case 'read_file': return `Read ${act.input.path}`;
-                case 'write_file': return `Write ${act.input.path}`;
+                case 'write_file': return `Update ${act.input.path}`;
                 case 'list_directory': return `List ${act.input.path}`;
                 case 'search_code': return `Search "${act.input.query}"`;
                 default: return JSON.stringify(act.input).substring(0, 50);
@@ -66,6 +66,152 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             return 'Processing...';
         }
     };
+
+    const handleUndo = async (path: string, originalContent: string) => {
+        // Trigger a write_file to restore content
+        const restoreMessage = `Undo changes to ${path}`;
+        setMessages((prev) => [...prev, {
+            id: crypto.randomUUID(),
+            role: 'user',
+            content: restoreMessage,
+            timestamp: new Date(),
+            status: 'complete'
+        }]);
+        setInput('');
+        setIsLoading(true);
+
+        // This is a special "Undo" triggered message. 
+        // We act like the user asked to revert, but we provide the content directly via tool use in the backend?
+        // Actually, easiest is to just ask the agent to do it, OR we can manually call the API with a system instruction.
+        // Let's just ask the agent naturally for now, but pre-fill the context?
+        // Better: We explicitly tell the agent "Revert ${path} to this content: \n\n${originalContent}"
+        // But context window might be an issue for large files. 
+
+        // Alternative: New tool `write_file` directly from client? No, unsafe. 
+        // Let's send a prompted message.
+        const undoPrompt = `Revert changes to ${path}. I will provide the original content. Please write this content back to ${path}:\n\n${originalContent}`;
+
+        // Call the chat API normally
+        const assistantMessageId = crypto.randomUUID();
+        setMessages((prev) => [
+            ...prev,
+            {
+                id: assistantMessageId,
+                role: 'assistant',
+                content: '',
+                timestamp: new Date(),
+                status: 'pending',
+            },
+        ]);
+
+        try {
+            const conversationHistory = messages.map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+            // Omit the massive undo prompt from history to save tokens?? No, need it to know what to write.
+
+            const response = await fetch('/api/agent/chat-v2', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId,
+                    message: undoPrompt,
+                    flyAppName,
+                    conversationHistory
+                }),
+            });
+
+            // ... handle response stream (reuse logic below or extract) ...
+            // For brevity in this diff, assuming we reuse the main loop logic. 
+            // We'll need to refactor sendMessage to accept an argument or just call it.
+            // Refactoring sendMessage to be reusable:
+            processResponseStream(response, assistantMessageId);
+
+        } catch (error) {
+            console.error('Error undoing:', error);
+            setIsLoading(false);
+        }
+    };
+
+    const processResponseStream = async (response: Response, assistantMessageId: string) => {
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to get response');
+        }
+
+        if (!response.body) throw new Error('No response body');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        // Mark assistant message as streaming
+        setMessages((prev) =>
+            prev.map((msg) =>
+                msg.id === assistantMessageId
+                    ? { ...msg, status: 'streaming' }
+                    : msg
+            )
+        );
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+
+                try {
+                    const event = JSON.parse(line);
+
+                    setMessages((prev) =>
+                        prev.map((msg) => {
+                            if (msg.id !== assistantMessageId) return msg;
+
+                            const updatedMsg = { ...msg };
+
+                            if (event.type === 'thought') {
+                                updatedMsg.reasoning = (updatedMsg.reasoning || '') + event.content;
+                            } else if (event.type === 'tool_start') {
+                                const newTool: ToolLog = {
+                                    toolName: event.tool,
+                                    input: event.input,
+                                    status: 'running',
+                                    result: ''
+                                };
+                                updatedMsg.toolActivity = [...(updatedMsg.toolActivity || []), newTool];
+                            } else if (event.type === 'tool_result') {
+                                if (updatedMsg.toolActivity && updatedMsg.toolActivity.length > 0) {
+                                    const lastTool = updatedMsg.toolActivity[updatedMsg.toolActivity.length - 1];
+                                    lastTool.status = 'complete';
+                                    lastTool.result = event.result;
+                                    updatedMsg.toolActivity = [...updatedMsg.toolActivity];
+                                }
+                            } else if (event.type === 'response_chunk') {
+                                updatedMsg.content += event.content;
+                            } else if (event.type === 'response') {
+                                updatedMsg.status = 'complete';
+                            } else if (event.type === 'error') {
+                                updatedMsg.content += `\n❌ Error: ${event.error}`;
+                                updatedMsg.status = 'error';
+                            }
+
+                            return updatedMsg;
+                        })
+                    );
+                } catch (e) {
+                    console.warn('Error parsing stream line:', e);
+                }
+            }
+        }
+        setIsLoading(false);
+    }
+
 
     const sendMessage = async () => {
         if (!input.trim() || isLoading || !containerReady) return;
@@ -82,7 +228,6 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
         setInput('');
         setIsLoading(true);
 
-        // Create pending assistant message
         const assistantMessageId = crypto.randomUUID();
         setMessages((prev) => [
             ...prev,
@@ -112,87 +257,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                 }),
             });
 
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to get response');
-            }
-
-            if (!response.body) throw new Error('No response body');
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-
-            // Mark assistant message as streaming
-            setMessages((prev) =>
-                prev.map((msg) =>
-                    msg.id === assistantMessageId
-                        ? { ...msg, status: 'streaming' }
-                        : msg
-                )
-            );
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || ''; // Keep the incomplete line in buffer
-
-                for (const line of lines) {
-                    if (!line.trim()) continue;
-
-                    try {
-                        const event = JSON.parse(line);
-
-                        setMessages((prev) =>
-                            prev.map((msg) => {
-                                if (msg.id !== assistantMessageId) return msg;
-
-                                const updatedMsg = { ...msg };
-
-                                if (event.type === 'thought') {
-                                    // Append thought to reasoning
-                                    updatedMsg.reasoning = (updatedMsg.reasoning || '') + event.content;
-                                } else if (event.type === 'tool_start') {
-                                    // Add new tool log
-                                    const newTool: ToolLog = {
-                                        toolName: event.tool,
-                                        input: event.input,
-                                        status: 'running',
-                                        result: ''
-                                    };
-                                    updatedMsg.toolActivity = [...(updatedMsg.toolActivity || []), newTool];
-                                } else if (event.type === 'tool_result') {
-                                    // Update last tool log
-                                    if (updatedMsg.toolActivity && updatedMsg.toolActivity.length > 0) {
-                                        const lastTool = updatedMsg.toolActivity[updatedMsg.toolActivity.length - 1];
-                                        lastTool.status = 'complete';
-                                        lastTool.result = event.result;
-                                        // Force update of the array reference
-                                        updatedMsg.toolActivity = [...updatedMsg.toolActivity];
-                                    }
-                                } else if (event.type === 'response_chunk') {
-                                    // Append to content
-                                    updatedMsg.content += event.content;
-                                } else if (event.type === 'response') {
-                                    // Final replacement (optional, if we want to ensure consistency)
-                                    // updatedMsg.content = event.content;
-                                    updatedMsg.status = 'complete';
-                                } else if (event.type === 'error') {
-                                    updatedMsg.content += `\n❌ Error: ${event.error}`;
-                                    updatedMsg.status = 'error';
-                                }
-
-                                return updatedMsg;
-                            })
-                        );
-                    } catch (e) {
-                        console.warn('Error parsing stream line:', e);
-                    }
-                }
-            }
+            await processResponseStream(response, assistantMessageId);
 
         } catch (error) {
             console.error('Error sending message:', error);
@@ -208,7 +273,6 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                         : msg
                 )
             );
-        } finally {
             setIsLoading(false);
         }
     };
@@ -290,13 +354,75 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                                                 {act.status === 'running' && <span className="text-xs text-slate-500 italic">running...</span>}
                                                             </div>
                                                             <span className="opacity-75 block">{getToolSummary(act)}</span>
-                                                            {act.result && (
-                                                                <details className="mt-1">
-                                                                    <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">Show Result</summary>
-                                                                    <pre className="mt-1 bg-black/30 p-1 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-20">
-                                                                        {act.result.substring(0, 300) + (act.result.length > 300 ? '...' : '')}
-                                                                    </pre>
-                                                                </details>
+                                                            {act.toolName === 'write_file' && act.result && act.status === 'complete' ? (
+                                                                (() => {
+                                                                    let diff = null;
+                                                                    let originalContent = '';
+                                                                    try {
+                                                                        const parsed = JSON.parse(act.result);
+                                                                        diff = parsed.diff;
+                                                                        originalContent = parsed.originalContent;
+                                                                    } catch (e) {
+                                                                        // Legacy or error result
+                                                                        diff = null;
+                                                                    }
+
+                                                                    if (diff) {
+                                                                        return (
+                                                                            <div className="mt-2">
+                                                                                <details open className="group">
+                                                                                    <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none flex items-center gap-2">
+                                                                                        <span>Show Diff</span>
+                                                                                        <div className="flex-1 border-b border-slate-700/50 relative top-[1px]" />
+                                                                                    </summary>
+                                                                                    <div className="relative mt-2">
+                                                                                        <pre className="bg-black/40 p-2 rounded-md text-[10px] font-mono overflow-x-auto">
+                                                                                            {diff.split('\n').map((line: string, i: number) => {
+                                                                                                let colorClass = 'text-slate-400';
+                                                                                                if (line.startsWith('+')) colorClass = 'text-green-400 bg-green-900/10 block w-full';
+                                                                                                if (line.startsWith('-')) colorClass = 'text-red-400 bg-red-900/10 block w-full';
+                                                                                                if (line.startsWith('Index:') || line.startsWith('===')) colorClass = 'text-slate-500 italic';
+                                                                                                return (
+                                                                                                    <span key={i} className={colorClass}>
+                                                                                                        {line}{'\n'}
+                                                                                                    </span>
+                                                                                                );
+                                                                                            })}
+                                                                                        </pre>
+                                                                                        <div className="flex justify-end mt-2">
+                                                                                            <button
+                                                                                                onClick={() => handleUndo(act.input.path, originalContent)}
+                                                                                                disabled={isLoading}
+                                                                                                className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px] text-slate-300 transition-colors disabled:opacity-50"
+                                                                                            >
+                                                                                                <RotateCcw className="w-3 h-3" />
+                                                                                                <span>Undo Change</span>
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </details>
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    // Fallback for non-JSON result
+                                                                    return (
+                                                                        <details className="mt-1">
+                                                                            <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">Show Result</summary>
+                                                                            <pre className="mt-1 bg-black/30 p-1 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-20">
+                                                                                {act.result.substring(0, 300) + (act.result.length > 300 ? '...' : '')}
+                                                                            </pre>
+                                                                        </details>
+                                                                    );
+                                                                })()
+                                                            ) : (
+                                                                act.result && (
+                                                                    <details className="mt-1">
+                                                                        <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">Show Result</summary>
+                                                                        <pre className="mt-1 bg-black/30 p-1 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-20">
+                                                                            {act.result.substring(0, 300) + (act.result.length > 300 ? '...' : '')}
+                                                                        </pre>
+                                                                    </details>
+                                                                )
                                                             )}
                                                         </div>
                                                     </div>
