@@ -127,13 +127,54 @@ start_dev_server() {
 # BACKGROUND SETUP FUNCTION
 # Runs AFTER code-server starts
 # ============================================
+restore_workspace() {
+    # Check if workspace is empty (using package.json as indicator)
+    if [ ! -f "/workspace/package.json" ]; then
+        echo "📦 Restoring workspace from template..."
+        # Create a temporary README so code-server has something to show immediately
+        echo "# Workspace Initializing..." > /workspace/README.md
+        echo "Please wait while we restore the project files." >> /workspace/README.md
+        
+        # Copy files from template (including hidden files)
+        # Use rsync if available, otherwise cp
+        if command -v rsync &> /dev/null; then
+            rsync -a /usr/local/share/workspace-template/ /workspace/
+        else
+            cp -R /usr/local/share/workspace-template/. /workspace/
+        fi
+        echo "✅ Workspace restored"
+    else
+        echo "📂 Workspace already contains data"
+    fi
+}
+
+check_settings() {
+    SETTINGS_PATH="/home/coder/.local/share/code-server/User/settings.json"
+    if [ -f "$SETTINGS_PATH" ]; then
+        echo "✅ Found settings.json at $SETTINGS_PATH"
+        # Ensure correct ownership
+        sudo chown coder:coder "$SETTINGS_PATH"
+    else
+        echo "⚠️  WARNING: settings.json not found at $SETTINGS_PATH"
+        # Try to restore it if missing
+        if [ -f "/home/coder/.local/share/code-server/User/settings.json.bak" ]; then
+             cp "/home/coder/.local/share/code-server/User/settings.json.bak" "$SETTINGS_PATH"
+             echo "♻️  Restored settings.json from backup"
+        fi
+    fi
+}
+
 run_background_setup() {
     echo "⏳ Running background setup..."
 
     # Fix workspace permissions - simplified
     echo "🔧 Fixing workspace permissions..."
     sudo chown -R coder:coder /workspace/.next /workspace/.env* 2>/dev/null || true &
+    
+    # Restore workspace files if empty
+    measure_step "restore_workspace" restore_workspace
 
+    measure_step "check_settings" check_settings
     measure_step "setup_claude_auth" setup_claude_auth
     measure_step "setup_claude_wrapper" setup_claude_wrapper
     measure_step "setup_bash_config" setup_bash_config

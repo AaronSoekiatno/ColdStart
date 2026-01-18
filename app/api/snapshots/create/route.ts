@@ -203,14 +203,16 @@ export async function POST(request: NextRequest) {
     // Derive repo name from session ID or use candidate info
     const repoName = `session-${sessionId.split('_').pop() || sessionId}`;
 
+    // Use 'push' as event type (required by session_commits constraint)
+    // The actual trigger is stored in the commit message
     const { data: commitResult, error: commitError } = await supabaseAdmin.rpc(
       'log_session_commit',
       {
         p_candidate_id: candidate.github_username || candidate.email,
-        p_event: trigger,
+        p_event: 'push', // session_commits table only allows 'push' or 'pull_request'
         p_added_lines: 0, // Not tracking line changes for snapshots
         p_deleted_lines: 0,
-        p_commit_message: message || `Snapshot created via ${trigger}`,
+        p_commit_message: message || `Snapshot: ${trigger}`,
         p_repo_name: repoName,
         p_commit_hash: commitHash || null,
         p_commit_author: candidate.github_username || candidate.email,

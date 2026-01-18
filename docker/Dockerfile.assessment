@@ -29,7 +29,9 @@ RUN mkdir -p /workspace && chown coder:coder /workspace
 # Copy workspace package.json and pre-install dependencies
 # Copy workspace source code and install dependencies
 COPY --chown=coder:coder workspace /workspace/
-RUN cd /workspace && npm install --legacy-peer-deps
+COPY --chown=coder:coder workspace /usr/local/share/workspace-template/
+RUN cd /workspace && npm install --legacy-peer-deps && \
+    cd /usr/local/share/workspace-template && npm install --legacy-peer-deps
 
 # Copy configuration scripts
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
@@ -41,6 +43,7 @@ RUN chmod +x /usr/local/bin/*.sh
 # Configure code-server VS Code settings (auto-save, etc.)
 RUN mkdir -p /home/coder/.local/share/code-server/User
 COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/
+COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/settings.json.bak
 
 # Create build version file for verification
 RUN echo "{\"built_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"$(date +%s)\"}" > /home/coder/.hermes-version.json
