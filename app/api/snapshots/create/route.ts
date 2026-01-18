@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Get session from DB
     const { data: session, error: sessionError } = await supabase
       .from('interview_sessions')
-      .select('session_id, container_url, container_status, repo_name, candidate_id')
+      .select('session_id, container_url, container_status, candidate_id')
       .eq('session_id', sessionId)
       .single();
 
@@ -200,6 +200,9 @@ export async function POST(request: NextRequest) {
     );
 
     // Call log_session_commit RPC
+    // Derive repo name from session ID or use candidate info
+    const repoName = `session-${sessionId.split('_').pop() || sessionId}`;
+
     const { data: commitResult, error: commitError } = await supabaseAdmin.rpc(
       'log_session_commit',
       {
@@ -208,7 +211,7 @@ export async function POST(request: NextRequest) {
         p_added_lines: 0, // Not tracking line changes for snapshots
         p_deleted_lines: 0,
         p_commit_message: message || `Snapshot created via ${trigger}`,
-        p_repo_name: session.repo_name || 'unknown',
+        p_repo_name: repoName,
         p_commit_hash: commitHash || null,
         p_commit_author: candidate.github_username || candidate.email,
         p_commit_timestamp: new Date().toISOString(),

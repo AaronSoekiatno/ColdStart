@@ -1321,7 +1321,7 @@ export async function getSnapshotByCommitId(commitId: string): Promise<SnapshotR
 /**
  * Get snapshots by trigger type
  * @param sessionId - Session ID
- * @param trigger - Event type (e.g., 'test_completion', 'phase_transition', 'manual')
+ * @param trigger - Event type (e.g., 'test_completion', 'submission', 'manual')
  * @returns Array of snapshot records
  */
 export async function getSnapshotsByTrigger(
@@ -1340,6 +1340,45 @@ export async function getSnapshotsByTrigger(
 
   if (error) {
     throw new Error(`Failed to get snapshots by trigger: ${error.message}`);
+  }
+
+  return (data || []) as SnapshotRecord[];
+}
+
+/**
+ * Get all snapshots for a candidate across all their sessions
+ * @param candidateId - Candidate UUID
+ * @returns Array of snapshot records ordered by creation time (newest first)
+ */
+export async function getCandidateSnapshots(candidateId: string): Promise<SnapshotRecord[]> {
+  const client = supabaseAdmin || supabase;
+
+  // First get all session IDs for this candidate
+  const { data: sessions, error: sessionsError } = await client
+    .from('interview_sessions')
+    .select('session_id')
+    .eq('candidate_id', candidateId);
+
+  if (sessionsError) {
+    throw new Error(`Failed to get candidate sessions: ${sessionsError.message}`);
+  }
+
+  if (!sessions || sessions.length === 0) {
+    return [];
+  }
+
+  const sessionIds = sessions.map(s => s.session_id);
+
+  // Then get all snapshots for those sessions
+  const { data, error } = await client
+    .from('session_commits')
+    .select('*')
+    .in('session_id', sessionIds)
+    .not('snapshot_storage_path', 'is', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get candidate snapshots: ${error.message}`);
   }
 
   return (data || []) as SnapshotRecord[];
