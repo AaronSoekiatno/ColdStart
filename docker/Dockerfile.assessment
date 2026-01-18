@@ -7,12 +7,14 @@ FROM codercom/code-server:latest
 # Switch to root for system installations
 USER root
 
+# Disable VS Code extensions and heavy features
+ENV VSCODE_DISABLE_EXTENSIONS=true
+ENV VSCODE_PROXY_URI=""
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     curl \
     git \
-    python3 \
-    python3-pip \
     jq \
     procps \
     && rm -rf /var/lib/apt/lists/*
@@ -20,9 +22,6 @@ RUN apt-get update && apt-get install -y \
 # Install Node.js 20.x
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs
-
-# Install global dependencies
-RUN npm install -g typescript ts-node nodemon
 
 # Create workspace directory
 RUN mkdir -p /workspace && chown coder:coder /workspace
@@ -34,7 +33,6 @@ RUN cd /workspace && npm install --legacy-peer-deps
 
 # Copy configuration scripts
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
-COPY --chown=coder:coder scripts/telemetry-sidecar.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/run-tests.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/log-prompt.sh /usr/local/bin/
 
@@ -69,9 +67,5 @@ ENV CANDIDATE_ID=""
 ENV SESSION_ID=""
 
 EXPOSE 8080
-
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:8080/healthz || exit 1
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
