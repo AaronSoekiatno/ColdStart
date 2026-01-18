@@ -33,6 +33,13 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    // File referencing state
+    const [files, setFiles] = useState<string[]>([]);
+    const [showMentions, setShowMentions] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState('');
+    const [mentionIndex, setMentionIndex] = useState(0); // For keyboard navigation
+    const inputRef = useRef<HTMLInputElement>(null);
+
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
@@ -40,6 +47,70 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Fetch workspace files when container is ready
+    useEffect(() => {
+        if (containerReady && flyAppName) {
+            fetch('/api/agent/files', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ flyAppName })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.files) setFiles(data.files);
+                })
+                .catch(err => console.error('Failed to load file list:', err));
+        }
+    }, [containerReady, flyAppName]);
+
+    // Handle input changes for mentions
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        setInput(newValue);
+
+        // Simple regex to detect if user is typing a mention at the end or valid position
+        // Check for @ followed by non-whitespace chars at the end of string or cursor position
+        // For simplicity, we'll check the last word
+        const lastWordMatch = newValue.match(/@(\S*)$/);
+
+        if (lastWordMatch) {
+            setShowMentions(true);
+            setMentionQuery(lastWordMatch[1]);
+            setMentionIndex(0); // Reset selection
+        } else {
+            setShowMentions(false);
+        }
+    };
+
+    const handleMentionSelect = (filename: string) => {
+        // Replace the partial mention with the full path
+        const newValue = input.replace(/@(\S*)$/, `@/${filename} `);
+        setInput(newValue);
+        setShowMentions(false);
+        inputRef.current?.focus();
+    };
+
+    const filteredFiles = files.filter(f => f.toLowerCase().includes(mentionQuery.toLowerCase())).slice(0, 5); // Limit to 5 results
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (showMentions && filteredFiles.length > 0) {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setMentionIndex(prev => (prev > 0 ? prev - 1 : filteredFiles.length - 1));
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setMentionIndex(prev => (prev < filteredFiles.length - 1 ? prev + 1 : 0));
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                handleMentionSelect(filteredFiles[mentionIndex]);
+            } else if (e.key === 'Escape') {
+                setShowMentions(false);
+            }
+        } else if (e.key === 'Enter') {
+            sendMessage();
+        }
+    };
 
     const getToolIcon = (name: string) => {
         switch (name) {
@@ -477,16 +548,40 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             </div>
 
             {/* Input */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border-t border-slate-700/50 p-4">
+            <div className="bg-slate-800/50 backdrop-blur-sm border-t border-slate-700/50 p-4 relative">
+                {/* Mention Popup */}
+                {showMentions && filteredFiles.length > 0 && (
+                    <div className="absolute bottom-full left-4 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20">
+                        <div className="text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-900/50 border-b border-slate-700">
+                            Select File
+                        </div>
+                        <div className="max-h-48 overflow-y-auto">
+                            {filteredFiles.map((file, i) => (
+                                <button
+                                    key={file}
+                                    onClick={() => handleMentionSelect(file)}
+                                    className={`w-full text-left px-3 py-2 text-xs truncate transition-colors ${i === mentionIndex
+                                            ? 'bg-blue-600/20 text-blue-300'
+                                            : 'text-slate-300 hover:bg-slate-700/50'
+                                        }`}
+                                >
+                                    {file}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex gap-3">
                     <input
+                        ref={inputRef}
                         type="text"
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
                         placeholder={
                             containerReady
-                                ? 'Ask me anything...'
+                                ? 'Ask me anything... (Use @ to reference files)'
                                 : 'Waiting for container...'
                         }
                         disabled={isLoading || !containerReady}
