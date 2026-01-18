@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // 5. Finalize
+        // 6. Finalize
         sendEvent('response', { content: fullResponseText }); // Signal completion
         const duration = Date.now() - startTime;
         

@@ -418,6 +418,31 @@ export default function IDEPage() {
         });
 
         try {
+            // Create snapshot on submission (fire-and-forget)
+            // Captures the final submitted code state
+            if (sessionId && sessionId !== 'local-dev-session' && sessionId !== 'local-dev-docker') {
+                console.log('[IDE] Triggering snapshot creation on submission');
+                fetch('/api/snapshots/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        sessionId,
+                        trigger: 'submission',
+                        message: 'Final submission snapshot',
+                    }),
+                }).then(response => {
+                    if (response.ok) {
+                        console.log('[IDE] Submission snapshot created successfully');
+                    } else {
+                        console.warn('[IDE] Snapshot creation failed:', response.statusText);
+                    }
+                }).catch(error => {
+                    console.warn('[IDE] Snapshot creation error:', error);
+                });
+            }
+
             // Fire-and-forget: Run FULL test suite in the background
             // Don't await - this can take 4-5 minutes and we don't want candidates waiting
             // Results will still be logged to the database asynchronously

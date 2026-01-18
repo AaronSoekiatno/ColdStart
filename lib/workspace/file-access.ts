@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { createTwoFilesPatch } from 'diff';
 
 const execAsync = promisify(exec);
 
@@ -215,16 +216,57 @@ export async function writeWorkspaceFile(
   }
 
   try {
+    // 4. Calculate Diff (if file existed)
+    // We need to read the file *before* writing to it to get the diff. 
+    // Optimization: We can do this in parallel or just before writing.
+    
+    let originalArrowContent = '';
+    let diff = '';
+
+    try {
+        // Attempt to read the file first to get original content
+        // We use our own readWorkspaceFile but need to be careful about recursion if we were calling it from elsewhere, but here it's fine.
+        // Actually, let's use the low-level command to avoid overhead.
+        const readCmd = `flyctl ssh console -a ${flyAppName} -C "cat /workspace/${path}"`;
+        const { stdout: readStdout } = await execAsync(readCmd, {
+             env: { ...process.env, FLY_API_TOKEN: process.env.FLY_API_TOKEN },
+             timeout: 10000 
+        });
+        
+        // Clean up noise
+        originalArrowContent = readStdout
+            .split('\n')
+            .filter(line => !line.startsWith('Connecting to') && !line.includes('Error: ssh shell'))
+            .join('\n')
+            .trim();
+
+         // If the file didn't exist or was empty, originalContent might be empty or error text. 
+         // We'll assume if it looks like "cat: ... No such file", it's new.
+         if (originalArrowContent.includes('No such file') || originalArrowContent.includes('not found')) {
+             originalArrowContent = ''; // New file
+         }
+
+    } catch (e) {
+        // File likely doesn't exist
+        originalArrowContent = '';
+    }
+
+    // Generate diff
+    // We need to compare originalArrowContent vs content
+    // We use createTwoFilesPatch to get a unified diff
+    if (originalArrowContent !== content) {
+        const fileName = path.split('/').pop() || 'file';
+        diff = createTwoFilesPatch(fileName, fileName, originalArrowContent, content, 'Original', 'New');
+    } else {
+        diff = 'No changes detected.';
+    }
+
+    // 5. Execute Write
     // 1. Prepare directory path
     const dirPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
     
     // 2. Prepare content (base64 encoded to avoid shell issues)
     const base64Content = Buffer.from(content).toString('base64');
-    
-    // 3. Construct command:
-    //    a) mkdir -p for directory (if needed)
-    //    b) echo base64 | base64 -d > file
-    //    c) echo "SUCCESS" to verify command execution completed
     
     let commandParts = [];
     if (dirPath) {
@@ -273,11 +315,14 @@ export async function writeWorkspaceFile(
       throw new Error(`Permission denied writing to: ${path}`);
     }
 
-    // Optional: Verify file size matches (approximate check)
-    // const checkCmd = `flyctl ssh console -a ${flyAppName} -C "wc -c < /workspace/${path}"`;
-    // ... verification logic could go here if needed ...
+    // Return structured result
+    return JSON.stringify({
+        status: 'success',
+        path,
+        diff,
+        originalContent: originalArrowContent 
+    });
 
-    return `File written successfully: ${path}`;
   } catch (error: any) {
     throw new Error(`Failed to write file: ${error.message}`);
   }

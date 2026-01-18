@@ -71,6 +71,9 @@ export default function InsightsPage() {
         <p className="text-muted-foreground">
           Track viral scores and engagement metrics across all video scripts
         </p>
+        <p className="text-muted-foreground mt-2">
+          Our advanced insights engine analyzes performance data to help you understand what resonates with your audience. Use these metrics to refine your content strategy and boost engagement.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
