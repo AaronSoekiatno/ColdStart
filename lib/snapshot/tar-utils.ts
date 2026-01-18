@@ -1,4 +1,4 @@
-import { Extract } from 'tar-stream';
+import tarStream from 'tar-stream';
 import { createGunzip } from 'zlib';
 import { Readable } from 'stream';
 
@@ -25,7 +25,7 @@ export async function extractFileFromTarGz(
   targetPath: string
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
-    const extract = new Extract();
+    const extract = tarStream.extract();
     const gunzip = createGunzip();
     let found = false;
 
@@ -88,7 +88,7 @@ export async function extractFileFromTarGz(
  */
 export async function listFilesInTarGz(buffer: Buffer): Promise<string[]> {
   return new Promise((resolve, reject) => {
-    const extract = new Extract();
+    const extract = tarStream.extract();
     const gunzip = createGunzip();
     const files: string[] = [];
 
@@ -133,7 +133,7 @@ export async function listFilesInTarGz(buffer: Buffer): Promise<string[]> {
  */
 export async function listEntriesInTarGz(buffer: Buffer): Promise<TarFileEntry[]> {
   return new Promise((resolve, reject) => {
-    const extract = new Extract();
+    const extract = tarStream.extract();
     const gunzip = createGunzip();
     const entries: TarFileEntry[] = [];
 
@@ -185,7 +185,7 @@ export async function extractMultipleFilesFromTarGz(
   targetPaths: string[]
 ): Promise<Map<string, string>> {
   return new Promise((resolve, reject) => {
-    const extract = new Extract();
+    const extract = tarStream.extract();
     const gunzip = createGunzip();
     const results = new Map<string, string>();
     const normalizedTargets = new Set(targetPaths.map(p => p.replace(/^\.\//, '')));
