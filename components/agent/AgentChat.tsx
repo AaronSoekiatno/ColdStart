@@ -6,7 +6,8 @@ import { Send, Loader2, CheckCircle2, XCircle, X, Terminal, FileText, Search, Co
 interface ToolLog {
     toolName: string;
     input: any;
-    result: string;
+    result?: string;
+    status: 'running' | 'complete' | 'error';
 }
 
 interface Message {
@@ -14,8 +15,9 @@ interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
-    status?: 'pending' | 'complete' | 'error';
+    status?: 'pending' | 'streaming' | 'complete' | 'error';
     toolActivity?: ToolLog[];
+    reasoning?: string; // New field for thinking process
 }
 
 interface AgentChatProps {
@@ -51,13 +53,17 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     };
 
     const getToolSummary = (act: ToolLog) => {
-        switch (act.toolName) {
-            case 'run_command': return act.input.command;
-            case 'read_file': return `Read ${act.input.path}`;
-            case 'write_file': return `Wrote to ${act.input.path}`;
-            case 'list_directory': return `List ${act.input.path}`;
-            case 'search_code': return `Search "${act.input.query}"`;
-            default: return JSON.stringify(act.input).substring(0, 50);
+        try {
+            switch (act.toolName) {
+                case 'run_command': return act.input.command;
+                case 'read_file': return `Read ${act.input.path}`;
+                case 'write_file': return `Write ${act.input.path}`;
+                case 'list_directory': return `List ${act.input.path}`;
+                case 'search_code': return `Search "${act.input.query}"`;
+                default: return JSON.stringify(act.input).substring(0, 50);
+            }
+        } catch (e) {
+            return 'Processing...';
         }
     };
 
@@ -90,7 +96,6 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
         ]);
 
         try {
-            // Build conversation history for context (exclude pending/last user msg)
             const conversationHistory = messages.map(m => ({
                 role: m.role,
                 content: m.content
@@ -107,25 +112,87 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                 }),
             });
 
-            const data = await response.json();
-
             if (!response.ok) {
+                const data = await response.json();
                 throw new Error(data.error || 'Failed to get response');
             }
 
-            // Update assistant message with response
+            if (!response.body) throw new Error('No response body');
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            // Mark assistant message as streaming
             setMessages((prev) =>
                 prev.map((msg) =>
                     msg.id === assistantMessageId
-                        ? {
-                            ...msg,
-                            content: data.response,
-                            status: 'complete',
-                            toolActivity: data.toolActivity
-                        }
+                        ? { ...msg, status: 'streaming' }
                         : msg
                 )
             );
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // Keep the incomplete line in buffer
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+
+                    try {
+                        const event = JSON.parse(line);
+
+                        setMessages((prev) =>
+                            prev.map((msg) => {
+                                if (msg.id !== assistantMessageId) return msg;
+
+                                const updatedMsg = { ...msg };
+
+                                if (event.type === 'thought') {
+                                    // Append thought to reasoning
+                                    updatedMsg.reasoning = (updatedMsg.reasoning || '') + event.content;
+                                } else if (event.type === 'tool_start') {
+                                    // Add new tool log
+                                    const newTool: ToolLog = {
+                                        toolName: event.tool,
+                                        input: event.input,
+                                        status: 'running',
+                                        result: ''
+                                    };
+                                    updatedMsg.toolActivity = [...(updatedMsg.toolActivity || []), newTool];
+                                } else if (event.type === 'tool_result') {
+                                    // Update last tool log
+                                    if (updatedMsg.toolActivity && updatedMsg.toolActivity.length > 0) {
+                                        const lastTool = updatedMsg.toolActivity[updatedMsg.toolActivity.length - 1];
+                                        lastTool.status = 'complete';
+                                        lastTool.result = event.result;
+                                        // Force update of the array reference
+                                        updatedMsg.toolActivity = [...updatedMsg.toolActivity];
+                                    }
+                                } else if (event.type === 'response_chunk') {
+                                    // Append to content
+                                    updatedMsg.content += event.content;
+                                } else if (event.type === 'response') {
+                                    // Final replacement (optional, if we want to ensure consistency)
+                                    // updatedMsg.content = event.content;
+                                    updatedMsg.status = 'complete';
+                                } else if (event.type === 'error') {
+                                    updatedMsg.content += `\n❌ Error: ${event.error}`;
+                                    updatedMsg.status = 'error';
+                                }
+
+                                return updatedMsg;
+                            })
+                        );
+                    } catch (e) {
+                        console.warn('Error parsing stream line:', e);
+                    }
+                }
+            }
 
         } catch (error) {
             console.error('Error sending message:', error);
@@ -135,7 +202,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                     msg.id === assistantMessageId
                         ? {
                             ...msg,
-                            content: `❌ Error: ${errorMessage}`,
+                            content: msg.content || `❌ Error: ${errorMessage}`,
                             status: 'error',
                         }
                         : msg
@@ -194,19 +261,43 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                         >
                             <div className="flex items-start gap-2">
                                 <div className="flex-1">
+                                    {/* Reasoning Block */}
+                                    {message.reasoning && (
+                                        <div className="mb-3 text-sm text-slate-400 italic border-l-2 border-slate-700 pl-3">
+                                            {message.reasoning}
+                                        </div>
+                                    )}
+
                                     {message.toolActivity && message.toolActivity.length > 0 && (
                                         <div className="mb-3 bg-slate-900/40 rounded-lg overflow-hidden border border-slate-700/50">
                                             <div className="p-2 space-y-1.5">
                                                 <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                                                     <Cpu className="w-3 h-3" />
-                                                    Agent Thoughts
+                                                    Process
                                                 </div>
                                                 {message.toolActivity.map((act, i) => (
                                                     <div key={i} className="flex items-start gap-2 text-xs font-mono text-slate-300 bg-slate-900/50 p-1.5 rounded border border-slate-800">
-                                                        <span className="mt-0.5 shrink-0">{getToolIcon(act.toolName)}</span>
+                                                        <span className="mt-0.5 shrink-0">
+                                                            {act.status === 'running' ? (
+                                                                <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                                                            ) : (
+                                                                getToolIcon(act.toolName)
+                                                            )}
+                                                        </span>
                                                         <div className="flex-1 overflow-hidden break-all">
-                                                            <span className="text-blue-400 mr-2 font-semibold">{act.toolName}</span>
-                                                            <span className="opacity-75">{getToolSummary(act)}</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-blue-400 font-bold">{act.toolName}</span>
+                                                                {act.status === 'running' && <span className="text-xs text-slate-500 italic">running...</span>}
+                                                            </div>
+                                                            <span className="opacity-75 block">{getToolSummary(act)}</span>
+                                                            {act.result && (
+                                                                <details className="mt-1">
+                                                                    <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">Show Result</summary>
+                                                                    <pre className="mt-1 bg-black/30 p-1 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-20">
+                                                                        {act.result.substring(0, 300) + (act.result.length > 300 ? '...' : '')}
+                                                                    </pre>
+                                                                </details>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -215,7 +306,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                     )}
                                     <p className="whitespace-pre-wrap">{message.content}</p>
                                 </div>
-                                {message.status === 'pending' && (
+                                {message.status === 'pending' || message.status === 'streaming' && (
                                     <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
                                 )}
                                 {message.status === 'error' && (

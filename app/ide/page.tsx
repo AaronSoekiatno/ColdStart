@@ -421,28 +421,40 @@ export default function IDEPage() {
             // Fire-and-forget: Run FULL test suite in the background
             // Don't await - this can take 4-5 minutes and we don't want candidates waiting
             // Results will still be logged to the database asynchronously
+            // Container cleanup will happen AFTER tests complete
             if (testRunnerRef.current) {
-                console.log('[IDE] Starting background test run (fire-and-forget)...');
-                testRunnerRef.current.runTests('full').catch(error => {
-                    console.error('[IDE] Background test run failed:', error);
-                });
+                console.log('[IDE] Starting background test run with deferred cleanup...');
+                testRunnerRef.current.runTests('full')
+                    .then(() => {
+                        console.log('[IDE] Tests completed, now cleaning up container...');
+                        // Only destroy container after tests complete
+                        if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
+                            fetch('/api/topcandidates/provision-container', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ sessionId }),
+                            }).catch(error => {
+                                console.error('[IDE] Container cleanup failed:', error);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('[IDE] Background test run failed:', error);
+                        // Still clean up container even if tests fail
+                        if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
+                            fetch('/api/topcandidates/provision-container', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ sessionId }),
+                            }).catch(cleanupError => {
+                                console.error('[IDE] Container cleanup failed:', cleanupError);
+                            });
+                        }
+                    });
             }
 
             // Stop Vapi call if active
             await stopVapiCall('assessment_submitted');
-
-            // Fire-and-forget: Destroy the container in the background
-            // Don't block the user waiting for container cleanup
-            if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
-                console.log('[IDE] Scheduling container cleanup (fire-and-forget)...');
-                fetch('/api/topcandidates/provision-container', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId }),
-                }).catch(error => {
-                    console.error('[IDE] Background container cleanup failed:', error);
-                });
-            }
 
             // Brief delay for toast visibility, then redirect
             await new Promise((resolve) => setTimeout(resolve, 500));

@@ -14,291 +14,221 @@ import {
   estimateTokenCount,
   getSessionUsage,
 } from '@/lib/claude/cost-tracker';
-
-/**
- * Direct Claude API integration (v2)
- * Fast, cost-effective alternative to SSH + claude-code CLI
- */
-
 import { logPrompt, updateLogResponse } from '@/lib/claude/logger';
 
+// Prevent Next.js from caching the response
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
-  let logId: string | null = null;
-  const startTime = Date.now();
-  const toolResultsLog: { toolName: string; input: any; result: string }[] = [];
+  const body = await request.json();
+  const { message, sessionId, flyAppName, candidateId, conversationHistory = [] } = body;
 
-  try {
-    const body = await request.json();
-    const { message, sessionId, flyAppName, candidateId, conversationHistory = [] } = body;
-
-    // Validate required fields
-    if (!message || !sessionId || !flyAppName) {
-      return Response.json(
-        { error: 'Missing required fields: message, sessionId, flyAppName' },
-        { status: 400 }
-      );
-    }
-
-    // --- DETAILED LOGGING START ---
-    console.log('\n💬 [Chat V2 UI] Request Received:');
-    console.log('  Message:', message.substring(0, 100) + (message.length > 100 ? '...' : ''));
-    console.log('  Session:', sessionId);
-    console.log('  App:', flyAppName || '(No App)');
-
-    // Log to Supabase (Database)
-    try {
-      logId = await logPrompt({
-        candidateId, // Explicitly pass if provided
-        sessionId,
-        prompt: message,
-        metadata: { 
-            flyAppName, 
-            historyLength: conversationHistory.length 
-        }
-      });
-      if (logId) console.log('  📝 [Logger] Logged to DB ID:', logId);
-    } catch (e) {
-      console.error('  ⚠️ [Logger] Failed to start log:', e);
-    }
-    
-    // Check cost limits
-    const estimatedTokens = estimateTokenCount(message);
-    const limitCheck = checkSessionLimits(sessionId, estimatedTokens);
-
-    if (!limitCheck.allowed) {
-      console.log('❌ [Chat V2 UI] Cost limit exceeded:', limitCheck.reason);
-      
-      const responsePayload = {
-        error: 'Cost limit exceeded',
-        reason: limitCheck.reason,
-        usage: getSessionUsage(sessionId),
-      };
-
-      if (logId) {
-        updateLogResponse({
-            logId,
-            responseStatus: 429,
-            responseTimeMs: Date.now() - startTime,
-            responseText: JSON.stringify(responsePayload)
-        }).catch(console.error);
-      }
-
-      return Response.json(responsePayload, { status: 429 });
-    }
-    
-    // Build conversation messages
-    const messages: ClaudeMessage[] = [
-      ...conversationHistory,
-      { role: 'user', content: message },
-    ];
-
-    // Get workspace tools
-    const tools = getWorkspaceTools();
-
-    // Call Claude API
-    let response = await callClaude(messages, tools, {
-      systemPrompt: CODING_ASSISTANT_SYSTEM_PROMPT,
-      maxTokens: 4096,
-    });
-
-    let iterations = 0;
-    const maxIterations = 5; // Prevent infinite tool use loops
-
-    // Handle tool use loop
-    while (
-      response.stop_reason === 'tool_use' &&
-      iterations < maxIterations
-    ) {
-      iterations++;
-      
-      // Extract tool calls from response
-      const toolResults = [];
-
-      for (const block of response.content) {
-        if (block.type === 'tool_use') {
-          console.log(`\n🛠️  [Chat V2 UI] Tool Call (${iterations}): ${block.name}`);
-          // console.log('  Input:', JSON.stringify(block.input));
-
-          let toolResult: string;
-
-          try {
-            // Execute tool
-            switch (block.name) {
-              case 'read_file':
-                const readInput = block.input as any;
-                console.log(`  Target: ${readInput.path}`);
-                toolResult = await readWorkspaceFile(flyAppName, {
-                  path: readInput.path,
-                  startLine: readInput.start_line,
-                  endLine: readInput.end_line,
-                });
-                break;
-
-              case 'list_directory':
-                const listInput = block.input as any;
-                console.log(`  Target: ${listInput.path}`);
-                toolResult = await listWorkspaceDirectory(flyAppName, {
-                  path: listInput.path,
-                  recursive: listInput.recursive,
-                });
-                break;
-
-              case 'search_code':
-                const searchInput = block.input as any;
-                console.log(`  Query: "${searchInput.query}" in ${searchInput.file_pattern || '*'}`);
-                toolResult = await searchWorkspaceCode(flyAppName, {
-                  query: searchInput.query,
-                  filePattern: searchInput.file_pattern,
-                  caseSensitive: searchInput.case_sensitive,
-                });
-                break;
-
-              case 'write_file':
-                const writeInput = block.input as any;
-                console.log(`  Target: ${writeInput.path} (${writeInput.content.length} bytes)`);
-
-                // logical step: Capture old content for diffing
-                try {
-                  const oldContent = await readWorkspaceFile(flyAppName, {
-                    path: writeInput.path
-                  });
-                  // Store old content in the input object so it gets passed to the UI
-                  writeInput.oldContent = oldContent;
-                } catch (e) {
-                  // File likely doesn't exist, which is fine (creation vs modification)
-                  writeInput.oldContent = null;
-                }
-
-                toolResult = await writeWorkspaceFile(flyAppName, {
-                  path: writeInput.path,
-                  content: writeInput.content,
-                });
-                break;
-
-              case 'run_command':
-                const runInput = block.input as any;
-                console.log(`  Command: ${runInput.command}`);
-                toolResult = await runWorkspaceCommand(flyAppName, {
-                  command: runInput.command,
-                });
-                break;
-
-              default:
-                toolResult = `Unknown tool: ${block.name}`;
-            }
-
-            console.log(`  ✅ Result: ${toolResult.length} chars`);
-          } catch (error: any) {
-            toolResult = `Error: ${error.message}`;
-            console.error(`  ❌ Error: ${error.message}`);
-          }
-
-          toolResultsLog.push({
-            toolName: block.name,
-            input: block.input,
-            result: toolResult
-          });
-
-          toolResults.push({
-            type: 'tool_result' as const,
-            tool_use_id: block.id,
-            content: toolResult,
-          });
-        }
-      }
-
-      // Continue conversation with tool results
-      messages.push({
-        role: 'assistant',
-        content: response.content.map(block => {
-          if (block.type === 'text') {
-            return { type: 'text', text: block.text };
-          } else if (block.type === 'tool_use') {
-            return {
-              type: 'tool_use',
-              id: block.id,
-              name: block.name,
-              input: block.input,
-            };
-          }
-          return block;
-        }) as any,
-      });
-
-      messages.push({
-        role: 'user',
-        content: toolResults as any,
-      });
-
-      // Call Claude again with tool results
-      response = await callClaude(messages, tools, {
-        systemPrompt: CODING_ASSISTANT_SYSTEM_PROMPT,
-        maxTokens: 4096,
-      });
-    }
-
-    // Extract final text response
-    let finalText = '';
-    for (const block of response.content) {
-      if (block.type === 'text') {
-        finalText += block.text;
-      }
-    }
-
-    // Track token usage
-    const tokensUsed = response.usage.input_tokens + response.usage.output_tokens;
-    trackTokenUsage(sessionId, tokensUsed);
-    
-    const duration = Date.now() - startTime;
-    const costPerMillion = 0.25; // Haiku input pricing roughly
-    const estCost = (tokensUsed / 1_000_000) * costPerMillion;
-
-    console.log('\n✅ [Chat V2 UI] Success Response');
-    console.log(`  Response: "${finalText.substring(0, 50)}..."`);
-    console.log(`  Tokens: ${tokensUsed} (${response.usage.input_tokens} in / ${response.usage.output_tokens} out)`);
-    console.log(`  Cost: ~$${estCost.toFixed(6)}`);
-    console.log(`  Time: ${duration}ms`);
-    console.log('-------------------------------------------');
-
-    // Update DB Log (Fire and Forget)
-    if (logId) {
-        updateLogResponse({
-            logId,
-            responseStatus: 200,
-            responseTimeMs: duration,
-            responseText: finalText,
-            inputTokens: response.usage.input_tokens,
-            outputTokens: response.usage.output_tokens
-        }).catch(e => console.error('  ❌ [Logger] Failed to update log:', e));
-    }
-
-    return Response.json({
-      response: finalText,
-      toolActivity: toolResultsLog, // Return the collected tool activity
-      usage: {
-        inputTokens: response.usage.input_tokens,
-        outputTokens: response.usage.output_tokens,
-        totalTokens: tokensUsed,
-      },
-      sessionUsage: getSessionUsage(sessionId),
-      toolCallCount: iterations,
-    });
-  } catch (error: any) {
-    console.error('❌ [Chat V2 UI] Error:', error);
-
-    // Update DB Log with Error
-    if (logId) {
-        updateLogResponse({
-            logId,
-            responseStatus: 500,
-            responseTimeMs: Date.now() - startTime,
-            responseText: `Error: ${error.message}`
-        }).catch(e => console.error('  ❌ [Logger] Failed to update error log:', e));
-    }
-
+  // Validate required fields
+  if (!message || !sessionId || !flyAppName) {
     return Response.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 }
+      { error: 'Missing required fields: message, sessionId, flyAppName' },
+      { status: 400 }
     );
   }
+
+  // Create a stream for the response
+  const stream = new ReadableStream({
+    async start(controller) {
+      const startTime = Date.now();
+      let logId: string | null = null;
+      let fullResponseText = '';
+      const toolResultsLog: { toolName: string; input: any; result: string }[] = [];
+      let inputTokens = 0;
+      let outputTokens = 0;
+
+      // Helper to send events
+      const sendEvent = (type: string, data: any) => {
+        const payload = JSON.stringify({ type, ...data });
+        controller.enqueue(new TextEncoder().encode(payload + '\n'));
+      };
+
+      try {
+        console.log(`\n💬 [Chat V2 Stream] Starting session: ${sessionId}`);
+
+        // 1. Initial Logging
+        try {
+          logId = await logPrompt({
+            candidateId,
+            sessionId,
+            prompt: message,
+            metadata: { flyAppName, historyLength: conversationHistory.length }
+          });
+        } catch (e) {
+          console.error('  ⚠️ Failed to create log:', e);
+        }
+
+        // 2. Check Cost Limits
+        const estimatedTokens = estimateTokenCount(message);
+        const limitCheck = checkSessionLimits(sessionId, estimatedTokens);
+
+        if (!limitCheck.allowed) {
+            sendEvent('error', { error: 'Cost limit exceeded: ' + limitCheck.reason });
+            controller.close();
+            
+            if (logId) {
+                updateLogResponse({
+                    logId,
+                    responseStatus: 429,
+                    responseTimeMs: Date.now() - startTime,
+                    responseText: JSON.stringify({ error: limitCheck.reason })
+                }).catch(console.error);
+            }
+            return;
+        }
+
+        // 3. Prepare Prompt
+        const messages: ClaudeMessage[] = [
+          ...conversationHistory,
+          { role: 'user', content: message },
+        ];
+        const tools = getWorkspaceTools();
+        
+        // 4. Agent Loop
+        let iterations = 0;
+        const maxIterations = 5;
+        let finalResponseFound = false;
+
+        while (iterations < maxIterations && !finalResponseFound) {
+            iterations++;
+            // sendEvent('status', { msg: `Thinking... (Step ${iterations})` });
+
+            // Call Claude
+            const response = await callClaude(messages, tools, {
+                systemPrompt: CODING_ASSISTANT_SYSTEM_PROMPT,
+                maxTokens: 4096,
+            });
+
+            inputTokens += response.usage.input_tokens;
+            outputTokens += response.usage.output_tokens;
+
+            // Process blocks
+            const toolUseBlocks = [];
+            let thoughtContent = '';
+
+            for (const block of response.content) {
+                if (block.type === 'text') {
+                    thoughtContent += block.text;
+                } else if (block.type === 'tool_use') {
+                    toolUseBlocks.push(block);
+                }
+            }
+
+            // Send thought if exists
+            if (thoughtContent) {
+                // Heuristic: If there are NO tool calls, this is likely the final response (or part of it).
+                // If there ARE tool calls, this is "Reasoning".
+                if (toolUseBlocks.length > 0) {
+                    sendEvent('thought', { content: thoughtContent });
+                } else {
+                    // Final response
+                    fullResponseText += thoughtContent;
+                    sendEvent('response_chunk', { content: thoughtContent });
+                    finalResponseFound = true;
+                }
+            }
+
+            // Provide tool execution
+            if (toolUseBlocks.length > 0) {
+                const toolResults = [];
+
+                for (const block of toolUseBlocks) {
+                    sendEvent('tool_start', { tool: block.name, input: block.input });
+                    
+                    let toolResult = '';
+                    try {
+                         // Execute tool
+                        const input = block.input as any;
+                        if (block.name === 'read_file') {
+                            toolResult = await readWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line });
+                        } else if (block.name === 'list_directory') {
+                            toolResult = await listWorkspaceDirectory(flyAppName, { path: input.path, recursive: input.recursive });
+                        } else if (block.name === 'search_code') {
+                            toolResult = await searchWorkspaceCode(flyAppName, { query: input.query, filePattern: input.file_pattern, caseSensitive: input.case_sensitive });
+                        } else if (block.name === 'write_file') {
+                            toolResult = await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
+                        } else if (block.name === 'run_command') {
+                            toolResult = await runWorkspaceCommand(flyAppName, { command: input.command });
+                        } else {
+                            toolResult = `Unknown tool: ${block.name}`;
+                        }
+                    } catch (err: any) {
+                        toolResult = `Error: ${err.message}`;
+                    }
+
+                    // Send result
+                    sendEvent('tool_result', { result: toolResult });
+
+                    // Log locally
+                    toolResultsLog.push({ toolName: block.name, input: block.input, result: toolResult });
+
+                    // Push to API conversation
+                    toolResults.push({
+                        type: 'tool_result' as const,
+                        tool_use_id: block.id,
+                        content: toolResult,
+                    });
+                }
+
+                // Append assistant's move to history
+                messages.push({
+                    role: 'assistant',
+                    content: response.content as any
+                });
+
+                // Append tool results to history
+                messages.push({
+                    role: 'user',
+                    content: toolResults as any
+                });
+
+            } else {
+                // No tools used, loop ends
+                finalResponseFound = true;
+            }
+        }
+
+        // 5. Finalize
+        sendEvent('response', { content: fullResponseText }); // Signal completion
+        const duration = Date.now() - startTime;
+        
+        trackTokenUsage(sessionId, inputTokens + outputTokens);
+
+        // Update DB Log
+        if (logId) {
+            updateLogResponse({
+                logId,
+                responseStatus: 200,
+                responseTimeMs: duration,
+                responseText: fullResponseText,
+                inputTokens,
+                outputTokens
+            }).catch(console.error);
+        }
+
+        controller.close();
+
+      } catch (error: any) {
+        console.error('Stream Error:', error);
+        sendEvent('error', { error: error.message || 'Internal Error' });
+        
+        if (logId) {
+             updateLogResponse({ logId, responseStatus: 500, responseTimeMs: 0, responseText: String(error) }).catch(console.error);
+        }
+        controller.close();
+      }
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }
