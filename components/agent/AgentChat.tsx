@@ -13,11 +13,12 @@ interface Message {
 
 interface AgentChatProps {
     sessionId: string;
+    flyAppName?: string | null;
     containerReady: boolean;
     onClose?: () => void;
 }
 
-export default function AgentChat({ sessionId, containerReady, onClose }: AgentChatProps) {
+export default function AgentChat({ sessionId, flyAppName, containerReady, onClose }: AgentChatProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -60,50 +61,42 @@ export default function AgentChat({ sessionId, containerReady, onClose }: AgentC
         ]);
 
         try {
-            const response = await fetch('/api/agent/chat', {
+            // Build conversation history for context (exclude pending/last user msg)
+            const conversationHistory = messages.map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+
+            const response = await fetch('/api/agent/chat-v2', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     sessionId,
                     message: input,
+                    flyAppName,
+                    conversationHistory
                 }),
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                // Try to get error message from response
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to get response');
+                throw new Error(data.error || 'Failed to get response');
             }
 
-            const reader = response.body?.getReader();
-            const decoder = new TextDecoder();
-            let accumulatedContent = '';
-
-            while (true) {
-                const { done, value } = await reader!.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value);
-                accumulatedContent += chunk;
-
-                // Update assistant message with streamed content
-                setMessages((prev) =>
-                    prev.map((msg) =>
-                        msg.id === assistantMessageId
-                            ? { ...msg, content: accumulatedContent }
-                            : msg
-                    )
-                );
-            }
-
-            // Mark as complete
+            // Update assistant message with response
             setMessages((prev) =>
                 prev.map((msg) =>
                     msg.id === assistantMessageId
-                        ? { ...msg, status: 'complete' }
+                        ? {
+                            ...msg,
+                            content: data.response,
+                            status: 'complete'
+                        }
                         : msg
                 )
             );
+
         } catch (error) {
             console.error('Error sending message:', error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to get response from agent';
