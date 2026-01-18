@@ -121,12 +121,17 @@ export async function collectWorkspaceSnapshot(
     }
 
     // Parse file size from ls output (line before TAR_CREATED)
+    // ls -l format: -rw-r--r-- 1 root root 41979 Jan 18 22:35 /tmp/file.tar.gz
+    // We need the 5th field (index 4) which is the size in bytes
     const lines = tarOutput.split('\n').filter(l => l.trim());
     const sizeIndex = lines.findIndex(l => l === 'TAR_CREATED') - 1;
-    const totalSize = parseInt(lines[sizeIndex], 10);
+    const lsOutputLine = lines[sizeIndex];
+    const sizeField = lsOutputLine.split(/\s+/)[4]; // Extract 5th field (size)
+    const totalSize = parseInt(sizeField, 10);
 
     console.log(`[Snapshot] Tar output lines:`, lines);
-    console.log(`[Snapshot] Size line [${sizeIndex}]:`, lines[sizeIndex], '-> parsed:', totalSize);
+    console.log(`[Snapshot] Size line [${sizeIndex}]:`, lsOutputLine);
+    console.log(`[Snapshot] Extracted size field:`, sizeField, '-> parsed:', totalSize);
 
     if (isNaN(totalSize) || totalSize === 0) {
       console.error(`[Snapshot] Empty snapshot detected!`);
@@ -151,12 +156,12 @@ export async function collectWorkspaceSnapshot(
       throw new Error('Snapshot is empty (0 bytes) - check if files are being over-filtered');
     }
 
-    // Check size limit (100MB)
-    const MAX_SNAPSHOT_SIZE = 100 * 1024 * 1024;
+    // Check size limit (50MB)
+    const { MAX_SNAPSHOT_SIZE } = await import('./filter');
     if (totalSize > MAX_SNAPSHOT_SIZE) {
       // Cleanup before throwing
       await cleanupRemoteFiles(flyAppName, sessionId);
-      throw new Error(`Snapshot size ${(totalSize / 1024 / 1024).toFixed(2)}MB exceeds limit of 100MB`);
+      throw new Error(`Snapshot size ${(totalSize / 1024 / 1024).toFixed(2)}MB exceeds limit of ${(MAX_SNAPSHOT_SIZE / 1024 / 1024)}MB`);
     }
 
     console.log(`[Snapshot] Archive created: ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
@@ -259,21 +264,19 @@ async function cleanupRemoteFiles(flyAppName: string, sessionId: string): Promis
 
 /**
  * Get approximate file count from tar archive
- * Uses tar -tzf to list files (header only, fast)
+ * Uses tar-stream to count files locally
  */
 async function getFileCount(
-  flyAppName: string,
-  sessionId: string,
+  _flyAppName: string,
+  _sessionId: string,
   buffer: Buffer
 ): Promise<number> {
   try {
-    // Re-upload the tar temporarily just to count files
-    // This is optional - we could also parse the tar locally, but that's more complex
-    // For now, return a placeholder
-    // TODO: Use tar-stream locally to count files without re-uploading
-    return 0; // Placeholder - will be calculated in tar-utils if needed
+    // Use tar-stream locally to count files
+    const { countFilesInTarGz } = await import('./tar-utils');
+    return await countFilesInTarGz(buffer);
   } catch (error) {
-    console.warn('[Snapshot] Could not determine file count');
+    console.warn('[Snapshot] Could not determine file count:', error);
     return 0;
   }
 }

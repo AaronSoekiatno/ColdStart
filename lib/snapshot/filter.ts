@@ -6,9 +6,9 @@ import { minimatch } from 'minimatch';
 export const MAX_FILE_SIZE = 1 * 1024 * 1024;
 
 /**
- * Maximum total snapshot size (100MB)
+ * Maximum total snapshot size (50MB)
  */
-export const MAX_SNAPSHOT_SIZE = 100 * 1024 * 1024;
+export const MAX_SNAPSHOT_SIZE = 50 * 1024 * 1024;
 
 /**
  * Generate patterns to exclude from snapshot

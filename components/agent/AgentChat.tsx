@@ -140,7 +140,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
         }
     };
 
-    const handleUndo = async (path: string, originalContent: string) => {
+    const handleUndo = async (path: string, diff: string) => {
         // Create a synthetic user message for "Undo"
         const undoMessageId = crypto.randomUUID();
         const undoText = `Undo changes to ${path}`;
@@ -181,7 +181,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                 body: JSON.stringify({
                     flyAppName,
                     path,
-                    content: originalContent || '' // Ensure string
+                    diff // Send the diff to revert
                 }),
             });
 
@@ -490,7 +490,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                                                                         </pre>
                                                                                         <div className="flex justify-end mt-2">
                                                                                             <button
-                                                                                                onClick={() => handleUndo(act.input.path, originalContent)}
+                                                                                                onClick={() => handleUndo(act.input.path, diff || '')}
                                                                                                 disabled={isLoading}
                                                                                                 className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px] text-slate-300 transition-colors disabled:opacity-50"
                                                                                             >
@@ -561,8 +561,8 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                     key={file}
                                     onClick={() => handleMentionSelect(file)}
                                     className={`w-full text-left px-3 py-2 text-xs truncate transition-colors ${i === mentionIndex
-                                            ? 'bg-blue-600/20 text-blue-300'
-                                            : 'text-slate-300 hover:bg-slate-700/50'
+                                        ? 'bg-blue-600/20 text-blue-300'
+                                        : 'text-slate-300 hover:bg-slate-700/50'
                                         }`}
                                 >
                                     {file}
