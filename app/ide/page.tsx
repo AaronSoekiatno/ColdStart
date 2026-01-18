@@ -529,7 +529,7 @@ export default function IDEPage() {
                                     <span className="text-sm">Loading VS Code environment</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-slate-300">
-                                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                                     <span className="text-sm">Installing dependencies</span>
                                 </div>
                                 <div className="flex items-center gap-3 text-slate-400">
@@ -640,7 +640,7 @@ export default function IDEPage() {
                         variant="outline"
                         size="sm"
                         className={`${showAgentChat
-                            ? 'bg-purple-600 border-purple-500 text-white hover:bg-purple-700'
+                            ? 'bg-blue-600 border-blue-500 text-white hover:bg-blue-700'
                             : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600 hover:text-white'
                             }`}
                     >

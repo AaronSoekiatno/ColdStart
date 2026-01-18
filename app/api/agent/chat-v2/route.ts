@@ -156,6 +156,19 @@ export async function POST(request: NextRequest) {
               case 'write_file':
                 const writeInput = block.input as any;
                 console.log(`  Target: ${writeInput.path} (${writeInput.content.length} bytes)`);
+
+                // logical step: Capture old content for diffing
+                try {
+                  const oldContent = await readWorkspaceFile(flyAppName, {
+                    path: writeInput.path
+                  });
+                  // Store old content in the input object so it gets passed to the UI
+                  writeInput.oldContent = oldContent;
+                } catch (e) {
+                  // File likely doesn't exist, which is fine (creation vs modification)
+                  writeInput.oldContent = null;
+                }
+
                 toolResult = await writeWorkspaceFile(flyAppName, {
                   path: writeInput.path,
                   content: writeInput.content,

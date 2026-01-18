@@ -116,6 +116,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  experimental: {
+    // @ts-expect-error - allowedDevOrigins is valid in newer Next.js versions but missing from types
+    allowedDevOrigins: [
+      "localhost:3000",
+      "assess-b206aa10-1768721423431-co.fly.dev",
+      ...(process.env.FLY_APP_NAME ? [`${process.env.FLY_APP_NAME}.fly.dev`] : []),
+    ],
+  },
 };
 
 export default nextConfig;
