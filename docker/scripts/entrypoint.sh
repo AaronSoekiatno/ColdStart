@@ -12,7 +12,7 @@ echo "============================================"
 # Display build version
 if [ -f "/home/coder/.hermes-version.json" ]; then
     echo "📦 Container Version:"
-    cat /home/coder/.hermes-version.json | python3 -c 'import sys, json; d=json.load(sys.stdin); print("   Built: " + d["built_at"])'
+    cat /home/coder/.hermes-version.json | node -e 'const fs = require("fs"); const d = JSON.parse(fs.readFileSync(0, "utf-8")); console.log("   Built: " + d.built_at)'
     echo "============================================"
 fi
 
@@ -115,18 +115,10 @@ setup_env_local() {
             echo "$KEY=${!KEY}" >> "$ENV_FILE"
         fi
     done
-    
+
     # Force development servers to bind to all interfaces for external access
     echo "HOST=0.0.0.0" >> "$ENV_FILE"
     echo "PORT=3000" >> "$ENV_FILE"
-}
-
-setup_telemetry() {
-    # 7. Start Telemetry Sidecar
-    if [ -n "$TELEMETRY_URL" ] && [ -n "$SESSION_ID" ]; then
-        echo "📊 Starting telemetry sidecar..."
-        /usr/local/bin/telemetry-sidecar.sh &
-    fi
 }
 
 start_dev_server() {
@@ -137,23 +129,6 @@ start_dev_server() {
     nohup npm run dev > /workspace/.dev-server.log 2>&1 &
     echo "✅ Development server starting on port 3000"
     echo "   Logs: /workspace/.dev-server.log"
-
-    # Pre-compile main routes in background to speed up first access
-    (
-        echo "⏳ Waiting for dev server to be ready..."
-        # Wait for Next.js to be ready (max 30s)
-        for i in {1..30}; do
-            if curl -s http://localhost:3000 > /dev/null 2>&1; then
-                echo "✅ Dev server ready, pre-compiling routes..."
-                # Pre-compile main routes
-                curl -s http://localhost:3000 > /dev/null 2>&1 &
-                curl -s http://localhost:3000/insights > /dev/null 2>&1 &
-                echo "✅ Routes pre-compilation started"
-                break
-            fi
-            sleep 1
-        done
-    ) &
 }
 
 # ============================================
@@ -163,41 +138,16 @@ start_dev_server() {
 run_background_setup() {
     echo "⏳ Running background setup..."
 
-    # Fix workspace permissions - ULTRA-OPTIMIZED
-    # Only fix directories that ACTUALLY need write access during runtime
-    # Source code directories (app, components, lib, utils, tests, scripts, supabase) are READ-ONLY
+    # Fix workspace permissions - simplified
     echo "🔧 Fixing workspace permissions..."
-    (
-        # Fix top-level directory
-        sudo chown coder:coder /workspace 2>/dev/null || true
-        
-        # Only fix directories that need WRITE access during runtime/testing
-        # .next - Next.js build cache
-        # .vitest-cache - Vitest cache
-        # .git - Git operations during testing
-        for dir in .next .vitest-cache .git; do
-            if [ -d "/workspace/$dir" ]; then
-                sudo chown -R coder:coder "/workspace/$dir" 2>/dev/null || true
-            fi
-        done
-        
-        # Fix root-level files that need write access
-        sudo chown coder:coder /workspace/test-results.json 2>/dev/null || true
-        sudo chown coder:coder /workspace/.env* 2>/dev/null || true
-        sudo chown coder:coder /workspace/*.log 2>/dev/null || true
-        sudo chown coder:coder /workspace/tsconfig.tsbuildinfo 2>/dev/null || true
-        
-        # Note: node_modules/.vite is handled separately in run-tests.sh
-        # Source code dirs (app, components, lib, utils, tests, scripts, supabase) are read-only - no chown needed
-    ) &
+    sudo chown -R coder:coder /workspace/.next /workspace/.env* 2>/dev/null || true &
 
     measure_step "setup_claude_auth" setup_claude_auth
     measure_step "setup_claude_wrapper" setup_claude_wrapper
     measure_step "setup_bash_config" setup_bash_config
     measure_step "setup_git" setup_git
     measure_step "setup_env_local" setup_env_local
-    measure_step "setup_telemetry" setup_telemetry
-    # measure_step "start_dev_server" start_dev_server
+    measure_step "start_dev_server" start_dev_server
 
     # Final ownership check
     chown -R coder:coder /home/coder/.claude 2>/dev/null || true
