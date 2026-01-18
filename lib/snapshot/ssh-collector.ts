@@ -73,7 +73,27 @@ export async function collectWorkspaceSnapshot(
       throw new Error('Failed to create exclude file on container');
     }
 
-    // Step 2: Create tar.gz archive using the exclude file
+    // Step 2: Check workspace contents first for debugging
+    console.log(`[Snapshot] Checking workspace contents...`);
+    const checkCommand = `cd /workspace && ls -la`;
+    const escapedCheckCmd = checkCommand.replace(/'/g, "'\\''");
+    const checkCmd = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedCheckCmd}'"`;
+
+    try {
+      const { stdout: checkStdout } = await execAsync(checkCmd, {
+        env: {
+          ...process.env,
+          FLY_API_TOKEN: process.env.FLY_API_TOKEN,
+        },
+        timeout: 30000,
+        maxBuffer: 1 * 1024 * 1024,
+      });
+      console.log(`[Snapshot] Workspace contents:\n${cleanupNoise(checkStdout)}`);
+    } catch (err) {
+      console.warn('[Snapshot] Could not check workspace contents:', err);
+    }
+
+    // Step 3: Create tar.gz archive using the exclude file
     // Use tar with gzip compression, excluding patterns from file
     const tarCommand = [
       'cd /workspace',
@@ -101,12 +121,34 @@ export async function collectWorkspaceSnapshot(
     }
 
     // Parse file size from ls output (line before TAR_CREATED)
-    const lines = tarOutput.split('\n');
+    const lines = tarOutput.split('\n').filter(l => l.trim());
     const sizeIndex = lines.findIndex(l => l === 'TAR_CREATED') - 1;
     const totalSize = parseInt(lines[sizeIndex], 10);
 
+    console.log(`[Snapshot] Tar output lines:`, lines);
+    console.log(`[Snapshot] Size line [${sizeIndex}]:`, lines[sizeIndex], '-> parsed:', totalSize);
+
     if (isNaN(totalSize) || totalSize === 0) {
-      throw new Error('Failed to get snapshot size or snapshot is empty');
+      console.error(`[Snapshot] Empty snapshot detected!`);
+      console.error(`[Snapshot] Tar output:`, tarOutput);
+
+      // Show what was in the exclude file
+      try {
+        const catExcludeCmd = `flyctl ssh console -a ${flyAppName} -C "cat /tmp/snapshot-exclude-${sessionId}.txt"`;
+        const { stdout: excludeContent } = await execAsync(catExcludeCmd, {
+          env: {
+            ...process.env,
+            FLY_API_TOKEN: process.env.FLY_API_TOKEN,
+          },
+          timeout: 15000,
+        });
+        console.error(`[Snapshot] Exclude patterns:\n${cleanupNoise(excludeContent)}`);
+      } catch (err) {
+        console.error('[Snapshot] Could not read exclude file:', err);
+      }
+
+      await cleanupRemoteFiles(flyAppName, sessionId);
+      throw new Error('Snapshot is empty (0 bytes) - check if files are being over-filtered');
     }
 
     // Check size limit (100MB)

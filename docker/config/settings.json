@@ -44,15 +44,6 @@
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
     "telemetry.telemetryLevel": "off",
-    "github.copilot.enable": {
-        "*": false
-    },
-    "github.copilot.editor.enableAutoCompletions": false,
-    "github.copilot-chat.editor.enableAutoCompletions": false,
-    "github.copilot.inlineSuggest.enable": false,
-    "github.copilot.chat.enabled": false,
-    "github.copilot.chat.startOnOpen": false,
-    "github.copilot.chat.startConversation": false,
     "chat.commandCenter.enabled": false,
     "chat.editor.defaultScope": "selection",
     "workbench.panel.defaultLocation": "bottom",
