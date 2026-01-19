@@ -5,6 +5,7 @@ import { Volume2, Mic, Phone, Loader2, PhoneOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { VAPI_ENABLED } from '@/lib/feature-flags';
 
 interface MinervaVoiceIndicatorProps {
     className?: string;
@@ -28,6 +29,12 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
         let statusCheckInterval: NodeJS.Timeout | null = null;
 
         const setupVapiListeners = async () => {
+            // Skip Vapi setup if disabled
+            if (!VAPI_ENABLED) {
+                console.log('[MinervaVoiceIndicator] Vapi is disabled, skipping listener setup');
+                return;
+            }
+
             try {
                 // Dynamically import Vapi client
                 const vapiModule = await import('@/vapi-client.js');
@@ -112,6 +119,16 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
 
     const startInterview = async () => {
         if (isStarting || isCallActive) return;
+
+        // Vapi is disabled via feature flag
+        if (!VAPI_ENABLED) {
+            console.log('[MinervaVoiceIndicator] Vapi is disabled via feature flag');
+            toast({
+                title: 'Voice Agent Disabled',
+                description: 'The Minerva voice agent is currently disabled.',
+            });
+            return;
+        }
 
         setIsStarting(true);
         try {
@@ -205,6 +222,13 @@ export function MinervaVoiceIndicator({ className }: MinervaVoiceIndicatorProps)
 
     const endInterview = async () => {
         if (isEnding || !isCallActive) return;
+
+        // Vapi is disabled via feature flag
+        if (!VAPI_ENABLED) {
+            setIsCallActive(false);
+            setIsSpeaking(false);
+            return;
+        }
 
         setIsEnding(true);
         try {

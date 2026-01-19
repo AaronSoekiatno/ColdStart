@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { TestRunner, TestRunnerRef } from '@/components/assessment/TestRunner';
 import { MinervaVoiceIndicator } from '@/components/assessment/MinervaVoiceIndicator';
 import AgentChat from '@/components/agent/AgentChat';
+import { VAPI_ENABLED } from '@/lib/feature-flags';
 import {
     Loader2,
     Clock,
@@ -50,6 +51,15 @@ export default function IDEPage() {
     // Auto-start KICK_OFF Vapi call when container is ready
     const startKickOffCall = async (sessionId: string, userEmail?: string) => {
         if (kickOffStartedRef.current) return;
+        
+        // Vapi is disabled via feature flag
+        if (!VAPI_ENABLED) {
+            console.log('[IDE] Vapi is disabled via feature flag, skipping KICK_OFF call');
+            kickOffStartedRef.current = true;
+            setKickOffStarted(true);
+            return;
+        }
+
         kickOffStartedRef.current = true;
         setKickOffStarted(true);
 
@@ -165,6 +175,14 @@ export default function IDEPage() {
                         return;
                     }
 
+                    // Vapi is disabled via feature flag
+                    if (!VAPI_ENABLED) {
+                        console.log('[IDE] Vapi is disabled via feature flag, skipping REFLECTION call');
+                        reflectionStartedRef.current = true;
+                        setCurrentPhase(newPhase);
+                        return;
+                    }
+
                     // Check if Vapi call is already active
                     try {
                         const vapiModule = await import('@/vapi-client.js');
@@ -216,6 +234,12 @@ export default function IDEPage() {
     // Listen for REFLECTION call end to complete the assessment
     useEffect(() => {
         if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
+            return;
+        }
+
+        // Vapi is disabled via feature flag
+        if (!VAPI_ENABLED) {
+            console.log('[IDE] Vapi is disabled via feature flag, skipping REFLECTION call end listener');
             return;
         }
 
@@ -396,6 +420,12 @@ export default function IDEPage() {
 
     // Stop Vapi call if active
     const stopVapiCall = async (reason: string) => {
+        // Vapi is disabled via feature flag
+        if (!VAPI_ENABLED) {
+            console.log('[IDE] Vapi is disabled via feature flag, skipping stop call');
+            return;
+        }
+
         try {
             const vapiModule = await import('@/vapi-client.js');
             const vapiClient = vapiModule.default || vapiModule;
