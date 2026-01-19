@@ -31,6 +31,7 @@ export default function IDEPage() {
     const [flyAppName, setFlyAppName] = useState<string | null>(null);
     const [sessionId, setSessionId] = useState<string | null>(null);
     const [containerStatus, setContainerStatus] = useState<'loading' | 'provisioning' | 'running' | 'error'>('loading');
+    const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -39,7 +40,9 @@ export default function IDEPage() {
     const [kickOffStarted, setKickOffStarted] = useState(false);
     const [iframeLoaded, setIframeLoaded] = useState(false);
     const kickOffStartedRef = useRef(false);
+    const isPreviewingRef = useRef(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const iframeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const timerRef = useRef<NodeJS.Timeout | null>(null);
     const phasePollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const testRunnerRef = useRef<TestRunnerRef>(null);
@@ -51,7 +54,7 @@ export default function IDEPage() {
     // Auto-start KICK_OFF Vapi call when container is ready
     const startKickOffCall = async (sessionId: string, userEmail?: string) => {
         if (kickOffStartedRef.current) return;
-        
+
         // Vapi is disabled via feature flag
         if (!VAPI_ENABLED) {
             console.log('[IDE] Vapi is disabled via feature flag, skipping KICK_OFF call');
@@ -357,6 +360,8 @@ export default function IDEPage() {
 
             if (!session) {
                 // No session found
+                console.error('[IDE] No active session found for candidate:', candidateId);
+                setErrorDetails('No active session found. Please start a new assessment.');
                 setContainerStatus('error');
                 return;
             }
@@ -414,9 +419,25 @@ export default function IDEPage() {
             }
         } catch (error) {
             console.error('[IDE] Error fetching container info:', error);
+            setErrorDetails(error instanceof Error ? error.message : 'Unknown error occurred');
             setContainerStatus('error');
         }
     };
+
+    // Safety timeout for iframe loading
+    useEffect(() => {
+        if (containerStatus === 'running' && !iframeLoaded) {
+            // If iframe hasn't loaded in 15 seconds, remove the overlay to let user see potentially underlying browser errors
+            iframeTimeoutRef.current = setTimeout(() => {
+                console.warn('[IDE] Iframe load timed out, forcing display');
+                setIframeLoaded(true);
+            }, 15000);
+        }
+
+        return () => {
+            if (iframeTimeoutRef.current) clearTimeout(iframeTimeoutRef.current);
+        };
+    }, [containerStatus, iframeLoaded]);
 
     // Stop Vapi call if active
     const stopVapiCall = async (reason: string) => {
@@ -532,6 +553,12 @@ export default function IDEPage() {
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
+                // Check if user clicked preview button
+                if (isPreviewingRef.current) {
+                    console.log('[IDE] Valid tab switch (Preview), ignoring warning');
+                    isPreviewingRef.current = false;
+                    return;
+                }
                 setShowTabSwitchWarning(true);
             }
         };
@@ -648,7 +675,7 @@ export default function IDEPage() {
                         </div>
                         <h2 className="text-xl font-semibold text-white mb-2">Container Not Available</h2>
                         <p className="text-slate-400 mb-6">
-                            Your assessment environment could not be loaded. Please start an assessment first.
+                            {errorDetails || 'Your assessment environment could not be loaded. Please start an assessment first.'}
                         </p>
                         <Button
                             onClick={() => router.push('/assessment')}
@@ -740,7 +767,15 @@ export default function IDEPage() {
                                 // Use code-server's built-in proxy which works on the same port (443)
                                 // This avoids Fly.io shared IP port mapping limitations
                                 const url = containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`;
+
+                                // Mark as valid preview navigation to prevent tab switch warning
+                                isPreviewingRef.current = true;
                                 window.open(`${url}proxy/3000/`, '_blank');
+
+                                // Reset after short delay in case window.open fails or behavior differs
+                                setTimeout(() => {
+                                    isPreviewingRef.current = false;
+                                }, 2000);
                             }
                         }}
                         className="p-2 text-slate-400 hover:text-white transition-colors"

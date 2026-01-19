@@ -141,6 +141,12 @@ run_background_setup() {
     measure_step "setup_env_local" setup_env_local
     measure_step "start_dev_server" start_dev_server
 
+    # Force remove GitHub Copilot extensions directly in the entrypoint
+    # This runs on every start to ensure they don't come back via volume persistence
+    echo "🚫 Removing GitHub Copilot extensions..."
+    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* 2>/dev/null || true
+    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot-chat* 2>/dev/null || true
+
     # Final ownership check
     chown -R coder:coder /home/coder/.claude 2>/dev/null || true
 
