@@ -3,6 +3,7 @@ import useSWR from 'swr';
 import clsx from 'clsx';
 import { useState, useEffect } from 'react';
 import { startPhaseCall, initializeVapiListeners } from '../../vapi-client';
+import { VAPI_ENABLED } from '../../lib/feature-flags';
 
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
@@ -21,6 +22,10 @@ export default function Dashboard() {
 
     // Initialize Vapi listeners on mount
     useEffect(() => {
+        if (!VAPI_ENABLED) {
+            console.log('[Dashboard] Vapi is disabled via feature flag, skipping listener initialization');
+            return;
+        }
         if (typeof window !== 'undefined' && !vapiInitialized) {
             initializeVapiListeners();
             setVapiInitialized(true);
@@ -36,11 +41,13 @@ export default function Dashboard() {
         const { currentPhase, session } = status;
 
         // Only start Vapi if:
-        // 1. Phase requires Vapi (vapiActive is true)
-        // 2. Vapi is not already active
-        // 3. We're in the browser
-        // 4. We haven't already attempted to start it
-        if (currentPhase.vapiActive &&
+        // 1. Vapi is enabled via feature flag
+        // 2. Phase requires Vapi (vapiActive is true)
+        // 3. Vapi is not already active
+        // 4. We're in the browser
+        // 5. We haven't already attempted to start it
+        if (VAPI_ENABLED &&
+            currentPhase.vapiActive &&
             status.vapi?.status === 'idle' &&
             !status.vapi?.active &&
             typeof window !== 'undefined' &&
@@ -68,6 +75,8 @@ export default function Dashboard() {
             // Small delay to ensure everything is loaded
             const timer = setTimeout(startVapiCall, 1000);
             return () => clearTimeout(timer);
+        } else if (!VAPI_ENABLED && currentPhase.vapiActive) {
+            console.log('[Dashboard] Vapi is disabled via feature flag, skipping call start for phase:', currentPhase.id);
         }
 
         // Reset attempt flag if Vapi becomes active (call succeeded)
