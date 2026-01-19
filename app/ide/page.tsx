@@ -699,7 +699,7 @@ export default function IDEPage() {
                             <Eye className="h-4 w-4" />
                         </div>
                         <p className="text-sm font-medium">
-                            Tab switching detected. This will affect your score and is discouraged.
+                            Tab switching detected. This will affect your score. To preview your app safely, please use the "Eye" button in the toolbar.
                         </p>
                     </div>
                     <button
@@ -764,21 +764,18 @@ export default function IDEPage() {
                     <button
                         onClick={() => {
                             if (containerUrl) {
-                                // Use code-server's built-in proxy which works on the same port (443)
-                                // This avoids Fly.io shared IP port mapping limitations
                                 const url = containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`;
-
-                                // Mark as valid preview navigation to prevent tab switch warning
                                 isPreviewingRef.current = true;
                                 window.open(`${url}proxy/3000/`, '_blank');
 
-                                // Reset after short delay in case window.open fails or behavior differs
+                                // Reset after delay
                                 setTimeout(() => {
                                     isPreviewingRef.current = false;
                                 }, 2000);
                             }
                         }}
                         className="p-2 text-slate-400 hover:text-white transition-colors"
+                        title="Preview App"
                     >
                         <Eye className="h-4 w-4" />
                     </button>
@@ -884,6 +881,6 @@ export default function IDEPage() {
                     <span>Auto-save enabled</span>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
