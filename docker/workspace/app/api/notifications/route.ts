@@ -1,8 +1,6 @@
 /**
  * GET /api/notifications
  * Fetch all notifications for the authenticated candidate
- *
- * 80% provided - Candidates implement service call (20%)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -50,11 +48,6 @@ export async function GET(req: NextRequest) {
   }
   // ===============================================
 
-  // TODO: Call getUserNotifications with the candidate's schema name
-  // Hint: const result = await getUserNotifications(candidate.provisioned_schema_name);
-  const result = await getUserNotifications(candidate.provisioned_schema_name);
-
-  // TODO: Return the result as JSON
-  // Hint: return NextResponse.json(result);
-  return NextResponse.json(result);
+  // TODO: Implement - call service layer and return response
+  throw new Error('Not implemented');
 }

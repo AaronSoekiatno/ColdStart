@@ -1,8 +1,6 @@
 /**
  * POST /api/notifications/[id]/mark-read
  * Mark a notification as read
- *
- * 80% provided - Candidates implement service call (20%)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -56,11 +54,6 @@ export async function POST(
   // Get notification ID from URL params
   const { id } = await params;
 
-  // TODO: Call markNotificationAsRead with schema name and notification ID
-  // Hint: const result = await markNotificationAsRead(candidate.provisioned_schema_name, id);
-  const result = await markNotificationAsRead(candidate.provisioned_schema_name, id);
-
-  // TODO: Return the result as JSON
-  // Hint: return NextResponse.json(result);
-  return NextResponse.json(result);
+  // TODO: Implement - call service layer and return response
+  throw new Error('Not implemented');
 }
