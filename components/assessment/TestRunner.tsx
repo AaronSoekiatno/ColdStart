@@ -42,7 +42,7 @@ interface TestRunnerProps {
 }
 
 export interface TestRunnerRef {
-    runTests: (testType?: 'quick' | 'full') => Promise<void>;
+    runTests: (testType?: 'quick' | 'full', options?: { destroyAfter?: boolean }) => Promise<void>;
     openPopover: () => void;
 }
 
@@ -53,7 +53,7 @@ export const TestRunner = forwardRef<TestRunnerRef, TestRunnerProps>(
         const [isOpen, setIsOpen] = useState(false);
         const { toast } = useToast();
 
-        const runTests = async (testType: 'quick' | 'full' = 'quick', keepPopoverOpen: boolean = false) => {
+        const runTests = async (testType: 'quick' | 'full' = 'quick', keepPopoverOpen: boolean = false, destroyAfter: boolean = false) => {
             setIsLoading(true);
             if (!keepPopoverOpen) {
                 setIsOpen(false);
@@ -65,7 +65,7 @@ export const TestRunner = forwardRef<TestRunnerRef, TestRunnerProps>(
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ sessionId, testType }),
+                    body: JSON.stringify({ sessionId, testType, destroyAfter }),
                 });
 
                 const data = await response.json();
@@ -89,8 +89,8 @@ export const TestRunner = forwardRef<TestRunnerRef, TestRunnerProps>(
 
         // Expose methods to parent via ref
         useImperativeHandle(ref, () => ({
-            runTests: async (testType: 'quick' | 'full' = 'quick') => {
-                await runTests(testType, true);
+            runTests: async (testType: 'quick' | 'full' = 'quick', options?: { destroyAfter?: boolean }) => {
+                await runTests(testType, true, options?.destroyAfter);
             },
             openPopover: () => {
                 setIsOpen(true);

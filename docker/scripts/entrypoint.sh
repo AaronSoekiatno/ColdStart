@@ -187,6 +187,6 @@ echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 run_background_setup &
 
 # Start code-server (this blocks and keeps container running)
-# Open the workspace folder AND the README.md file
-exec code-server --bind-addr 0.0.0.0:8080 --auth none --disable-workspace-trust /workspace /workspace/README.md
+# Open the workspace folder
+exec code-server --bind-addr 0.0.0.0:8080 --auth none --disable-workspace-trust /workspace
 

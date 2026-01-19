@@ -448,33 +448,12 @@ export default function IDEPage() {
             // Results will still be logged to the database asynchronously
             // Container cleanup will happen AFTER tests complete
             if (testRunnerRef.current) {
-                console.log('[IDE] Starting background test run with deferred cleanup...');
-                testRunnerRef.current.runTests('full')
-                    .then(() => {
-                        console.log('[IDE] Tests completed, now cleaning up container...');
-                        // Only destroy container after tests complete
-                        if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
-                            fetch('/api/topcandidates/provision-container', {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ sessionId }),
-                            }).catch(error => {
-                                console.error('[IDE] Container cleanup failed:', error);
-                            });
-                        }
-                    })
+                console.log('[IDE] Starting background test run with server-side destruction...');
+
+                // Pass destroyAfter: true to let the server handle cleanup
+                testRunnerRef.current.runTests('full', { destroyAfter: true })
                     .catch(error => {
-                        console.error('[IDE] Background test run failed:', error);
-                        // Still clean up container even if tests fail
-                        if (sessionId && sessionId !== 'local-dev-docker' && sessionId !== 'local-dev-session') {
-                            fetch('/api/topcandidates/provision-container', {
-                                method: 'DELETE',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ sessionId }),
-                            }).catch(cleanupError => {
-                                console.error('[IDE] Container cleanup failed:', cleanupError);
-                            });
-                        }
+                        console.error('[IDE] Background test run initialization failed:', error);
                     });
             }
 
