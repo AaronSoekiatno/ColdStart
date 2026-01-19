@@ -496,6 +496,23 @@ export default function IDEPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
+    // Tab switch detection
+    const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false);
+
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                setShowTabSwitchWarning(true);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
+
     if (isLoading || containerStatus === 'loading') {
         return (
             <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
@@ -616,7 +633,27 @@ export default function IDEPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
+        <div className="h-screen flex flex-col bg-slate-900 overflow-hidden relative">
+            {/* Tab Switch Warning Banner */}
+            {showTabSwitchWarning && (
+                <div className="absolute top-0 left-0 right-0 z-50 bg-red-600/90 backdrop-blur-sm text-white px-4 py-2 flex items-center justify-between shadow-lg animate-in slide-in-from-top-full duration-300">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white/20 p-1.5 rounded-full">
+                            <Eye className="h-4 w-4" />
+                        </div>
+                        <p className="text-sm font-medium">
+                            Tab switching detected. This will affect your score and is discouraged.
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setShowTabSwitchWarning(false)}
+                        className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
+
             {/* Compact Header Bar */}
             <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
                 {/* Left section - fixed width to prevent overlap */}
