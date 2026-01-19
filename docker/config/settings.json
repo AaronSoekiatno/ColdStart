@@ -43,6 +43,9 @@
     "extensions.ignoreRecommendations": true,
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
+    "github.copilot.enable": {
+        "*": false
+    },
     "telemetry.telemetryLevel": "off",
     "chat.commandCenter.enabled": false,
     "chat.editor.defaultScope": "selection",

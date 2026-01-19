@@ -54,8 +54,9 @@ RUN chown -R coder:coder /home/coder
 USER coder
 
 # Uninstall GitHub Copilot extensions if present (must run as coder user)
-RUN code-server --uninstall-extension GitHub.copilot 2>/dev/null || true && \
-    code-server --uninstall-extension GitHub.copilot-chat 2>/dev/null || true
+# Uninstall GitHub Copilot extensions if present (forceful removal)
+RUN rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* \
+    && rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot-chat*
 
 # ============================================
 # Environment Configuration
