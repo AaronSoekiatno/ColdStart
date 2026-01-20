@@ -249,15 +249,16 @@ rm -f "$RESULTS_FILE"
 
 
 # Define test command based on mode
+# Define test command based on mode
 if [ "$MODE" == "full" ]; then
     # Full validation: Run all tests including build verification
     echo "Running FULL validation suite..."
     # We use a custom timeout for full tests as build can take time
-    npm test -- --reporter=json --outputFile="$RESULTS_FILE" --run || true
+    npx vitest run -c /usr/local/share/assessment/vitest.config.ts --reporter=json --outputFile="$RESULTS_FILE" || true
 else
     # Quick validation: Skip the slow build test
     echo "Running QUICK validation suite..."
-    npm test -- --exclude "**/build.test.ts" --reporter=json --outputFile="$RESULTS_FILE" --run || true
+    npx vitest run -c /usr/local/share/assessment/vitest.config.ts --exclude "**/build.test.ts" --reporter=json --outputFile="$RESULTS_FILE" || true
 fi
 
 # Capture the exit code of tests (we rely on result file usually, but exit code is good for api)

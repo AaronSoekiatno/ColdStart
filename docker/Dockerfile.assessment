@@ -38,6 +38,11 @@ COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/run-tests.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/log-prompt.sh /usr/local/bin/
 
+# Secure Assessment Tests & Config
+RUN mkdir -p /usr/local/share/assessment
+COPY --chown=coder:coder tests /usr/local/share/assessment/tests/
+COPY --chown=coder:coder config/vitest.assessment.ts /usr/local/share/assessment/vitest.config.ts
+
 RUN chmod +x /usr/local/bin/*.sh
 
 # Configure code-server VS Code settings (auto-save, etc.)
