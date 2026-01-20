@@ -249,32 +249,61 @@ rm -f "$RESULTS_FILE"
 
 
 # Define test command based on mode
+# Add debug output to help diagnose issues
+echo "   Working directory: $(pwd)"
+echo "   Results file path: $RESULTS_FILE"
+echo "   Vitest config: /usr/local/share/assessment/vitest.config.ts"
+
+# Check if vitest is available
+if ! command -v npx >/dev/null 2>&1; then
+    echo "   ⚠️  ERROR: npx not found in PATH"
+    echo "   PATH: $PATH"
+fi
+
 # Define test command based on mode
 if [ "$MODE" == "full" ]; then
     # Full validation: Run all tests including build verification
     echo "Running FULL validation suite..."
     # We use a custom timeout for full tests as build can take time
-    npx vitest run -c /usr/local/share/assessment/vitest.config.ts --reporter=json --outputFile="$RESULTS_FILE" || true
+    npx vitest run -c /usr/local/share/assessment/vitest.config.ts --reporter=json --outputFile="$RESULTS_FILE" 2>&1 || VITEST_EXIT=$?
 else
     # Quick validation: Skip the slow build test
     echo "Running QUICK validation suite..."
-    npx vitest run -c /usr/local/share/assessment/vitest.config.ts --exclude "**/build.test.ts" --reporter=json --outputFile="$RESULTS_FILE" || true
+    npx vitest run -c /usr/local/share/assessment/vitest.config.ts --exclude "**/build.test.ts" --reporter=json --outputFile="$RESULTS_FILE" 2>&1 || VITEST_EXIT=$?
 fi
 
-# Capture the exit code of tests (we rely on result file usually, but exit code is good for api)
-# But wait, || true masks the exit code.
-# Better pattern:
-# npm test ... || EXIT_CODE=$?
-# Actually, npm test failure is "expected" if tests fail.
-# Let's just rely on the results JSON telling us success/fail.
-EXIT_CODE=0
+# Check vitest execution result
+VITEST_EXIT=${VITEST_EXIT:-0}
+if [ $VITEST_EXIT -ne 0 ]; then
+    echo "   ⚠️  Vitest exited with code: $VITEST_EXIT"
+fi
 
-
-
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ Tests passed successfully!"
+# Verify results file was created
+if [ -f "$RESULTS_FILE" ]; then
+    FILE_SIZE=$(stat -f%z "$RESULTS_FILE" 2>/dev/null || stat -c%s "$RESULTS_FILE" 2>/dev/null || echo "0")
+    echo "   ✓ Results file created: $RESULTS_FILE (${FILE_SIZE} bytes)"
 else
-    echo "⚠️  Some tests failed. Checking results..."
+    echo "   ⚠️  Results file NOT created at: $RESULTS_FILE"
+    echo "   Directory contents:"
+    ls -la "$WORKSPACE_DIR/" | head -20 || true
+fi
+
+# Determine overall exit code
+EXIT_CODE=0
+if [ $VITEST_EXIT -ne 0 ] && [ ! -f "$RESULTS_FILE" ]; then
+    # Vitest crashed without producing results
+    EXIT_CODE=$VITEST_EXIT
+    echo "⚠️  Vitest failed without producing results (exit code: $VITEST_EXIT)"
+elif [ -f "$RESULTS_FILE" ]; then
+    # Results exist - parse to determine if tests passed
+    TEST_SUCCESS=$(grep -o '"success"\s*:\s*true' "$RESULTS_FILE" 2>/dev/null || echo "")
+    if [ -n "$TEST_SUCCESS" ]; then
+        echo "✅ Tests passed successfully!"
+    else
+        echo "⚠️  Some tests failed. Checking results..."
+    fi
+else
+    echo "⚠️  Unexpected state: Vitest completed but no results file found"
 fi
 
 # Calculate and display execution time
@@ -284,7 +313,21 @@ echo "⏱️  Total execution time: ${DURATION}s"
 
 # Ensure the results file exists even if tests crashed (create empty error json if missing)
 if [ ! -f "$RESULTS_FILE" ]; then
-    echo "{\"numTotalTestSuites\": 0, \"numPassedTestSuites\": 0, \"numFailedTestSuites\": 0, \"testResults\": [], \"success\": false, \"message\": \"Test runner crashed without producing output\"}" > "$RESULTS_FILE"
+    echo "⚠️  Creating fallback results file due to missing output"
+
+    # Create detailed error message
+    ERROR_MSG="Test runner failed to produce output. Vitest exit code: ${VITEST_EXIT}."
+
+    # Check for common issues
+    if [ ! -f "/usr/local/share/assessment/vitest.config.ts" ]; then
+        ERROR_MSG="${ERROR_MSG} Missing vitest config."
+    fi
+
+    if [ ! -d "$WORKSPACE_DIR/node_modules" ]; then
+        ERROR_MSG="${ERROR_MSG} node_modules not found."
+    fi
+
+    echo "{\"numTotalTestSuites\": 0, \"numPassedTestSuites\": 0, \"numFailedTestSuites\": 0, \"testResults\": [], \"success\": false, \"message\": \"${ERROR_MSG}\", \"vitestExitCode\": ${VITEST_EXIT}}" > "$RESULTS_FILE"
 fi
 
 # Wait for commit logging to finish (if still running)

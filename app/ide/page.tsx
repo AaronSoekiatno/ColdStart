@@ -20,6 +20,7 @@ import {
     MessageSquare,
     Mic,
     ExternalLink,
+    RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
@@ -35,7 +36,8 @@ export default function IDEPage() {
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewKey, setPreviewKey] = useState(0);
 
     const [showAgentChat, setShowAgentChat] = useState(false);
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
@@ -840,9 +842,9 @@ export default function IDEPage() {
                 {/* Right: Preview and Maximize buttons */}
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setIsPreviewOpen(!isPreviewOpen)}
-                        className={`p-2 transition-colors ${isPreviewOpen ? 'text-blue-400 bg-blue-400/10 rounded-lg' : 'text-slate-400 hover:text-white'}`}
-                        title={isPreviewOpen ? "Close Preview" : "Preview App"}
+                        onClick={() => setShowPreview(!showPreview)}
+                        className={`p-2 transition-colors ${showPreview ? 'text-blue-400 bg-blue-400/10 rounded-lg' : 'text-slate-400 hover:text-white'}`}
+                        title={showPreview ? "Close Preview" : "Preview App"}
                     >
                         <Eye className="h-4 w-4" />
                     </button>
@@ -858,7 +860,7 @@ export default function IDEPage() {
             {/* Main Content Area */}
             <div className="flex-1 flex relative overflow-hidden">
                 {/* Code-Server Iframe */}
-                <div className={`relative transition-all duration-300 ${isPreviewOpen ? 'w-1/2 border-r border-slate-700' : 'flex-1'}`}>
+                <div className={`relative transition-all duration-300 ${showPreview ? 'w-1/2 border-r border-slate-700' : 'flex-1'}`}>
                     {/* Loading Overlay - Shows while IDE is loading */}
                     {!iframeLoaded && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -922,18 +924,22 @@ export default function IDEPage() {
                 </div>
 
                 {/* Preview App Split Pane */}
-                {isPreviewOpen && containerUrl && (
-                    <div className="w-1/2 flex flex-col bg-slate-900 border-l border-slate-700">
+                {showPreview && containerUrl && (
+                    <div className="w-1/2 flex flex-col bg-slate-900 border-l border-slate-700 h-full overflow-hidden">
                         {/* Preview Toolbar */}
-                        <div className="h-10 border-b border-slate-700 flex items-center justify-between px-3 bg-slate-800">
+                        <div className="h-10 border-b border-slate-700 flex items-center justify-between px-3 bg-slate-800 shrink-0">
                             <span className="text-xs text-slate-400 flex items-center gap-2">
                                 <div className="w-2 h-2 rounded-full bg-green-500" />
                                 Preview: Port 3000
                             </span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-500 truncate max-w-[200px] font-mono select-all">
-                                    {`${containerUrl}proxy/3000/`}
-                                </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setPreviewKey(prev => prev + 1)}
+                                    className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                                    title="Reload Preview"
+                                >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                </button>
                                 <button
                                     onClick={() => {
                                         const url = containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`;
@@ -947,16 +953,18 @@ export default function IDEPage() {
                                     <ExternalLink className="h-3.5 w-3.5" />
                                 </button>
                                 <button
-                                    onClick={() => setIsPreviewOpen(false)}
+                                    onClick={() => setShowPreview(false)}
                                     className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                                    title="Close Preview"
                                 >
                                     <X className="h-3.5 w-3.5" />
                                 </button>
                             </div>
                         </div>
                         {/* Preview Iframe */}
-                        <div className="flex-1 relative bg-white">
+                        <div className="flex-1 relative bg-white overflow-hidden">
                             <iframe
+                                key={previewKey}
                                 src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
                                 className="absolute inset-0 w-full h-full border-0"
                                 title="Application Preview"
