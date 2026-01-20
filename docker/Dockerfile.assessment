@@ -36,10 +36,6 @@ RUN cd /workspace && npm install --legacy-peer-deps
 # This layer rebuilds when code changes, but npm install is cached
 COPY --chown=coder:coder workspace /workspace/
 
-# Layer 6: Create workspace template for restoration
-# Used by entrypoint.sh to restore workspace if corrupted
-RUN mkdir -p /usr/local/share/workspace-template && \
-    cp -r /workspace/. /usr/local/share/workspace-template/
 
 # Layer 7: Copy scripts and configuration (changes occasionally)
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
