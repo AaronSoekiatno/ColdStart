@@ -324,6 +324,69 @@ export default function IDEPage() {
         checkAuth();
     }, [router]);
 
+    // Real-time subscription for container status updates
+    useEffect(() => {
+        if (!sessionId || sessionId === 'local-dev-session' || sessionId === 'local-dev-docker') {
+            return;
+        }
+
+        console.log('[IDE] Setting up real-time subscription for session:', sessionId);
+
+        const channel = supabase
+            .channel(`container-status-${sessionId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'interview_sessions',
+                    filter: `session_id=eq.${sessionId}`,
+                },
+                (payload) => {
+                    console.log('[IDE] Real-time update received:', payload.new);
+
+                    const newStatus = payload.new.container_status;
+                    const newUrl = payload.new.container_url;
+
+                    // Update container status if changed
+                    if (newStatus === 'running' && newUrl) {
+                        console.log('[IDE] Container is now running:', newUrl);
+                        setContainerUrl(newUrl);
+                        setContainerStatus('running');
+
+                        // Extract app name for agent
+                        try {
+                            const url = new URL(newUrl);
+                            const appName = url.hostname.split('.')[0];
+                            if (appName && appName !== 'localhost') {
+                                setFlyAppName(appName);
+                            }
+                        } catch (e) {
+                            console.error('[IDE] Failed to parse app name:', e);
+                        }
+
+                        // Auto-start KICK_OFF call if needed
+                        if (payload.new.current_phase === 'KICK_OFF' && !kickOffStartedRef.current && user?.email) {
+                            console.log('[IDE] Container ready via real-time, auto-starting KICK_OFF...');
+                            startKickOffCall(sessionId, user.email);
+                        }
+                    } else if (newStatus === 'error' || newStatus === 'stopped') {
+                        console.log('[IDE] Container error/stopped:', newStatus);
+                        setContainerStatus('error');
+                        setErrorDetails(`Container ${newStatus}`);
+                    }
+                }
+            )
+            .subscribe((status) => {
+                console.log('[IDE] Subscription status:', status);
+            });
+
+        return () => {
+            console.log('[IDE] Cleaning up real-time subscription');
+            channel.unsubscribe();
+        };
+    }, [sessionId, user]);
+
     // Fetch container information from the database
     const fetchContainerInfo = async (authUser: { id: string; email?: string }) => {
         try {
@@ -399,11 +462,10 @@ export default function IDEPage() {
                     startKickOffCall(session.session_id, authUser.email);
                 }
             } else if (session.container_status === 'provisioning' || !session.container_url) {
-                // Poll if explicitly provisioning OR if session exists but no container URL yet
+                // Set provisioning state - real-time subscription will handle updates
                 setContainerStatus('provisioning');
-                console.log('[IDE] Container not ready yet, polling in 5s...');
-                // Poll every 5 seconds until running
-                setTimeout(() => fetchContainerInfo(authUser), 5000);
+                console.log('[IDE] Container provisioning, waiting for real-time update...');
+                // NO MORE POLLING - real-time subscription will update state
             } else {
                 // Fallback to localhost for local dev
                 const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

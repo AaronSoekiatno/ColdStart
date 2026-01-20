@@ -141,11 +141,6 @@ run_background_setup() {
     measure_step "setup_env_local" setup_env_local
     measure_step "start_dev_server" start_dev_server
 
-    # Force remove GitHub Copilot extensions directly in the entrypoint
-    # This runs on every start to ensure they don't come back via volume persistence
-    echo "🚫 Removing GitHub Copilot extensions..."
-    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* 2>/dev/null || true
-    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot-chat* 2>/dev/null || true
 
     # Final ownership check
     chown -R coder:coder /home/coder/.claude 2>/dev/null || true
@@ -161,17 +156,23 @@ run_background_setup() {
 # This prevents code-server from loading default settings (ignoring our config)
 check_settings() {
     SETTINGS_PATH="/home/coder/.local/share/code-server/User/settings.json"
-    if [ -f "$SETTINGS_PATH" ]; then
-        echo "✅ Found settings.json"
-        # Force ownership just in case
-        sudo chown coder:coder "$SETTINGS_PATH"
+    BACKUP_PATH="/home/coder/.local/share/code-server/User/settings.json.bak"
+    
+    echo "⚙️  Enforcing default settings..."
+    # Always overwrite with enforced settings to prevent persistence of theme changes etc.
+    if [ -f "$BACKUP_PATH" ]; then
+         cp "$BACKUP_PATH" "$SETTINGS_PATH"
+         sudo chown coder:coder "$SETTINGS_PATH"
+         echo "✅ Settings enforced from backup"
     else
-        echo "⚠️  settings.json missing, restoring from backup..."
-        if [ -f "/home/coder/.local/share/code-server/User/settings.json.bak" ]; then
-             cp "/home/coder/.local/share/code-server/User/settings.json.bak" "$SETTINGS_PATH"
-             sudo chown coder:coder "$SETTINGS_PATH"
-        fi
+         echo "⚠️  Backup settings missing, skipping enforcement"
     fi
+
+    # Force remove GitHub Copilot extensions directly in the entrypoint
+    # This runs synchronously BEFORE code-server starts to prevent them from loading
+    echo "🚫 Removing GitHub Copilot extensions..."
+    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* 2>/dev/null || true
+    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot-chat* 2>/dev/null || true
 }
 
 echo "🛠️  Verifying configuration..."
