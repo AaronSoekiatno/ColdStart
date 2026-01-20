@@ -24,10 +24,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
     rm -rf /var/lib/apt/lists/*
 
-# Layer 2.5: Install test dependencies in a dedicated location (rarely changes)
+# Layer 2.5: Install test dependencies in the assessment directory (rarely changes)
 # These are needed for assessment tests regardless of workspace package.json
-RUN mkdir -p /usr/local/share/assessment/test-deps && \
-    cd /usr/local/share/assessment/test-deps && \
+# Tests are located in /usr/local/share/assessment/tests/, so node_modules needs to be
+# in /usr/local/share/assessment/node_modules for proper module resolution
+RUN mkdir -p /usr/local/share/assessment && \
+    cd /usr/local/share/assessment && \
     npm init -y && \
     npm install --save \
         vitest@^1.3.0 \
@@ -38,9 +40,6 @@ RUN mkdir -p /usr/local/share/assessment/test-deps && \
         @typescript-eslint/parser@^8.52.0 \
         @typescript-eslint/typescript-estree@^8.52.0 \
         glob@^13.0.0
-
-# Set NODE_PATH to include test dependencies
-ENV NODE_PATH=/usr/local/share/assessment/test-deps/node_modules
 
 # Layer 3: Create directories (rarely changes)
 RUN mkdir -p /workspace && chown coder:coder /workspace

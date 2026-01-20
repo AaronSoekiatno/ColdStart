@@ -120,7 +120,7 @@ setup_test_deps() {
     # Ensure workspace node_modules exists
     mkdir -p /workspace/node_modules
 
-    # List of test packages to symlink from test-deps
+    # List of test packages to symlink from assessment node_modules
     TEST_PACKAGES=(
         "vitest"
         "@vitejs/plugin-react-swc"
@@ -132,7 +132,7 @@ setup_test_deps() {
         "glob"
     )
 
-    # Symlink each test package if it exists in test-deps and not in workspace
+    # Symlink each test package if it exists in assessment and not in workspace
     for pkg in "${TEST_PACKAGES[@]}"; do
         # Handle scoped packages (e.g., @vitejs/plugin-react-swc)
         if [[ "$pkg" == @* ]]; then
@@ -143,13 +143,13 @@ setup_test_deps() {
             mkdir -p "/workspace/node_modules/$scope"
 
             # Symlink if not already present
-            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/test-deps/node_modules/$pkg" ]; then
-                ln -sf "/usr/local/share/assessment/test-deps/node_modules/$pkg" "/workspace/node_modules/$pkg"
+            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then
+                ln -sf "/usr/local/share/assessment/node_modules/$pkg" "/workspace/node_modules/$pkg"
             fi
         else
             # Non-scoped package
-            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/test-deps/node_modules/$pkg" ]; then
-                ln -sf "/usr/local/share/assessment/test-deps/node_modules/$pkg" "/workspace/node_modules/$pkg"
+            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then
+                ln -sf "/usr/local/share/assessment/node_modules/$pkg" "/workspace/node_modules/$pkg"
             fi
         fi
     done

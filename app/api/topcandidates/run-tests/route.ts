@@ -3,6 +3,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { destroyFlyMachine } from '@/lib/container-orchestration/flyio';
 
 const execAsync = promisify(exec);
 
@@ -16,8 +17,8 @@ export const maxDuration = 300; // 5 minutes timeout for full tests
  */
 export async function POST(request: NextRequest) {
     try {
-        const { sessionId, testType = 'quick' } = await request.json();
-        console.log('[API run-tests] Request received:', { sessionId, testType, env: process.env.NODE_ENV });
+        const { sessionId, testType = 'quick', destroyAfter = false } = await request.json();
+        console.log('[API run-tests] Request received:', { sessionId, testType, destroyAfter, env: process.env.NODE_ENV });
 
         if (!sessionId) {
             return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
@@ -168,101 +169,72 @@ export async function POST(request: NextRequest) {
 
         if (isFlyIo) {
             // Fly.io Execution via SSH
+            const appName = session.container_url.replace('https://', '').replace('.fly.dev', '');
+            console.log(`[API run-tests] Executing on Fly.io app: ${appName}`);
+            
+            // Use flyctl ssh console to execute the test script
+            const command = `flyctl ssh console -a ${appName} -C "${testCommand}"`;
+            console.log(`[API run-tests] Command: ${command}`);
+            
             try {
-                // Extract app name from URL (e.g., https://assess-xxx.fly.dev -> assess-xxx)
-                const appName = session.container_url.replace('https://', '').replace('.fly.dev', '');
-                console.log(`[API run-tests] Executing on Fly.io app: ${appName}`);
-                
-                // Use flyctl ssh console to execute the test script
-                // The -C flag runs a command and exits
-                const command = `flyctl ssh console -a ${appName} -C "${testCommand}"`;
-                console.log(`[API run-tests] Command: ${command}`);
-                
                 const result = await execAsync(command, { 
-                    maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large test output
-                    timeout: 280000 // 280s timeout (just under the 300s route timeout)
+                    maxBuffer: 10 * 1024 * 1024,
+                    timeout: 280000
                 });
                 stdout = result.stdout;
                 stderr = result.stderr;
                 console.log(`[API run-tests] Fly.io execution completed`);
             } catch (e: any) {
                 console.error('[API run-tests] Fly.io execution failed:', e);
-                // Capture stdout/stderr even if command failed (tests might fail)
                 if (e.stdout || e.stderr) {
                     stdout = e.stdout || '';
                     stderr = e.stderr || '';
                     exitCode = e.code || 1;
-                    console.log(`[API run-tests] Captured output from failed execution (exit code: ${exitCode})`);
                 } else {
-                    return NextResponse.json({ 
-                        error: 'Remote execution failed', 
-                        details: e.message,
-                        hint: 'Ensure flyctl is authenticated and the Fly.io app is running'
-                    }, { status: 500 });
+                    // Critical failure (e.g. timeout or SSH connection error)
+                    stderr = e.message || 'Unknown SSH error';
+                    exitCode = 1;
                 }
             }
         } else {
             // Local Docker Execution
             try {
                 let cleanName = '';
-                // Try to find container by specific name first (most reliable)
                 if (session.candidate_id) {
                     const specificContainerName = `hermes-assessment-${session.candidate_id}`;
-                    // Try exact name match first
                     const checkCmd = `docker ps --filter "name=${specificContainerName}" --format "{{.Names}}"`;
                     try {
-                        console.log(`[API run-tests] Searching for container: ${checkCmd}`);
-                        const { stdout } = await execAsync(checkCmd);
-                        console.log(`[API run-tests] Search result: "${stdout}"`);
-                        
-                        // Parse output to find exact match if multiple returned
-                        const names = stdout.trim().split('\n');
+                        const { stdout: searchOut } = await execAsync(checkCmd);
+                        const names = searchOut.trim().split('\n');
                         if (names.some(n => n === specificContainerName || n === `/${specificContainerName}`)) {
                              cleanName = specificContainerName;
-                        } else if (stdout.trim()) {
-                             cleanName = stdout.trim().split('\n')[0]; // Take first match
+                        } else if (searchOut.trim()) {
+                             cleanName = searchOut.trim().split('\n')[0];
                         }
-                    } catch (e: any) {
-                        console.error('[API run-tests] Docker search failed:', e);
-                    }
+                    } catch (e) { }
                 }
 
-                // Fallback: If no specific container found, exec on the most recent hermes-assessment container
                 if (!cleanName) {
-                    console.log('[API run-tests] specific search failed, trying generic...');
                     const getContainerIdCmd = `docker ps --filter "ancestor=hermes-assessment:latest" --format "{{.Names}}" | head -n 1`;
                     const { stdout: containerName } = await execAsync(getContainerIdCmd);
                     cleanName = containerName.trim();
                 }
-                
-                // SUPER FALLBACK for local dev: if we know the ID, just try to use it directly
-                // This covers cases where 'docker ps' filtering is flaky but the container exists
-                if (!cleanName && session.candidate_id === 'b206aa10-64b0-4e37-9a1a-2d6fc92f14f3') {
-                     console.log('[API run-tests] Using HARDCODED container name for local dev fallback');
-                     cleanName = 'hermes-assessment-b206aa10-64b0-4e37-9a1a-2d6fc92f14f3';
-                }
 
-                if (!cleanName) {
-                    throw new Error('No local assessment container found');
-                }
+                if (!cleanName) throw new Error('No local assessment container found');
 
                 console.log(`[API run-tests] Target Container: ${cleanName}`);
                 const command = `docker exec ${cleanName} ${testCommand}`;
-                console.log(`Executing tests locally: ${command}`);
-
                 const result = await execAsync(command);
                 stdout = result.stdout;
                 stderr = result.stderr;
             } catch (e: any) {
-                // docker exec returns non-zero if tests fail, but we want to capture that as "tests failed" not "server error"
-                // execAsync throws on non-zero exit code
                 if (e.stderr || e.stdout) {
                     stdout = e.stdout || '';
                     stderr = e.stderr || '';
                     exitCode = e.code || 1;
                 } else {
-                    console.error('Docker execution failed:', e);
-                    return NextResponse.json({ error: 'Local execution failed', details: e.message }, { status: 500 });
+                    stderr = e.message || 'Unknown Docker error';
+                    exitCode = 1;
                 }
             }
         }
@@ -324,6 +296,47 @@ export async function POST(request: NextRequest) {
         if (dbError) {
             console.error('Failed to log results via RPC:', dbError);
             console.warn('NOTE: You may need to apply migration 049_add_test_logging_rpc.sql');
+        }
+
+        // Handle post-test cleanup if requested (e.g., on final submission)
+        if (destroyAfter) {
+            console.log(`[API run-tests] destroyAfter=true, triggering cleanup for sessionId: ${sessionId}`);
+            try {
+                // 1. If it's a Fly.io app, destroy it
+                if (isFlyIo && session.container_url) {
+                    const appName = session.container_url.replace('https://', '').replace('.fly.dev', '');
+                    await destroyFlyMachine(appName);
+                    console.log(`[API run-tests] Destroyed Fly.io app: ${appName}`);
+                } 
+                // 2. If it's a local Docker container, destroy it
+                else if (!isFlyIo && session.candidate_id) {
+                    const specificContainerName = `hermes-assessment-${session.candidate_id}`;
+                    try {
+                        await execAsync(`docker rm -f ${specificContainerName}`);
+                        console.log(`[API run-tests] Destroyed local Docker container: ${specificContainerName}`);
+                    } catch (dockerError) {
+                        console.warn('[API run-tests] Failed to destroy local Docker container:', dockerError);
+                    }
+                }
+
+                // 3. Update database status to 'stopped'
+                const { error: stopError } = await adminSupabase
+                    .from('interview_sessions')
+                    .update({
+                        container_status: 'stopped',
+                        container_stopped_at: new Date().toISOString(),
+                    })
+                    .eq('session_id', sessionId);
+                
+                if (stopError) {
+                    console.error('[API run-tests] Failed to update session status to stopped:', stopError);
+                } else {
+                    console.log(`[API run-tests] Successfully updated session status to stopped`);
+                }
+            } catch (cleanupError) {
+                console.error('[API run-tests] Failed to cleanup container during run-tests:', cleanupError);
+                // We don't fail the response because the tests already ran
+            }
         }
 
         return NextResponse.json({
