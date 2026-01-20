@@ -39,9 +39,13 @@ export async function GET(request: NextRequest) {
     const results = [];
     for (const session of sessions || []) {
       try {
-        // Destroy machine (handles both old and new URL formats)
-        console.log(`[Cleanup] Destroying container: ${session.container_url}`);
-        await destroyFlyMachine(session.container_url);
+        // Extract app name from URL
+        const appName = session.container_url
+          .replace('https://', '')
+          .replace('.fly.dev', '');
+
+        console.log(`[Cleanup] Destroying container: ${appName}`);
+        await destroyFlyMachine(appName);
 
         // Update database
         await supabaseAdmin

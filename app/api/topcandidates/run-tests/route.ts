@@ -3,7 +3,6 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { destroyFlyMachine } from '@/lib/container-orchestration/flyio';
 
 const execAsync = promisify(exec);
 
@@ -17,8 +16,8 @@ export const maxDuration = 300; // 5 minutes timeout for full tests
  */
 export async function POST(request: NextRequest) {
     try {
-        const { sessionId, testType = 'quick', destroyAfter = false } = await request.json();
-        console.log('[API run-tests] Request received:', { sessionId, testType, destroyAfter, env: process.env.NODE_ENV });
+        const { sessionId, testType = 'quick' } = await request.json();
+        console.log('[API run-tests] Request received:', { sessionId, testType, env: process.env.NODE_ENV });
 
         if (!sessionId) {
             return NextResponse.json({ error: 'Session ID is required' }, { status: 400 });
@@ -325,78 +324,6 @@ export async function POST(request: NextRequest) {
         if (dbError) {
             console.error('Failed to log results via RPC:', dbError);
             console.warn('NOTE: You may need to apply migration 049_add_test_logging_rpc.sql');
-        }
-
-        // Trigger snapshot creation after full test completion
-        // Only create snapshot for full test runs to capture final state
-        let snapshotPromise: Promise<void> | null = null;
-        
-        if (testType === 'full' && sessionId !== 'local-dev-session' && sessionId !== 'local-dev-docker') {
-            console.log('[API run-tests] Triggering snapshot creation after test completion');
-
-            // Store the promise so we can await it if we need to destroy the container
-            snapshotPromise = fetch(`${process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin}/api/snapshots/create`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cookie': request.headers.get('Cookie') || '',
-                },
-                body: JSON.stringify({
-                    sessionId,
-                    trigger: 'test_completion',
-                    message: `Snapshot after ${testType} test completion`,
-                }),
-            }).then(async response => {
-                if (response.ok) {
-                    console.log('[API run-tests] Snapshot creation triggered successfully');
-                } else {
-                    const text = await response.text();
-                    console.warn('[API run-tests] Snapshot creation failed:', response.statusText, text);
-                }
-            }).catch(error => {
-                console.warn('[API run-tests] Snapshot creation error:', error);
-            });
-        }
-
-        // Handle container destruction if requested
-        if (destroyAfter && sessionId !== 'local-dev-session' && sessionId !== 'local-dev-docker' && isFlyIo) {
-            // Ensure snapshot is complete before destroying container
-            if (snapshotPromise) {
-                console.log('[API run-tests] Awaiting snapshot completion before destruction...');
-                try {
-                    // Force a timeout on the snapshot wait to prevent hanging safely
-                    // Snapshot API has its own timeout (300ms) but we want to be safe
-                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Snapshot wait timeout')), 30000));
-                    await Promise.race([snapshotPromise, timeoutPromise]);
-                    console.log('[API run-tests] Snapshot process finished');
-                } catch (e) {
-                    console.error('[API run-tests] Error or timeout awaiting snapshot:', e);
-                }
-            }
-
-            try {
-                // Pass full container URL - destroyFlyMachine handles both old and new URL formats
-                console.log(`[API run-tests] Destroying Fly.io machine after tests: ${session.container_url}`);
-
-                // Fire-and-forget destruction to avoid extending the request duration too much
-                // or await it if we want to ensure it completes within this request context
-                await destroyFlyMachine(session.container_url);
-
-                // Update session status
-                // We reuse adminSupabase since we have it invalidating session
-                 await adminSupabase
-                    .from('interview_sessions')
-                    .update({
-                        container_status: 'stopped',
-                        container_stopped_at: new Date().toISOString(),
-                    })
-                    .eq('session_id', sessionId);
-
-                console.log(`[API run-tests] Machine destroyed successfully: ${session.container_url}`);
-            } catch (destroyError) {
-                console.error('[API run-tests] Failed to destroy app:', destroyError);
-                // Don't fail the request if destruction fails, but log it
-            }
         }
 
         return NextResponse.json({

@@ -155,8 +155,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Container not found' }, { status: 404 });
     }
 
-    // Destroy Fly.io machine (handles both old and new URL formats)
-    await destroyFlyMachine(session.container_url);
+    // Extract app name from URL
+    // Format: https://[app-name].fly.dev
+    const appName = session.container_url.replace('https://', '').replace('.fly.dev', '');
+
+    // Destroy Fly.io app
+    await destroyFlyMachine(appName);
 
     // Update database
     await supabase
