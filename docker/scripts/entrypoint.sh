@@ -120,6 +120,23 @@ start_dev_server() {
     # Start npm run dev in the background, redirect output to a log file
     # Start next dev directly (avoids polling overhead from package.json script)
     nohup npx next dev --turbo > /workspace/.dev-server.log 2>&1 &
+    
+    # Warm up server in background to trigger initial compilation
+    (
+        echo "🔥 Waiting for Next.js to be ready..."
+        # Wait for port 3000 to be open (max 30s)
+        for i in {1..30}; do
+            if lsof -i :3000 >/dev/null; then
+                echo "🔥 Server port open, triggering compilation..."
+                # Send request and throw away output - this forces Next.js to compile the index page
+                curl -s http://localhost:3000/ > /dev/null
+                echo "✅ Compilation triggered"
+                break
+            fi
+            sleep 1
+        done
+    ) &
+
     echo "✅ Development server starting on port 3000"
     echo "   Logs: /workspace/.dev-server.log"
 }

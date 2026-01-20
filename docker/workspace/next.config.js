@@ -14,6 +14,13 @@ const nextConfig = {
   // Skip linting during dev for faster compilation
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  experimental: {
+    // Allow mapped fly.dev URLs to prevent cross-origin warnings
+    allowedDevOrigins: [
+      'localhost:3000',
+      '.fly.dev'
+    ],
   }
 }
 
