@@ -1,6 +1,6 @@
 # Dockerfile.assessment
 # Containerized IDE Environment for Minerva Assessment
-# Day 1-2 Deliverable: Working code-server instance with Claude Code
+# Optimized for fast builds and minimal startup time
 
 FROM codercom/code-server:latest
 
@@ -11,7 +11,7 @@ USER root
 ENV VSCODE_DISABLE_EXTENSIONS=true
 ENV VSCODE_PROXY_URI=""
 
-# Install system dependencies
+# Layer 1: System dependencies (rarely changes)
 RUN apt-get update && apt-get install -y \
     curl \
     git \
@@ -19,19 +19,29 @@ RUN apt-get update && apt-get install -y \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 20.x
+# Layer 2: Node.js installation (rarely changes)
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create workspace directory
+# Layer 3: Create directories (rarely changes)
 RUN mkdir -p /workspace && chown coder:coder /workspace
 
-# Copy workspace package.json and pre-install dependencies
-# Copy workspace source code and install dependencies
-COPY --chown=coder:coder workspace /workspace/
+# Layer 4: Install workspace dependencies BEFORE copying source code
+# This layer is cached unless package.json changes
+COPY --chown=coder:coder workspace/package.json workspace/package-lock.json* /workspace/
 RUN cd /workspace && npm install --legacy-peer-deps
 
-# Copy configuration scripts
+# Layer 5: Copy workspace source code (changes frequently)
+# This layer rebuilds when code changes, but npm install is cached
+COPY --chown=coder:coder workspace /workspace/
+
+# Layer 6: Create workspace template for restoration
+# Used by entrypoint.sh to restore workspace if corrupted
+RUN mkdir -p /usr/local/share/workspace-template && \
+    cp -r /workspace/. /usr/local/share/workspace-template/
+
+# Layer 7: Copy scripts and configuration (changes occasionally)
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/run-tests.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/log-prompt.sh /usr/local/bin/
@@ -43,7 +53,7 @@ COPY --chown=coder:coder config/vitest.assessment.ts /usr/local/share/assessment
 
 RUN chmod +x /usr/local/bin/*.sh
 
-# Configure code-server VS Code settings (auto-save, etc.)
+# Layer 8: Configure code-server settings (rarely changes)
 RUN mkdir -p /home/coder/.local/share/code-server/User
 COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/
 COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/settings.json.bak
@@ -56,8 +66,7 @@ RUN chown -R coder:coder /home/coder
 # Switch back to coder user
 USER coder
 
-# Uninstall GitHub Copilot extensions if present (must run as coder user)
-# Uninstall GitHub Copilot extensions if present (forceful removal)
+# Remove GitHub Copilot extensions if present (must run as coder user)
 RUN rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* \
     && rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot-chat*
 
