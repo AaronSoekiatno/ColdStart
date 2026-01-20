@@ -38,7 +38,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     const [showMentions, setShowMentions] = useState(false);
     const [mentionQuery, setMentionQuery] = useState('');
     const [mentionIndex, setMentionIndex] = useState(0); // For keyboard navigation
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,8 +64,16 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
         }
     }, [containerReady, flyAppName]);
 
+    // Auto-resize textarea
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto';
+            inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+        }
+    }, [input]);
+
     // Handle input changes for mentions
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const newValue = e.target.value;
         setInput(newValue);
 
@@ -107,7 +115,8 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             } else if (e.key === 'Escape') {
                 setShowMentions(false);
             }
-        } else if (e.key === 'Enter') {
+        } else if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             sendMessage();
         }
     };
@@ -551,41 +560,53 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             <div className="bg-slate-800/50 backdrop-blur-sm border-t border-slate-700/50 p-4 relative">
                 {/* Mention Popup */}
                 {showMentions && filteredFiles.length > 0 && (
-                    <div className="absolute bottom-full left-4 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20">
+                    <div className="absolute bottom-full left-4 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20">
                         <div className="text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-900/50 border-b border-slate-700">
                             Select File
                         </div>
                         <div className="max-h-48 overflow-y-auto">
-                            {filteredFiles.map((file, i) => (
-                                <button
-                                    key={file}
-                                    onClick={() => handleMentionSelect(file)}
-                                    className={`w-full text-left px-3 py-2 text-xs truncate transition-colors ${i === mentionIndex
-                                        ? 'bg-blue-600/20 text-blue-300'
-                                        : 'text-slate-300 hover:bg-slate-700/50'
-                                        }`}
-                                >
-                                    {file}
-                                </button>
-                            ))}
+                            {filteredFiles.map((file, i) => {
+                                const parts = file.split('/');
+                                const fileName = parts.pop();
+                                const dirPath = parts.join('/');
+
+                                return (
+                                    <button
+                                        key={file}
+                                        onClick={() => handleMentionSelect(file)}
+                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${i === mentionIndex
+                                            ? 'bg-blue-600/20 text-blue-300'
+                                            : 'text-slate-300 hover:bg-slate-700/50'
+                                            }`}
+                                    >
+                                        <div className="flex flex-col">
+                                            <span className="font-medium truncate">{fileName}</span>
+                                            {dirPath && (
+                                                <span className="text-[10px] opacity-50 truncate">{dirPath}</span>
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
 
-                <div className="flex gap-3">
-                    <input
+                <div className="flex gap-3 items-end">
+                    <textarea
                         ref={inputRef}
-                        type="text"
                         value={input}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder={
                             containerReady
-                                ? 'Ask me anything... (Use @ to reference files)'
+                                ? 'Ask me anything... (Use @ to reference files, Shift+Enter for new line)'
                                 : 'Waiting for container...'
                         }
                         disabled={isLoading || !containerReady}
-                        className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50"
+                        rows={1}
+                        className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 resize-none overflow-hidden min-h-[48px] max-h-[300px]"
+                        style={{ height: 'auto' }}
                     />
                     <button
                         onClick={sendMessage}

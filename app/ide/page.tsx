@@ -61,8 +61,8 @@ export default function IDEPage() {
     // Timer for elapsed time - starts when Container is RUNNING
     // Max duration: 20 minutes (1200 seconds)
     useEffect(() => {
-        // Start timer when container is running
-        if (containerStatus === 'running' && !timerRef.current) {
+        // Start timer when container is running AND iframe is fully loaded (user can see IDE)
+        if (containerStatus === 'running' && iframeLoaded && !timerRef.current) {
             timerRef.current = setInterval(() => {
                 setElapsedTime((prev) => {
                     // Check for auto-submit at 20 minutes
@@ -84,7 +84,7 @@ export default function IDEPage() {
         return () => {
             // Don't clear timer on phase change, only on unmount or finish
         };
-    }, [containerStatus]);
+    }, [containerStatus, iframeLoaded]);
 
     // Cleanup timer on unmount
     useEffect(() => {

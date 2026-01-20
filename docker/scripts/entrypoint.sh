@@ -173,7 +173,7 @@ start_dev_server() {
         for i in {1..60}; do
             # Check if port is open AND if curl can get a response
             # We use localhost:3000 but Next.js will see it as a request to the root
-            if lsof -i :3000 >/dev/null && curl -s -f http://localhost:3000/ > /dev/null 2>&1; then
+            if curl -s -f http://localhost:3000/ > /dev/null 2>&1; then
                 echo "✅ Next.js is ready! Compilation triggered."
                 # One more request just to be sure
                 curl -s http://localhost:3000/ > /dev/null

@@ -80,14 +80,20 @@ export async function POST(request: NextRequest) {
     
     // Provision Fly.io Container
     // ============================================
+    // Provision Fly.io Container
+    // ============================================
     if (data.sessionId && candidate) {
-      try {
-        const origin = request.nextUrl.origin;
-        console.log('[Interview Start] Provisioning container for session:', data.sessionId);
-        const requestOrigin = request.headers.get('origin') || request.headers.get('host') || 'localhost:3000';
-        const protocol = requestOrigin.includes('localhost') ? 'http' : 'https';
-        const baseUrl = requestOrigin.startsWith('http') ? requestOrigin : `${protocol}://${requestOrigin}`;
-        const containerResponse = await fetch(`${baseUrl}/api/topcandidates/provision-container`, {
+      // Fire-and-forget provisioning to prevent Vercel timeouts
+      // The frontend will poll for status updates
+      const origin = request.nextUrl.origin;
+      const requestOrigin = request.headers.get('origin') || request.headers.get('host') || 'localhost:3000';
+      const protocol = requestOrigin.includes('localhost') ? 'http' : 'https';
+      const baseUrl = requestOrigin.startsWith('http') ? requestOrigin : `${protocol}://${requestOrigin}`;
+      
+      console.log('[Interview Start] Triggering async provisioning for session:', data.sessionId);
+
+      // Do NOT await this promise - let it run in background
+      fetch(`${baseUrl}/api/topcandidates/provision-container`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -96,23 +102,21 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             sessionId: data.sessionId,
           }),
-        });
-
-        if (containerResponse.ok) {
-          const containerData = await containerResponse.json();
-          console.log('[Interview Start] Container provisioned:', containerData.containerUrl);
-          
-          // Add container info to response
-          data.containerUrl = containerData.containerUrl;
-          data.containerPassword = containerData.containerPassword;
-          data.type = 'container'; // Signal to frontend to use container view
+      }).then(async (response) => {
+        if (response.ok) {
+           const containerData = await response.json();
+           console.log('[Interview Start] Async provisioning success:', containerData.containerUrl);
         } else {
-          const errorText = await containerResponse.text();
-          console.error('[Interview Start] Container provisioning failed:', errorText);
+           const text = await response.text();
+           console.error('[Interview Start] Async provisioning failed:', text);
         }
-      } catch (containerError) {
-        console.error('[Interview Start] Error provisioning container:', containerError);
-      }
+      }).catch(err => {
+         console.error('[Interview Start] Async provisioning error:', err);
+      });
+
+      // Set initial status for frontend
+      data.type = 'container'; 
+      // containerUrl will be null initially, frontend will show "Provisioning..."
     }
 
     return NextResponse.json(data);
