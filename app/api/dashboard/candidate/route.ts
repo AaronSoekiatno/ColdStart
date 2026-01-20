@@ -128,10 +128,13 @@ function calculateBehavioralMetrics(sessions: any[], scores: any[]) {
   if (sessions.length === 0) {
     return {
       totalSessions: 0,
-      avgTestRuns: 0,
-      avgScore: 0,
-      avgTimeMinutes: 0,
-      passRate: 0,
+      avgTestRuns: '0',
+      avgScore: '0',
+      avgTimeMinutes: '0',
+      passRate: '0',
+      aiLeverageScore: 0,
+      validationScore: 0,
+      scoreProgression: [],
     };
   }
 
@@ -201,6 +204,10 @@ function calculateValidationScore(sessions: any[]): number {
 }
 
 function calculateScoreProgression(scores: any[]): Array<{ timestamp: string; score: number }> {
+  if (!scores || scores.length === 0) {
+    return [];
+  }
+
   return scores.slice(0, 10).map(s => ({
     timestamp: s.created_at,
     score: s.total_score || 0,

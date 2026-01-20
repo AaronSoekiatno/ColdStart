@@ -336,65 +336,67 @@ export default function DashboardPage() {
             </div>
 
             {/* Sessions Table */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <h2 className="text-xl font-semibold text-black mb-4">
-                Sessions ({data.sessions.length})
-              </h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
-                        Session ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
-                        Test Runs
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
-                        Last Score
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
-                        Duration
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
-                        Started
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {data.sessions.map((session) => (
-                      <tr key={session.session_id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm font-mono text-black">
-                          {session.session_id.substring(0, 8)}...
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <StatusBadge status={session.container_status} />
-                        </td>
-                        <td className="px-4 py-3 text-sm text-black">
-                          {session.test_run_count || 0}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <ScoreBadge score={session.last_test_score} />
-                        </td>
-                        <td className="px-4 py-3 text-sm text-black">
-                          {session.container_started_at && session.container_stopped_at
-                            ? `${Math.round((new Date(session.container_stopped_at).getTime() - new Date(session.container_started_at).getTime()) / 1000 / 60)} min`
-                            : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {session.container_started_at
-                            ? new Date(session.container_started_at).toLocaleString()
-                            : '-'}
-                        </td>
+            {data.sessions && data.sessions.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6 mb-6">
+                <h2 className="text-xl font-semibold text-black mb-4">
+                  Sessions ({data.sessions.length})
+                </h2>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
+                          Session ID
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
+                          Status
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
+                          Test Runs
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
+                          Last Score
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
+                          Duration
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-black uppercase">
+                          Started
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {data.sessions.map((session) => (
+                        <tr key={session.session_id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-mono text-black">
+                            {session.session_id.substring(0, 8)}...
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <StatusBadge status={session.container_status} />
+                          </td>
+                          <td className="px-4 py-3 text-sm text-black">
+                            {session.test_run_count || 0}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <ScoreBadge score={session.last_test_score} />
+                          </td>
+                          <td className="px-4 py-3 text-sm text-black">
+                            {session.container_started_at && session.container_stopped_at
+                              ? `${Math.round((new Date(session.container_stopped_at).getTime() - new Date(session.container_started_at).getTime()) / 1000 / 60)} min`
+                              : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {session.container_started_at
+                              ? new Date(session.container_started_at).toLocaleString()
+                              : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Score Progression */}
             {data.metrics.scoreProgression && data.metrics.scoreProgression.length > 0 && (
@@ -422,7 +424,7 @@ export default function DashboardPage() {
             )}
 
             {/* Recent Commits */}
-            {data.commits.length > 0 && (
+            {data.commits && data.commits.length > 0 && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-xl font-semibold text-black mb-4">
                   Recent Commits ({data.commits.length})
