@@ -324,14 +324,17 @@ export default function IDEPage() {
         checkAuth();
     }, [router]);
 
-    // Real-time subscription for container status updates
+    // Hybrid approach: Real-time subscription + polling fallback
+    // Real-time is fast but limited to 2 concurrent connections on FREE tier
+    // Polling ensures reliability if real-time limit is reached
     useEffect(() => {
-        if (!sessionId || sessionId === 'local-dev-session' || sessionId === 'local-dev-docker') {
+        if (!sessionId || sessionId === 'local-dev-session' || sessionId === 'local-dev-docker' || !user) {
             return;
         }
 
-        console.log('[IDE] Setting up real-time subscription for session:', sessionId);
+        console.log('[IDE] Setting up hybrid monitoring (real-time + polling) for session:', sessionId);
 
+        // 1. Real-time subscription (fast when available)
         const channel = supabase
             .channel(`container-status-${sessionId}`)
             .on(
@@ -343,7 +346,7 @@ export default function IDEPage() {
                     filter: `session_id=eq.${sessionId}`,
                 },
                 (payload) => {
-                    console.log('[IDE] Real-time update received:', payload.new);
+                    console.log('[IDE] ⚡ Real-time update received:', payload.new);
 
                     const newStatus = payload.new.container_status;
                     const newUrl = payload.new.container_url;
@@ -378,14 +381,25 @@ export default function IDEPage() {
                 }
             )
             .subscribe((status) => {
-                console.log('[IDE] Subscription status:', status);
+                console.log('[IDE] Real-time subscription status:', status);
+                // If subscription fails (e.g., FREE tier connection limit), polling fallback will handle it
             });
 
+        // 2. Polling fallback (runs every 10s as backup)
+        // Only polls if container is still provisioning
+        const pollInterval = setInterval(() => {
+            if (containerStatus === 'provisioning') {
+                console.log('[IDE] 🔄 Polling for container status (fallback)...');
+                fetchContainerInfo(user);
+            }
+        }, 10000); // 10 seconds (less aggressive than before)
+
         return () => {
-            console.log('[IDE] Cleaning up real-time subscription');
+            console.log('[IDE] Cleaning up real-time subscription and polling');
             channel.unsubscribe();
+            clearInterval(pollInterval);
         };
-    }, [sessionId, user]);
+    }, [sessionId, user, containerStatus]);
 
     // Fetch container information from the database
     const fetchContainerInfo = async (authUser: { id: string; email?: string }) => {

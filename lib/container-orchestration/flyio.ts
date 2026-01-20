@@ -3,6 +3,9 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+// Use a single persistent app with ephemeral machines
+const POOL_APP_NAME = 'hermes-assessment-pool';
+
 export interface FlyMachineConfig {
     candidateId: string;
     sessionId: string;
@@ -24,7 +27,7 @@ async function executeFlyCommand(command: string, options: { json?: boolean } = 
     const fullCommand = options.json ? `flyctl ${command} --json` : `flyctl ${command}`;
 
     try {
-        const { stdout, stderr } = await execAsync(fullCommand, {
+        const { stdout } = await execAsync(fullCommand, {
             env: {
                 ...process.env,
                 FLY_API_TOKEN: token,
@@ -50,65 +53,40 @@ async function executeFlyCommand(command: string, options: { json?: boolean } = 
 }
 
 export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ url: string }> {
-    // Using explicit app name to ensure uniqueness/traceability
-    // Truncating IDs to keep hostname length reasonable (Fly.io limit: 63 chars)
-    // Strip "session_" prefix and replace underscores with dashes (Fly.io requires lowercase letters, numbers, and dashes only)
-    // Also remove leading/trailing dashes resulting from replacement or truncation
-    let sessionPart = config.sessionId.replace('session_', '').replace(/_/g, '-').slice(0, 16);
-    // Remove trailing dash if present
+    // Generate unique machine name (not app name!)
+    // Strip prefixes and ensure fly.io DNS compliance
+    let sessionPart = config.sessionId.replace('session_', '').replace(/_/g, '-').slice(0, 12);
     if (sessionPart.endsWith('-')) {
         sessionPart = sessionPart.slice(0, -1);
     }
-    
-    // Ensure candidateId part is safe too
-    const candidatePart = config.candidateId.slice(0, 8).replace(/_/g, '-');
-    
-    const appName = `assess-${candidatePart}-${sessionPart}`.toLowerCase();
-    const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
 
-    // Use GitHub Container Registry image (automatically built by GitHub Actions)
+    const candidatePart = config.candidateId.slice(0, 8).replace(/_/g, '-');
+    const machineName = `assess-${candidatePart}-${sessionPart}`.toLowerCase();
+
+    // Use GitHub Container Registry image
     const image = `ghcr.io/hermes-startup/hermes-assessment:latest`;
 
-    console.log(`[Fly.io] Provisioning app: ${appName}`);
+    console.log(`[Fly.io] Provisioning machine: ${machineName} in app: ${POOL_APP_NAME}`);
     console.log(`[Fly.io] Using image: ${image}`);
 
-    // GHCR image is public - no authentication required for pulling
-    console.log(`[Fly.io] Using public image from GHCR`);
-
     try {
-        // 1. Create App (delete existing if needed)
+        // Check if machine already exists
         try {
-            await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
-        } catch (error: any) {
-            // If error is "taken", delete the old app and try again
-            if (error.stderr?.includes('taken') || error.message?.includes('taken')) {
-                console.log(`[Fly.io] App ${appName} already exists, deleting and recreating...`);
-                try {
-                    await executeFlyCommand(`apps destroy ${appName} --yes`, { json: false });
-                    // Wait a moment for deletion to complete
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    // Try creating again
-                    await executeFlyCommand(`apps create ${appName} --org ${orgSlug}`);
-                } catch (retryError: any) {
-                    console.error('[Fly.io] Failed to recreate app after deletion:', retryError);
-                    throw retryError;
-                }
-            } else {
-                throw error;
+            const machines = await executeFlyCommand(`machine list --app ${POOL_APP_NAME}`);
+            const existingMachine = machines.find((m: any) => m.name === machineName);
+
+            if (existingMachine) {
+                console.log(`[Fly.io] Machine ${machineName} already exists, destroying first...`);
+                await executeFlyCommand(`machine destroy ${machineName} --app ${POOL_APP_NAME} --force`, { json: false });
+                // Brief wait for cleanup
+                await new Promise(resolve => setTimeout(resolve, 1000));
             }
+        } catch (listError) {
+            // App might not exist yet - that's okay
+            console.log('[Fly.io] Could not list existing machines (app may not exist)');
         }
 
-        // Allocate shared IPv4 address (required for public accessibility)
-        // Shared IPs are free, dedicated IPs cost $2/mo
-        try {
-            await executeFlyCommand(`ips allocate-v4 --shared --app ${appName}`, { json: false });
-            console.log(`[Fly.io] Allocated shared IPv4 address`);
-        } catch (error: any) {
-            // Log but don't fail - app might already have an IP
-            console.warn('[Fly.io] Failed to allocate IPv4 (might already have one):', error.message);
-        }
-
-        // 3. Create and start a Machine via CLI
+        // Build environment variables
         const envVars: Record<string, string> = {
             PASSWORD: config.password,
             SESSION_ID: config.sessionId,
@@ -134,19 +112,20 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
 
         const region = 'sjc';
 
-        console.log(`[Fly.io] Starting machine in ${region}...`);
+        console.log(`[Fly.io] Creating machine in ${region}...`);
         console.log(`[Fly.io] Image will be pulled fresh from GHCR: ${image}`);
 
-        const runCommand = `machine run ${image} --app ${appName} --region ${region} --vm-size performance-2x --memory 4096 --port 443:8080/tcp:tls:http --port 80:8080/tcp:http --port 3000:3000/tcp:tls:http --port 5173:5173/tcp:tls:http --autostart --detach=false ${envFlags}`;
+        // Create machine directly in the pool app
+        const runCommand = `machine run ${image} --app ${POOL_APP_NAME} --name ${machineName} --region ${region} --vm-size performance-2x --memory 4096 --port 443:8080/tcp:tls:http --port 80:8080/tcp:http --port 3000:3000/tcp:tls:http --port 5173:5173/tcp:tls:http --autostart --detach=false ${envFlags}`;
 
         const runOutput = await executeFlyCommand(runCommand, { json: false });
         console.log(`[Fly.io] Machine provisioning output:`, runOutput);
 
-        // Get machine details to verify image digest
+        // Get machine details to verify
         try {
-            const machines = await executeFlyCommand(`machine list --app ${appName}`);
-            if (machines && machines.length > 0) {
-                const machine = machines[0];
+            const machines = await executeFlyCommand(`machine list --app ${POOL_APP_NAME}`);
+            const machine = machines.find((m: any) => m.name === machineName);
+            if (machine) {
                 console.log(`[Fly.io] Machine ID: ${machine.id}`);
                 console.log(`[Fly.io] Image digest: ${machine.image_ref?.digest || 'N/A'}`);
                 console.log(`[Fly.io] Machine created at: ${machine.created_at}`);
@@ -155,21 +134,34 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
             console.warn('[Fly.io] Could not fetch machine details:', e);
         }
 
-        // Machine is now running
-        const url = `https://${appName}.fly.dev`;
+        // Machine URL format: https://<machine-name>.<app-name>.fly.dev
+        const url = `https://${machineName}.${POOL_APP_NAME}.fly.dev`;
         console.log(`[Fly.io] Machine started and running. URL: ${url}`);
 
         return { url };
 
     } catch (error) {
         console.error('[Fly.io] Provisioning procedure failed:', error);
-        // Cleanup on failure?
-        // await destroyFlyMachine(appName); // risky if it was a "taken" error from someone else
         throw error;
     }
 }
 
-export async function destroyFlyMachine(appName: string) {
-    console.log(`[Fly.io] Destroying app ${appName}`);
-    await executeFlyCommand(`apps destroy ${appName} --yes`, { json: false });
+export async function destroyFlyMachine(machineNameOrUrl: string) {
+    // Extract machine name from URL if needed
+    let machineName = machineNameOrUrl;
+    if (machineNameOrUrl.includes('.fly.dev')) {
+        // URL format: https://assess-xxx.hermes-assessment-pool.fly.dev or https://assess-xxx.fly.dev
+        const hostname = machineNameOrUrl.replace('https://', '').replace('http://', '');
+        machineName = hostname.split('.')[0];
+    }
+
+    console.log(`[Fly.io] Destroying machine ${machineName} in app ${POOL_APP_NAME}`);
+
+    try {
+        await executeFlyCommand(`machine destroy ${machineName} --app ${POOL_APP_NAME} --force`, { json: false });
+        console.log(`[Fly.io] Machine ${machineName} destroyed successfully`);
+    } catch (error) {
+        console.error(`[Fly.io] Failed to destroy machine ${machineName}:`, error);
+        throw error;
+    }
 }
