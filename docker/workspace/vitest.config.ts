@@ -9,7 +9,7 @@ export default defineConfig({
         include: ['tests/**/*.test.{ts,tsx}'],  // Only run assessment tests, not node_modules
         environment: 'happy-dom',  // Faster than jsdom
         globals: true,
-
+        setupFiles: ['./tests/setup.ts'],
         testTimeout: 10000,  // 10s default (was 120s)
         hookTimeout: 5000,   // 5s for setup/teardown
         pool: 'threads',
