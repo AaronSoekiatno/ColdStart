@@ -113,32 +113,78 @@ setup_env_local() {
     echo "PORT=3000" >> "$ENV_FILE"
 }
 
+setup_test_deps() {
+    # 7. Link test dependencies into workspace node_modules
+    echo "🧪 Setting up test dependencies..."
+
+    # Ensure workspace node_modules exists
+    mkdir -p /workspace/node_modules
+
+    # List of test packages to symlink from test-deps
+    TEST_PACKAGES=(
+        "vitest"
+        "@vitejs/plugin-react-swc"
+        "@testing-library/react"
+        "@testing-library/jest-dom"
+        "happy-dom"
+        "@typescript-eslint/parser"
+        "@typescript-eslint/typescript-estree"
+        "glob"
+    )
+
+    # Symlink each test package if it exists in test-deps and not in workspace
+    for pkg in "${TEST_PACKAGES[@]}"; do
+        # Handle scoped packages (e.g., @vitejs/plugin-react-swc)
+        if [[ "$pkg" == @* ]]; then
+            scope="${pkg%%/*}"
+            package_name="${pkg#*/}"
+
+            # Create scope directory if it doesn't exist
+            mkdir -p "/workspace/node_modules/$scope"
+
+            # Symlink if not already present
+            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/test-deps/node_modules/$pkg" ]; then
+                ln -sf "/usr/local/share/assessment/test-deps/node_modules/$pkg" "/workspace/node_modules/$pkg"
+            fi
+        else
+            # Non-scoped package
+            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/test-deps/node_modules/$pkg" ]; then
+                ln -sf "/usr/local/share/assessment/test-deps/node_modules/$pkg" "/workspace/node_modules/$pkg"
+            fi
+        fi
+    done
+
+    echo "   ✓ Test dependencies linked"
+}
+
 start_dev_server() {
     # 8. Auto-start the development server
-    echo "🚀 Starting development server..."
+    echo "🚀 Starting development server via 'npm run dev'..."
     cd /workspace
     # Start npm run dev in the background, redirect output to a log file
-    # Start next dev directly (avoids polling overhead from package.json script)
-    nohup npx next dev --turbo > /workspace/.dev-server.log 2>&1 &
+    # We use npm run dev to pick up polling settings from package.json
+    nohup npm run dev > /workspace/.dev-server.log 2>&1 &
     
     # Warm up server in background to trigger initial compilation
     (
         echo "🔥 Waiting for Next.js to be ready..."
-        # Wait for port 3000 to be open (max 30s)
-        for i in {1..30}; do
-            if lsof -i :3000 >/dev/null; then
-                echo "🔥 Server port open, triggering compilation..."
-                # Send request and throw away output - this forces Next.js to compile the index page
+        # Wait for port 3000 to be open and responding (max 60s)
+        for i in {1..60}; do
+            # Check if port is open AND if curl can get a response
+            # We use localhost:3000 but Next.js will see it as a request to the root
+            if lsof -i :3000 >/dev/null && curl -s -f http://localhost:3000/ > /dev/null 2>&1; then
+                echo "✅ Next.js is ready! Compilation triggered."
+                # One more request just to be sure
                 curl -s http://localhost:3000/ > /dev/null
-                echo "✅ Compilation triggered"
                 break
             fi
+            [ $((i % 5)) -eq 0 ] && echo "⏳ Waiting for server to respond on port 3000... ($i/60)"
             sleep 1
         done
     ) &
 
-    echo "✅ Development server starting on port 3000"
-    echo "   Logs: /workspace/.dev-server.log"
+    echo "✅ Development server background process started"
+    echo "   Logs: tail -f /workspace/.dev-server.log"
 }
 
 # ============================================
@@ -157,6 +203,7 @@ run_background_setup() {
     measure_step "setup_bash_config" setup_bash_config
     measure_step "setup_git" setup_git
     measure_step "setup_env_local" setup_env_local
+    measure_step "setup_test_deps" setup_test_deps
     measure_step "start_dev_server" start_dev_server
 
 
@@ -206,6 +253,9 @@ sudo chown coder:coder /workspace
 #     echo "📦 Restoring workspace files..."
 #     cp -n -R /usr/local/share/workspace-template/. /workspace/ || true
 # fi
+
+# Setup test dependencies synchronously to ensure they're available for tests
+setup_test_deps
 
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 

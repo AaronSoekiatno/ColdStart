@@ -15,12 +15,14 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    // Allow mapped fly.dev URLs to prevent cross-origin warnings
-    allowedDevOrigins: [
+  serverActions: {
+    allowedOrigins: [
       'localhost:3000',
       '.fly.dev'
     ],
+  },
+  experimental: {
+    // Constraints removed for faster compilation
   }
 }
 
