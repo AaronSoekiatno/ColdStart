@@ -55,91 +55,36 @@ export default function IDEPage() {
     const finalTestsRunRef = useRef(false); // Prevent duplicate final test runs
     const { toast } = useToast();
 
-    // Auto-start KICK_OFF Vapi call when container is ready
-    const startKickOffCall = async (sessionId: string, userEmail?: string) => {
-        if (kickOffStartedRef.current) return;
+    // Vapi orchestration removed in favor of simple timer-based flow
 
-        // Vapi is disabled via feature flag
-        if (!VAPI_ENABLED) {
-            console.log('[IDE] Vapi is disabled via feature flag, skipping KICK_OFF call');
-            kickOffStartedRef.current = true;
-            setKickOffStarted(true);
-            return;
-        }
 
-        kickOffStartedRef.current = true;
-        setKickOffStarted(true);
-
-        try {
-            // Request microphone permission first
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                stream.getTracks().forEach(track => track.stop());
-            } catch (permError) {
-                console.error('[IDE] Microphone permission denied:', permError);
-                toast({
-                    title: 'Microphone Permission Required',
-                    description: 'Please allow microphone access for the interview.',
-                    variant: 'destructive',
-                });
-                kickOffStartedRef.current = false;
-                setKickOffStarted(false);
-                return;
-            }
-
-            // Import and initialize Vapi client
-            const vapiModule = await import('@/vapi-client.js');
-            const vapiClient = vapiModule.default || vapiModule;
-
-            if (vapiClient.initializeVapiListeners) {
-                await vapiClient.initializeVapiListeners();
-            }
-
-            // Start the KICK_OFF phase call
-            if (vapiClient.startPhaseCall) {
-                console.log('[IDE] Auto-starting KICK_OFF call for session:', sessionId);
-                await vapiClient.startPhaseCall(
-                    sessionId,
-                    'KICK_OFF',
-                    'kickoff',
-                    [] // No previous context for first phase
-                );
-
-                toast({
-                    title: 'Interview Starting',
-                    description: 'Minerva is connecting...',
-                });
-            }
-        } catch (error) {
-            console.error('[IDE] Failed to start KICK_OFF call:', error);
-            toast({
-                title: 'Failed to Start Interview',
-                description: 'Could not connect to Minerva. Please try again.',
-                variant: 'destructive',
-            });
-            kickOffStartedRef.current = false;
-            setKickOffStarted(false);
-        }
-    };
-
-    // Timer for elapsed time - only starts when BUILD phase begins
+    // Timer for elapsed time - starts when Container is RUNNING
+    // Max duration: 20 minutes (1200 seconds)
     useEffect(() => {
-        // Start timer when BUILD phase begins
-        if (currentPhase === 'BUILD' && !buildPhaseStartedRef.current) {
-            buildPhaseStartedRef.current = true;
-        }
-
-        // Only run timer if BUILD phase has started
-        if (buildPhaseStartedRef.current && !timerRef.current) {
+        // Start timer when container is running
+        if (containerStatus === 'running' && !timerRef.current) {
             timerRef.current = setInterval(() => {
-                setElapsedTime((prev) => prev + 1);
+                setElapsedTime((prev) => {
+                    // Check for auto-submit at 20 minutes
+                    if (prev >= 1200 - 1) { // 1200 seconds = 20 mins
+                        if (timerRef.current) clearInterval(timerRef.current);
+                        timerRef.current = null;
+
+                        // Auto-submit logic must be handled carefully to avoid loops
+                        // We'll trust the effect cleanup or separate trigger
+                        // But actually we can't call handleSubmit easily from inside setState callback properly without refs
+                        // So we'll trigger it via a separate effect or just check here to stop updates
+                        return 1200;
+                    }
+                    return prev + 1;
+                });
             }, 1000);
         }
 
         return () => {
-            // Don't clear timer on phase change, only on unmount
+            // Don't clear timer on phase change, only on unmount or finish
         };
-    }, [currentPhase]);
+    }, [containerStatus]);
 
     // Cleanup timer on unmount
     useEffect(() => {
@@ -150,164 +95,24 @@ export default function IDEPage() {
         };
     }, []);
 
-    // Poll for phase changes and auto-start REFLECTION call
+    // Watch for time limit
     useEffect(() => {
-        if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
-            return;
+        if (elapsedTime >= 1200 && !finalTestsRunRef.current) {
+            console.log('[IDE] Time limit reached (20 mins), auto-submitting...');
+            finalTestsRunRef.current = true; // Mark as submitted
+            toast({
+                title: 'Time Limit Reached',
+                description: '20 minutes have passed. Auto-submitting assessment...',
+                variant: 'destructive'
+            });
+            handleSubmit();
         }
+    }, [elapsedTime]);
 
-        const pollPhaseChanges = async () => {
-            try {
-                const { data: session, error } = await supabase
-                    .from('interview_sessions')
-                    .select('current_phase')
-                    .eq('session_id', sessionId)
-                    .single();
 
-                if (error) {
-                    console.error('[IDE] Error polling phase:', error);
-                    return;
-                }
 
-                const newPhase = session?.current_phase || null;
+    // Vapi poll phase and end listener removed
 
-                // If phase changed to REFLECTION and no call is active, start the call
-                if (newPhase === 'REFLECTION' && currentPhase !== 'REFLECTION') {
-                    console.log('[IDE] Phase transitioned to REFLECTION, checking if call should start...');
-
-                    // Prevent duplicate REFLECTION call attempts
-                    if (reflectionStartedRef.current) {
-                        console.log('[IDE] REFLECTION call already started, skipping duplicate');
-                        setCurrentPhase(newPhase);
-                        return;
-                    }
-
-                    // Vapi is disabled via feature flag
-                    if (!VAPI_ENABLED) {
-                        console.log('[IDE] Vapi is disabled via feature flag, skipping REFLECTION call');
-                        reflectionStartedRef.current = true;
-                        setCurrentPhase(newPhase);
-                        return;
-                    }
-
-                    // Check if Vapi call is already active
-                    try {
-                        const vapiModule = await import('@/vapi-client.js');
-                        const vapiClient = vapiModule.default || vapiModule;
-
-                        if (vapiClient.isCallActive && !vapiClient.isCallActive()) {
-                            reflectionStartedRef.current = true;
-                            console.log('[IDE] Starting REFLECTION call automatically...');
-
-                            // Start the REFLECTION call (without history for now to isolate 400 error)
-                            if (vapiClient.startPhaseCall) {
-                                await vapiClient.startPhaseCall(
-                                    sessionId,
-                                    'REFLECTION',
-                                    'reflection',
-                                    [] // Empty history to test if that's causing the 400
-                                );
-
-                                toast({
-                                    title: 'Minerva is calling',
-                                    description: 'Post-mortem phase has started. Minerva will ask you reflection questions.',
-                                });
-                            }
-                        }
-                    } catch (vapiError) {
-                        console.error('[IDE] Error starting REFLECTION call:', vapiError);
-                    }
-                }
-
-                setCurrentPhase(newPhase);
-            } catch (error) {
-                console.error('[IDE] Error in phase polling:', error);
-            }
-        };
-
-        // Poll every 3 seconds for phase changes
-        phasePollIntervalRef.current = setInterval(pollPhaseChanges, 3000);
-
-        // Initial check
-        pollPhaseChanges();
-
-        return () => {
-            if (phasePollIntervalRef.current) {
-                clearInterval(phasePollIntervalRef.current);
-            }
-        };
-    }, [sessionId, currentPhase, toast]);
-
-    // Listen for REFLECTION call end to complete the assessment
-    useEffect(() => {
-        if (!sessionId || sessionId === 'local-dev-docker' || sessionId === 'local-dev-session') {
-            return;
-        }
-
-        // Vapi is disabled via feature flag
-        if (!VAPI_ENABLED) {
-            console.log('[IDE] Vapi is disabled via feature flag, skipping REFLECTION call end listener');
-            return;
-        }
-
-        let callEndCallback: (() => void) | null = null;
-        let vapiClient: any = null;
-
-        const setupPostMortemEndListener = async () => {
-            try {
-                const vapiModule = await import('@/vapi-client.js');
-                vapiClient = vapiModule.default || vapiModule;
-
-                callEndCallback = async () => {
-                    // Prevent duplicate test runs (React Strict Mode + multiple listeners)
-                    if (finalTestsRunRef.current) {
-                        console.log('[IDE] Final tests already triggered, skipping duplicate');
-                        return;
-                    }
-
-                    // Check if we're in REFLECTION phase when call ends
-                    if (currentPhase === 'REFLECTION') {
-                        finalTestsRunRef.current = true;
-                        console.log('[IDE] REFLECTION call ended, starting background test run...');
-
-                        toast({
-                            title: 'Reflection Complete',
-                            description: 'Final validation is running in the background...',
-                        });
-
-                        // Fire-and-forget: Run FULL test suite in the background
-                        // Don't block the UI - validation can take several minutes
-                        if (testRunnerRef.current) {
-                            testRunnerRef.current.runTests('full')
-                                .then(() => {
-                                    toast({
-                                        title: 'Final Validation Complete',
-                                        description: 'Review your test results above.',
-                                    });
-                                })
-                                .catch(error => {
-                                    console.error('[IDE] Background test run failed:', error);
-                                });
-                        }
-                    }
-                };
-
-                if (vapiClient.onEvent) {
-                    vapiClient.onEvent('onCallEnd', callEndCallback);
-                }
-            } catch (error) {
-                console.error('[IDE] Error setting up REFLECTION end listener:', error);
-            }
-        };
-
-        setupPostMortemEndListener();
-
-        return () => {
-            if (vapiClient && vapiClient.offEvent && callEndCallback) {
-                vapiClient.offEvent('onCallEnd', callEndCallback);
-            }
-        };
-    }, [sessionId, toast, router]); // Removed currentPhase from deps to prevent re-registering listeners
 
     // Check auth and fetch container info
     useEffect(() => {
@@ -372,11 +177,8 @@ export default function IDEPage() {
                             console.error('[IDE] Failed to parse app name:', e);
                         }
 
-                        // Auto-start KICK_OFF call if needed
-                        if (payload.new.current_phase === 'KICK_OFF' && !kickOffStartedRef.current && user?.email) {
-                            console.log('[IDE] Container ready via real-time, auto-starting KICK_OFF...');
-                            startKickOffCall(sessionId, user.email);
-                        }
+                        // Auto-start KICK_OFF call logic removed
+
                     } else if (newStatus === 'error' || newStatus === 'stopped') {
                         console.log('[IDE] Container error/stopped:', newStatus);
                         setContainerStatus('error');
@@ -474,11 +276,8 @@ export default function IDEPage() {
                     console.error('[IDE] Failed to parse app name from URL:', session.container_url);
                 }
 
-                // Auto-start KICK_OFF call when container is ready and we're in KICK_OFF phase
-                if (session.current_phase === 'KICK_OFF' && !kickOffStartedRef.current) {
-                    console.log('[IDE] Container ready, auto-starting KICK_OFF call...');
-                    startKickOffCall(session.session_id, authUser.email);
-                }
+                // Auto-start KICK_OFF call logic removed
+
             } else if (session.container_status === 'provisioning' || !session.container_url) {
                 // Set provisioning state - real-time subscription will handle updates
                 setContainerStatus('provisioning');
@@ -600,7 +399,8 @@ export default function IDEPage() {
                 description: 'Your work has been saved. Final validation is running in the background.',
             });
 
-            router.push('/assessment?submitted=true');
+            router.push('/post-mortem');
+
         } catch (error) {
             console.error('[IDE] Error during submission:', error);
             // Still navigate even if cleanup fails
@@ -608,7 +408,8 @@ export default function IDEPage() {
                 title: 'Assessment Submitted',
                 description: 'Your work has been saved.',
             });
-            router.push('/assessment?submitted=true');
+            router.push('/post-mortem');
+
         }
     };
 
