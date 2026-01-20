@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+// @ts-ignore - Dependency available in container
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
@@ -16,6 +17,7 @@ export default defineConfig({
         testTimeout: 10000,
         hookTimeout: 5000,
         pool: 'threads',
+        // @ts-ignore - Vitest types mismatch in local dev vs container
         poolOptions: {
             threads: {
                 singleThread: true,
