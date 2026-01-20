@@ -98,10 +98,17 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
             }
         }
 
-        // IPv4 allocation is automatic for new Fly apps (shared IPv4)
-        // Skipping explicit allocation saves 1-2 seconds
+        // Allocate shared IPv4 address (required for public accessibility)
+        // Shared IPs are free, dedicated IPs cost $2/mo
+        try {
+            await executeFlyCommand(`ips allocate-v4 --shared --app ${appName}`, { json: false });
+            console.log(`[Fly.io] Allocated shared IPv4 address`);
+        } catch (error: any) {
+            // Log but don't fail - app might already have an IP
+            console.warn('[Fly.io] Failed to allocate IPv4 (might already have one):', error.message);
+        }
 
-        // Create and start a Machine via CLI
+        // 3. Create and start a Machine via CLI
         const envVars: Record<string, string> = {
             PASSWORD: config.password,
             SESSION_ID: config.sessionId,
