@@ -19,6 +19,7 @@ import {
     Eye,
     MessageSquare,
     Mic,
+    ExternalLink,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
@@ -34,6 +35,7 @@ export default function IDEPage() {
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
     const [showAgentChat, setShowAgentChat] = useState(false);
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
@@ -838,20 +840,9 @@ export default function IDEPage() {
                 {/* Right: Preview and Maximize buttons */}
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => {
-                            if (containerUrl) {
-                                const url = containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`;
-                                isPreviewingRef.current = true;
-                                window.open(`${url}proxy/3000/`, '_blank');
-
-                                // Reset after delay
-                                setTimeout(() => {
-                                    isPreviewingRef.current = false;
-                                }, 2000);
-                            }
-                        }}
-                        className="p-2 text-slate-400 hover:text-white transition-colors"
-                        title="Preview App"
+                        onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+                        className={`p-2 transition-colors ${isPreviewOpen ? 'text-blue-400 bg-blue-400/10 rounded-lg' : 'text-slate-400 hover:text-white'}`}
+                        title={isPreviewOpen ? "Close Preview" : "Preview App"}
                     >
                         <Eye className="h-4 w-4" />
                     </button>
@@ -867,7 +858,7 @@ export default function IDEPage() {
             {/* Main Content Area */}
             <div className="flex-1 flex relative overflow-hidden">
                 {/* Code-Server Iframe */}
-                <div className="flex-1 relative">
+                <div className={`relative transition-all duration-300 ${isPreviewOpen ? 'w-1/2 border-r border-slate-700' : 'flex-1'}`}>
                     {/* Loading Overlay - Shows while IDE is loading */}
                     {!iframeLoaded && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -929,6 +920,51 @@ export default function IDEPage() {
                         onLoad={() => setIframeLoaded(true)}
                     />
                 </div>
+
+                {/* Preview App Split Pane */}
+                {isPreviewOpen && containerUrl && (
+                    <div className="w-1/2 flex flex-col bg-slate-900 border-l border-slate-700">
+                        {/* Preview Toolbar */}
+                        <div className="h-10 border-b border-slate-700 flex items-center justify-between px-3 bg-slate-800">
+                            <span className="text-xs text-slate-400 flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500" />
+                                Preview: Port 3000
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500 truncate max-w-[200px] font-mono select-all">
+                                    {`${containerUrl}proxy/3000/`}
+                                </span>
+                                <button
+                                    onClick={() => {
+                                        const url = containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`;
+                                        isPreviewingRef.current = true;
+                                        window.open(`${url}proxy/3000/`, '_blank');
+                                        setTimeout(() => { isPreviewingRef.current = false; }, 2000);
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                                    title="Open in New Tab"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </button>
+                                <button
+                                    onClick={() => setIsPreviewOpen(false)}
+                                    className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </button>
+                            </div>
+                        </div>
+                        {/* Preview Iframe */}
+                        <div className="flex-1 relative bg-white">
+                            <iframe
+                                src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
+                                className="absolute inset-0 w-full h-full border-0"
+                                title="Application Preview"
+                                allow="clipboard-read; clipboard-write; microphone; camera; geolocation"
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* Agent Chat Sliding Panel */}
                 <div
