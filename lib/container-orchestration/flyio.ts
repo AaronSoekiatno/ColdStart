@@ -100,13 +100,17 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
 
         // Allocate shared IPv4 address (required for public accessibility)
         // Shared IPs are free, dedicated IPs cost $2/mo
-        try {
-            await executeFlyCommand(`ips allocate-v4 --shared --app ${appName}`, { json: false });
-            console.log(`[Fly.io] Allocated shared IPv4 address`);
-        } catch (error: any) {
-            // Log but don't fail - app might already have an IP
-            console.warn('[Fly.io] Failed to allocate IPv4 (might already have one):', error.message);
-        }
+        // 2. Allocate IPv4 (Parallelized)
+        // We start this immediately but don't await it until we also start the machine
+        const ipAllocationPromise = (async () => {
+            try {
+                await executeFlyCommand(`ips allocate-v4 --shared --app ${appName}`, { json: false });
+                console.log(`[Fly.io] Allocated shared IPv4 address`);
+            } catch (error: any) {
+                // Log but don't fail - app might already have one
+                console.warn('[Fly.io] Failed to allocate IPv4 (might already have one):', error.message);
+            }
+        })();
 
         // 3. Create and start a Machine via CLI
         const envVars: Record<string, string> = {
@@ -139,7 +143,7 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
 
         const runCommand = `machine run ${image} --app ${appName} --region ${region} --vm-size performance-2x --memory 4096 --port 443:8080/tcp:tls:http --port 80:8080/tcp:http --port 3000:3000/tcp:tls:http --port 5173:5173/tcp:tls:http --autostart --detach=false ${envFlags}`;
 
-        const runOutput = await executeFlyCommand(runCommand, { json: false });
+        const [_, runOutput] = await Promise.all([ipAllocationPromise, executeFlyCommand(runCommand, { json: false })]);
         console.log(`[Fly.io] Machine provisioning output:`, runOutput);
 
         // Get machine details to verify image digest

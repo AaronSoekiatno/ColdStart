@@ -118,7 +118,8 @@ start_dev_server() {
     echo "🚀 Starting development server..."
     cd /workspace
     # Start npm run dev in the background, redirect output to a log file
-    nohup npm run dev > /workspace/.dev-server.log 2>&1 &
+    # Start next dev directly (avoids polling overhead from package.json script)
+    nohup npx next dev --turbo > /workspace/.dev-server.log 2>&1 &
     echo "✅ Development server starting on port 3000"
     echo "   Logs: /workspace/.dev-server.log"
 }
@@ -183,10 +184,11 @@ check_settings
 echo "🔧 Fixing workspace permissions..."
 sudo chown coder:coder /workspace
 # Restore workspace if completely empty (emergency fallback)
-if [ ! -f "/workspace/package.json" ] && [ -d "/usr/local/share/workspace-template" ]; then
-    echo "📦 Restoring workspace files..."
-    cp -n -R /usr/local/share/workspace-template/. /workspace/ || true
-fi
+# Restore check removed as template is no longer valid
+# if [ ! -f "/workspace/package.json" ] && [ -d "/usr/local/share/workspace-template" ]; then
+#     echo "📦 Restoring workspace files..."
+#     cp -n -R /usr/local/share/workspace-template/. /workspace/ || true
+# fi
 
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 
