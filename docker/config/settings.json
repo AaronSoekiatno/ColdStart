@@ -44,10 +44,20 @@
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
     "github.copilot.enable": {
-        "*": false
+        "*": false,
+        "yaml": false,
+        "plaintext": false,
+        "markdown": false
     },
-    "telemetry.telemetryLevel": "off",
+    "github.copilot.editor.enableAutoCompletions": false,
+    "github.copilot.advanced.messages": false,
+    "github.copilot.chat.enable": false,
+    "github.copilot.inlineChat.enable": false,
+    "interactiveEditor.enabled": false,
+    "chat.editor.enabled": false,
     "chat.commandCenter.enabled": false,
+    "explorer.compactFolders": false,
+    "telemetry.telemetryLevel": "off",
     "chat.editor.defaultScope": "selection",
     "workbench.panel.defaultLocation": "bottom",
     "terminal.integrated.defaultLocation": "editor",

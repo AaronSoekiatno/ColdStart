@@ -375,13 +375,12 @@ export async function POST(request: NextRequest) {
             }
 
             try {
-                // Extract app name from URL (e.g., https://assess-xxx.fly.dev -> assess-xxx)
-                const appName = session.container_url.replace('https://', '').replace('.fly.dev', '');
-                console.log(`[API run-tests] Destroying Fly.io app after tests: ${appName}`);
-                
+                // Pass full container URL - destroyFlyMachine handles both old and new URL formats
+                console.log(`[API run-tests] Destroying Fly.io machine after tests: ${session.container_url}`);
+
                 // Fire-and-forget destruction to avoid extending the request duration too much
                 // or await it if we want to ensure it completes within this request context
-                await destroyFlyMachine(appName);
+                await destroyFlyMachine(session.container_url);
 
                 // Update session status
                 // We reuse adminSupabase since we have it invalidating session
@@ -392,8 +391,8 @@ export async function POST(request: NextRequest) {
                         container_stopped_at: new Date().toISOString(),
                     })
                     .eq('session_id', sessionId);
-                
-                console.log(`[API run-tests] App ${appName} destroyed successfully`);
+
+                console.log(`[API run-tests] Machine destroyed successfully: ${session.container_url}`);
             } catch (destroyError) {
                 console.error('[API run-tests] Failed to destroy app:', destroyError);
                 // Don't fail the request if destruction fails, but log it
