@@ -36,6 +36,7 @@ RUN mkdir -p /usr/local/share/assessment && \
         @vitejs/plugin-react-swc@^3.11.0 \
         @testing-library/react@^14.2.0 \
         @testing-library/jest-dom@^6.4.0 \
+        @testing-library/user-event@^14.5.2 \
         happy-dom@^12.10.3 \
         @typescript-eslint/parser@^8.52.0 \
         @typescript-eslint/typescript-estree@^8.52.0 \

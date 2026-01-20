@@ -126,6 +126,7 @@ setup_test_deps() {
         "@vitejs/plugin-react-swc"
         "@testing-library/react"
         "@testing-library/jest-dom"
+        "@testing-library/user-event"
         "happy-dom"
         "@typescript-eslint/parser"
         "@typescript-eslint/typescript-estree"
