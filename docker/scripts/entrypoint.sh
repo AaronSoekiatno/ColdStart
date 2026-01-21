@@ -236,9 +236,26 @@ check_settings() {
 
     # Force remove GitHub Copilot extensions directly in the entrypoint
     # This runs synchronously BEFORE code-server starts to prevent them from loading
-    echo "🚫 Removing GitHub Copilot extensions..."
+    echo "🚫 Removing GitHub Copilot extensions and chat UI..."
+    
+    # Remove extensions from all possible locations
+    rm -rf /home/coder/.local/share/code-server/extensions/github.copilot* 2>/dev/null || true
     rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* 2>/dev/null || true
-    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot-chat* 2>/dev/null || true
+    rm -rf /home/coder/.vscode-server/extensions/github.copilot* 2>/dev/null || true
+    rm -rf /home/coder/.vscode-server/extensions/GitHub.copilot* 2>/dev/null || true
+    
+    # Remove extension state and cache
+    rm -rf /home/coder/.local/share/code-server/CachedExtensions* 2>/dev/null || true
+    rm -rf /home/coder/.local/share/code-server/CachedExtensionVSIXs* 2>/dev/null || true
+    
+    # Remove any chat-related state
+    rm -rf /home/coder/.local/share/code-server/User/workspaceStorage/*/ms-vscode.chat* 2>/dev/null || true
+    rm -rf /home/coder/.local/share/code-server/User/globalStorage/github.copilot* 2>/dev/null || true
+    
+    # Disable chat views in the UI state
+    find /home/coder/.local/share/code-server -name "state.vscdb*" -exec rm -f {} \; 2>/dev/null || true
+    
+    echo "   ✓ Copilot extensions and chat UI removed"
 }
 
 echo "🛠️  Verifying configuration..."

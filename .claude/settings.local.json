@@ -29,7 +29,10 @@
       "Bash(timeout /t 2 /nobreak)",
       "Bash(npm info:*)",
       "Bash(docker exec:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "WebFetch(domain:hub.docker.com)",
+      "WebFetch(domain:github.com)",
+      "WebSearch"
     ],
     "deny": [],
     "ask": []
