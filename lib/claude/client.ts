@@ -33,7 +33,7 @@ export async function* streamClaudeResponse(
   } = {}
 ): AsyncGenerator<ClaudeStreamChunk> {
   const {
-    model = 'claude-3-5-haiku-20241022', // Haiku for cost savings
+    model = 'claude-haiku-4-5-20251001', // Haiku for cost savings
     maxTokens = 4096,
     systemPrompt = 'You are a helpful coding assistant.',
   } = options;

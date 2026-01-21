@@ -8,17 +8,17 @@ Prevents Claude from reading unnecessary files:
 - ✅ Only allows reading source code files (`.ts`, `.tsx`, `.js`, `.jsx`, `.json`, `.md`, `.css`, `.html`)
 - **Savings**: Prevents large context from dependency files
 
-### 2. **Model Selection - Haiku by Default** (NEW)
+### 2. **Model Selection - Sonnet by Default** (UPGRADED)
 ```bash
-CLAUDE_MODEL="${CLAUDE_MODEL:-claude-3-5-haiku-latest}"
+CLAUDE_MODEL="${CLAUDE_MODEL:-claude-3-5-sonnet-latest}"
 ```
-- Haiku: ~$0.25/$1.25 per MTok (input/output)
 - Sonnet: ~$3/$15 per MTok (input/output)
-- **Savings: ~12x cheaper for routine tasks!**
+- Haiku: ~$0.25/$1.25 per MTok (input/output)
+- **Note**: Reverted to Sonnet for better coding performance.
 
-To use Sonnet for complex tasks, set:
+To use Haiku for cost savings, set:
 ```bash
-CLAUDE_MODEL=claude-3-5-sonnet-latest
+CLAUDE_MODEL=claude-3-5-haiku-latest
 ```
 
 ### 3. **Max Turns Limit** (NEW)

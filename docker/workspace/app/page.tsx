@@ -1,66 +1,207 @@
 export default function Home() {
   return (
-    <div className="flex items-center justify-center h-full">
-      <div className="max-w-2xl p-8">
-        <h1 className="text-3xl font-bold mb-4">
-          Real-Time Notification Bell Assessment
-        </h1>
+    <div className="h-full overflow-y-auto bg-background">
+      {/* Instagram-style Header */}
+      <header className="sticky top-0 z-10 bg-background border-b border-border">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+          {/* Logo */}
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 bg-clip-text text-transparent">
+            InstaClone
+          </h1>
 
-        <div className="space-y-4 text-muted-foreground">
-          <p>
-            <strong>Time Limit:</strong> 20 minutes<br />
-            <strong>Total Points:</strong> 100 (Backend: 40, Frontend: 40, Integration: 20)
-          </p>
-
-          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-            <p className="font-semibold text-foreground mb-2">
-              📋 Read the full instructions:
-            </p>
-            <p>
-              Open <code className="bg-muted px-2 py-1 rounded">INSTRUCTIONS.md</code> in the workspace root
-            </p>
+          {/* Search Bar */}
+          <div className="hidden md:block flex-1 max-w-xs mx-8">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search"
+                disabled
+                className="w-full bg-muted rounded-lg px-4 py-2 text-sm placeholder:text-muted-foreground cursor-not-allowed"
+              />
+            </div>
           </div>
 
-          <div>
-            <p className="font-semibold text-foreground mb-2">What you'll build:</p>
-            <ul className="list-disc list-inside space-y-1">
-              <li>🔔 Notification bell icon with unread count badge</li>
-              <li>📋 Dropdown menu showing all notifications</li>
-              <li>⚡ Real-time updates using Supabase Realtime</li>
-              <li>✅ Mark notifications as read functionality</li>
-            </ul>
+          {/* Action Icons */}
+          <div className="flex items-center gap-4">
+            <button className="hover:opacity-70 transition-opacity" disabled>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+            </button>
+            <button className="hover:opacity-70 transition-opacity" disabled>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
+            <button className="hover:opacity-70 transition-opacity" disabled>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button className="hover:opacity-70 transition-opacity" disabled>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+            {/* Notification Bell - Non-functional, candidates make it work */}
+            <div className="relative">
+              <svg className="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-semibold">
+                3
+              </span>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400" />
           </div>
-
-          <div>
-            <p className="font-semibold text-foreground mb-2">Files to modify:</p>
-            <ul className="list-disc list-inside space-y-1 text-sm">
-              <li><code>/lib/notifications.service.ts</code> - Service layer</li>
-              <li><code>/app/api/notifications/route.ts</code> - GET endpoint</li>
-              <li><code>/app/api/notifications/[id]/mark-read/route.ts</code> - POST endpoint</li>
-              <li><code>/hooks/use-notifications.ts</code> - React hook</li>
-              <li><code>/components/notifications/notification-bell.tsx</code> - Bell UI</li>
-              <li><code>/components/notifications/notification-dropdown.tsx</code> - Dropdown UI</li>
-            </ul>
-          </div>
-
-          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-            <p className="font-semibold text-foreground mb-2">
-              ✅ Getting started:
-            </p>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Read INSTRUCTIONS.md</li>
-              <li>Look for TODO comments in each file</li>
-              <li>Start with backend (service + API routes)</li>
-              <li>Then frontend (hook + components)</li>
-              <li>Run tests: <code className="bg-muted px-2 py-1 rounded">npm test</code></li>
-            </ol>
-          </div>
-
-          <p className="text-sm italic">
-            Note: The notification bell icon is already visible in the top-right corner.
-            Complete the TODOs to make it functional!
-          </p>
         </div>
+      </header>
+
+      {/* Stories Row */}
+      <div className="border-b border-border bg-background">
+        <div className="max-w-5xl mx-auto px-4 py-4">
+          <div className="flex gap-4 overflow-x-auto hide-scrollbar">
+            {/* Your Story */}
+            <div className="flex flex-col items-center gap-1 min-w-fit">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
+                <div className="w-full h-full rounded-full bg-background p-[3px]">
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center text-white text-xs font-semibold">
+                    You
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs text-muted-foreground">Your story</span>
+            </div>
+
+            {/* Mock User Stories */}
+            {['sarah_dev', 'john_code', 'emma_ui', 'alex_full', 'lisa_pm'].map((username, i) => (
+              <div key={username} className="flex flex-col items-center gap-1 min-w-fit">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
+                  <div className="w-full h-full rounded-full bg-background p-[3px]">
+                    <div
+                      className="w-full h-full rounded-full"
+                      style={{
+                        background: `linear-gradient(135deg, hsl(${i * 60}, 70%, 60%), hsl(${i * 60 + 40}, 70%, 50%))`
+                      }}
+                    />
+                  </div>
+                </div>
+                <span className="text-xs text-muted-foreground truncate max-w-[64px]">{username}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Feed */}
+      <div className="max-w-xl mx-auto py-8 px-4 space-y-8">
+        {/* Post 1 */}
+        <article className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="flex items-center gap-3 p-4">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400" />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">sarah_dev</p>
+              <p className="text-xs text-muted-foreground">San Francisco, CA</p>
+            </div>
+            <button className="text-muted-foreground hover:opacity-70">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="5" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="12" cy="19" r="1.5" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="aspect-square bg-gradient-to-br from-purple-200 via-pink-200 to-orange-200 dark:from-purple-900 dark:via-pink-900 dark:to-orange-900 flex items-center justify-center">
+            <p className="text-4xl">🚀</p>
+          </div>
+
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-4">
+              <button className="hover:opacity-70 transition-opacity">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+              <button className="hover:opacity-70 transition-opacity">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </button>
+              <button className="hover:opacity-70 transition-opacity">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+              <button className="ml-auto hover:opacity-70 transition-opacity">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+            </div>
+            <p className="font-semibold text-sm">142 likes</p>
+            <p className="text-sm">
+              <span className="font-semibold">sarah_dev</span>{' '}
+              Just shipped a new feature! 🎉 Real-time notifications are live!
+            </p>
+            <p className="text-sm text-muted-foreground">View all 23 comments</p>
+            <p className="text-xs text-muted-foreground uppercase">2 hours ago</p>
+          </div>
+        </article>
+
+        {/* Post 2 */}
+        <article className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="flex items-center gap-3 p-4">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-400" />
+            <div className="flex-1">
+              <p className="font-semibold text-sm">john_code</p>
+              <p className="text-xs text-muted-foreground">New York, NY</p>
+            </div>
+            <button className="text-muted-foreground hover:opacity-70">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="5" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="12" cy="19" r="1.5" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="aspect-square bg-gradient-to-br from-indigo-200 via-blue-200 to-cyan-200 dark:from-indigo-900 dark:via-blue-900 dark:to-cyan-900 flex items-center justify-center">
+            <p className="text-4xl">💻</p>
+          </div>
+
+          <div className="p-4 space-y-3">
+            <div className="flex items-center gap-4">
+              <button className="hover:opacity-70 transition-opacity">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </button>
+              <button className="hover:opacity-70 transition-opacity">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </button>
+              <button className="hover:opacity-70 transition-opacity">
+                <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </button>
+              <button className="ml-auto hover:opacity-70 transition-opacity">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+            </div>
+            <p className="font-semibold text-sm">89 likes</p>
+            <p className="text-sm">
+              <span className="font-semibold">john_code</span>{' '}
+              Clean code is happy code ✨ #webdev #coding
+            </p>
+            <p className="text-sm text-muted-foreground">View all 12 comments</p>
+            <p className="text-xs text-muted-foreground uppercase">5 hours ago</p>
+          </div>
+        </article>
       </div>
     </div>
   );

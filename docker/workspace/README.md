@@ -1,121 +1,299 @@
-# Build a Real-Time Notification Bell 🔔
+# Build a Real-Time Notification System 🔔
 
-**Time Limit:** 20 Minutes | **Score:** 100 Points
-
-## Your Mission
-
-Build a **real-time notification system** that:
-- Shows a bell icon with an unread count badge
-- Displays notifications in a dropdown when clicked
-- Updates instantly when new notifications arrive (no page refresh needed)
-- Allows users to mark notifications as read
-- Works across multiple browser tabs
-
-**Tech Stack:** Next.js 15, React, Supabase Realtime, TypeScript
+**Time Limit:** 20 Minutes  
+**Total Score:** 100 Points (Backend: 40 | Frontend: 40 | Integration: 20)
 
 ---
 
-## What We're Testing
+## 🎯 Your Mission
+
+You're working on **InstaClone**, a social media application. Your task is to build a **real-time notification system** that updates instantly across all browser tabs.
+
+### What You'll Build
+
+The notification bell in the header currently shows a static badge with "3" notifications. Make it functional by implementing:
+
+- ✅ **Notification Bell** - Icon with dynamic unread count badge
+- ✅ **Notification Dropdown** - Shows list of all notifications when clicked
+- ✅ **Real-time Updates** - Instantly updates when new notifications arrive (no refresh needed)
+- ✅ **Mark as Read** - Click a notification to mark it as read and remove from unread count
+- ✅ **Multi-tab Sync** - Changes sync across all open browser tabs in real-time
+
+**Tech Stack:** Next.js 15, React, TypeScript, Supabase Realtime
+
+---
+
+## 🧪 What We're Testing
 
 This assessment measures **how effectively you use AI tools** to ship production-quality features:
 
 1. **Speed** - Can you implement features quickly with AI assistance?
 2. **Verification** - Can you catch mistakes in AI-generated code?
-3. **Quality** - Does your code actually work and handle edge cases?
+3. **Quality** - Does your code handle edge cases and security concerns?
 
-**AI tools are encouraged!** Use Claude Code, Copilot, ChatGPT, or whatever helps you move faster.
-
----
-
-## Getting Started
-
-### 1. Read the Instructions (2 min)
-Open `ASSESSMENT_V2_UNIFIED.md` for complete requirements and implementation guide.
-
-### 2. Implement the TODOs (15 min)
-You'll find TODO comments in **6 files**:
-
-**Backend (40 points):**
-- `lib/notifications.service.ts` - Database queries
-- `app/api/notifications/route.ts` - GET endpoint
-- `app/api/notifications/[id]/mark-read/route.ts` - POST endpoint
-
-**Frontend (40 points):**
-- `hooks/use-notifications.ts` - State management + real-time
-- `components/notifications/notification-bell.tsx` - Bell icon + badge
-- `components/notifications/notification-dropdown.tsx` - Dropdown list
-
-**Real-time Integration (20 points):**
-- WebSocket subscriptions already scaffolded - you just implement the handlers
-
-### 3. Test Your Code (3 min)
-```bash
-npm test
-```
-
-Tests will show you exactly what's working and what needs fixing.
+> **AI tools are ENCOURAGED!** Use Claude Code, GitHub Copilot, ChatGPT, or any tool that helps you move faster. We're testing your ability to verify and ship AI-generated code, not memorize syntax.
 
 ---
 
-## Success Criteria
+## 🚀 Getting Started
 
-**Minimum Passing (60/100):**
-- Backend API returns notifications ✓
-- Frontend displays the list ✓
-- Mark as read works ✓
+### Step 1: Understand the Application (2 min)
 
-**Good Implementation (80/100):**
-- All backend tests pass ✓
-- Most frontend tests pass ✓
-- Real-time updates work ✓
+Open the application in your browser. You'll see:
+- **InstaClone** - An Instagram-like interface with a header, stories, and feed
+- **Notification Bell** - In the top-right header (currently static with badge "3")
+- **Your Goal** - Make this bell functional with real-time updates
 
-**Excellent Implementation (90-100/100):**
-- All tests pass ✓
-- No security issues ✓
-- No memory leaks ✓
-- Clean, readable code ✓
+### Step 2: Implement the TODOs (15 min)
+
+You'll find TODO comments in **6 files**. Complete them in this order:
+
+#### **Backend (40 points)**
+
+1. **`lib/notifications.service.ts`** - Database query functions
+   - Fetch all notifications for a user
+   - Fetch unread count
+   - Mark notification as read
+   
+2. **`app/api/notifications/route.ts`** - GET endpoint
+   - Return all notifications as JSON
+   - Handle errors gracefully
+   
+3. **`app/api/notifications/[id]/mark-read/route.ts`** - POST endpoint
+   - Mark a specific notification as read
+   - Return updated notification
+
+#### **Frontend (40 points)**
+
+4. **`hooks/use-notifications.ts`** - State management + real-time
+   - Fetch notifications on mount
+   - Subscribe to real-time updates
+   - Handle mark as read mutations
+   - Clean up subscriptions on unmount
+   
+5. **`components/notifications/notification-bell.tsx`** - Bell icon + badge
+   - Display unread count badge
+   - Toggle dropdown on click
+   
+6. **`components/notifications/notification-dropdown.tsx`** - Dropdown UI
+   - Display list of notifications
+   - Handle click to mark as read
+   - Show empty state when no notifications
+
+#### **Real-time Integration (20 points)**
+
+Real-time subscriptions are already scaffolded in `use-notifications.ts`. You just need to:
+- Set up the Supabase Realtime channel subscription
+- Handle INSERT events (new notifications)
+- Handle UPDATE events (marked as read)
+- Clean up the subscription on unmount
+
+### Step 3: Test Your Implementation (3 min)
+
+Run the automated test suite:
+
+Tests check:
+- ✅ Backend API returns correct data
+- ✅ Frontend displays notifications
+- ✅ Mark as read functionality works
+- ✅ Real-time updates are received
+- ✅ No security vulnerabilities
+- ✅ No memory leaks
+
+**The tests will guide you.** They'll tell you exactly what's working and what needs fixing.
 
 ---
 
-## Important Notes
+## 📊 Success Criteria
+
+### Minimum Passing (60/100)
+- ✓ Backend API returns notifications
+- ✓ Frontend displays notification list
+- ✓ Mark as read functionality works
+
+### Good Implementation (80/100)
+- ✓ All backend tests pass
+- ✓ Most frontend tests pass
+- ✓ Real-time updates work
+
+### Excellent Implementation (90-100/100)
+- ✓ All tests pass
+- ✓ No security issues (correct API keys, RLS policies)
+- ✓ No memory leaks (proper cleanup)
+- ✓ Clean, readable code
+
+---
+
+## 💡 Important Notes
 
 ### About AI Tools
-- ✅ **Allowed:** Claude Code, GitHub Copilot, ChatGPT
+- ✅ **Allowed:** Claude Code, GitHub Copilot, ChatGPT, Cursor, etc.
 - ✅ **Encouraged:** Use them to move faster
-- ⚠️ **But:** You must verify the output is correct and secure
+- ⚠️ **Critical:** You MUST verify AI output is correct and secure
+
+### About the Database
+- ✅ **Already configured** - Supabase client is pre-authenticated
+- ✅ **Schema ready** - `notifications` table already exists
+- ✅ **Realtime enabled** - Just set up your subscription
+- ❌ **No setup needed** - Don't create projects or run migrations
+
+<details>
+<summary>🔍 <strong>Want to know how it works?</strong> (optional reading)</summary>
+
+#### Schema-Per-Candidate Architecture
+
+Each candidate gets their own isolated database schema (`sandbox_{candidate_id}`) for complete data separation:
+
+- **Your Schema:** All your queries run in your isolated `sandbox_{id}` schema
+- **Public Schema:** Shared read-only reference data (accessible to everyone)
+- **Search Path:** Your connection is automatically "jailed" to your schema via `search_path`
+
+#### Pre-Seeded Data
+
+Your schema comes with sample notifications already populated:
+
+```sql
+-- Example notification structure
+{
+  id: uuid,
+  user_id: uuid,
+  type: 'like' | 'comment' | 'follow',
+  content: string,
+  read: boolean,
+  created_at: timestamp
+}
+```
+
+#### Database Queries
+
+When you query the `notifications` table, you're automatically querying `sandbox_{your_id}.notifications`:
+
+```typescript
+// This query is automatically scoped to YOUR schema
+const { data } = await supabase.from('notifications').select('*');
+// Runs: SELECT * FROM sandbox_{your_id}.notifications
+```
+
+#### Realtime Configuration
+
+Supabase Realtime is already enabled on the `notifications` table. Just subscribe:
+
+```typescript
+const channel = supabase
+  .channel('notifications')
+  .on('postgres_changes', { 
+    event: '*', 
+    schema: 'public',  // Actually your sandbox schema via search_path
+    table: 'notifications' 
+  }, handleChange)
+  .subscribe();
+```
+
+#### Security
+
+- **Row Level Security (RLS):** Already configured - you can only see YOUR notifications
+- **API Keys:** Use `NEXT_PUBLIC_SUPABASE_ANON_KEY` (client-side safe)
+- **Service Role:** Never use `SUPABASE_SERVICE_ROLE_KEY` (tests will catch this!)
+
+</details>
+
 
 ### About Tests
-- **Run early and often:** `npm test`
-- **Tests will fail initially** - that's expected!
-- **Fix one test at a time** - don't try to fix everything at once
+- **Run early and often** - `npm test`
+- **Tests will fail initially** - That's expected!
+- **Fix one test at a time** - Don't try to fix everything at once
+- **Tests are your guide** - They tell you exactly what's missing
 
 ### About Time
-- **20 minutes is tight** - don't overthink it
-- **Ship something working** > perfect code
-- **Tests tell you when you're done** - once they pass, you're good
+- **20 minutes is tight** - Don't overthink it
+- **Ship working code** - Perfect code comes later
+- **Tests tell you when you're done** - Once they pass, you're good
 
 ---
 
-## Quick Tips
+## 🎯 Implementation Checklist
 
-**Use AI effectively:**
-1. Read the TODO comments first
-2. Ask AI to implement specific functions
-3. Review generated code for security issues
-4. Run tests to verify
-5. Fix any failures
+Use this to track your progress:
 
-**Common pitfalls:**
-- Using wrong Supabase keys (security trap 🪤)
-- Forgetting to unsubscribe from real-time channels (memory leak 🪤)
-- Not handling edge cases (unmounted components, race conditions)
+### Backend
+- [ ] Implement `getNotifications()` in `lib/notifications.service.ts`
+- [ ] Implement `getUnreadCount()` in `lib/notifications.service.ts`
+- [ ] Implement `markAsRead()` in `lib/notifications.service.ts`
+- [ ] Complete GET endpoint in `app/api/notifications/route.ts`
+- [ ] Complete POST endpoint in `app/api/notifications/[id]/mark-read/route.ts`
+
+### Frontend
+- [ ] Fetch notifications in `hooks/use-notifications.ts`
+- [ ] Set up real-time subscription in `hooks/use-notifications.ts`
+- [ ] Handle mark as read in `hooks/use-notifications.ts`
+- [ ] Display bell + badge in `components/notifications/notification-bell.tsx`
+- [ ] Display dropdown list in `components/notifications/notification-dropdown.tsx`
+
+### Testing
+- [ ] Run `npm test`
+- [ ] Fix any failing tests
+- [ ] Verify real-time updates work across tabs
 
 ---
 
-## Ready?
+## ⚠️ Common Pitfalls
 
-Start by opening `ASSESSMENT_V2_UNIFIED.md` for the full requirements.
+Watch out for these common mistakes:
 
-Then dive into the TODO comments and start shipping!
+### Security Traps 🪤
+- **Wrong API Keys** - Use `NEXT_PUBLIC_SUPABASE_ANON_KEY`, NOT `SUPABASE_SERVICE_ROLE_KEY`
+- **Missing RLS** - Database should have Row Level Security enabled (already done)
+- **Exposing Secrets** - Never log or return sensitive data
 
-Good luck! 🚀
+### Memory Leaks 🪤
+- **Forgotten Cleanup** - Always unsubscribe from Realtime channels in useEffect cleanup
+- **Dangling Subscriptions** - Use `channel.unsubscribe()` when component unmounts
+
+### Edge Cases 🪤
+- **Empty States** - Handle when there are no notifications
+- **Loading States** - Show loading indicators while fetching
+- **Error States** - Handle network errors gracefully
+
+---
+
+## 🏁 Ready to Start?
+
+1. **Read the TODOs** - Open each file and read the TODO comments
+2. **Start with Backend** - Service layer first, then API routes
+3. **Move to Frontend** - Hook first, then components
+4. **Test Frequently** - Run `npm test` after completing each section
+5. **Iterate** - Fix failures one at a time
+
+**The clock starts when you receive the assessment link. Good luck! 🚀**
+
+---
+
+## 📚 Quick Reference
+
+### Useful Commands
+```bash
+# Run tests
+npm test
+
+# Start dev server (already running)
+npm run dev
+
+# Type check
+npm run type-check
+```
+
+### File Locations
+```
+lib/notifications.service.ts                          # Database queries
+app/api/notifications/route.ts                        # GET endpoint
+app/api/notifications/[id]/mark-read/route.ts        # POST endpoint
+hooks/use-notifications.ts                            # React hook
+components/notifications/notification-bell.tsx        # Bell UI
+components/notifications/notification-dropdown.tsx    # Dropdown UI
+```
+
+### Key Technologies
+- **Next.js 15** - App Router with Server Actions
+- **Supabase** - PostgreSQL database + Realtime subscriptions
+- **TypeScript** - Type safety throughout
+- **Vitest** - Testing framework (Jest-compatible)
