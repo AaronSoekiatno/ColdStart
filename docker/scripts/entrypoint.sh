@@ -234,28 +234,26 @@ check_settings() {
          echo "⚠️  Backup settings missing, skipping enforcement"
     fi
 
-    # Force remove GitHub Copilot extensions directly in the entrypoint
+    # Force remove ALL extensions directly in the entrypoint
     # This runs synchronously BEFORE code-server starts to prevent them from loading
-    echo "🚫 Removing GitHub Copilot extensions and chat UI..."
+    echo "🚫 Removing ALL extensions..."
     
-    # Remove extensions from all possible locations
-    rm -rf /home/coder/.local/share/code-server/extensions/github.copilot* 2>/dev/null || true
-    rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* 2>/dev/null || true
-    rm -rf /home/coder/.vscode-server/extensions/github.copilot* 2>/dev/null || true
-    rm -rf /home/coder/.vscode-server/extensions/GitHub.copilot* 2>/dev/null || true
+    # Remove ALL extensions from all possible locations
+    rm -rf /home/coder/.local/share/code-server/extensions/* 2>/dev/null || true
+    rm -rf /home/coder/.vscode-server/extensions/* 2>/dev/null || true
     
     # Remove extension state and cache
     rm -rf /home/coder/.local/share/code-server/CachedExtensions* 2>/dev/null || true
     rm -rf /home/coder/.local/share/code-server/CachedExtensionVSIXs* 2>/dev/null || true
     
-    # Remove any chat-related state
-    rm -rf /home/coder/.local/share/code-server/User/workspaceStorage/*/ms-vscode.chat* 2>/dev/null || true
-    rm -rf /home/coder/.local/share/code-server/User/globalStorage/github.copilot* 2>/dev/null || true
+    # Remove any extension-related state
+    rm -rf /home/coder/.local/share/code-server/User/workspaceStorage/* 2>/dev/null || true
+    rm -rf /home/coder/.local/share/code-server/User/globalStorage/* 2>/dev/null || true
     
-    # Disable chat views in the UI state
+    # Disable all views in the UI state
     find /home/coder/.local/share/code-server -name "state.vscdb*" -exec rm -f {} \; 2>/dev/null || true
     
-    echo "   ✓ Copilot extensions and chat UI removed"
+    echo "   ✓ All extensions removed"
 }
 
 echo "🛠️  Verifying configuration..."
@@ -282,5 +280,12 @@ run_background_setup &
 
 # Start code-server (this blocks and keeps container running)
 # Open the workspace folder
-exec code-server --bind-addr 0.0.0.0:8080 --auth none --disable-workspace-trust /workspace
+# Disable extensions completely by pointing to a non-existent directory
+exec code-server \
+  --bind-addr 0.0.0.0:8080 \
+  --auth none \
+  --disable-workspace-trust \
+  --disable-getting-started-override \
+  --extensions-dir /tmp/no-extensions \
+  /workspace
 

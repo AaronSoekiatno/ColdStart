@@ -79,11 +79,9 @@ RUN chown -R coder:coder /home/coder
 # Switch back to coder user
 USER coder
 
-# Remove GitHub Copilot extensions and chat UI components (must run as coder user)
-RUN rm -rf /home/coder/.local/share/code-server/extensions/github.copilot* \
-    && rm -rf /home/coder/.local/share/code-server/extensions/GitHub.copilot* \
-    && rm -rf /home/coder/.vscode-server/extensions/github.copilot* \
-    && rm -rf /home/coder/.vscode-server/extensions/GitHub.copilot* \
+# Remove ALL extensions and chat UI components (must run as coder user)
+RUN rm -rf /home/coder/.local/share/code-server/extensions/* \
+    && rm -rf /home/coder/.vscode-server/extensions/* \
     && rm -rf /home/coder/.local/share/code-server/CachedExtensions* \
     && rm -rf /home/coder/.local/share/code-server/CachedExtensionVSIXs*
 

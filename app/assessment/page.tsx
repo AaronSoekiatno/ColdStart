@@ -187,25 +187,111 @@ export default function AssessmentPage() {
             {/* Header */}
             <div className="text-center mb-8">
               <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                Start Your 20-Minute Assessment
+                Build a Real-Time Notification System
               </h1>
               <p className="text-gray-600 text-lg">
-                Prove you can build features in limited time to potential startups
+                20-minute coding challenge • 100 points • Powered by Claude Code
               </p>
             </div>
 
             {/* Start Assessment */}
             <div className="space-y-6">
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
-                <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
-                <ul className="space-y-2 text-gray-700 list-disc list-inside">
-                  <li>Work in a cloud-based IDE</li>
-                  <li>Complete coding tasks in your isolated workspace</li>
-                  <li>Demonstrate your problem-solving skills</li>
-                  <li>Showcase your technical abilities</li>
-                  <li>Get guided by AI assistant</li>
+              {/* Mission Overview */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-3 flex items-center gap-2">
+                  🎯 Your Mission
+                </h3>
+                <p className="text-gray-700 mb-4">
+                  Build a <strong>real-time notification bell</strong> for InstaClone (a social media app).
+                  Make it update instantly across all browser tabs when new notifications arrive.
+                </p>
+                <div className="bg-white/60 rounded-lg p-4 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span className="text-gray-700">Notification bell with dynamic unread count badge</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span className="text-gray-700">Dropdown showing all notifications</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span className="text-gray-700">Real-time updates (no refresh needed)</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span className="text-gray-700">Mark as read functionality</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-green-600 font-bold">✓</span>
+                    <span className="text-gray-700">Multi-tab sync across all browser windows</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scoring Breakdown */}
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold text-purple-600 mb-1">40</div>
+                  <div className="text-sm font-semibold text-gray-900">Backend APIs</div>
+                  <div className="text-xs text-gray-600 mt-1">Database queries & endpoints</div>
+                </div>
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold text-blue-600 mb-1">40</div>
+                  <div className="text-sm font-semibold text-gray-900">Frontend UI</div>
+                  <div className="text-xs text-gray-600 mt-1">Components & state management</div>
+                </div>
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-1">20</div>
+                  <div className="text-sm font-semibold text-gray-900">Real-time Sync</div>
+                  <div className="text-xs text-gray-600 mt-1">Supabase Realtime integration</div>
+                </div>
+              </div>
+
+              {/* AI Tools Encouraged */}
+              <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-3 flex items-center gap-2">
+                  🤖 AI Tools Are ENCOURAGED!
+                </h3>
+                <p className="text-gray-700 mb-3">
+                  Use Claude Code, GitHub Copilot, ChatGPT, or any AI tool you want.
+                  We're testing your ability to <strong>verify and ship AI-generated code</strong>, not memorize syntax.
+                </p>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div>✓ Speed - Can you implement features quickly with AI?</div>
+                  <div>✓ Verification - Can you catch mistakes in AI output?</div>
+                  <div>✓ Quality - Does your code handle edge cases & security?</div>
+                </div>
+              </div>
+
+              {/* What to Expect */}
+              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-3">What to Expect:</h3>
+                <ul className="space-y-2 text-gray-700 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 font-bold">→</span>
+                    <span>Cloud-based IDE with Next.js, TypeScript, and Supabase pre-configured</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 font-bold">→</span>
+                    <span>7 files with TODO comments guiding you step-by-step</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 font-bold">→</span>
+                    <span>Automated tests that tell you exactly what's working</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 font-bold">→</span>
+                    <span>Database already seeded with 5 sample notifications</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-600 font-bold">→</span>
+                    <span><strong>No manual testing required</strong> - tests run automatically</span>
+                  </li>
                 </ul>
               </div>
+
+
 
               <Button
                 onClick={handleStartAssessment}

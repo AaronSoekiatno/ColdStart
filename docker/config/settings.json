@@ -43,6 +43,8 @@
     "extensions.ignoreRecommendations": true,
     "extensions.autoCheckUpdates": false,
     "extensions.autoUpdate": false,
+    "extensions.showRecommendationsOnlyOnDemand": true,
+    "extensions.closeExtensionDetailsOnViewChange": true,
     "github.copilot.enable": {
         "*": false,
         "yaml": false,
