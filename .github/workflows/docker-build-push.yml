@@ -61,3 +61,15 @@ jobs:
         run: |
           echo "✅ Docker image pushed to:"
           echo "${{ steps.meta.outputs.tags }}"
+
+      - name: Output deployment command
+        run: |
+          echo "================================================"
+          echo "✅ Image built and pushed successfully!"
+          echo "================================================"
+          echo "📋 To deploy, add this to .env.local:"
+          echo ""
+          echo "HERMES_ASSESSMENT_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }}"
+          echo ""
+          echo "Then redeploy on Vercel"
+          echo "================================================"

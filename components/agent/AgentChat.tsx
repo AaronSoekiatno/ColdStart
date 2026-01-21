@@ -126,6 +126,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             case 'run_command': return <Terminal className="w-3 h-3 text-amber-400" />;
             case 'read_file':
             case 'write_file':
+            case 'edit_file':
             case 'undo_change':
             case 'list_directory': return <FileText className="w-3 h-3 text-blue-400" />;
             case 'search_code': return <Search className="w-3 h-3 text-green-400" />;
@@ -139,6 +140,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                 case 'run_command': return act.input.command;
                 case 'read_file': return `Read ${act.input.path}`;
                 case 'write_file': return `Update ${act.input.path}`;
+                case 'edit_file': return `Edit ${act.input.path} (lines ${act.input.start_line}-${act.input.end_line})`;
                 case 'undo_change': return `Revert ${act.input.path}`;
                 case 'list_directory': return `List ${act.input.path}`;
                 case 'search_code': return `Search "${act.input.query}"`;
@@ -349,10 +351,12 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
         ]);
 
         try {
-            const conversationHistory = messages.map(m => ({
-                role: m.role,
-                content: m.content
-            }));
+            const conversationHistory = messages
+                .filter(m => m.content.trim() !== '' || (m.toolActivity && m.toolActivity.length > 0) || m.reasoning)
+                .map(m => ({
+                    role: m.role,
+                    content: m.content.trim() || (m.role === 'assistant' ? "I've processed your request using tools." : "Continuing...")
+                }));
 
             const response = await fetch('/api/agent/chat-v2', {
                 method: 'POST',
@@ -462,7 +466,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                                                 {act.status === 'running' && <span className="text-xs text-slate-500 italic">running...</span>}
                                                             </div>
                                                             <span className="opacity-75 block">{getToolSummary(act)}</span>
-                                                            {act.toolName === 'write_file' && act.result && act.status === 'complete' ? (
+                                                            {(act.toolName === 'write_file' || act.toolName === 'edit_file') && act.result && act.status === 'complete' ? (
                                                                 (() => {
                                                                     let diff = null;
                                                                     let originalContent = '';
@@ -525,7 +529,15 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                                             ) : (
                                                                 act.result && (
                                                                     <details className="mt-1">
-                                                                        <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">Show Result</summary>
+                                                                        <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">
+                                                                            {act.toolName === 'read_file' ? (
+                                                                                (() => {
+                                                                                    const lines = act.result.split('\n').length;
+                                                                                    const chars = act.result.length;
+                                                                                    return `Read ${lines} lines (${chars} characters)`;
+                                                                                })()
+                                                                            ) : 'Show Result'}
+                                                                        </summary>
                                                                         <pre className="mt-1 bg-black/30 p-1 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-20">
                                                                             {act.result.substring(0, 300) + (act.result.length > 300 ? '...' : '')}
                                                                         </pre>

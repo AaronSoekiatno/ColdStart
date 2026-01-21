@@ -67,7 +67,9 @@ export async function provisionFlyMachine(config: FlyMachineConfig): Promise<{ u
     const orgSlug = 'personal'; // Using personal org (Aidan Nguyen-Tran)
 
     // Use GitHub Container Registry image (automatically built by GitHub Actions)
-    const image = `ghcr.io/hermes-startup/hermes-assessment:latest`;
+    // Use SHA-based tag from environment variable for better caching, fallback to :latest
+    const image = process.env.HERMES_ASSESSMENT_IMAGE
+        || `ghcr.io/hermes-startup/hermes-assessment:latest`;
 
     console.log(`[Fly.io] Provisioning app: ${appName}`);
     console.log(`[Fly.io] Using image: ${image}`);

@@ -6,6 +6,7 @@ import {
   listWorkspaceDirectory,
   searchWorkspaceCode,
   writeWorkspaceFile,
+  editWorkspaceFile,
   runWorkspaceCommand,
 } from '@/lib/workspace/file-access';
 import {
@@ -82,11 +83,99 @@ export async function POST(request: NextRequest) {
         }
 
         // 3. Prepare Prompt
+        let processedMessage = message;
+        const fileRegex = /@\/(\S+)/g;
+        const fileMatches = message.match(fileRegex);
+        
+        if (fileMatches) {
+          console.log(`🔍 [Chat V2] Found ${fileMatches.length} file references`);
+          for (const match of fileMatches) {
+            // Remove trailing punctuation from match if any
+            const cleanMatch = match.replace(/[.,!?;:]$/, '');
+            const filePath = cleanMatch.substring(2);
+            
+            try {
+              sendEvent('status', { msg: `Reading ${filePath}...` });
+              const content = await readWorkspaceFile(flyAppName, { path: filePath });
+              processedMessage += `\n\n--- FILE ATTACHMENT: ${cleanMatch} ---\n${content}\n--- END ATTACHMENT ---`;
+            } catch (err: any) {
+              console.warn(`  ⚠️ Could not read ${filePath}:`, err.message);
+              // We don't fail the whole request, just proceed without this file
+            }
+          }
+        }
+
         const messages: ClaudeMessage[] = [
           ...conversationHistory,
-          { role: 'user', content: message },
+          { role: 'user', content: processedMessage },
         ];
         const tools = getWorkspaceTools();
+        
+        // Helper: Execute tool with retry logic
+        const executeToolWithRetry = async (
+          toolName: string,
+          input: any,
+          maxRetries = 5  // Increased from 3 to 5 for flaky SSH
+        ): Promise<string> => {
+          for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+              // Execute the tool
+              if (toolName === 'read_file') {
+                return await readWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line });
+              } else if (toolName === 'list_directory') {
+                return await listWorkspaceDirectory(flyAppName, { path: input.path, recursive: input.recursive });
+              } else if (toolName === 'search_code') {
+                return await searchWorkspaceCode(flyAppName, { query: input.query, filePattern: input.file_pattern, caseSensitive: input.case_sensitive });
+              } else if (toolName === 'write_file') {
+                return await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
+              } else if (toolName === 'edit_file') {
+                return await editWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line, newContent: input.new_content });
+              } else if (toolName === 'run_command') {
+                return await runWorkspaceCommand(flyAppName, { command: input.command });
+              } else {
+                return `Unknown tool: ${toolName}`;
+              }
+            } catch (error: any) {
+              const isLastAttempt = attempt === maxRetries - 1;
+              
+              // Don't retry certain errors
+              const nonRetryableErrors = [
+                'Invalid file path',
+                'Invalid line range',
+                'File not found',
+                'Permission denied',
+                'Unknown tool'
+              ];
+              
+              // SSH/network errors that ARE retryable
+              const sshErrors = [
+                'Connection refused',
+                'Connection reset',
+                'ECONNREFUSED',
+                'ETIMEDOUT',
+                'ssh shell',
+                'Could not find App',
+                'timeout',
+                'ENOTFOUND'
+              ];
+              
+              const isNonRetryable = nonRetryableErrors.some(msg => error.message?.includes(msg));
+              const isSshError = sshErrors.some(msg => error.message?.includes(msg));
+              
+              if (isNonRetryable || (isLastAttempt && !isSshError)) {
+                throw error;
+              }
+              
+              // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+              const delay = Math.pow(2, attempt) * 1000;
+              const reason = isSshError ? 'SSH connection issue' : 'transient error';
+              console.log(`  ⚠️ Tool ${toolName} failed (${reason}, attempt ${attempt + 1}/${maxRetries}), retrying in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
+          
+          throw new Error(`Tool ${toolName} failed after ${maxRetries} attempts`);
+        };
         
         // 4. Agent Loop
         let iterations = 0;
@@ -141,21 +230,9 @@ export async function POST(request: NextRequest) {
                     
                     let toolResult = '';
                     try {
-                         // Execute tool
+                         // Execute tool with retry logic
                         const input = block.input as any;
-                        if (block.name === 'read_file') {
-                            toolResult = await readWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line });
-                        } else if (block.name === 'list_directory') {
-                            toolResult = await listWorkspaceDirectory(flyAppName, { path: input.path, recursive: input.recursive });
-                        } else if (block.name === 'search_code') {
-                            toolResult = await searchWorkspaceCode(flyAppName, { query: input.query, filePattern: input.file_pattern, caseSensitive: input.case_sensitive });
-                        } else if (block.name === 'write_file') {
-                            toolResult = await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
-                        } else if (block.name === 'run_command') {
-                            toolResult = await runWorkspaceCommand(flyAppName, { command: input.command });
-                        } else {
-                            toolResult = `Unknown tool: ${block.name}`;
-                        }
+                        toolResult = await executeToolWithRetry(block.name, input);
                     } catch (err: any) {
                         toolResult = `Error: ${err.message}`;
                     }
@@ -193,6 +270,10 @@ export async function POST(request: NextRequest) {
         }
 
         // 6. Finalize
+        if (!fullResponseText && (iterations > 0 || toolResultsLog.length > 0)) {
+            fullResponseText = "I have completed the requested operations.";
+        }
+        
         sendEvent('response', { content: fullResponseText }); // Signal completion
         const duration = Date.now() - startTime;
         

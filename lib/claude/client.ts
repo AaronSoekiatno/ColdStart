@@ -118,7 +118,13 @@ export async function callClaude(
   return await anthropic.messages.create({
     model,
     max_tokens: maxTokens,
-    system: systemPrompt,
+    system: [
+      {
+        type: 'text',
+        text: systemPrompt,
+        cache_control: { type: 'ephemeral' } // Cache the system prompt
+      }
+    ],
     messages: messages.map(m => ({
       role: m.role,
       content: m.content,

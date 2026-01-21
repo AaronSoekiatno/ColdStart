@@ -11,20 +11,16 @@ USER root
 ENV VSCODE_DISABLE_EXTENSIONS=true
 ENV VSCODE_PROXY_URI=""
 
-# Layer 1: System dependencies (rarely changes)
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    jq \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
-
-# Layer 2: Node.js installation (rarely changes)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+# Layer 1: System dependencies + Node.js (rarely changes)
+# Combined into single layer to reduce layer count and improve caching
+RUN apt-get update && \
+    apt-get install -y curl git jq procps ca-certificates && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Layer 2.5: Install test dependencies in the assessment directory (rarely changes)
+# Layer 2: Install test dependencies in the assessment directory (rarely changes)
 # These are needed for assessment tests regardless of workspace package.json
 # Tests are located in /usr/local/share/assessment/tests/, so node_modules needs to be
 # in /usr/local/share/assessment/node_modules for proper module resolution
@@ -40,7 +36,8 @@ RUN mkdir -p /usr/local/share/assessment && \
         happy-dom@^12.10.3 \
         @typescript-eslint/parser@^8.52.0 \
         @typescript-eslint/typescript-estree@^8.52.0 \
-        glob@^13.0.0
+        glob@^13.0.0 && \
+    npm cache clean --force
 
 # Layer 3: Create directories (rarely changes)
 RUN mkdir -p /workspace && chown coder:coder /workspace
@@ -48,7 +45,9 @@ RUN mkdir -p /workspace && chown coder:coder /workspace
 # Layer 4: Install workspace dependencies BEFORE copying source code
 # This layer is cached unless package.json changes
 COPY --chown=coder:coder workspace/package.json workspace/package-lock.json* /workspace/
-RUN cd /workspace && npm install --legacy-peer-deps
+RUN cd /workspace && \
+    npm install --legacy-peer-deps && \
+    npm cache clean --force
 
 # Layer 5: Copy workspace source code (changes frequently)
 # This layer rebuilds when code changes, but npm install is cached

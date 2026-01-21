@@ -214,6 +214,7 @@ export async function searchWorkspaceCode(
       return `No matches found for "${query}"`;
     }
 
+    return cleanStdout;
     // Prevent overwhelming the context window
     const MAX_OUTPUT_SIZE = 50000;
     if (cleanStdout.length > MAX_OUTPUT_SIZE) {
