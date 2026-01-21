@@ -44,6 +44,8 @@ Open the application in your browser. You'll see:
 - **Notification Bell** - Located in the top-right header (currently static with badge "3").
 - **Your Goal** - Transform this static bell into a fully functional, real-time notification engine.
 
+**Note:** Your database already contains 5 sample notifications (3 unread, 2 read) from users like `sarah_dev`, `john_code`, and `emma_ui`. You'll fetch and display these.
+
 ### Step 2: Implement the TODOs (15 min)
 
 You'll find TODO comments in **7 files**. Complete them in this order:
@@ -156,18 +158,25 @@ Each candidate receives a dedicated database schema (`sandbox_{id}`) to ensure z
 
 #### Pre-Seeded Data
 
-Your schema comes with sample notifications already populated:
+Your schema comes with **5 sample notifications** already populated (3 unread, 2 read):
 
 ```sql
--- Example notification structure
-{
-  id: uuid,
-  user_id: uuid,
-  type: 'like' | 'comment' | 'follow',
-  content: string,
-  read: boolean,
-  created_at: timestamp
-}
+-- Notification table structure
+CREATE TABLE notifications (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL,
+  type TEXT CHECK (type IN ('like', 'comment', 'follow', 'mention')),
+  content TEXT NOT NULL,
+  read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Example notifications (pre-seeded)
+-- 'sarah_dev liked your post "Building Real-Time Features"' (unread)
+-- 'john_code commented: "Great work! How did you handle..."' (unread)
+-- 'emma_ui started following you' (unread)
+-- 'alex_full liked your post' (read)
+-- 'lisa_pm commented on your post' (read)
 ```
 
 #### Database Queries
