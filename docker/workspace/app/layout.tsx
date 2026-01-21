@@ -48,23 +48,10 @@ export default function RootLayout({
       </head>
       <body className={publicSans.className}>
         <NuqsAdapter>
-          <div className="bg-secondary grid grid-rows-[auto,1fr] h-[100dvh]">
-            <div className="grid grid-cols-[1fr,auto] gap-2 p-4">
-              <div className="flex gap-4 flex-col md:flex-row md:items-center">
-                <a
-                  href="/"
-                  className="flex items-center gap-2"
-                >
-                  <Logo />
-                </a>
-              </div>
-
-              <div className="flex items-center">
-                <NotificationBell />
-              </div>
-            </div>
-            <div className="bg-background mx-4 relative grid rounded-t-2xl border border-input border-b-0">
-              <div className="absolute inset-0">{children}</div>
+          <div className="bg-slate-900 h-[100dvh] overflow-hidden">
+            {/* The main workspace container */}
+            <div className="h-full relative overflow-hidden">
+              {children}
             </div>
           </div>
           <Toaster />
