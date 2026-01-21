@@ -26,3 +26,12 @@ export async function markNotificationAsRead(
 ): Promise<MarkAsReadResponse> {
   throw new Error('Not implemented');
 }
+
+/**
+ * Get count of unread notifications
+ */
+export async function getUnreadCount(schemaName: string): Promise<number> {
+  // TODO: Implement - return count of notifications where read = false
+  
+  throw new Error('Not implemented');
+}

@@ -19,7 +19,7 @@ The notification bell in the header currently shows a static badge with "3" noti
 - ✅ **Mark as Read** - Click a notification to mark it as read and remove from unread count
 - ✅ **Multi-tab Sync** - Changes sync across all open browser tabs in real-time
 
-**Tech Stack:** Next.js 15, React, TypeScript, Supabase Realtime
+**Tech Stack:** Next.js 15, React 19, TypeScript, Supabase Realtime
 
 ---
 
@@ -40,52 +40,58 @@ This assessment measures **how effectively you use AI tools** to ship production
 ### Step 1: Understand the Application (2 min)
 
 Open the application in your browser. You'll see:
-- **InstaClone** - An Instagram-like interface with a header, stories, and feed
-- **Notification Bell** - In the top-right header (currently static with badge "3")
-- **Your Goal** - Make this bell functional with real-time updates
+- **InstaClone** - A modern social media interface with stories and a post feed.
+- **Notification Bell** - Located in the top-right header (currently static with badge "3").
+- **Your Goal** - Transform this static bell into a fully functional, real-time notification engine.
 
 ### Step 2: Implement the TODOs (15 min)
 
-You'll find TODO comments in **6 files**. Complete them in this order:
+You'll find TODO comments in **7 files**. Complete them in this order:
 
 #### **Backend (40 points)**
 
 1. **`lib/notifications.service.ts`** - Database query functions
    - Fetch all notifications for a user
-   - Fetch unread count
+   - Fetch unread count (aggregation query)
    - Mark notification as read
    
 2. **`app/api/notifications/route.ts`** - GET endpoint
    - Return all notifications as JSON
    - Handle errors gracefully
    
-3. **`app/api/notifications/[id]/mark-read/route.ts`** - POST endpoint
-   - Mark a specific notification as read
-   - Return updated notification
+3. **`app/api/notifications/unread-count/route.ts`** - GET endpoint
+   - Return count of unread notifications
+   - Tests your aggregation query skills
+   
+4. **`app/api/notifications/[id]/mark-read/route.ts`** - POST endpoint
+   - Mark a specific notification as `read`
+   - Return the updated notification object
+
 
 #### **Frontend (40 points)**
 
-4. **`hooks/use-notifications.ts`** - State management + real-time
+5. **`hooks/use-notifications.ts`** - State management + real-time
    - Fetch notifications on mount
    - Subscribe to real-time updates
    - Handle mark as read mutations
    - Clean up subscriptions on unmount
    
-5. **`components/notifications/notification-bell.tsx`** - Bell icon + badge
+6. **`components/notifications/notification-bell.tsx`** - Bell icon + badge
    - Display unread count badge
    - Toggle dropdown on click
    
-6. **`components/notifications/notification-dropdown.tsx`** - Dropdown UI
+7. **`components/notifications/notification-dropdown.tsx`** - Dropdown UI
    - Display list of notifications
    - Handle click to mark as read
    - Show empty state when no notifications
+
 
 #### **Real-time Integration (20 points)**
 
 Real-time subscriptions are already scaffolded in `use-notifications.ts`. You just need to:
 - Set up the Supabase Realtime channel subscription
-- Handle INSERT events (new notifications)
-- Handle UPDATE events (marked as read)
+- Handle `INSERT` events (new notifications)
+- Handle `UPDATE` events (marked as read)
 - Clean up the subscription on unmount
 
 ### Step 3: Test Your Implementation (3 min)
@@ -128,8 +134,8 @@ Tests check:
 
 ### About AI Tools
 - ✅ **Allowed:** Claude Code, GitHub Copilot, ChatGPT, Cursor, etc.
-- ✅ **Encouraged:** Use them to move faster
-- ⚠️ **Critical:** You MUST verify AI output is correct and secure
+- ✅ **Encouraged:** Use them to move faster—we're testing your efficiency and judgment.
+- ⚠️ **Critical:** You MUST verify AI output for security and logical correctness.
 
 ### About the Database
 - ✅ **Already configured** - Supabase client is pre-authenticated
@@ -140,9 +146,9 @@ Tests check:
 <details>
 <summary>🔍 <strong>Want to know how it works?</strong> (optional reading)</summary>
 
-#### Schema-Per-Candidate Architecture
+#### Data Isolation: Schema-Per-Candidate
 
-Each candidate gets their own isolated database schema (`sandbox_{candidate_id}`) for complete data separation:
+Each candidate receives a dedicated database schema (`sandbox_{id}`) to ensure zero data leaked between sessions:
 
 - **Your Schema:** All your queries run in your isolated `sandbox_{id}` schema
 - **Public Schema:** Shared read-only reference data (accessible to everyone)
@@ -183,7 +189,7 @@ const channel = supabase
   .channel('notifications')
   .on('postgres_changes', { 
     event: '*', 
-    schema: 'public',  // Actually your sandbox schema via search_path
+    schema: 'public',  // Mapped to your sandbox schema via search_path
     table: 'notifications' 
   }, handleChange)
   .subscribe();
@@ -197,7 +203,6 @@ const channel = supabase
 
 </details>
 
-
 ### About Tests
 - **Run early and often** - `npm test`
 - **Tests will fail initially** - That's expected!
@@ -205,9 +210,9 @@ const channel = supabase
 - **Tests are your guide** - They tell you exactly what's missing
 
 ### About Time
-- **20 minutes is tight** - Don't overthink it
-- **Ship working code** - Perfect code comes later
-- **Tests tell you when you're done** - Once they pass, you're good
+- **20 minutes is tight** - Prioritize core functionality over pixel-perfection.
+- **Ship working code** - Clean up and refactor only after the tests pass.
+- **Tests are the truth** - Once `npm test` turns green, you are officially finished.
 
 ---
 
@@ -220,7 +225,9 @@ Use this to track your progress:
 - [ ] Implement `getUnreadCount()` in `lib/notifications.service.ts`
 - [ ] Implement `markAsRead()` in `lib/notifications.service.ts`
 - [ ] Complete GET endpoint in `app/api/notifications/route.ts`
+- [ ] Complete GET endpoint in `app/api/notifications/unread-count/route.ts`
 - [ ] Complete POST endpoint in `app/api/notifications/[id]/mark-read/route.ts`
+
 
 ### Frontend
 - [ ] Fetch notifications in `hooks/use-notifications.ts`
@@ -240,16 +247,16 @@ Use this to track your progress:
 
 Watch out for these common mistakes:
 
-### Security Traps 🪤
+### Security Traps 🛡️
 - **Wrong API Keys** - Use `NEXT_PUBLIC_SUPABASE_ANON_KEY`, NOT `SUPABASE_SERVICE_ROLE_KEY`
 - **Missing RLS** - Database should have Row Level Security enabled (already done)
 - **Exposing Secrets** - Never log or return sensitive data
 
-### Memory Leaks 🪤
+### Memory Leaks 🧹
 - **Forgotten Cleanup** - Always unsubscribe from Realtime channels in useEffect cleanup
 - **Dangling Subscriptions** - Use `channel.unsubscribe()` when component unmounts
 
-### Edge Cases 🪤
+### Edge Cases 🧪
 - **Empty States** - Handle when there are no notifications
 - **Loading States** - Show loading indicators while fetching
 - **Error States** - Handle network errors gracefully
@@ -264,7 +271,7 @@ Watch out for these common mistakes:
 4. **Test Frequently** - Run `npm test` after completing each section
 5. **Iterate** - Fix failures one at a time
 
-**The clock starts when you receive the assessment link. Good luck! 🚀**
+**The clock is ticking. Good luck! 🚀**
 
 ---
 
@@ -285,15 +292,17 @@ npm run type-check
 ### File Locations
 ```
 lib/notifications.service.ts                          # Database queries
-app/api/notifications/route.ts                        # GET endpoint
-app/api/notifications/[id]/mark-read/route.ts        # POST endpoint
+app/api/notifications/route.ts                        # GET all notifications
+app/api/notifications/unread-count/route.ts          # GET unread count
+app/api/notifications/[id]/mark-read/route.ts        # POST mark as read
 hooks/use-notifications.ts                            # React hook
 components/notifications/notification-bell.tsx        # Bell UI
 components/notifications/notification-dropdown.tsx    # Dropdown UI
 ```
 
+
 ### Key Technologies
-- **Next.js 15** - App Router with Server Actions
-- **Supabase** - PostgreSQL database + Realtime subscriptions
-- **TypeScript** - Type safety throughout
-- **Vitest** - Testing framework (Jest-compatible)
+- **Next.js 15** - Optimized App Router environment
+- **Supabase** - PostgreSQL + Realtime Engine
+- **TypeScript** - Strict type-safety enabled
+- **Vitest** - High-speed testing framework
