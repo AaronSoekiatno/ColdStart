@@ -32,7 +32,8 @@ export default function PostMortemPage() {
             });
 
             if (!response.ok) {
-                throw new Error('Failed to submit survey');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || errorData.details || 'Failed to submit survey');
             }
 
             toast({
@@ -44,8 +45,8 @@ export default function PostMortemPage() {
         } catch (error) {
             console.error('Error submitting survey:', error);
             toast({
-                title: "Error",
-                description: "There was a problem submitting your survey. Please try again.",
+                title: "Submission Error",
+                description: error instanceof Error ? error.message : "There was a problem submitting your survey. Please try again.",
                 variant: "destructive",
             });
         } finally {

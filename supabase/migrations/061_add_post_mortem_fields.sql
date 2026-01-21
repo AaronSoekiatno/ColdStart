@@ -23,6 +23,11 @@ BEGIN
         ALTER TABLE admin_audit.assessment_scores ADD COLUMN difficulty_score INTEGER;
     END IF;
 
+    -- 5. Add updated_at
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'admin_audit' AND table_name = 'assessment_scores' AND column_name = 'updated_at') THEN
+        ALTER TABLE admin_audit.assessment_scores ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+    END IF;
+
 END $$;
 
 -- Update the log_test_result function or create a new one for post-mortem
