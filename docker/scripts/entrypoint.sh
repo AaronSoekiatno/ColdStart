@@ -283,18 +283,16 @@ echo "   ✓ Chat view hidden in UI state"
 
 # FINAL SOLUTION: Inject JavaScript to hide Copilot panel after page loads
 echo "🎯 Adding Copilot panel hider script..."
-cat > /tmp/hide-copilot.js << 'EOF'
+cat > /home/coder/.local/share/code-server/hide-copilot.js << 'EOF'
 (function() {
     console.log('[Hermes] Copilot panel hider loaded');
     
     function hideCopilotPanel() {
-        // Inject CSS
         let style = document.getElementById('hermes-hide-copilot');
         if (!style) {
             style = document.createElement('style');
             style.id = 'hermes-hide-copilot';
             style.textContent = `
-                /* Hide Copilot/Chat panel - AGGRESSIVE */
                 .part.sidebar.right,
                 .sidebar.right,
                 [id*="workbench.view.extension.github-copilot"],
@@ -312,10 +310,9 @@ cat > /tmp/hide-copilot.js << 'EOF'
                 }
             `;
             document.head.appendChild(style);
-            console.log('[Hermes] ✓ CSS injected');
+            console.log('[Hermes] CSS injected');
         }
         
-        // Also directly hide elements
         const selectors = [
             '.part.sidebar.right',
             '[id*="workbench.view.extension.github-copilot"]',
@@ -333,34 +330,23 @@ cat > /tmp/hide-copilot.js << 'EOF'
         });
     }
     
-    // Run immediately
     hideCopilotPanel();
-    
-    // Run after DOM loads
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', hideCopilotPanel);
     }
-    
-    // Run periodically to catch late-loading panels
     setInterval(hideCopilotPanel, 1000);
-    
-    // Watch for DOM changes and hide panels as they appear
     const observer = new MutationObserver(hideCopilotPanel);
-    observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true
-    });
-    
-    console.log('[Hermes] ✓ Copilot panel hider active (continuous monitoring)');
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    console.log('[Hermes] Copilot panel hider active');
 })();
 EOF
 
-# Inject the script into code-server's workbench HTML
+# Inject script tag into workbench HTML
 WORKBENCH_HTML=$(find /usr/lib/code-server -name "workbench.html" 2>/dev/null | head -n 1)
 if [ -f "$WORKBENCH_HTML" ]; then
-    SCRIPT_CONTENT=$(cat /tmp/hide-copilot.js)
-    sed -i "s|</body>|<script>$SCRIPT_CONTENT</script></body>|" "$WORKBENCH_HTML"
-    echo "   ✓ Copilot hider script injected"
+    grep -q "hide-copilot.js" "$WORKBENCH_HTML" || \
+    sed -i 's|</body>|<script src="/hide-copilot.js"></script></body>|' "$WORKBENCH_HTML"
+    echo "   ✓ Copilot hider script linked"
 fi
 
 # Test dependencies are now linked at build time in Dockerfile (Layer 6)
