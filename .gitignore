@@ -64,3 +64,4 @@ ENV/
 
 # Vercel
 .vercel
+docker/archive/
