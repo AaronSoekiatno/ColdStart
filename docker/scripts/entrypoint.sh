@@ -195,27 +195,46 @@ check_settings() {
     # Force remove ALL extensions directly in the entrypoint
     # This runs synchronously BEFORE code-server starts to prevent them from loading
     echo "🚫 Removing ALL extensions..."
-    
+
     # Remove ALL extensions from all possible locations
-    rm -rf /home/coder/.local/share/code-server/extensions/* 2>/dev/null || true
-    rm -rf /home/coder/.vscode-server/extensions/* 2>/dev/null || true
-    
-    # Remove extension state and cache
+    rm -rf /home/coder/.local/share/code-server/extensions 2>/dev/null || true
+    rm -rf /home/coder/.vscode-server/extensions 2>/dev/null || true
     rm -rf /home/coder/.local/share/code-server/CachedExtensions* 2>/dev/null || true
     rm -rf /home/coder/.local/share/code-server/CachedExtensionVSIXs* 2>/dev/null || true
-    
-    # Remove any extension-related state
-    rm -rf /home/coder/.local/share/code-server/User/workspaceStorage/* 2>/dev/null || true
-    rm -rf /home/coder/.local/share/code-server/User/globalStorage/* 2>/dev/null || true
-    
+    rm -rf /home/coder/.local/share/code-server/User/workspaceStorage 2>/dev/null || true
+    rm -rf /home/coder/.local/share/code-server/User/globalStorage 2>/dev/null || true
+
+    # Recreate empty directories to prevent errors
+    mkdir -p /home/coder/.local/share/code-server/extensions
+    mkdir -p /home/coder/.local/share/code-server/User/workspaceStorage
+    mkdir -p /home/coder/.local/share/code-server/User/globalStorage
+
     # Disable all views in the UI state
-    find /home/coder/.local/share/code-server -name "state.vscdb*" -exec rm -f {} \; 2>/dev/null || true
-    
-    echo "   ✓ All extensions removed"
+    find /home/coder/.local/share/code-server -name "state.vscdb*" -delete 2>/dev/null || true
+
+    # Create an empty extensions list to prevent auto-installation
+    echo "[]" > /home/coder/.local/share/code-server/extensions/extensions.json 2>/dev/null || true
+
+    # Make extensions directory read-only to prevent writes
+    chmod 555 /home/coder/.local/share/code-server/extensions 2>/dev/null || true
+
+    echo "   ✓ All extensions removed and directory locked"
 }
 
 echo "🛠️  Verifying configuration..."
 check_settings
+
+# NUCLEAR: Run Copilot removal at RUNTIME (as root)
+if [ -f "/usr/local/bin/nuke-copilot.sh" ]; then
+    echo "☢️  Running nuclear Copilot removal..."
+    sudo /usr/local/bin/nuke-copilot.sh
+fi
+
+# Patch workbench.html at runtime
+if [ -f "/usr/local/bin/patch-workbench.sh" ]; then
+    echo "🔧 Patching workbench.html..."
+    sudo /usr/local/bin/patch-workbench.sh
+fi
 
 # Fix workspace permissions synchronously for the root folder
 # This ensures code-server can actually read the workspace directory on launch
@@ -353,17 +372,29 @@ fi
 # No need to run setup_test_deps here - saves ~1-2s on startup
 
 echo "☢️  NUCLEAR OPTION: Removing all Copilot and chat extensions..."
-# Remove any GitHub Copilot extensions
-find /home/coder/.local/share/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true
-find /home/coder/.local/share/code-server -type d -iname "*chat*" -exec rm -rf {} + 2>/dev/null || true
-find /usr/lib/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true
-find /usr/lib/code-server -type d -iname "*chat*" -exec rm -rf {} + 2>/dev/null || true
+# Remove any GitHub Copilot extensions from all possible locations
+find /home/coder/.local/share/code-server -type d -iname "*copilot*" -prune -exec rm -rf {} + 2>/dev/null || true
+find /home/coder/.local/share/code-server -type d -iname "*chat*" -prune -exec rm -rf {} + 2>/dev/null || true
+find /home/coder/.local/share/code-server -type f -iname "*copilot*" -delete 2>/dev/null || true
+find /usr/lib/code-server -type d -iname "*copilot*" -prune -exec rm -rf {} + 2>/dev/null || true
+find /usr/lib/code-server -type d -iname "*github.copilot*" -prune -exec rm -rf {} + 2>/dev/null || true
+find /usr/lib/code-server -type d -iname "*ms-vscode.vscode-chat*" -prune -exec rm -rf {} + 2>/dev/null || true
+find /usr/lib/code-server -type d -name "chat" -prune -exec rm -rf {} + 2>/dev/null || true
+find /usr/lib/code-server -type f -iname "*copilot*.js" -delete 2>/dev/null || true
+find /usr/lib/code-server -type f -iname "*copilot*.vsix" -delete 2>/dev/null || true
 
 # Disable chat in product.json (prevents chat from loading at all)
 PRODUCT_JSON=$(find /usr/lib/code-server -name "product.json" 2>/dev/null | head -n 1)
 if [ -f "$PRODUCT_JSON" ]; then
-    jq '.extensionsGallery = null | .aiConfig = null | .chatEnabled = false' "$PRODUCT_JSON" > "$PRODUCT_JSON.tmp" && mv "$PRODUCT_JSON.tmp" "$PRODUCT_JSON"
+    jq 'del(.extensionsGallery) | del(.aiConfig) | del(.linkProtectionTrustedDomains) | .chatEnabled = false | .inlineChat.enabled = false | .commandCenter.enabled = false | .enableTelemetry = false' "$PRODUCT_JSON" > "$PRODUCT_JSON.tmp" && mv "$PRODUCT_JSON.tmp" "$PRODUCT_JSON"
     echo "   ✓ Disabled extensions gallery and chat in product.json"
+fi
+
+# Disable built-in extensions list
+BUILTIN_EXT=$(find /usr/lib/code-server -name "builtInExtensions.json" 2>/dev/null | head -n 1)
+if [ -f "$BUILTIN_EXT" ]; then
+    echo "[]" > "$BUILTIN_EXT"
+    echo "   ✓ Disabled built-in extensions list"
 fi
 
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
@@ -385,6 +416,8 @@ exec code-server \
   --auth none \
   --disable-workspace-trust \
   --disable-getting-started-override \
+  --disable-telemetry \
+  --disable-update-check \
   --extensions-dir /tmp/no-extensions \
   --user-data-dir /home/coder/.local/share/code-server \
   /workspace

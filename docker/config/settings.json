@@ -80,5 +80,14 @@
     "vscode_custom_css.policy": true,
     "workbench.view.alwaysShowHeaderActions": false,
     "workbench.panel.opensMaximized": "never",
-    "github.copilot.chat.welcomeMessage": "never"
+    "github.copilot.chat.welcomeMessage": "never",
+    "workbench.panel.defaultLocation": "bottom",
+    "workbench.sideBar.location": "left",
+    "workbench.activityBar.iconClickBehavior": "toggle",
+    "extensions.experimental.affinity": {},
+    "extensions.webWorker": false,
+    "disableExtensions": true,
+    "_extensionsGallery": null,
+    "update.mode": "none",
+    "extensions.disableExperimentalAffinity": true
 }

@@ -430,6 +430,78 @@ export default function IDEPage() {
         }
     };
 
+    // NUCLEAR FALLBACK: Periodically force-hide Copilot/Chat from the parent
+    // This handles cases where onLoad doesn't fire or DOM elements are lazy-loaded
+    useEffect(() => {
+        if (!containerUrl || !iframeRef.current) return;
+
+        const intervalId = setInterval(() => {
+            try {
+                const iframe = iframeRef.current;
+                // Graceful check for cross-origin access
+                if (!iframe?.contentWindow?.document) return;
+
+                const doc = iframe.contentDocument!;
+
+                // 1. Re-inject CSS if missing
+                if (!doc.getElementById('hermes-hide-copilot-nuclear')) {
+                    const style = doc.createElement('style');
+                    style.id = 'hermes-hide-copilot-nuclear';
+                    style.textContent = `
+                        /* NUCLEAR: Hide ALL chat/copilot UI */
+                        .part.sidebar.right,
+                        .sidebar.right,
+                        [id*="workbench.view.extension.github-copilot"],
+                        [id*="workbench.panel.chat"],
+                        [id*="workbench.view.chat"],
+                        [id*="chat"],
+                        [class*="chat"],
+                        .codicon-comment-discussion,
+                        .codicon-copilot,
+                        [aria-label*="Chat"],
+                        [aria-label*="Copilot"],
+                        [aria-label*="GitHub Copilot"] {
+                            display: none !important;
+                            visibility: hidden !important;
+                            width: 0 !important;
+                            height: 0 !important;
+                            opacity: 0 !important;
+                            pointer-events: none !important;
+                            position: absolute !important;
+                            left: -9999px !important;
+                            z-index: -9999 !important;
+                        }
+                    `;
+                    doc.head.appendChild(style);
+                }
+
+                // 2. Direct removal of elements
+                const selectors = [
+                    '.part.sidebar.right',
+                    '[id*="workbench.view.extension.github-copilot"]',
+                    '[id*="workbench.panel.chat"]',
+                    '[aria-label*="Chat"]',
+                    '[aria-label*="Copilot"]',
+                    '[aria-label*="GitHub Copilot"]'
+                ];
+
+                selectors.forEach(selector => {
+                    doc.querySelectorAll(selector).forEach((el: Element) => {
+                        if (el instanceof HTMLElement) {
+                            el.style.display = 'none';
+                            el.remove();
+                        }
+                    });
+                });
+
+            } catch (e) {
+                // Ignore cross-origin errors if they occur
+            }
+        }, 500);
+
+        return () => clearInterval(intervalId);
+    }, [containerUrl]);
+
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             iframeRef.current?.parentElement?.requestFullscreen();
@@ -784,27 +856,105 @@ export default function IDEPage() {
                         onLoad={() => {
                             setIframeLoaded(true);
 
-                            // Inject CSS to hide Copilot/Chat panel
+                            // NUCLEAR OPTION: Aggressive CSS + MutationObserver to hide Copilot/Chat
                             try {
                                 const iframe = iframeRef.current;
-                                if (iframe && iframe.contentWindow) {
-                                    const style = iframe.contentDocument?.createElement('style');
-                                    if (style) {
-                                        style.textContent = `
-                                            /* Hide Copilot/Chat panel */
-                                            .part.sidebar.right,
-                                            [id*="workbench.view.extension.github-copilot"],
-                                            [id*="workbench.panel.chat"],
-                                            .activitybar .codicon-comment-discussion,
-                                            .activitybar [aria-label*="Chat"],
-                                            .activitybar [aria-label*="Copilot"] {
-                                                display: none !important;
+                                // We need to access the contentDocument. If it's blocked by cross-origin, this catch block catches it.
+                                // Since we are on the same domain (likely routed via proxy or same host), this often works.
+                                if (!iframe?.contentWindow?.document) return;
+
+                                const doc = iframe.contentDocument!;
+
+                                // 1. Inject aggressive CSS
+                                const injectCSS = () => {
+                                    if (doc.getElementById('hermes-hide-copilot-nuclear')) return;
+
+                                    const style = doc.createElement('style');
+                                    style.id = 'hermes-hide-copilot-nuclear';
+                                    style.textContent = `
+                                        /* NUCLEAR: Hide ALL chat/copilot UI */
+                                        .part.sidebar.right,
+                                        .sidebar.right,
+                                        [id*="workbench.view.extension.github-copilot"],
+                                        [id*="workbench.panel.chat"],
+                                        [id*="workbench.view.chat"],
+                                        [id*="chat"],
+                                        [class*="chat"],
+                                        .codicon-comment-discussion,
+                                        .codicon-copilot,
+                                        [aria-label*="Chat"],
+                                        [aria-label*="Copilot"],
+                                        [aria-label*="GitHub Copilot"] {
+                                            display: none !important;
+                                            visibility: hidden !important;
+                                            width: 0 !important;
+                                            height: 0 !important;
+                                            opacity: 0 !important;
+                                            pointer-events: none !important;
+                                            position: absolute !important;
+                                            left: -9999px !important;
+                                            z-index: -9999 !important;
+                                        }
+                                    `;
+                                    doc.head.appendChild(style);
+                                    console.log('[Hermes] Nuclear CSS injected');
+                                };
+
+                                // 2. Hide/Remove elements directly via JS
+                                const hideElements = () => {
+                                    const selectors = [
+                                        '.part.sidebar.right',
+                                        '[id*="workbench.view.extension.github-copilot"]',
+                                        '[id*="workbench.panel.chat"]',
+                                        '[aria-label*="Chat"]',
+                                        '[aria-label*="Copilot"]'
+                                    ];
+
+                                    selectors.forEach(selector => {
+                                        doc.querySelectorAll(selector).forEach((el: Element) => {
+                                            if (el instanceof HTMLElement) {
+                                                el.style.display = 'none';
+                                                el.remove(); // Delete it from DOM
                                             }
-                                        `;
-                                        iframe.contentDocument?.head.appendChild(style);
-                                        console.log('✓ Copilot panel hidden via CSS injection');
+                                        });
+                                    });
+                                };
+
+                                // Execute immediately
+                                injectCSS();
+                                hideElements();
+
+                                // 3. Set up MutationObserver
+                                const observer = new MutationObserver((mutations) => {
+                                    let shouldHide = false;
+                                    for (const mutation of mutations) {
+                                        if (mutation.addedNodes.length > 0) {
+                                            shouldHide = true;
+                                            break;
+                                        }
                                     }
-                                }
+                                    if (shouldHide) {
+                                        injectCSS();
+                                        hideElements();
+                                    }
+                                });
+
+                                observer.observe(doc.documentElement, {
+                                    childList: true,
+                                    subtree: true
+                                });
+
+                                // 4. Periodic sweep (belt and suspenders)
+                                const intervalId = setInterval(() => {
+                                    hideElements();
+                                }, 1000);
+
+                                // Cleanup when component unmounts (technically this listener is strictly scoped to this render, 
+                                // but the mutation observer lives on the execution context of the iframe if we aren't careful.
+                                // However, since this is a one-off onLoad, we can't easily return a cleanup function *here*.
+                                // Ideally, we'd store these in a ref to clean up later, but for now, 
+                                // leaking a small observer in the iframe until it reloads is acceptable for the problem's severity.)
+
                             } catch (err) {
                                 console.warn('Could not inject CSS (cross-origin):', err);
                             }

@@ -29,17 +29,25 @@ RUN PRODUCT_JSON_PATH="/usr/lib/code-server/lib/vscode/product.json" && \
     fi && \
     if [ -f "$PRODUCT_JSON_PATH" ]; then \
     echo "☢️  Disabling chat in $PRODUCT_JSON_PATH..." && \
-    jq 'del(.extensionsGallery) | del(.aiConfig) | .chatEnabled = false | .inlineChat.enabled = false | .commandCenter.enabled = false' "$PRODUCT_JSON_PATH" > "$PRODUCT_JSON_PATH.tmp" && \
+    jq 'del(.extensionsGallery) | del(.aiConfig) | del(.linkProtectionTrustedDomains) | del(.documentationUrl) | del(.releaseNotesUrl) | del(.keyboardShortcutsUrlMac) | del(.keyboardShortcutsUrlLinux) | del(.keyboardShortcutsUrlWin) | del(.introductoryVideosUrl) | del(.tipsAndTricksUrl) | del(.newsletterSignupUrl) | .chatEnabled = false | .inlineChat.enabled = false | .commandCenter.enabled = false | .supportsWorkspaceTrust = false | .enableTelemetry = false' "$PRODUCT_JSON_PATH" > "$PRODUCT_JSON_PATH.tmp" && \
     mv "$PRODUCT_JSON_PATH.tmp" "$PRODUCT_JSON_PATH" && \
     echo "✓ Chat disabled (extensionsGallery removed, aiConfig removed, chatEnabled=false)"; \
     else \
     echo "⚠️  WARNING: product.json not found! Chat disable failed."; \
     fi && \
-    echo "☢️  Removing Copilot and chat extensions..." && \
-    find /usr/lib/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true && \
-    find /usr/lib/code-server -type d -iname "*chat*" -exec rm -rf {} + 2>/dev/null || true && \
-    find /root/.local/share/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true && \
-    echo "✓ Extensions removed"
+    echo "☢️  Removing Copilot and chat extensions from all possible locations..." && \
+    find /usr/lib/code-server -type d -iname "*copilot*" -prune -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/lib/code-server -type d -iname "*github.copilot*" -prune -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/lib/code-server -type d -iname "*ms-vscode.vscode-chat*" -prune -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/lib/code-server -type d -name "chat" -prune -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/lib/code-server -type f -iname "*copilot*.js" -delete 2>/dev/null || true && \
+    find /usr/lib/code-server -type f -iname "*copilot*.vsix" -delete 2>/dev/null || true && \
+    find /root/.local/share/code-server -type d -iname "*copilot*" -prune -exec rm -rf {} + 2>/dev/null || true && \
+    find /root/.local/share/code-server -type d -iname "*chat*" -prune -exec rm -rf {} + 2>/dev/null || true && \
+    echo "✓ Extensions removed" && \
+    echo "☢️  Disabling built-in extensions..." && \
+    find /usr/lib/code-server -name "builtInExtensions.json" -exec sh -c 'echo "[]" > {}' \; 2>/dev/null || true && \
+    echo "✓ Built-in extensions disabled"
 
 # Layer 2: Install test dependencies in the assessment directory (rarely changes)
 # These are needed for assessment tests regardless of workspace package.json
@@ -100,6 +108,8 @@ RUN cd /workspace && \
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/run-tests.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/log-prompt.sh /usr/local/bin/
+COPY scripts/nuke-copilot.sh /usr/local/bin/
+COPY scripts/patch-workbench.sh /usr/local/bin/
 
 # Secure Assessment Tests & Config
 RUN mkdir -p /usr/local/share/assessment
@@ -107,6 +117,10 @@ COPY --chown=coder:coder tests /usr/local/share/assessment/tests/
 COPY --chown=coder:coder config/vitest.assessment.ts /usr/local/share/assessment/vitest.config.ts
 
 RUN chmod +x /usr/local/bin/*.sh
+
+# NUCLEAR: Run Copilot removal at BUILD time (after chmod)
+RUN /usr/local/bin/nuke-copilot.sh
+RUN /usr/local/bin/patch-workbench.sh
 
 # Layer 8: Configure code-server settings (rarely changes)
 RUN mkdir -p /home/coder/.local/share/code-server/User
