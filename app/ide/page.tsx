@@ -467,6 +467,23 @@ export default function IDEPage() {
     }
 
     if (containerStatus === 'provisioning') {
+        // Calculate progress percentage based on elapsed time (0-100%)
+        // Typical provisioning: 20-40s, so we'll use 35s as baseline
+        const progressPercent = Math.min(Math.floor((elapsedTime / 35) * 100), 95);
+
+        // Dynamic status message based on elapsed time
+        const getStatusMessage = () => {
+            if (elapsedTime < 5) return { step: 'Deploying container to Fly.io...', icon: '🚀' };
+            if (elapsedTime < 10) return { step: 'Allocating compute resources...', icon: '⚙️' };
+            if (elapsedTime < 15) return { step: 'Loading VS Code environment...', icon: '💻' };
+            if (elapsedTime < 25) return { step: 'Starting development server...', icon: '🔥' };
+            if (elapsedTime < 35) return { step: 'Warming up Next.js compiler...', icon: '⚡' };
+            return { step: 'Finalizing setup...', icon: '✨' };
+        };
+
+        const currentStatus = getStatusMessage();
+        const estimatedRemaining = Math.max(35 - elapsedTime, 5);
+
         return (
             <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
                 <Header initialUser={user} />
@@ -490,43 +507,67 @@ export default function IDEPage() {
                                 We're provisioning your cloud IDE powered by Fly.io
                             </p>
 
-                            {/* Progress Steps */}
-                            <div className="space-y-4 mb-8">
-                                <div className="flex items-center gap-3 text-slate-300">
-                                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-sm">Allocating compute resources</span>
+                            {/* Progress Bar */}
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm text-slate-400">Progress</span>
+                                    <span className="text-sm font-mono text-blue-400">{progressPercent}%</span>
                                 </div>
-                                <div className="flex items-center gap-3 text-slate-300">
-                                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                                    <span className="text-sm">Loading VS Code environment</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-300">
-                                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                    <span className="text-sm">Installing dependencies</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-400">
-                                    <div className="w-2 h-2 rounded-full bg-slate-600" />
-                                    <span className="text-sm">Starting container</span>
+                                <div className="w-full bg-slate-700/50 rounded-full h-2.5 overflow-hidden">
+                                    <div
+                                        className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2.5 rounded-full transition-all duration-1000 ease-out"
+                                        style={{ width: `${progressPercent}%` }}
+                                    />
                                 </div>
                             </div>
 
-                            {/* Time Estimate */}
+                            {/* Current Status */}
                             <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
-                                <div className="flex items-start gap-3">
-                                    <Clock className="h-5 w-5 text-blue-400 mt-0.5" />
-                                    <div>
+                                <div className="flex items-center gap-3">
+                                    <div className="text-2xl">{currentStatus.icon}</div>
+                                    <div className="flex-1">
                                         <p className="text-blue-300 font-medium text-sm mb-1">
-                                            Typical setup time: 20-40 seconds
+                                            {currentStatus.step}
                                         </p>
                                         <p className="text-blue-400/70 text-xs">
-                                            First-time provisioning may take slightly longer
+                                            Estimated time remaining: ~{estimatedRemaining}s
                                         </p>
                                     </div>
+                                    <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                                </div>
+                            </div>
+
+                            {/* Progress Steps */}
+                            <div className="space-y-3 mb-6">
+                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 5 ? 'text-green-400' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 5 ? 'bg-green-500' : 'bg-slate-600'}`} />
+                                    <span className="text-sm">Deploy container</span>
+                                    {elapsedTime >= 5 && <span className="text-xs">✓</span>}
+                                </div>
+                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 10 ? 'text-green-400' : elapsedTime >= 5 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 10 ? 'bg-green-500' : elapsedTime >= 5 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                    <span className="text-sm">Allocate resources</span>
+                                    {elapsedTime >= 10 && <span className="text-xs">✓</span>}
+                                </div>
+                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 15 ? 'text-green-400' : elapsedTime >= 10 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 15 ? 'bg-green-500' : elapsedTime >= 10 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                    <span className="text-sm">Load VS Code</span>
+                                    {elapsedTime >= 15 && <span className="text-xs">✓</span>}
+                                </div>
+                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 25 ? 'text-green-400' : elapsedTime >= 15 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 25 ? 'bg-green-500' : elapsedTime >= 15 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                    <span className="text-sm">Start dev server</span>
+                                    {elapsedTime >= 25 && <span className="text-xs">✓</span>}
+                                </div>
+                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 35 ? 'text-green-400' : elapsedTime >= 25 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 35 ? 'bg-green-500' : elapsedTime >= 25 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                    <span className="text-sm">Warm up compiler</span>
+                                    {elapsedTime >= 35 && <span className="text-xs">✓</span>}
                                 </div>
                             </div>
 
                             {/* Helpful Tips */}
-                            <div className="text-center">
+                            <div className="text-center border-t border-slate-700 pt-4">
                                 <p className="text-slate-500 text-xs mb-2">💡 Pro Tip</p>
                                 <p className="text-slate-400 text-sm">
                                     Your environment includes Claude Code, auto-save, and full terminal access
@@ -544,6 +585,7 @@ export default function IDEPage() {
                 </section>
             </div>
         );
+
     }
 
     if (containerStatus === 'error' || !containerUrl) {

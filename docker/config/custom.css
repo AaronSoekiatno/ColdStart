@@ -1,0 +1,62 @@
+/* Hide GitHub Copilot and AI Chat UI Elements */
+
+/* Hide the entire chat panel/sidebar */
+.chat-view,
+.chat-panel,
+[id*="workbench.panel.chat"],
+[id*="workbench.view.chat"],
+.part.sidebar[id*="chat"],
+.composite.title[aria-label*="Chat"],
+.composite.title[aria-label*="Copilot"] {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Hide chat icon in activity bar */
+.activitybar .action-item[aria-label*="Chat"],
+.activitybar .action-item[aria-label*="Copilot"],
+.activitybar .codicon-copilot,
+.activitybar .codicon-comment-discussion {
+    display: none !important;
+}
+
+/* Hide inline chat/Copilot suggestions */
+.inline-chat,
+.copilot-chat,
+.ghost-text-decoration,
+.ghost-text-widget,
+[class*="copilot"],
+[class*="inlineChat"] {
+    display: none !important;
+}
+
+/* Hide chat-related status bar items */
+.statusbar-item[id*="copilot"],
+.statusbar-item[id*="chat"],
+.statusbar-item .codicon-copilot {
+    display: none !important;
+}
+
+/* Hide any panel with "chat" or "copilot" in the title */
+.panel .composite.title:has([aria-label*="Chat"]),
+.panel .composite.title:has([aria-label*="Copilot"]) {
+    display: none !important;
+}
+
+/* Hide the "Build with Agent" sidebar */
+.sidebar-pane[id*="chat"],
+.sidebar-pane .pane-header:has([aria-label*="Chat"]),
+.sidebar-pane .pane-header:has([aria-label*="Agent"]) {
+    display: none !important;
+}
+
+/* Force hide any element with chat/copilot data attributes */
+[data-keybinding-context*="chat"],
+[data-keybinding-context*="copilot"],
+[aria-label*="GitHub Copilot"],
+[aria-label*="AI Chat"],
+[aria-label*="Build with Agent"] {
+    display: none !important;
+}

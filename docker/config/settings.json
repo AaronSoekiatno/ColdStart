@@ -73,5 +73,9 @@
     "terminal.integrated.defaultLocation": "editor",
     "npm.packageManager": "npm",
     "claude.startChatOnOpen": false,
-    "claude.autoStartConversation": false
+    "claude.autoStartConversation": false,
+    "vscode_custom_css.imports": [
+        "file:///home/coder/.local/share/code-server/custom.css"
+    ],
+    "vscode_custom_css.policy": true
 }

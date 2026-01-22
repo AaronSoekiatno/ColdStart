@@ -53,6 +53,27 @@ RUN cd /workspace && \
 # This layer rebuilds when code changes, but npm install is cached
 COPY --chown=coder:coder workspace /workspace/
 
+# Layer 6: Link test dependencies from assessment to workspace
+# This runs at build time instead of startup time (saves ~1-2s per container start)
+RUN cd /workspace && \
+    # List of test packages to symlink from assessment node_modules \
+    TEST_PACKAGES="vitest @vitejs/plugin-react-swc @testing-library/react @testing-library/jest-dom @testing-library/user-event happy-dom @typescript-eslint/parser @typescript-eslint/typescript-estree glob" && \
+    for pkg in $TEST_PACKAGES; do \
+    # Handle scoped packages (e.g., @vitejs/plugin-react-swc) \
+    if echo "$pkg" | grep -q "^@"; then \
+    scope=$(echo "$pkg" | cut -d'/' -f1) && \
+    mkdir -p "node_modules/$scope" && \
+    if [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then \
+    ln -sf "/usr/local/share/assessment/node_modules/$pkg" "node_modules/$pkg"; \
+    fi; \
+    else \
+    # Non-scoped package \
+    if [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then \
+    ln -sf "/usr/local/share/assessment/node_modules/$pkg" "node_modules/$pkg"; \
+    fi; \
+    fi; \
+    done
+
 
 # Layer 7: Copy scripts and configuration (changes occasionally)
 COPY --chown=coder:coder scripts/entrypoint.sh /usr/local/bin/
@@ -70,6 +91,9 @@ RUN chmod +x /usr/local/bin/*.sh
 RUN mkdir -p /home/coder/.local/share/code-server/User
 COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/
 COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/settings.json.bak
+
+# Inject custom CSS to hide Copilot/Chat UI
+COPY --chown=coder:coder config/custom.css /home/coder/.local/share/code-server/
 
 # Create build version file for verification
 RUN echo "{\"built_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"$(date +%s)\"}" > /home/coder/.hermes-version.json

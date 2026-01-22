@@ -113,50 +113,8 @@ setup_env_local() {
     echo "PORT=3000" >> "$ENV_FILE"
 }
 
-setup_test_deps() {
-    # 7. Link test dependencies into workspace node_modules
-    echo "🧪 Setting up test dependencies..."
-
-    # Ensure workspace node_modules exists
-    mkdir -p /workspace/node_modules
-
-    # List of test packages to symlink from assessment node_modules
-    TEST_PACKAGES=(
-        "vitest"
-        "@vitejs/plugin-react-swc"
-        "@testing-library/react"
-        "@testing-library/jest-dom"
-        "@testing-library/user-event"
-        "happy-dom"
-        "@typescript-eslint/parser"
-        "@typescript-eslint/typescript-estree"
-        "glob"
-    )
-
-    # Symlink each test package if it exists in assessment and not in workspace
-    for pkg in "${TEST_PACKAGES[@]}"; do
-        # Handle scoped packages (e.g., @vitejs/plugin-react-swc)
-        if [[ "$pkg" == @* ]]; then
-            scope="${pkg%%/*}"
-            package_name="${pkg#*/}"
-
-            # Create scope directory if it doesn't exist
-            mkdir -p "/workspace/node_modules/$scope"
-
-            # Symlink if not already present
-            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then
-                ln -sf "/usr/local/share/assessment/node_modules/$pkg" "/workspace/node_modules/$pkg"
-            fi
-        else
-            # Non-scoped package
-            if [ ! -e "/workspace/node_modules/$pkg" ] && [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then
-                ln -sf "/usr/local/share/assessment/node_modules/$pkg" "/workspace/node_modules/$pkg"
-            fi
-        fi
-    done
-
-    echo "   ✓ Test dependencies linked"
-}
+# setup_test_deps removed - now runs at build time in Dockerfile (Layer 6)
+# This saves ~1-2s on every container startup
 
 start_dev_server() {
     # 8. Auto-start the development server
@@ -204,7 +162,7 @@ run_background_setup() {
     measure_step "setup_bash_config" setup_bash_config
     measure_step "setup_git" setup_git
     measure_step "setup_env_local" setup_env_local
-    measure_step "setup_test_deps" setup_test_deps
+    # setup_test_deps removed - now in Dockerfile
     measure_step "start_dev_server" start_dev_server
 
 
@@ -270,10 +228,11 @@ sudo chown coder:coder /workspace
 #     cp -n -R /usr/local/share/workspace-template/. /workspace/ || true
 # fi
 
-# Setup test dependencies synchronously to ensure they're available for tests
-setup_test_deps
+# Test dependencies are now linked at build time in Dockerfile (Layer 6)
+# No need to run setup_test_deps here - saves ~1-2s on startup
 
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
+START_TIME=$(date +%s%3N)
 
 # Run remaining heavy setup tasks in background
 run_background_setup &
@@ -281,11 +240,18 @@ run_background_setup &
 # Start code-server (this blocks and keeps container running)
 # Open the workspace folder
 # Disable extensions completely by pointing to a non-existent directory
+# Log startup performance metric
+END_TIME=$(date +%s%3N)
+STARTUP_DURATION=$((END_TIME - START_TIME))
+log_metric "code_server_startup" "$STARTUP_DURATION"
+
 exec code-server \
   --bind-addr 0.0.0.0:8080 \
   --auth none \
   --disable-workspace-trust \
   --disable-getting-started-override \
   --extensions-dir /tmp/no-extensions \
+  --user-data-dir /home/coder/.local/share/code-server \
+  --extra-builtin-extensions-dir /tmp/no-extensions \
   /workspace
 
