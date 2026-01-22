@@ -781,7 +781,34 @@ export default function IDEPage() {
                         allow="clipboard-read; clipboard-write; microphone"
                         sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
                         title="Code Server IDE"
-                        onLoad={() => setIframeLoaded(true)}
+                        onLoad={() => {
+                            setIframeLoaded(true);
+
+                            // Inject CSS to hide Copilot/Chat panel
+                            try {
+                                const iframe = iframeRef.current;
+                                if (iframe && iframe.contentWindow) {
+                                    const style = iframe.contentDocument?.createElement('style');
+                                    if (style) {
+                                        style.textContent = `
+                                            /* Hide Copilot/Chat panel */
+                                            .part.sidebar.right,
+                                            [id*="workbench.view.extension.github-copilot"],
+                                            [id*="workbench.panel.chat"],
+                                            .activitybar .codicon-comment-discussion,
+                                            .activitybar [aria-label*="Chat"],
+                                            .activitybar [aria-label*="Copilot"] {
+                                                display: none !important;
+                                            }
+                                        `;
+                                        iframe.contentDocument?.head.appendChild(style);
+                                        console.log('✓ Copilot panel hidden via CSS injection');
+                                    }
+                                }
+                            } catch (err) {
+                                console.warn('Could not inject CSS (cross-origin):', err);
+                            }
+                        }}
                     />
                 </div>
 
