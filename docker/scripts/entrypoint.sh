@@ -236,6 +236,14 @@ else
     echo "   ⚠️  Could not find workbench.html or custom.css for injection"
 fi
 
+# NUCLEAR OPTION: Disable extensions gallery to prevent chat extension loading
+echo "🚫 Disabling extensions gallery in product.json..."
+PRODUCT_JSON=$(find /usr/lib/code-server -name "product.json" 2>/dev/null | head -n 1)
+if [ -f "$PRODUCT_JSON" ]; then
+    sed -i 's/"serviceUrl"[[:space:]]*:[[:space:]]*"[^"]*"/"serviceUrl": ""/g' "$PRODUCT_JSON"
+    echo "   ✓ Extensions gallery disabled"
+fi
+
 # Test dependencies are now linked at build time in Dockerfile (Layer 6)
 # No need to run setup_test_deps here - saves ~1-2s on startup
 

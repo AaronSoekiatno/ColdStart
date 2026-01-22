@@ -25,7 +25,7 @@
     "terminal.integrated.shellIntegration.enabled": false,
     "workbench.startupEditor": "readme",
     "workbench.colorTheme": "Default Dark Modern",
-    "workbench.activityBar.visible": false,
+    "workbench.activityBar.visible": true,
     "workbench.statusBar.visible": true,
     "workbench.sideBar.location": "left",
     "git.autofetch": false,
@@ -77,5 +77,8 @@
     "vscode_custom_css.imports": [
         "file:///home/coder/.local/share/code-server/custom.css"
     ],
-    "vscode_custom_css.policy": true
+    "vscode_custom_css.policy": true,
+    "workbench.view.alwaysShowHeaderActions": false,
+    "workbench.panel.opensMaximized": "never",
+    "github.copilot.chat.welcomeMessage": "never"
 }
