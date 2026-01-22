@@ -55,13 +55,13 @@ RUN mkdir -p /usr/local/share/assessment && \
 RUN mkdir -p /workspace && chown -R coder:coder /workspace
 
 # Layer 6: Install workspace dependencies
-COPY --chown=coder:coder docker/workspace/package.json docker/workspace/package-lock.json* /workspace/
+COPY --chown=coder:coder workspace/package.json workspace/package-lock.json* /workspace/
 RUN cd /workspace && \
     npm install --legacy-peer-deps && \
     npm cache clean --force
 
 # Layer 7: Copy workspace source
-COPY --chown=coder:coder docker/workspace /workspace/
+COPY --chown=coder:coder workspace /workspace/
 
 # Layer 8: Link test dependencies
 RUN cd /workspace && \
@@ -81,14 +81,14 @@ RUN cd /workspace && \
     done
 
 # Layer 9: Copy scripts
-COPY --chown=coder:coder docker/scripts/entrypoint-minimal.sh /usr/local/bin/entrypoint.sh
-COPY --chown=coder:coder docker/scripts/run-tests.sh /usr/local/bin/
-COPY --chown=coder:coder docker/scripts/log-prompt.sh /usr/local/bin/
+COPY --chown=coder:coder scripts/entrypoint-minimal.sh /usr/local/bin/entrypoint.sh
+COPY --chown=coder:coder scripts/run-tests.sh /usr/local/bin/
+COPY --chown=coder:coder scripts/log-prompt.sh /usr/local/bin/
 
 # Copy tests and config
 RUN mkdir -p /usr/local/share/assessment
-COPY --chown=coder:coder docker/tests /usr/local/share/assessment/tests/
-COPY --chown=coder:coder docker/config/vitest.assessment.ts /usr/local/share/assessment/vitest.config.ts
+COPY --chown=coder:coder tests /usr/local/share/assessment/tests/
+COPY --chown=coder:coder config/vitest.assessment.ts /usr/local/share/assessment/vitest.config.ts
 
 RUN chmod +x /usr/local/bin/*.sh
 
@@ -97,19 +97,13 @@ RUN mkdir -p /home/coder/.local/share/code-server/User && \
     mkdir -p /home/coder/.config/code-server
 
 # Create a completely locked-down settings.json
-COPY --chown=coder:coder docker/config/settings.json /home/coder/.local/share/code-server/User/settings.json
+COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/settings.json
 
 # Create code-server config
-RUN cat > /home/coder/.config/code-server/config.yaml << 'EOF'
-bind-addr: 0.0.0.0:8080
-auth: none
-cert: false
-disable-telemetry: true
-disable-update-check: true1
-EOF
+COPY --chown=coder:coder config/code-server-config.yaml /home/coder/.config/code-server/config.yaml
 
 # Create custom CSS
-COPY --chown=coder:coder docker/config/custom.css /home/coder/.local/share/code-server/custom.css
+COPY --chown=coder:coder config/custom.css /home/coder/.local/share/code-server/custom.css
 
 # Build version
 RUN echo "{\"built_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"$(date +%s)\", \"base\": \"ubuntu-minimal\"}" > /home/coder/.hermes-version.json

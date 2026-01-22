@@ -1,5 +1,9 @@
 # Building Copilot-Free Docker Image
 
+## ⚠️ IMPORTANT: TEST BEFORE DEPLOYING TO PRODUCTION
+
+**DO NOT push to production until you've tested locally!**
+
 ## Problem
 The `codercom/code-server:latest` base image has GitHub Copilot baked in, making it impossible to completely remove.
 
@@ -12,8 +16,11 @@ Build from a clean base using one of two approaches:
 Uses Ubuntu 22.04 + fresh code-server installation
 
 ```bash
+# IMPORTANT: Build from docker directory as context
+cd /path/to/Hermes/docker
+
 # Build the image
-docker build -f docker/Dockerfile.assessment.minimal -t hermes-assessment:minimal .
+docker build -f Dockerfile.assessment -t hermes-assessment:minimal .
 
 # Test it
 docker run --rm -it -p 8080:8080 hermes-assessment:minimal
