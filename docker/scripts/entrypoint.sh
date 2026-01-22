@@ -352,6 +352,20 @@ fi
 # Test dependencies are now linked at build time in Dockerfile (Layer 6)
 # No need to run setup_test_deps here - saves ~1-2s on startup
 
+echo "☢️  NUCLEAR OPTION: Removing all Copilot and chat extensions..."
+# Remove any GitHub Copilot extensions
+find /home/coder/.local/share/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true
+find /home/coder/.local/share/code-server -type d -iname "*chat*" -exec rm -rf {} + 2>/dev/null || true
+find /usr/lib/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true
+find /usr/lib/code-server -type d -iname "*chat*" -exec rm -rf {} + 2>/dev/null || true
+
+# Disable chat in product.json (prevents chat from loading at all)
+PRODUCT_JSON=$(find /usr/lib/code-server -name "product.json" 2>/dev/null | head -n 1)
+if [ -f "$PRODUCT_JSON" ]; then
+    jq '.extensionsGallery = null | .aiConfig = null | .chatEnabled = false' "$PRODUCT_JSON" > "$PRODUCT_JSON.tmp" && mv "$PRODUCT_JSON.tmp" "$PRODUCT_JSON"
+    echo "   ✓ Disabled extensions gallery and chat in product.json"
+fi
+
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
 START_TIME=$(date +%s%3N)
 
