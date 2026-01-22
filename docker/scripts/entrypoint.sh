@@ -221,12 +221,20 @@ check_settings
 # This ensures code-server can actually read the workspace directory on launch
 echo "🔧 Fixing workspace permissions..."
 sudo chown coder:coder /workspace
-# Restore workspace if completely empty (emergency fallback)
-# Restore check removed as template is no longer valid
-# if [ ! -f "/workspace/package.json" ] && [ -d "/usr/local/share/workspace-template" ]; then
-#     echo "📦 Restoring workspace files..."
-#     cp -n -R /usr/local/share/workspace-template/. /workspace/ || true
-# fi
+
+# Robust CSS injection: Inject custom CSS directly into the workbench HTML
+# This ensures UI elements are hidden even if extensions are disabled
+echo "🎨 Injecting custom CSS into workbench..."
+WORKBENCH_HTML=$(find /usr/lib/code-server -name "workbench.html" 2>/dev/null | head -n 1)
+CUSTOM_CSS="/home/coder/.local/share/code-server/custom.css"
+
+if [ -f "$WORKBENCH_HTML" ] && [ -f "$CUSTOM_CSS" ]; then
+    CSS_CONTENT=$(cat "$CUSTOM_CSS" | tr -d '\n' | sed 's/"/\\"/g')
+    sed -i "s|<\/head>|<style>$CSS_CONTENT</style><\/head>|" "$WORKBENCH_HTML"
+    echo "   ✓ CSS injected into $WORKBENCH_HTML"
+else
+    echo "   ⚠️  Could not find workbench.html or custom.css for injection"
+fi
 
 # Test dependencies are now linked at build time in Dockerfile (Layer 6)
 # No need to run setup_test_deps here - saves ~1-2s on startup
@@ -252,6 +260,5 @@ exec code-server \
   --disable-getting-started-override \
   --extensions-dir /tmp/no-extensions \
   --user-data-dir /home/coder/.local/share/code-server \
-  --extra-builtin-extensions-dir /tmp/no-extensions \
   /workspace
 

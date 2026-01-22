@@ -35,6 +35,7 @@ export default function IDEPage() {
     const [containerStatus, setContainerStatus] = useState<'loading' | 'provisioning' | 'running' | 'error'>('loading');
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
+    const [provisioningTime, setProvisioningTime] = useState(0);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [previewKey, setPreviewKey] = useState(0);
@@ -85,6 +86,22 @@ export default function IDEPage() {
             // Don't clear timer on phase change, only on unmount or finish
         };
     }, [containerStatus, iframeLoaded]);
+
+    // Separate timer for provisioning time (used for progress UI)
+    useEffect(() => {
+        let interval: NodeJS.Timeout | null = null;
+        if (containerStatus === 'provisioning') {
+            interval = setInterval(() => {
+                setProvisioningTime((prev) => prev + 1);
+            }, 1000);
+        } else {
+            setProvisioningTime(0);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [containerStatus]);
 
     // Cleanup timer on unmount
     useEffect(() => {
@@ -469,25 +486,26 @@ export default function IDEPage() {
     if (containerStatus === 'provisioning') {
         // Calculate progress percentage based on elapsed time (0-100%)
         // Typical provisioning: 20-40s, so we'll use 35s as baseline
-        const progressPercent = Math.min(Math.floor((elapsedTime / 35) * 100), 95);
+        const progressPercent = Math.min(Math.floor((provisioningTime / 35) * 100), 95);
 
         // Dynamic status message based on elapsed time
         const getStatusMessage = () => {
-            if (elapsedTime < 5) return { step: 'Deploying container to Fly.io...', icon: '🚀' };
-            if (elapsedTime < 10) return { step: 'Allocating compute resources...', icon: '⚙️' };
-            if (elapsedTime < 15) return { step: 'Loading VS Code environment...', icon: '💻' };
-            if (elapsedTime < 25) return { step: 'Starting development server...', icon: '🔥' };
-            if (elapsedTime < 35) return { step: 'Warming up Next.js compiler...', icon: '⚡' };
+            if (provisioningTime < 5) return { step: 'Deploying container to Fly.io...', icon: '🚀' };
+            if (provisioningTime < 10) return { step: 'Allocating compute resources...', icon: '⚙️' };
+            if (provisioningTime < 15) return { step: 'Loading VS Code environment...', icon: '💻' };
+            if (provisioningTime < 25) return { step: 'Starting development server...', icon: '🔥' };
+            if (provisioningTime < 35) return { step: 'Warming up Next.js compiler...', icon: '⚡' };
             return { step: 'Finalizing setup...', icon: '✨' };
         };
 
         const currentStatus = getStatusMessage();
-        const estimatedRemaining = Math.max(35 - elapsedTime, 5);
+        const estimatedRemaining = Math.max(35 - provisioningTime, 5);
 
         return (
             <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
                 <Header initialUser={user} />
-                <section className="flex-1 flex items-center justify-center px-4">
+                {/* section adjusted with pt-16 to move card lower on the screen */}
+                <section className="flex-1 flex items-center justify-center px-4 pt-16">
                     <div className="max-w-2xl w-full">
                         {/* Main Loading Card */}
                         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
@@ -539,30 +557,30 @@ export default function IDEPage() {
 
                             {/* Progress Steps */}
                             <div className="space-y-3 mb-6">
-                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 5 ? 'text-green-400' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 5 ? 'bg-green-500' : 'bg-slate-600'}`} />
+                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 5 ? 'text-green-400' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 5 ? 'bg-green-500' : 'bg-slate-600'}`} />
                                     <span className="text-sm">Deploy container</span>
-                                    {elapsedTime >= 5 && <span className="text-xs">✓</span>}
+                                    {provisioningTime >= 5 && <span className="text-xs">✓</span>}
                                 </div>
-                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 10 ? 'text-green-400' : elapsedTime >= 5 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 10 ? 'bg-green-500' : elapsedTime >= 5 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 10 ? 'text-green-400' : provisioningTime >= 5 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 10 ? 'bg-green-500' : provisioningTime >= 5 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
                                     <span className="text-sm">Allocate resources</span>
-                                    {elapsedTime >= 10 && <span className="text-xs">✓</span>}
+                                    {provisioningTime >= 10 && <span className="text-xs">✓</span>}
                                 </div>
-                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 15 ? 'text-green-400' : elapsedTime >= 10 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 15 ? 'bg-green-500' : elapsedTime >= 10 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 15 ? 'text-green-400' : provisioningTime >= 10 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 15 ? 'bg-green-500' : provisioningTime >= 10 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
                                     <span className="text-sm">Load VS Code</span>
-                                    {elapsedTime >= 15 && <span className="text-xs">✓</span>}
+                                    {provisioningTime >= 15 && <span className="text-xs">✓</span>}
                                 </div>
-                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 25 ? 'text-green-400' : elapsedTime >= 15 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 25 ? 'bg-green-500' : elapsedTime >= 15 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 25 ? 'text-green-400' : provisioningTime >= 15 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 25 ? 'bg-green-500' : provisioningTime >= 15 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
                                     <span className="text-sm">Start dev server</span>
-                                    {elapsedTime >= 25 && <span className="text-xs">✓</span>}
+                                    {provisioningTime >= 25 && <span className="text-xs">✓</span>}
                                 </div>
-                                <div className={`flex items-center gap-3 transition-colors ${elapsedTime >= 35 ? 'text-green-400' : elapsedTime >= 25 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${elapsedTime >= 35 ? 'bg-green-500' : elapsedTime >= 25 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
+                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 35 ? 'text-green-400' : provisioningTime >= 25 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
+                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 35 ? 'bg-green-500' : provisioningTime >= 25 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
                                     <span className="text-sm">Warm up compiler</span>
-                                    {elapsedTime >= 35 && <span className="text-xs">✓</span>}
+                                    {provisioningTime >= 35 && <span className="text-xs">✓</span>}
                                 </div>
                             </div>
 
@@ -578,7 +596,7 @@ export default function IDEPage() {
                         {/* Bottom Timer */}
                         <div className="text-center mt-6">
                             <p className="text-slate-500 text-sm">
-                                Elapsed time: <span className="font-mono text-slate-400">{formatTime(elapsedTime)}</span>
+                                Elapsed time: <span className="font-mono text-slate-400">{formatTime(provisioningTime)}</span>
                             </p>
                         </div>
                     </div>
