@@ -8,14 +8,21 @@ echo "☢️  NUCLEAR COPILOT REMOVAL SCRIPT ☢️"
 echo "========================================"
 
 # 1. Block Copilot at network level (must run as root)
-if [ "$(id -u)" = "0" ]; then
+# Skip during Docker build (read-only filesystem), run at container startup
+if [ "$(id -u)" = "0" ] && [ -w "/etc/hosts" ]; then
     echo "1. Blocking Copilot domains at network level..."
-    cat >> /etc/hosts << 'EOF'
+    if ! grep -q "copilot-proxy.githubusercontent.com" /etc/hosts 2>/dev/null; then
+        cat >> /etc/hosts << 'EOF'
 127.0.0.1 copilot-proxy.githubusercontent.com
 127.0.0.1 api.githubcopilot.com
 127.0.0.1 default.exp-tas.com
 EOF
-    echo "   ✓ Hosts file updated"
+        echo "   ✓ Hosts file updated"
+    else
+        echo "   ℹ️  Hosts file already configured"
+    fi
+else
+    echo "1. Skipping hosts file modification (read-only or not root)"
 fi
 
 # 2. Remove all Copilot files and directories
