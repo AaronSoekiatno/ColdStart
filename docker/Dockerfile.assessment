@@ -22,17 +22,23 @@ RUN apt-get update && \
 
 # Layer 1.5: NUCLEAR OPTION - Permanently disable chat/Copilot at build time
 # This modifies code-server's product.json to disable chat features before the container even starts
-RUN PRODUCT_JSON=$(find /usr/lib/code-server -name "product.json" 2>/dev/null | head -n 1) && \
-    if [ -f "$PRODUCT_JSON" ]; then \
-    echo "☢️  Disabling chat in product.json..." && \
-    jq 'del(.extensionsGallery) | del(.aiConfig) | .chatEnabled = false | .inlineChat.enabled = false' "$PRODUCT_JSON" > "$PRODUCT_JSON.tmp" && \
-    mv "$PRODUCT_JSON.tmp" "$PRODUCT_JSON" && \
-    echo "✓ Chat disabled in product.json"; \
+# We use both specific paths and 'find' to be robust against version changes
+RUN PRODUCT_JSON_PATH="/usr/lib/code-server/lib/vscode/product.json" && \
+    if [ ! -f "$PRODUCT_JSON_PATH" ]; then \
+    PRODUCT_JSON_PATH=$(find /usr/lib/code-server -name "product.json" -type f | head -n 1); \
+    fi && \
+    if [ -f "$PRODUCT_JSON_PATH" ]; then \
+    echo "☢️  Disabling chat in $PRODUCT_JSON_PATH..." && \
+    jq 'del(.extensionsGallery) | del(.aiConfig) | .chatEnabled = false | .inlineChat.enabled = false | .commandCenter.enabled = false' "$PRODUCT_JSON_PATH" > "$PRODUCT_JSON_PATH.tmp" && \
+    mv "$PRODUCT_JSON_PATH.tmp" "$PRODUCT_JSON_PATH" && \
+    echo "✓ Chat disabled (extensionsGallery removed, aiConfig removed, chatEnabled=false)"; \
+    else \
+    echo "⚠️  WARNING: product.json not found! Chat disable failed."; \
     fi && \
     echo "☢️  Removing Copilot and chat extensions..." && \
     find /usr/lib/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true && \
     find /usr/lib/code-server -type d -iname "*chat*" -exec rm -rf {} + 2>/dev/null || true && \
-    find /usr/lib/code-server -type d -iname "*github.copilot*" -exec rm -rf {} + 2>/dev/null || true && \
+    find /root/.local/share/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true && \
     echo "✓ Extensions removed"
 
 # Layer 2: Install test dependencies in the assessment directory (rarely changes)
