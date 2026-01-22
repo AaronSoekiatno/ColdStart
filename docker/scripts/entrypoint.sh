@@ -236,13 +236,50 @@ else
     echo "   ⚠️  Could not find workbench.html or custom.css for injection"
 fi
 
-# NUCLEAR OPTION: Disable extensions gallery to prevent chat extension loading
-echo "🚫 Disabling extensions gallery in product.json..."
-PRODUCT_JSON=$(find /usr/lib/code-server -name "product.json" 2>/dev/null | head -n 1)
-if [ -f "$PRODUCT_JSON" ]; then
-    sed -i 's/"serviceUrl"[[:space:]]*:[[:space:]]*"[^"]*"/"serviceUrl": ""/g' "$PRODUCT_JSON"
-    echo "   ✓ Extensions gallery disabled"
-fi
+# SIMPLE SOLUTION: Hide chat view by modifying UI state
+echo "🎯 Hiding chat view in UI state..."
+UI_STATE_DB="/home/coder/.local/share/code-server/User/globalStorage/state.vscdb"
+WORKSPACE_STATE="/home/coder/.local/share/code-server/User/workspaceStorage"
+
+# Create a script to hide the chat panel view
+cat > /tmp/hide-chat.js << 'EOF'
+// This will be injected into VS Code's settings to hide the chat panel
+const fs = require('fs');
+const path = require('path');
+
+const settingsPath = '/home/coder/.local/share/code-server/User/settings.json';
+
+try {
+    let settings = {};
+    if (fs.existsSync(settingsPath)) {
+        settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    }
+    
+    // Hide the chat panel in the activity bar
+    settings['workbench.panel.defaultLocation'] = 'bottom';
+    settings['workbench.activityBar.iconClickBehavior'] = 'toggle';
+    
+    // Write back
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 4));
+    console.log('✓ Chat view hidden in settings');
+} catch (err) {
+    console.error('Failed to modify settings:', err);
+}
+EOF
+
+# Also directly modify the UI state to close the chat panel
+mkdir -p /home/coder/.local/share/code-server/User/globalStorage
+cat > /home/coder/.local/share/code-server/User/globalStorage/state.json << 'EOF'
+{
+    "panel.hidden": "[\"workbench.panel.chat\"]",
+    "sideBar.hidden": "[\"workbench.view.extension.github-copilot-chat\"]",
+    "workbench.activity.pinnedViewlets2": "[]",
+    "workbench.panel.chat.hidden": true,
+    "workbench.view.extension.github-copilot-chat.hidden": true
+}
+EOF
+
+echo "   ✓ Chat view hidden in UI state"
 
 # Test dependencies are now linked at build time in Dockerfile (Layer 6)
 # No need to run setup_test_deps here - saves ~1-2s on startup
