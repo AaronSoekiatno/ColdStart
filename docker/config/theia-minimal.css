@@ -1,0 +1,69 @@
+/* Minimal Theia IDE Styling for Assessments */
+/* Hide unnecessary UI elements to keep candidates focused */
+
+/* Hide welcome/getting started screens */
+.theia-WelcomeView,
+.theia-GettingStartedWidget {
+    display: none !important;
+}
+
+/* Simplify the menu bar - hide unnecessary items */
+.p-MenuBar-item:has([data-command*="help"]),
+.p-MenuBar-item:has([data-command*="about"]) {
+    display: none !important;
+}
+
+/* Hide plugin/extension marketplace */
+[id*="extensions"],
+[id*="marketplace"],
+.theia-plugin-view {
+    display: none !important;
+}
+
+/* Simplify status bar - keep only essential items */
+.theia-statusBar .element:has([title*="Notifications"]),
+.theia-statusBar .element:has([title*="Problems"]):not(:has([class*="problem-count"])) {
+    display: none !important;
+}
+
+/* Clean up activity bar - only show essential views */
+.theia-app-left .p-TabBar-tab[title*="Extensions"],
+.theia-app-left .p-TabBar-tab[title*="Debug"],
+.theia-app-left .p-TabBar-tab[title*="SCM"] {
+    display: none !important;
+}
+
+/* Simplify file explorer */
+.theia-FileTree .theia-TreeNode .theia-TreeNodeSegment .theia-TreeNodeSegmentGrow {
+    font-size: 13px;
+}
+
+/* Clean terminal appearance */
+.terminal-outer-container {
+    border-top: 1px solid #333;
+}
+
+/* Hide unnecessary toolbar buttons */
+.theia-toolbar .item:has([title*="Settings"]),
+.theia-toolbar .item:has([title*="Command Palette"]):not(:first-child) {
+    display: none !important;
+}
+
+/* Optimize for assessment focus */
+.theia-editor-container {
+    padding: 0;
+}
+
+/* Hide notification center if empty */
+.theia-notification-center:empty {
+    display: none !important;
+}
+
+/* Simplify tabs */
+.p-TabBar-tab {
+    max-width: 200px;
+}
+
+.p-TabBar-tabLabel {
+    font-size: 13px;
+}

@@ -2,7 +2,7 @@
 # Containerized IDE Environment for Minerva Assessment
 # Using Theia IDE instead of code-server (no Copilot issues!)
 
-FROM theiaide/theia-full:latest
+FROM theiaide/theia:latest
 
 # Switch to root for system installations
 USER root
@@ -77,6 +77,9 @@ RUN chmod +x /usr/local/bin/*.sh
 # Layer 8: Configure Theia settings
 RUN mkdir -p /home/theia/.theia
 COPY --chown=theia:theia config/theia-settings.json /home/theia/.theia/settings.json
+
+# Add minimal CSS for assessment-focused UI
+COPY --chown=theia:theia config/theia-minimal.css /home/theia/.theia/minimal.css
 
 # Create build version file for verification
 RUN echo "{\"built_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"$(date +%s)\", \"ide\": \"theia\"}" > /home/theia/.hermes-version.json

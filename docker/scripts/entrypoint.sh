@@ -134,6 +134,18 @@ run_background_setup() {
 echo "🔧 Fixing workspace permissions..."
 sudo chown theia:theia /workspace
 
+# Inject minimal CSS for assessment-focused UI
+echo "🎨 Applying minimal assessment styling..."
+if [ -f "${HOME}/.theia/minimal.css" ]; then
+    # Find Theia's index.html and inject CSS
+    THEIA_INDEX=$(find /home/theia -name "index.html" -path "*frontend*" | head -n 1)
+    if [ -f "$THEIA_INDEX" ]; then
+        CSS_CONTENT=$(cat "${HOME}/.theia/minimal.css" | tr -d '\n')
+        sed -i "s|</head>|<style>$CSS_CONTENT</style></head>|" "$THEIA_INDEX"
+        echo "   ✓ Minimal styling applied"
+    fi
+fi
+
 echo "🖥️  Starting Theia IDE on 0.0.0.0:8080..."
 START_TIME=$(date +%s%3N)
 

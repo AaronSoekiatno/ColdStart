@@ -6,10 +6,52 @@
     "editor.insertSpaces": true,
     "editor.wordWrap": "on",
     "editor.minimap.enabled": false,
-    "terminal.integrated.fontSize": 14,
+    "editor.lineNumbers": "on",
+    "editor.renderWhitespace": "none",
+    "editor.renderIndentGuides": false,
+    "editor.folding": false,
+    "editor.glyphMargin": false,
+    "editor.hover.enabled": true,
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": false,
+        "strings": false
+    },
+    "terminal.integrated.fontSize": 13,
+    "terminal.integrated.fontFamily": "monospace",
     "workbench.colorTheme": "dark",
+    "workbench.startupEditor": "none",
+    "workbench.editor.showTabs": true,
+    "workbench.editor.tabCloseButton": "right",
+    "workbench.activityBar.visible": true,
+    "workbench.statusBar.visible": true,
+    "workbench.sideBar.location": "left",
     "explorer.confirmDelete": false,
     "explorer.confirmDragAndDrop": false,
+    "explorer.compactFolders": false,
+    "git.enabled": true,
     "git.autofetch": false,
-    "git.enableSmartCommit": true
+    "git.enableSmartCommit": true,
+    "git.confirmSync": false,
+    "breadcrumbs.enabled": false,
+    "problems.decorations.enabled": true,
+    "outline.showVariables": false,
+    "outline.showFunctions": true,
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/.next": true,
+        "**/dist": true,
+        "**/.git": true
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/node_modules": false,
+        "**/.next": true
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/.next/**": true
+    }
 }
