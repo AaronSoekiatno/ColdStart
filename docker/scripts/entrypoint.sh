@@ -281,6 +281,49 @@ EOF
 
 echo "   ✓ Chat view hidden in UI state"
 
+# FINAL SOLUTION: Inject JavaScript to hide Copilot panel after page loads
+echo "🎯 Adding Copilot panel hider script..."
+cat > /tmp/hide-copilot.js << 'EOF'
+(function() {
+    console.log('[Hermes] Hiding Copilot/Chat panel...');
+    
+    function hideCopilotPanel() {
+        const style = document.createElement('style');
+        style.textContent = `
+            /* Hide Copilot/Chat panel */
+            .part.sidebar.right,
+            [id*="workbench.view.extension.github-copilot"],
+            [id*="workbench.panel.chat"],
+            .activitybar .codicon-comment-discussion,
+            .activitybar [aria-label*="Chat"],
+            .activitybar [aria-label*="Copilot"] {
+                display: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+        console.log('[Hermes] ✓ Copilot panel hidden');
+    }
+    
+    // Run immediately and after DOM loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', hideCopilotPanel);
+    } else {
+        hideCopilotPanel();
+    }
+    
+    // Also run after a delay to catch late-loading panels
+    setTimeout(hideCopilotPanel, 2000);
+})();
+EOF
+
+# Inject the script into code-server's workbench HTML
+WORKBENCH_HTML=$(find /usr/lib/code-server -name "workbench.html" 2>/dev/null | head -n 1)
+if [ -f "$WORKBENCH_HTML" ]; then
+    SCRIPT_CONTENT=$(cat /tmp/hide-copilot.js)
+    sed -i "s|</body>|<script>$SCRIPT_CONTENT</script></body>|" "$WORKBENCH_HTML"
+    echo "   ✓ Copilot hider script injected"
+fi
+
 # Test dependencies are now linked at build time in Dockerfile (Layer 6)
 # No need to run setup_test_deps here - saves ~1-2s on startup
 
