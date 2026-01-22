@@ -20,6 +20,21 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+# Layer 1.5: NUCLEAR OPTION - Permanently disable chat/Copilot at build time
+# This modifies code-server's product.json to disable chat features before the container even starts
+RUN PRODUCT_JSON=$(find /usr/lib/code-server -name "product.json" 2>/dev/null | head -n 1) && \
+    if [ -f "$PRODUCT_JSON" ]; then \
+    echo "☢️  Disabling chat in product.json..." && \
+    jq 'del(.extensionsGallery) | del(.aiConfig) | .chatEnabled = false | .inlineChat.enabled = false' "$PRODUCT_JSON" > "$PRODUCT_JSON.tmp" && \
+    mv "$PRODUCT_JSON.tmp" "$PRODUCT_JSON" && \
+    echo "✓ Chat disabled in product.json"; \
+    fi && \
+    echo "☢️  Removing Copilot and chat extensions..." && \
+    find /usr/lib/code-server -type d -iname "*copilot*" -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/lib/code-server -type d -iname "*chat*" -exec rm -rf {} + 2>/dev/null || true && \
+    find /usr/lib/code-server -type d -iname "*github.copilot*" -exec rm -rf {} + 2>/dev/null || true && \
+    echo "✓ Extensions removed"
+
 # Layer 2: Install test dependencies in the assessment directory (rarely changes)
 # These are needed for assessment tests regardless of workspace package.json
 # Tests are located in /usr/local/share/assessment/tests/, so node_modules needs to be
