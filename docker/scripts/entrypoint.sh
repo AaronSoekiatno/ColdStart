@@ -285,34 +285,73 @@ echo "   ✓ Chat view hidden in UI state"
 echo "🎯 Adding Copilot panel hider script..."
 cat > /tmp/hide-copilot.js << 'EOF'
 (function() {
-    console.log('[Hermes] Hiding Copilot/Chat panel...');
+    console.log('[Hermes] Copilot panel hider loaded');
     
     function hideCopilotPanel() {
-        const style = document.createElement('style');
-        style.textContent = `
-            /* Hide Copilot/Chat panel */
-            .part.sidebar.right,
-            [id*="workbench.view.extension.github-copilot"],
-            [id*="workbench.panel.chat"],
-            .activitybar .codicon-comment-discussion,
-            .activitybar [aria-label*="Chat"],
-            .activitybar [aria-label*="Copilot"] {
-                display: none !important;
-            }
-        `;
-        document.head.appendChild(style);
-        console.log('[Hermes] ✓ Copilot panel hidden');
+        // Inject CSS
+        let style = document.getElementById('hermes-hide-copilot');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'hermes-hide-copilot';
+            style.textContent = `
+                /* Hide Copilot/Chat panel - AGGRESSIVE */
+                .part.sidebar.right,
+                .sidebar.right,
+                [id*="workbench.view.extension.github-copilot"],
+                [id*="workbench.panel.chat"],
+                [id*="workbench.view.chat"],
+                .activitybar .codicon-comment-discussion,
+                .activitybar [aria-label*="Chat"],
+                .activitybar [aria-label*="Copilot"],
+                .composite-bar [aria-label*="Chat"],
+                .composite-bar [aria-label*="Copilot"] {
+                    display: none !important;
+                    visibility: hidden !important;
+                    width: 0 !important;
+                    height: 0 !important;
+                }
+            `;
+            document.head.appendChild(style);
+            console.log('[Hermes] ✓ CSS injected');
+        }
+        
+        // Also directly hide elements
+        const selectors = [
+            '.part.sidebar.right',
+            '[id*="workbench.view.extension.github-copilot"]',
+            '[id*="workbench.panel.chat"]',
+            '.activitybar .codicon-comment-discussion',
+            '.activitybar [aria-label*="Chat"]',
+            '.activitybar [aria-label*="Copilot"]'
+        ];
+        
+        selectors.forEach(selector => {
+            document.querySelectorAll(selector).forEach(el => {
+                el.style.display = 'none';
+                el.style.visibility = 'hidden';
+            });
+        });
     }
     
-    // Run immediately and after DOM loads
+    // Run immediately
+    hideCopilotPanel();
+    
+    // Run after DOM loads
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', hideCopilotPanel);
-    } else {
-        hideCopilotPanel();
     }
     
-    // Also run after a delay to catch late-loading panels
-    setTimeout(hideCopilotPanel, 2000);
+    // Run periodically to catch late-loading panels
+    setInterval(hideCopilotPanel, 1000);
+    
+    // Watch for DOM changes and hide panels as they appear
+    const observer = new MutationObserver(hideCopilotPanel);
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true
+    });
+    
+    console.log('[Hermes] ✓ Copilot panel hider active (continuous monitoring)');
 })();
 EOF
 
