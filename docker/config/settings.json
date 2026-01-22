@@ -54,6 +54,7 @@
     "github.copilot.editor.enableAutoCompletions": false,
     "github.copilot.advanced.messages": false,
     "github.copilot.chat.enable": false,
+    "github.copilot.chat.showView": false,
     "github.copilot.inlineChat.enable": false,
     "interactiveEditor.enabled": false,
     "chat.editor.enabled": false,
