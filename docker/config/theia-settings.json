@@ -1,0 +1,15 @@
+{
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 300,
+    "editor.formatOnSave": false,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "editor.wordWrap": "on",
+    "editor.minimap.enabled": false,
+    "terminal.integrated.fontSize": 14,
+    "workbench.colorTheme": "dark",
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+    "git.autofetch": false,
+    "git.enableSmartCommit": true
+}
