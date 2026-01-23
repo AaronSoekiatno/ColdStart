@@ -8,9 +8,8 @@ import { TabManager, Tab } from './TabManager';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-import { Terminal } from './Terminal';
 import AgentChat from '@/components/agent/AgentChat';
-import { ExternalLink, Eye, EyeOff, MessageSquare, X, TerminalSquare } from 'lucide-react';
+import { ExternalLink, Eye, EyeOff, MessageSquare, X } from 'lucide-react';
 
 interface MonacoWorkspaceProps {
     sessionId: string;
@@ -39,7 +38,6 @@ export function MonacoWorkspace({
     const [activeTabId, setActiveTabId] = useState<string>('');
     const [fileContents, setFileContents] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
-    const [showTerminal, setShowTerminal] = useState(true);
 
     useEffect(() => {
         fetchFileList();
@@ -156,148 +154,115 @@ export function MonacoWorkspace({
             </div>
 
             {/* Right Content: Editor, Preview, and Chat */}
-            <div className="flex-1 flex min-w-0 bg-slate-950 relative overflow-hidden">
-                <div className="flex-1 flex flex-col min-w-0 border-r border-slate-800">
-                    <TabManager
-                        tabs={openTabs}
-                        activeTabId={activeTabId}
-                        onSelect={setActiveTabId}
-                        onClose={handleTabClose}
-                    />
-                    <div className="flex-1 relative min-h-0 w-full h-full">
-                        {activeTabId ? (
-                            <div className="absolute inset-0">
-                                <MonacoEditor
-                                    path={activeTabId}
-                                    value={fileContents[activeTabId] || ''}
-                                    onChange={handleContentChange}
-                                    onSave={() => saveFile(activeTabId, fileContents[activeTabId] || '')}
-                                />
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-slate-500 italic px-4 text-center bg-slate-900/50">
-                                <div className="max-w-sm">
-                                    <p className="mb-2">Select a file from the explorer to start editing</p>
-                                    <p className="text-xs text-slate-600">You can also use the AI Chat to help you with your code.</p>
+            <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative overflow-hidden">
+                <div className="flex-1 flex min-h-0 relative">
+                    <div className="flex-1 flex flex-col min-w-0 border-r border-slate-800 relative">
+                        <TabManager
+                            tabs={openTabs}
+                            activeTabId={activeTabId}
+                            onSelect={setActiveTabId}
+                            onClose={handleTabClose}
+                        />
+                        <div className="flex-1 relative min-h-0 w-full h-full">
+                            {activeTabId ? (
+                                <div className="absolute inset-0">
+                                    <MonacoEditor
+                                        path={activeTabId}
+                                        value={fileContents[activeTabId] || ''}
+                                        onChange={handleContentChange}
+                                        onSave={() => saveFile(activeTabId, fileContents[activeTabId] || '')}
+                                    />
                                 </div>
-                            </div>
-                        )}
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-slate-500 italic px-4 text-center bg-slate-900/50">
+                                    <div className="max-w-sm">
+                                        <p className="mb-2">Select a file from the explorer to start editing</p>
+                                        <p className="text-xs text-slate-600">You can also use the AI Chat to help you with your code.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
 
-                    {/* Terminal Panel */}
-                    {showTerminal && (
-                        <div className="h-[250px] border-t border-slate-800 bg-slate-900 flex flex-col shrink-0">
-                            <div className="h-8 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0 select-none">
+                    {/* Embedded Preview */}
+                    {showPreview && containerUrl && (
+                        <div className="w-[40%] flex flex-col bg-slate-900 border-r border-slate-800 animate-in slide-in-from-right duration-300">
+                            <div className="h-10 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
                                 <div className="flex items-center gap-2">
-                                    <TerminalSquare className="h-3.5 w-3.5 text-blue-400" />
-                                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">TERMINAL</span>
+                                    <Eye className="h-3.5 w-3.5 text-blue-400" />
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Preview</span>
                                 </div>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-slate-500 hover:text-slate-300"
-                                    onClick={() => setShowTerminal(false)}
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-slate-500 hover:text-slate-300"
+                                        onClick={() => setPreviewKey(k => k + 1)}
+                                    >
+                                        <RefreshCw className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <a
+                                        href={containerUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+                                    >
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7 text-slate-500 hover:text-slate-300"
+                                        onClick={() => setShowPreview(false)}
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex-1 min-h-0 relative">
-                                <Terminal
-                                    sessionId={sessionId}
-                                    containerReady={containerReady}
+                            <div className="flex-1 bg-white relative">
+                                <iframe
+                                    key={previewKey}
+                                    src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
+                                    className="w-full h-full border-none"
+                                    title="App Preview"
                                 />
                             </div>
                         </div>
                     )}
 
-                    {!showTerminal && (
-                        <div className="absolute bottom-4 right-4 z-20">
-                            <Button
-                                onClick={() => setShowTerminal(true)}
-                                className="bg-slate-800 border border-slate-700 hover:bg-slate-700 shadow-lg"
-                                size="sm"
-                            >
-                                <TerminalSquare className="h-4 w-4 mr-2 text-blue-400" />
-                                Open Terminal
-                            </Button>
+                    {/* Embedded Agent Chat */}
+                    {showAgentChat && (
+                        <div className="w-[400px] flex flex-col bg-slate-900 border-l border-slate-800 animate-in slide-in-from-right duration-300">
+                            <div className="h-10 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
+                                <div className="flex items-center gap-2">
+                                    <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">AI Assistant</span>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-slate-500 hover:text-slate-300"
+                                    onClick={() => setShowAgentChat(false)}
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                            <div className="flex-1 overflow-hidden">
+                                <AgentChat
+                                    sessionId={sessionId}
+                                    flyAppName={flyAppName || ''}
+                                    containerReady={containerReady}
+                                    onClose={() => setShowAgentChat(false)}
+                                    hideHeader={true}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Embedded Preview */}
-                {showPreview && containerUrl && (
-                    <div className="w-[40%] flex flex-col bg-slate-900 border-r border-slate-800 animate-in slide-in-from-right duration-300">
-                        <div className="h-10 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
-                            <div className="flex items-center gap-2">
-                                <Eye className="h-3.5 w-3.5 text-blue-400" />
-                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Preview</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-slate-500 hover:text-slate-300"
-                                    onClick={() => setPreviewKey(k => k + 1)}
-                                >
-                                    <RefreshCw className="h-3.5 w-3.5" />
-                                </Button>
-                                <a
-                                    href={containerUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
-                                >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                </a>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 text-slate-500 hover:text-slate-300"
-                                    onClick={() => setShowPreview(false)}
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                        <div className="flex-1 bg-white relative">
-                            <iframe
-                                key={previewKey}
-                                src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
-                                className="w-full h-full border-none"
-                                title="App Preview"
-                            />
-                        </div>
-                    </div>
-                )}
+                {/* Terminal Panel (Full Width) */}
 
-                {/* Embedded Agent Chat */}
-                {showAgentChat && (
-                    <div className="w-[400px] flex flex-col bg-slate-900 border-l border-slate-800 animate-in slide-in-from-right duration-300">
-                        <div className="h-10 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
-                            <div className="flex items-center gap-2">
-                                <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
-                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">AI Assistant</span>
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-slate-500 hover:text-slate-300"
-                                onClick={() => setShowAgentChat(false)}
-                            >
-                                <X className="h-3.5 w-3.5" />
-                            </Button>
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <AgentChat
-                                sessionId={sessionId}
-                                flyAppName={flyAppName || ''}
-                                containerReady={containerReady}
-                                onClose={() => setShowAgentChat(false)}
-                                hideHeader={true}
-                            />
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 # Dockerfile.assessment.minimal
-# Minimal VS Code Server built from scratch - GUARANTEED NO COPILOT
-# Uses official code-server install script on clean Ubuntu base
+# Minimal Node.js Execution Environment - NO IDE/CODE-SERVER
+# Uses clean Ubuntu base + Node.js
 
 FROM ubuntu:22.04
 
@@ -25,17 +25,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Layer 2: Install code-server using official install script
-# This gives us a clean installation without pre-installed extensions
-RUN curl -fsSL https://code-server.dev/install.sh | sh
-
-# Layer 3: Create coder user
+# Layer 2: Create coder user (kept for compatibility with permissions)
 RUN useradd -m -s /bin/bash coder && \
     echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
-    mkdir -p /home/coder/.local/share/code-server/User && \
     chown -R coder:coder /home/coder
 
-# Layer 4: Install test dependencies
+# Layer 3: Install test dependencies
 RUN mkdir -p /usr/local/share/assessment && \
     cd /usr/local/share/assessment && \
     npm init -y && \
@@ -51,20 +46,20 @@ RUN mkdir -p /usr/local/share/assessment && \
     glob@^13.0.0 && \
     npm cache clean --force
 
-# Layer 5: Create workspace directory
+# Layer 4: Create workspace directory
 RUN mkdir -p /workspace && chown -R coder:coder /workspace
 
-# Layer 6: Install workspace dependencies
+# Layer 5: Install workspace dependencies
 COPY --chown=coder:coder workspace/package.json workspace/package-lock.json* /workspace/
 COPY --chown=coder:coder workspace/scripts /workspace/scripts
 RUN cd /workspace && \
     npm install --legacy-peer-deps && \
     npm cache clean --force
 
-# Layer 7: Copy workspace source
+# Layer 6: Copy workspace source
 COPY --chown=coder:coder workspace /workspace/
 
-# Layer 8: Link test dependencies
+# Layer 7: Link test dependencies
 RUN cd /workspace && \
     TEST_PACKAGES="vitest @vitejs/plugin-react-swc @testing-library/react @testing-library/jest-dom @testing-library/user-event happy-dom @typescript-eslint/parser @typescript-eslint/typescript-estree glob" && \
     for pkg in $TEST_PACKAGES; do \
@@ -81,7 +76,8 @@ RUN cd /workspace && \
     fi; \
     done
 
-# Layer 9: Copy scripts
+# Layer 8: Copy scripts
+# We reuse entrypoint-minimal.sh but it will need to be updated to NOT run code-server
 COPY --chown=coder:coder scripts/entrypoint-minimal.sh /usr/local/bin/entrypoint.sh
 COPY --chown=coder:coder scripts/run-tests.sh /usr/local/bin/
 COPY --chown=coder:coder scripts/log-prompt.sh /usr/local/bin/
@@ -93,39 +89,8 @@ COPY --chown=coder:coder config/vitest.assessment.ts /usr/local/share/assessment
 
 RUN chmod +x /usr/local/bin/*.sh
 
-# Layer 10: Configure code-server with STRICT anti-Copilot settings
-RUN mkdir -p /home/coder/.local/share/code-server/User && \
-    mkdir -p /home/coder/.config/code-server
-
-# Create a completely locked-down settings.json
-COPY --chown=coder:coder config/settings.json /home/coder/.local/share/code-server/User/settings.json
-
-# Create code-server config
-COPY --chown=coder:coder config/code-server-config.yaml /home/coder/.config/code-server/config.yaml
-
-# Create custom CSS
-COPY --chown=coder:coder config/custom.css /home/coder/.local/share/code-server/custom.css
-
 # Build version
-RUN echo "{\"built_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"$(date +%s)\", \"base\": \"ubuntu-minimal\"}" > /home/coder/.hermes-version.json
-
-# CRITICAL: Pre-create extensions directory as EMPTY and READ-ONLY
-# This prevents ANY extensions from being installed
-RUN mkdir -p /home/coder/.local/share/code-server/extensions && \
-    echo "[]" > /home/coder/.local/share/code-server/extensions/extensions.json && \
-    chown -R coder:coder /home/coder && \
-    chmod 555 /home/coder/.local/share/code-server/extensions
-
-# Modify code-server's product.json to disable extensions gallery
-RUN PRODUCT_JSON=$(find /usr -name "product.json" -path "*/code-server/*" 2>/dev/null | head -1) && \
-    if [ -f "$PRODUCT_JSON" ]; then \
-    echo "Modifying product.json: $PRODUCT_JSON" && \
-    jq 'del(.extensionsGallery) | del(.aiConfig) | .chatEnabled = false | .enableTelemetry = false' "$PRODUCT_JSON" > "$PRODUCT_JSON.tmp" && \
-    mv "$PRODUCT_JSON.tmp" "$PRODUCT_JSON" && \
-    echo "✓ product.json updated"; \
-    else \
-    echo "⚠️  product.json not found, skipping"; \
-    fi
+RUN echo "{\"built_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"$(date +%s)\", \"base\": \"node-execution-env\"}" > /home/coder/.hermes-version.json
 
 # Switch to coder user
 USER coder
@@ -137,6 +102,6 @@ ENV CANDIDATE_ID=""
 ENV SESSION_ID=""
 ENV NEXT_TELEMETRY_DISABLED=1
 
-EXPOSE 8080
+EXPOSE 3000
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -1,10 +1,10 @@
 #!/bin/bash
 # ============================================
-# Hermes Assessment Environment Entrypoint
-# Minimal Build Edition (Clean code-server)
+# Hermes Assessment Execution Environment Entrypoint
+# Pure Node.js Edition - NO IDE
 # ============================================
 
-echo "🚀 Starting Hermes Assessment Environment (Minimal Build)..."
+echo "🚀 Starting Hermes Assessment Environment (Execution Only)..."
 echo "============================================"
 
 # Display build version
@@ -23,13 +23,6 @@ export NEXT_TELEMETRY_DISABLED=1
 # ============================================
 
 setup_bash_config() {
-    cat >> /home/coder/.bashrc << 'BASHRC'
-export PATH="$HOME/.local/bin:$PATH"
-alias claude='claude-code'
-alias ask='claude-code'
-
-BASHRC
-
     mkdir -p /home/coder/.claude/hooks
     if [ -f "/usr/local/bin/log-prompt.sh" ]; then
         cp /usr/local/bin/log-prompt.sh /home/coder/.claude/hooks/log-prompt.sh
@@ -70,49 +63,13 @@ setup_env_local() {
     echo "PORT=3000" >> "$ENV_FILE"
 }
 
-start_dev_server() {
-    echo "🚀 Starting development server..."
-    cd /workspace
-    nohup npm run dev > /workspace/.dev-server.log 2>&1 &
-
-    (
-        echo "🔥 Waiting for Next.js to be ready..."
-        for i in {1..60}; do
-            if curl -s -f http://localhost:3000/ > /dev/null 2>&1; then
-                echo "✅ Next.js is ready!"
-                curl -s http://localhost:3000/ > /dev/null
-                break
-            fi
-            [ $((i % 5)) -eq 0 ] && echo "⏳ Waiting for server... ($i/60)"
-            sleep 1
-        done
-    ) &
-
-    echo "✅ Development server started"
-}
-
-run_background_setup() {
-    echo "⏳ Running background setup..."
-
-    sudo chown -R coder:coder /workspace/.next /workspace/.env* 2>/dev/null || true &
-
-    setup_bash_config
-    setup_git
-    setup_env_local
-    start_dev_server
-
-    chown -R coder:coder /home/coder/.claude 2>/dev/null || true
-
-    echo "✅ Background setup complete!"
-}
-
 # ============================================
-# MAIN: Setup and Start code-server
+# MAIN
 # ============================================
 
 echo "🛠️  Verifying configuration..."
 
-# Block Copilot domains at network level (belt and suspenders)
+# Block Copilot domains at network level (optional, assuming /etc/hosts is writable)
 if [ -w "/etc/hosts" ]; then
     echo "🔒 Blocking Copilot domains..."
     if ! grep -q "copilot-proxy.githubusercontent.com" /etc/hosts 2>/dev/null; then
@@ -121,37 +78,28 @@ if [ -w "/etc/hosts" ]; then
 127.0.0.1 api.githubcopilot.com
 127.0.0.1 default.exp-tas.com
 EOF'
-        echo "   ✓ Domains blocked"
     fi
 fi
 
-# Fix workspace permissions (only specific files that may be created at runtime)
+# Fix workspace permissions
 echo "🔧 Fixing workspace permissions..."
 sudo chown -R coder:coder /workspace/.next /workspace/.env* 2>/dev/null || true
 
-# Verify settings are in place
-if [ -f "/home/coder/.local/share/code-server/User/settings.json" ]; then
-    echo "   ✓ Settings configured"
-fi
+# Run setup tasks
+setup_bash_config
+setup_git
+setup_env_local
+chown -R coder:coder /home/coder/.claude 2>/dev/null || true
 
-# Run background setup
-run_background_setup &
+echo "✅ Environment setup complete!"
 
 echo "============================================"
-echo "🖥️  Starting code-server on 0.0.0.0:8080..."
+echo "🚀 Starting development server on 0.0.0.0:3000..."
 echo "============================================"
 
-# Start code-server with strict flags
-# --disable-telemetry: No telemetry
-# --disable-update-check: No update checks
-# --extensions-dir: Point to read-only empty directory
-exec code-server \
-  --bind-addr 0.0.0.0:8080 \
-  --auth none \
-  --disable-workspace-trust \
-  --disable-getting-started-override \
-  --disable-telemetry \
-  --disable-update-check \
-  --extensions-dir /home/coder/.local/share/code-server/extensions \
-  --user-data-dir /home/coder/.local/share/code-server \
-  /workspace
+# Navigate to workspace
+cd /workspace
+
+# Start npm run dev. 
+# We use exec so it replaces the shell process and receives signals (SIGTERM) correctly.
+exec npm run dev
