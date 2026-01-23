@@ -125,9 +125,9 @@ EOF'
     fi
 fi
 
-# Fix workspace permissions
+# Fix workspace permissions (only specific files that may be created at runtime)
 echo "🔧 Fixing workspace permissions..."
-sudo chown -R coder:coder /workspace /home/coder
+sudo chown -R coder:coder /workspace/.next /workspace/.env* 2>/dev/null || true
 
 # Verify settings are in place
 if [ -f "/home/coder/.local/share/code-server/User/settings.json" ]; then
@@ -137,7 +137,9 @@ fi
 # Run background setup
 run_background_setup &
 
+echo "============================================"
 echo "🖥️  Starting code-server on 0.0.0.0:8080..."
+echo "============================================"
 
 # Start code-server with strict flags
 # --disable-telemetry: No telemetry
