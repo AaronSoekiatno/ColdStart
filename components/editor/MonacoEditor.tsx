@@ -89,7 +89,7 @@ export function MonacoEditor({
     };
 
     return (
-        <div className="w-full h-full border border-slate-800 rounded-lg overflow-hidden bg-slate-900">
+        <div className="w-full h-full overflow-hidden">
             <Editor
                 height="100%"
                 path={path}

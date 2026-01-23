@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { MonacoEditor } from './MonacoEditor';
 import { FileTree, FileNode } from './FileTree';
 import { TabManager, Tab } from './TabManager';
-import { Panel, Group, Separator } from 'react-resizable-panels';
+// Used flexbox instead of react-resizable-panels for stability
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -86,54 +86,48 @@ export function MonacoWorkspace({ sessionId }: MonacoWorkspaceProps) {
     }
 
     return (
-        <div className="flex h-full bg-slate-950 text-slate-200 overflow-hidden border border-slate-800 rounded-xl shadow-2xl">
-            <Group orientation="horizontal">
-                {/* Left Sidebar: File Tree */}
-                <Panel defaultSize={20} minSize={15} maxSize={40}>
-                    <div className="flex flex-col h-full bg-slate-900 border-r border-slate-800">
-                        <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Explorer</span>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-500 hover:text-slate-300" onClick={fetchFileList}>
-                                <RefreshCw className="h-3 w-3" />
-                            </Button>
-                        </div>
-                        <div className="flex-1 overflow-auto">
-                            <FileTree
-                                data={files}
-                                onSelect={handleFileSelect}
-                                activeFileId={activeTabId}
+        <div className="flex h-full w-full bg-slate-950 text-slate-200 overflow-hidden relative">
+            {/* Left Sidebar: File Tree */}
+            <div className="w-[300px] flex-shrink-0 flex flex-col bg-slate-900 border-r border-slate-800 z-10">
+                <div className="py-3 px-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+                    <span className="text-[13px] font-bold uppercase tracking-wider text-slate-400">FILE EXPLORER</span>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-300" onClick={fetchFileList}>
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
+                </div>
+                <div className="flex-1 overflow-auto min-h-0">
+                    <FileTree
+                        data={files}
+                        onSelect={handleFileSelect}
+                        activeFileId={activeTabId}
+                    />
+                </div>
+            </div>
+
+            {/* Right Content: Editor */}
+            <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative overflow-hidden">
+                <TabManager
+                    tabs={openTabs}
+                    activeTabId={activeTabId}
+                    onSelect={setActiveTabId}
+                    onClose={handleTabClose}
+                />
+                <div className="flex-1 relative min-h-0 w-full h-full">
+                    {activeTabId ? (
+                        <div className="absolute inset-0">
+                            <MonacoEditor
+                                path={activeTabId}
+                                value={fileContents[activeTabId] || ''}
+                                onChange={handleContentChange}
                             />
                         </div>
-                    </div>
-                </Panel>
-
-                <Separator className="w-1 bg-slate-800 hover:bg-blue-500/50 transition-colors cursor-col-resize" />
-
-                {/* Right Content: Editor */}
-                <Panel defaultSize={80}>
-                    <div className="flex flex-col h-full">
-                        <TabManager
-                            tabs={openTabs}
-                            activeTabId={activeTabId}
-                            onSelect={setActiveTabId}
-                            onClose={handleTabClose}
-                        />
-                        <div className="flex-1 overflow-hidden relative">
-                            {activeTabId ? (
-                                <MonacoEditor
-                                    path={activeTabId}
-                                    value={fileContents[activeTabId] || ''}
-                                    onChange={handleContentChange}
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-slate-500 italic">
-                                    Select a file from the explorer to start editing
-                                </div>
-                            )}
+                    ) : (
+                        <div className="flex items-center justify-center h-full text-slate-500 italic px-4 text-center">
+                            Select a file from the explorer to start editing
                         </div>
-                    </div>
-                </Panel>
-            </Group>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }

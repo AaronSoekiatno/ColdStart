@@ -774,6 +774,20 @@ export default function IDEPage() {
                         <MessageSquare className="mr-2 h-4 w-4" />
                         AI Chat
                     </Button>
+
+                    <Button
+                        onClick={() => setEditorMode(editorMode === 'classic' ? 'monaco' : 'classic')}
+                        variant="outline"
+                        size="sm"
+                        className={cn(
+                            "text-[10px] h-7 px-3 font-bold transition-all uppercase tracking-wider",
+                            editorMode === 'monaco'
+                                ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-700 hover:text-white"
+                                : "bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200"
+                        )}
+                    >
+                        {editorMode === 'monaco' ? 'MONACO ACTIVE' : 'TRY MONACO (BETA)'}
+                    </Button>
                 </div>
 
                 {/* Right: Preview and Maximize buttons */}
@@ -791,20 +805,6 @@ export default function IDEPage() {
                     >
                         <Maximize2 className="h-4 w-4" />
                     </button>
-                    <div className="h-4 w-px bg-slate-600 mx-2" />
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setEditorMode(editorMode === 'classic' ? 'monaco' : 'classic')}
-                        className={cn(
-                            "text-[10px] h-7 px-2 font-bold transition-all",
-                            editorMode === 'monaco'
-                                ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
-                                : "bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200"
-                        )}
-                    >
-                        {editorMode === 'monaco' ? 'MONACO ACTIVE' : 'TRY MONACO (BETA)'}
-                    </Button>
                 </div>
             </div>
 
