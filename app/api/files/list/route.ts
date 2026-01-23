@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute find command to list all files recursively in /workspace, excluding node_modules and .git
-    const command = 'find /workspace -maxdepth 4 -not -path "*/.*" -not -path "*/node_modules/*" -not -path "*/.next/*" -not -path "*/.vitest-cache/*" -printf "%P\\n"';
+    const command = 'find /workspace -maxdepth 10 -not -path "*/.*" -not -path "*/node_modules/*" -not -path "*/.next/*" -not -path "*/.vitest-cache/*" -printf "%P\\n"';
     console.log(`[API files/list] Executing in container for session ${sessionId}: ${command}`);
     
     const { stdout, stderr } = await execInContainer(sessionId, session.container_url, command);

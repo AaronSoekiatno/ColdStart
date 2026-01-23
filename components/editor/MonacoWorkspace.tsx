@@ -8,11 +8,31 @@ import { TabManager, Tab } from './TabManager';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import AgentChat from '@/components/agent/AgentChat';
+import { ExternalLink, Eye, EyeOff, MessageSquare, X } from 'lucide-react';
+
 interface MonacoWorkspaceProps {
     sessionId: string;
+    showPreview: boolean;
+    setShowPreview: (show: boolean) => void;
+    showAgentChat: boolean;
+    setShowAgentChat: (show: boolean) => void;
+    containerUrl: string | null;
+    flyAppName: string | null;
+    containerReady: boolean;
 }
 
-export function MonacoWorkspace({ sessionId }: MonacoWorkspaceProps) {
+export function MonacoWorkspace({
+    sessionId,
+    showPreview,
+    setShowPreview,
+    showAgentChat,
+    setShowAgentChat,
+    containerUrl,
+    flyAppName,
+    containerReady
+}: MonacoWorkspaceProps) {
+    const [previewKey, setPreviewKey] = useState(0);
     const [files, setFiles] = useState<FileNode[]>([]);
     const [openTabs, setOpenTabs] = useState<Tab[]>([]);
     const [activeTabId, setActiveTabId] = useState<string>('');
@@ -104,29 +124,108 @@ export function MonacoWorkspace({ sessionId }: MonacoWorkspaceProps) {
                 </div>
             </div>
 
-            {/* Right Content: Editor */}
-            <div className="flex-1 flex flex-col min-w-0 bg-slate-950 relative overflow-hidden">
-                <TabManager
-                    tabs={openTabs}
-                    activeTabId={activeTabId}
-                    onSelect={setActiveTabId}
-                    onClose={handleTabClose}
-                />
-                <div className="flex-1 relative min-h-0 w-full h-full">
-                    {activeTabId ? (
-                        <div className="absolute inset-0">
-                            <MonacoEditor
-                                path={activeTabId}
-                                value={fileContents[activeTabId] || ''}
-                                onChange={handleContentChange}
+            {/* Right Content: Editor, Preview, and Chat */}
+            <div className="flex-1 flex min-w-0 bg-slate-950 relative overflow-hidden">
+                <div className="flex-1 flex flex-col min-w-0 border-r border-slate-800">
+                    <TabManager
+                        tabs={openTabs}
+                        activeTabId={activeTabId}
+                        onSelect={setActiveTabId}
+                        onClose={handleTabClose}
+                    />
+                    <div className="flex-1 relative min-h-0 w-full h-full">
+                        {activeTabId ? (
+                            <div className="absolute inset-0">
+                                <MonacoEditor
+                                    path={activeTabId}
+                                    value={fileContents[activeTabId] || ''}
+                                    onChange={handleContentChange}
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-slate-500 italic px-4 text-center bg-slate-900/50">
+                                <div className="max-w-sm">
+                                    <p className="mb-2">Select a file from the explorer to start editing</p>
+                                    <p className="text-xs text-slate-600">You can also use the AI Chat to help you with your code.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Embedded Preview */}
+                {showPreview && containerUrl && (
+                    <div className="w-[40%] flex flex-col bg-slate-900 border-r border-slate-800 animate-in slide-in-from-right duration-300">
+                        <div className="h-10 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <Eye className="h-3.5 w-3.5 text-blue-400" />
+                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Preview</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-slate-500 hover:text-slate-300"
+                                    onClick={() => setPreviewKey(k => k + 1)}
+                                >
+                                    <RefreshCw className="h-3.5 w-3.5" />
+                                </Button>
+                                <a
+                                    href={containerUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-slate-500 hover:text-slate-300"
+                                    onClick={() => setShowPreview(false)}
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-white relative">
+                            <iframe
+                                key={previewKey}
+                                src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
+                                className="w-full h-full border-none"
+                                title="App Preview"
                             />
                         </div>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-slate-500 italic px-4 text-center">
-                            Select a file from the explorer to start editing
+                    </div>
+                )}
+
+                {/* Embedded Agent Chat */}
+                {showAgentChat && (
+                    <div className="w-[400px] flex flex-col bg-slate-900 border-l border-slate-800 animate-in slide-in-from-right duration-300">
+                        <div className="h-10 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare className="h-3.5 w-3.5 text-blue-400" />
+                                <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">AI Assistant</span>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-slate-500 hover:text-slate-300"
+                                onClick={() => setShowAgentChat(false)}
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </Button>
                         </div>
-                    )}
-                </div>
+                        <div className="flex-1 overflow-hidden">
+                            <AgentChat
+                                sessionId={sessionId}
+                                flyAppName={flyAppName || ''}
+                                containerReady={containerReady}
+                                onClose={() => setShowAgentChat(false)}
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

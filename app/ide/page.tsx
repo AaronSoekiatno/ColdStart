@@ -810,260 +810,144 @@ export default function IDEPage() {
 
             {/* Main Content Area */}
             <div className="flex-1 flex relative overflow-hidden">
-                {/* Code-Server Iframe */}
-                <div className={`relative transition-all duration-300 ${showPreview ? 'w-1/2 border-r border-slate-700' : 'flex-1'}`}>
-                    {/* Monaco Editor Workspace */}
-                    {editorMode === 'monaco' && sessionId && (
-                        <div className="absolute inset-0 z-20 bg-slate-900">
-                            <MonacoWorkspace sessionId={sessionId} />
-                        </div>
-                    )}
-
-                    {/* Loading Overlay - Shows while IDE is loading */}
-                    {!iframeLoaded && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-                            <div className="max-w-md w-full mx-4">
-                                <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-                                    {/* Animated Icon */}
-                                    <div className="flex justify-center mb-6">
-                                        <div className="relative">
-                                            <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
-                                            <Loader2 className="h-14 w-14 animate-spin text-blue-400 relative" />
-                                        </div>
-                                    </div>
-
-                                    {/* Title */}
-                                    <h2 className="text-xl font-bold text-white text-center mb-2">
-                                        Loading Your IDE
-                                    </h2>
-                                    <p className="text-slate-400 text-center text-sm mb-6">
-                                        Setting up VS Code in the cloud...
-                                    </p>
-
-                                    {/* Minerva Status */}
-                                    {kickOffStarted && (
-                                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
-                                            <div className="flex items-center gap-3">
+                {editorMode === 'monaco' ? (
+                    <MonacoWorkspace
+                        sessionId={sessionId || ''}
+                        showPreview={showPreview}
+                        setShowPreview={setShowPreview}
+                        showAgentChat={showAgentChat}
+                        setShowAgentChat={setShowAgentChat}
+                        containerUrl={containerUrl}
+                        flyAppName={flyAppName}
+                        containerReady={containerStatus === 'running'}
+                    />
+                ) : (
+                    <>
+                        {/* Code-Server Iframe Area */}
+                        <div className={`relative transition-all duration-300 ${showPreview ? 'w-1/2 border-r border-slate-700' : 'flex-1'}`}>
+                            {/* Loading Overlay */}
+                            {!iframeLoaded && containerStatus !== 'running' && (
+                                <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                                    <div className="max-w-md w-full mx-4">
+                                        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
+                                            <div className="flex justify-center mb-6">
                                                 <div className="relative">
-                                                    <Mic className="h-5 w-5 text-blue-400" />
-                                                    <div className="absolute inset-0 bg-blue-400/50 rounded-full animate-ping" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-blue-300 font-medium text-sm">
-                                                        Minerva is speaking
-                                                    </p>
-                                                    <p className="text-blue-400/70 text-xs">
-                                                        Listen while your IDE loads
-                                                    </p>
+                                                    <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
+                                                    <Loader2 className="h-14 w-14 animate-spin text-blue-400 relative" />
                                                 </div>
                                             </div>
+                                            <h2 className="text-xl font-bold text-white text-center mb-2">
+                                                Loading Your IDE
+                                            </h2>
+                                            <p className="text-slate-400 text-center text-sm mb-6">
+                                                Setting up VS Code in the cloud...
+                                            </p>
+                                            {kickOffStarted && (
+                                                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="relative">
+                                                            <Mic className="h-5 w-5 text-blue-400" />
+                                                            <div className="absolute inset-0 bg-blue-400/50 rounded-full animate-ping" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-blue-300 font-medium text-sm">Minerva is speaking</p>
+                                                            <p className="text-blue-400/70 text-xs">Listen while your IDE loads</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-
-                                    {/* Progress indicator */}
-                                    <div className="flex items-center justify-center gap-2 text-slate-500 text-xs">
-                                        <Clock className="h-3.5 w-3.5" />
-                                        <span>Almost ready...</span>
                                     </div>
                                 </div>
+                            )}
+
+                            {containerUrl && (
+                                <iframe
+                                    ref={iframeRef}
+                                    src={containerUrl}
+                                    className="absolute inset-0 w-full h-full border-0"
+                                    allow="clipboard-read; clipboard-write; microphone"
+                                    onLoad={() => setIframeLoaded(true)}
+                                    title="Code Server IDE"
+                                />
+                            )}
+                        </div>
+
+                        {/* Preview Panel (Classic Mode) */}
+                        {showPreview && containerUrl && (
+                            <div className="w-1/2 flex flex-col bg-slate-900 border-l border-slate-700 h-full overflow-hidden">
+                                <div className="h-10 border-b border-slate-700 flex items-center justify-between px-3 bg-slate-800 shrink-0">
+                                    <span className="text-xs text-slate-400 flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                        Preview: Port 3000
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setPreviewKey(prev => prev + 1)}
+                                            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                                        >
+                                            <RefreshCw className="h-3.5 w-3.5" />
+                                        </button>
+                                        <a
+                                            href={containerUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                                        >
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </a>
+                                        <button
+                                            onClick={() => setShowPreview(false)}
+                                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 bg-white relative">
+                                    <iframe
+                                        key={previewKey}
+                                        src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
+                                        className="absolute inset-0 w-full h-full border-0"
+                                        title="Application Preview"
+                                        allow="clipboard-read; clipboard-write; microphone; camera; geolocation"
+                                    />
+                                </div>
                             </div>
+                        )}
+
+                        {/* Agent Chat Panel (Classic Mode) */}
+                        <div
+                            className={`absolute top-0 right-0 bottom-0 w-[480px] bg-slate-900 border-l border-slate-700 transform transition-transform duration-300 z-30 ${showAgentChat ? 'translate-x-0 shadow-2xl' : 'translate-x-full'
+                                }`}
+                        >
+                            {sessionId && (
+                                <AgentChat
+                                    sessionId={sessionId}
+                                    flyAppName={flyAppName || ''}
+                                    containerReady={containerStatus === 'running'}
+                                    onClose={() => setShowAgentChat(false)}
+                                />
+                            )}
                         </div>
-                    )}
-
-                    <iframe
-                        ref={iframeRef}
-                        src={containerUrl}
-                        className="absolute inset-0 w-full h-full border-0"
-                        allow="clipboard-read; clipboard-write; microphone"
-                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads"
-                        title="Code Server IDE"
-                        onLoad={() => {
-                            setIframeLoaded(true);
-
-                            // NUCLEAR OPTION: Aggressive CSS + MutationObserver to hide Copilot/Chat
-                            try {
-                                const iframe = iframeRef.current;
-                                // We need to access the contentDocument. If it's blocked by cross-origin, this catch block catches it.
-                                // Since we are on the same domain (likely routed via proxy or same host), this often works.
-                                if (!iframe?.contentWindow?.document) return;
-
-                                const doc = iframe.contentDocument!;
-
-                                // 1. Inject aggressive CSS
-                                const injectCSS = () => {
-                                    if (doc.getElementById('hermes-hide-copilot-nuclear')) return;
-
-                                    const style = doc.createElement('style');
-                                    style.id = 'hermes-hide-copilot-nuclear';
-                                    style.textContent = `
-                                        /* NUCLEAR: Hide ALL chat/copilot UI */
-                                        .part.sidebar.right,
-                                        .sidebar.right,
-                                        [id*="workbench.view.extension.github-copilot"],
-                                        [id*="workbench.panel.chat"],
-                                        [id*="workbench.view.chat"],
-                                        [id*="chat"],
-                                        [class*="chat"],
-                                        .codicon-comment-discussion,
-                                        .codicon-copilot,
-                                        [aria-label*="Chat"],
-                                        [aria-label*="Copilot"],
-                                        [aria-label*="GitHub Copilot"] {
-                                            display: none !important;
-                                            visibility: hidden !important;
-                                            width: 0 !important;
-                                            height: 0 !important;
-                                            opacity: 0 !important;
-                                            pointer-events: none !important;
-                                            position: absolute !important;
-                                            left: -9999px !important;
-                                            z-index: -9999 !important;
-                                        }
-                                    `;
-                                    doc.head.appendChild(style);
-                                    console.log('[Hermes] Nuclear CSS injected');
-                                };
-
-                                // 2. Hide/Remove elements directly via JS
-                                const hideElements = () => {
-                                    const selectors = [
-                                        '.part.sidebar.right',
-                                        '[id*="workbench.view.extension.github-copilot"]',
-                                        '[id*="workbench.panel.chat"]',
-                                        '[aria-label*="Chat"]',
-                                        '[aria-label*="Copilot"]'
-                                    ];
-
-                                    selectors.forEach(selector => {
-                                        doc.querySelectorAll(selector).forEach((el: Element) => {
-                                            if (el instanceof HTMLElement) {
-                                                el.style.display = 'none';
-                                                el.remove(); // Delete it from DOM
-                                            }
-                                        });
-                                    });
-                                };
-
-                                // Execute immediately
-                                injectCSS();
-                                hideElements();
-
-                                // 3. Set up MutationObserver
-                                const observer = new MutationObserver((mutations) => {
-                                    let shouldHide = false;
-                                    for (const mutation of mutations) {
-                                        if (mutation.addedNodes.length > 0) {
-                                            shouldHide = true;
-                                            break;
-                                        }
-                                    }
-                                    if (shouldHide) {
-                                        injectCSS();
-                                        hideElements();
-                                    }
-                                });
-
-                                observer.observe(doc.documentElement, {
-                                    childList: true,
-                                    subtree: true
-                                });
-
-                                // 4. Periodic sweep (belt and suspenders)
-                                const intervalId = setInterval(() => {
-                                    hideElements();
-                                }, 1000);
-
-                                // Cleanup when component unmounts (technically this listener is strictly scoped to this render, 
-                                // but the mutation observer lives on the execution context of the iframe if we aren't careful.
-                                // However, since this is a one-off onLoad, we can't easily return a cleanup function *here*.
-                                // Ideally, we'd store these in a ref to clean up later, but for now, 
-                                // leaking a small observer in the iframe until it reloads is acceptable for the problem's severity.)
-
-                            } catch (err) {
-                                console.warn('Could not inject CSS (cross-origin):', err);
-                            }
-                        }}
-                    />
-                </div>
-
-                {/* Preview App Split Pane */}
-                {showPreview && containerUrl && (
-                    <div className="w-1/2 flex flex-col bg-slate-900 border-l border-slate-700 h-full overflow-hidden">
-                        {/* Preview Toolbar */}
-                        <div className="h-10 border-b border-slate-700 flex items-center justify-between px-3 bg-slate-800 shrink-0">
-                            <span className="text-xs text-slate-400 flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-green-500" />
-                                Preview: Port 3000
-                            </span>
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => setPreviewKey(prev => prev + 1)}
-                                    className="p-1.5 text-slate-400 hover:text-white transition-colors"
-                                    title="Reload Preview"
-                                >
-                                    <RefreshCw className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        const url = containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`;
-                                        isPreviewingRef.current = true;
-                                        window.open(`${url}proxy/3000/`, '_blank');
-                                        setTimeout(() => { isPreviewingRef.current = false; }, 2000);
-                                    }}
-                                    className="p-1.5 text-slate-400 hover:text-white transition-colors"
-                                    title="Open in New Tab"
-                                >
-                                    <ExternalLink className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                    onClick={() => setShowPreview(false)}
-                                    className="p-1.5 text-slate-400 hover:text-white transition-colors"
-                                    title="Close Preview"
-                                >
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            </div>
-                        </div>
-                        {/* Preview Iframe */}
-                        <div className="flex-1 relative bg-white overflow-hidden">
-                            <iframe
-                                key={previewKey}
-                                src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
-                                className="absolute inset-0 w-full h-full border-0"
-                                title="Application Preview"
-                                allow="clipboard-read; clipboard-write; microphone; camera; geolocation"
-                            />
-                        </div>
-                    </div>
+                    </>
                 )}
-
-                {/* Agent Chat Sliding Panel */}
-                <div
-                    className={`absolute top-0 right-0 bottom-0 w-[480px] bg-slate-900 border-l border-slate-700 transform transition-transform duration-300 ${showAgentChat ? 'translate-x-0' : 'translate-x-full'
-                        }`}
-                >
-                    {sessionId && (
-                        <AgentChat
-                            sessionId={sessionId}
-                            flyAppName={flyAppName}
-                            containerReady={containerStatus === 'running'}
-                            onClose={() => setShowAgentChat(false)}
-                        />
-                    )}
-                </div>
             </div>
 
             {/* Bottom Status Bar */}
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-t border-slate-700 text-xs text-slate-400">
+            <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-t border-slate-700 text-xs text-slate-400 shrink-0">
                 <div className="flex items-center gap-4">
                     <span>Session: {containerUrl?.includes('localhost') ? 'local-dev' : 'cloud'}</span>
                     <span>Environment: {containerUrl?.includes('localhost') ? 'Docker (Local)' : 'Fly.io'}</span>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span>code-server @ {containerUrl?.replace('http://', '').replace('https://', '')}</span>
-                    <span>Auto-save enabled</span>
+                    <span>code-server @ {containerUrl?.replace('http://', '').replace('https://', '') || 'offline'}</span>
+                    <span className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${containerStatus === 'running' ? 'bg-green-500' : 'bg-amber-500'}`} />
+                        Auto-save enabled
+                    </span>
                 </div>
             </div>
-        </div >
+        </div>
     );
 }
