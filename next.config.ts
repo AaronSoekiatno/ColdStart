@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
     '@tailwindcss/oxide-win32-x64-msvc',
     'lightningcss',
     'lightningcss-win32-x64-msvc',
+    'node-pty',
   ],
   // Webpack is used instead of Turbopack (via --webpack flag in dev script)
   // This avoids Windows symlink permission issues

@@ -8,8 +8,9 @@ import { TabManager, Tab } from './TabManager';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import { Terminal } from './Terminal';
 import AgentChat from '@/components/agent/AgentChat';
-import { ExternalLink, Eye, EyeOff, MessageSquare, X } from 'lucide-react';
+import { ExternalLink, Eye, EyeOff, MessageSquare, X, TerminalSquare } from 'lucide-react';
 
 interface MonacoWorkspaceProps {
     sessionId: string;
@@ -38,6 +39,7 @@ export function MonacoWorkspace({
     const [activeTabId, setActiveTabId] = useState<string>('');
     const [fileContents, setFileContents] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
+    const [showTerminal, setShowTerminal] = useState(true);
 
     useEffect(() => {
         fetchFileList();
@@ -91,6 +93,35 @@ export function MonacoWorkspace({
             setFileContents(prev => ({ ...prev, [activeTabId]: value }));
             // Mark tab as dirty
             setOpenTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, isDirty: true } : t));
+
+            // Debounced auto-save
+            if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+            autoSaveTimerRef.current = setTimeout(() => {
+                saveFile(activeTabId, value);
+            }, 1000); // Auto-save after 1s of inactivity
+        }
+    };
+
+    const autoSaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    const saveFile = async (path: string, content: string) => {
+        if (!content) return; // Don't save empty content if it's just loading
+
+        try {
+            const resp = await fetch('/api/files/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, path, content })
+            });
+
+            if (resp.ok) {
+                // Mark tab as clean
+                setOpenTabs(prev => prev.map(t => t.id === path ? { ...t, isDirty: false } : t));
+            } else {
+                console.error('Failed to save file:', await resp.text());
+            }
+        } catch (error) {
+            console.error('Failed to save file:', error);
         }
     };
 
@@ -140,6 +171,7 @@ export function MonacoWorkspace({
                                     path={activeTabId}
                                     value={fileContents[activeTabId] || ''}
                                     onChange={handleContentChange}
+                                    onSave={() => saveFile(activeTabId, fileContents[activeTabId] || '')}
                                 />
                             </div>
                         ) : (
@@ -151,6 +183,45 @@ export function MonacoWorkspace({
                             </div>
                         )}
                     </div>
+
+                    {/* Terminal Panel */}
+                    {showTerminal && (
+                        <div className="h-[250px] border-t border-slate-800 bg-slate-900 flex flex-col shrink-0">
+                            <div className="h-8 px-4 border-b border-slate-800 flex items-center justify-between bg-slate-900 shrink-0 select-none">
+                                <div className="flex items-center gap-2">
+                                    <TerminalSquare className="h-3.5 w-3.5 text-blue-400" />
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">TERMINAL</span>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-slate-500 hover:text-slate-300"
+                                    onClick={() => setShowTerminal(false)}
+                                >
+                                    <X className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                            <div className="flex-1 min-h-0 relative">
+                                <Terminal
+                                    sessionId={sessionId}
+                                    containerReady={containerReady}
+                                />
+                            </div>
+                        </div>
+                    )}
+
+                    {!showTerminal && (
+                        <div className="absolute bottom-4 right-4 z-20">
+                            <Button
+                                onClick={() => setShowTerminal(true)}
+                                className="bg-slate-800 border border-slate-700 hover:bg-slate-700 shadow-lg"
+                                size="sm"
+                            >
+                                <TerminalSquare className="h-4 w-4 mr-2 text-blue-400" />
+                                Open Terminal
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Embedded Preview */}
@@ -222,6 +293,7 @@ export function MonacoWorkspace({
                                 flyAppName={flyAppName || ''}
                                 containerReady={containerReady}
                                 onClose={() => setShowAgentChat(false)}
+                                hideHeader={true}
                             />
                         </div>
                     </div>
