@@ -56,6 +56,7 @@ RUN mkdir -p /workspace && chown -R coder:coder /workspace
 
 # Layer 6: Install workspace dependencies
 COPY --chown=coder:coder workspace/package.json workspace/package-lock.json* /workspace/
+COPY --chown=coder:coder workspace/scripts /workspace/scripts
 RUN cd /workspace && \
     npm install --legacy-peer-deps && \
     npm cache clean --force

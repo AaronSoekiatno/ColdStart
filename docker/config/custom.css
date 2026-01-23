@@ -82,3 +82,81 @@ div[id*="workbench.panel.chat"],
 .composite-bar .monaco-action-bar .action-item[title*="Chat"] {
     display: none !important;
 }
+
+/* ============================================ */
+/* EXTENSIONS & SETTINGS LOCKDOWN */
+/* ============================================ */
+
+/* Hide Extensions view completely */
+.activitybar .action-item[aria-label*="Extensions"],
+.activitybar .action-item[title*="Extensions"],
+.activitybar .action-item[aria-label*="Extensions"],
+/* Duplicate but for safety */
+.activitybar .codicon-extensions,
+div[id*="workbench.view.extensions"],
+.part.sidebar:has([id*="extensions"]) {
+    display: none !important;
+}
+
+/* Hide Settings/Preferences UI - AGGRESSIVE */
+.activitybar .action-item[aria-label*="Settings"],
+.activitybar .action-item[title*="Settings"],
+.activitybar .action-item[aria-label*="Manage"],
+.activitybar .codicon-settings-gear,
+.activitybar .codicon-gear,
+.monaco-action-bar .action-item.codicon-gear,
+.preferences-editor,
+div[id*="workbench.view.settings"],
+.settings-editor,
+/* Hide the manage/accounts gear at bottom of activity bar */
+.global-activity[aria-label*="Manage"],
+.global-activity[aria-label*="Settings"],
+.part.activitybar>.content>.composite-bar>.monaco-action-bar>.actions-container>.action-item:last-child {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Hide command center (reduces clutter) */
+.command-center,
+.quick-input-widget {
+    opacity: 0.3 !important;
+}
+
+/* Hide accounts/sync UI */
+.activitybar .action-item[aria-label*="Accounts"],
+.activitybar .action-item[aria-label*="Sync"],
+.activitybar .codicon-account,
+.activitybar .codicon-sync {
+    display: none !important;
+}
+
+/* Hide welcome/getting started */
+.welcomePage,
+.gettingStartedContainer,
+div[id*="workbench.parts.editor"]:has(.welcomePage) {
+    display: none !important;
+}
+
+/* Minimal activity bar - only Explorer, Search, Source Control, Debug, Terminal */
+.activitybar .action-item:not([aria-label*="Explorer"]):not([aria-label*="Search"]):not([aria-label*="Source Control"]):not([aria-label*="Run and Debug"]):not([aria-label*="Terminal"]) {
+    display: none !important;
+}
+
+/* Hide layout controls */
+.layout-control {
+    display: none !important;
+}
+
+/* Hide title bar menu (File, Edit, etc.) - force minimal */
+.menubar {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+}
+
+/* Hide notification badges on activity bar (reduces distractions) */
+.activitybar .badge {
+    display: none !important;
+}

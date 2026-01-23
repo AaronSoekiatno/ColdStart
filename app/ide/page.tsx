@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button';
 import { TestRunner, TestRunnerRef } from '@/components/assessment/TestRunner';
 import { MinervaVoiceIndicator } from '@/components/assessment/MinervaVoiceIndicator';
 import AgentChat from '@/components/agent/AgentChat';
+import { MonacoWorkspace } from '@/components/editor/MonacoWorkspace';
 import { VAPI_ENABLED } from '@/lib/feature-flags';
+import { cn } from '@/lib/utils';
 import {
     Loader2,
     Clock,
@@ -41,6 +43,7 @@ export default function IDEPage() {
     const [previewKey, setPreviewKey] = useState(0);
 
     const [showAgentChat, setShowAgentChat] = useState(false);
+    const [editorMode, setEditorMode] = useState<'classic' | 'monaco'>('classic');
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
     const [kickOffStarted, setKickOffStarted] = useState(false);
     const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -788,6 +791,20 @@ export default function IDEPage() {
                     >
                         <Maximize2 className="h-4 w-4" />
                     </button>
+                    <div className="h-4 w-px bg-slate-600 mx-2" />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditorMode(editorMode === 'classic' ? 'monaco' : 'classic')}
+                        className={cn(
+                            "text-[10px] h-7 px-2 font-bold transition-all",
+                            editorMode === 'monaco'
+                                ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-700"
+                                : "bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200"
+                        )}
+                    >
+                        {editorMode === 'monaco' ? 'MONACO ACTIVE' : 'TRY MONACO (BETA)'}
+                    </Button>
                 </div>
             </div>
 
@@ -795,6 +812,13 @@ export default function IDEPage() {
             <div className="flex-1 flex relative overflow-hidden">
                 {/* Code-Server Iframe */}
                 <div className={`relative transition-all duration-300 ${showPreview ? 'w-1/2 border-r border-slate-700' : 'flex-1'}`}>
+                    {/* Monaco Editor Workspace */}
+                    {editorMode === 'monaco' && sessionId && (
+                        <div className="absolute inset-0 z-20 bg-slate-900">
+                            <MonacoWorkspace sessionId={sessionId} />
+                        </div>
+                    )}
+
                     {/* Loading Overlay - Shows while IDE is loading */}
                     {!iframeLoaded && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
