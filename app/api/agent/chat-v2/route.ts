@@ -16,6 +16,7 @@ import {
   getSessionUsage,
 } from '@/lib/claude/cost-tracker';
 import { logPrompt, updateLogResponse } from '@/lib/claude/logger';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // Prevent Next.js from caching the response
 export const dynamic = 'force-dynamic';
@@ -117,6 +118,27 @@ export async function POST(request: NextRequest) {
           input: any,
           maxRetries = 5  // Increased from 3 to 5 for flaky SSH
         ): Promise<string> => {
+            // Helper to broadcast file updates
+            const broadcastFileUpdate = async (path: string) => {
+                if (!supabaseAdmin) {
+                    console.warn('⚠️ Cannot broadcast file update: supabaseAdmin not initialized');
+                    return;
+                }
+                try {
+                    console.log(`📡 [Chat V2] Broadcasting file_update for ${path} to session:${sessionId}`);
+                    const channel = supabaseAdmin.channel(`session:${sessionId}`);
+                    await channel.send({
+                        type: 'broadcast',
+                        event: 'file_update',
+                        payload: { path, timestamp: Date.now() }
+                    });
+                    // Clean up channel reference locally (admin client handles connection reuse typically, but good practice for on-demand)
+                    supabaseAdmin.removeChannel(channel);
+                } catch (e) {
+                    console.error('⚠️ Failed to broadcast file update:', e);
+                }
+            };
+
           for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
               // Execute the tool
@@ -127,9 +149,15 @@ export async function POST(request: NextRequest) {
               } else if (toolName === 'search_code') {
                 return await searchWorkspaceCode(flyAppName, { query: input.query, filePattern: input.file_pattern, caseSensitive: input.case_sensitive });
               } else if (toolName === 'write_file') {
-                return await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
+                const result = await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
+                // Broadcast update asynchronously
+                broadcastFileUpdate(input.path).catch(console.error);
+                return result;
               } else if (toolName === 'edit_file') {
-                return await editWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line, newContent: input.new_content });
+                const result = await editWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line, newContent: input.new_content });
+                // Broadcast update asynchronously
+                broadcastFileUpdate(input.path).catch(console.error);
+                return result;
               } else if (toolName === 'run_command') {
                 return await runWorkspaceCommand(flyAppName, { command: input.command });
               } else {

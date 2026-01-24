@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { execInContainer } from '@/lib/container-orchestration/exec-command';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,6 +77,22 @@ export async function POST(request: NextRequest) {
     if (stderr) {
       console.warn(`[API files/write] Container stderr: ${stderr}`);
       // return NextResponse.json({ error: stderr }, { status: 500 }); // Some stderrs are warnings, don't fail hard
+    }
+
+    // Broadcast file update
+    if (supabaseAdmin) {
+        // Run in background
+        supabaseAdmin.channel(`session:${sessionId}`)
+            .send({
+                type: 'broadcast',
+                event: 'file_update',
+                payload: { path, timestamp: Date.now() }
+            })
+            .then(() => {
+                 // Remove channel is implicit/handled by client usually, but explicit cleanup if needed:
+                 // supabaseAdmin.removeChannel(...)
+            })
+            .catch(console.error);
     }
 
     return NextResponse.json({ success: true });

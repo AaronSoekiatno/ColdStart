@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Execute find command to list all files recursively in /workspace, excluding node_modules and .git
-    const command = 'find /workspace -maxdepth 10 -not -path "*/.*" -not -path "*/node_modules/*" -not -path "*/.next/*" -not -path "*/.vitest-cache/*" -printf "%P\\n"';
+    // We handle prefix stripping in JS to avoid shell pipe/quote escaping issues
+    const command = "find /workspace -maxdepth 10 -not -path '*/.*' -not -path '*/node_modules/*' -not -path '*/.next/*' -not -path '*/.vitest-cache/*' -print";
     console.log(`[API files/list] Executing in container for session ${sessionId}: ${command}`);
     
     const { stdout, stderr } = await execInContainer(sessionId, session.container_url, command);
@@ -59,8 +60,25 @@ export async function GET(request: NextRequest) {
       console.warn(`[API files/list] Container stderr: ${stderr}`);
     }
 
-    const files = stdout.split('\n').filter(Boolean);
+    // Clean up valid output first, then split
+    // Handle potential \r\n from TTY or other weirdness
+    const files = stdout
+        .replace(/\r\n/g, '\n')
+        .split('\n')
+        .filter(Boolean)
+        .map(line => {
+            // Remove /workspace prefix and any leading/trailing whitespace
+            let cleaned = line.trim();
+            if (cleaned.startsWith('/workspace/')) {
+                cleaned = cleaned.substring(11);
+            } else if (cleaned === '/workspace') {
+                return '';
+            }
+            return cleaned;
+        })
+        .filter(f => f && f !== '/workspace'); // Final filter for empty or root strings
     console.log(`[API files/list] Found ${files.length} files`);
+    console.log('[API files/list] First 10 files:', files.slice(0, 10));
     
     // Transform flat list to tree
     const rootNodes: any[] = [];

@@ -83,60 +83,7 @@ export function MonacoWorkspace({
         }
     }, [sessionId]);
 
-    // Polling for external file changes (e.g., from agent)
-    useEffect(() => {
-        console.log(`[MonacoWorkspace] Polling effect triggered - activeTabId: ${activeTabId}, sessionId: ${sessionId}`);
 
-        // Clear any existing poll
-        if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-        }
-
-        // Only poll if we have an active file
-        if (!activeTabId) {
-            console.log('[MonacoWorkspace] No active tab, skipping poll setup');
-            return;
-        }
-
-        console.log(`[MonacoWorkspace] Setting up polling for ${activeTabId}`);
-
-        // Poll every 3 seconds for external changes
-        pollIntervalRef.current = setInterval(async () => {
-            console.log(`[MonacoWorkspace] Polling ${activeTabId}...`);
-
-            // Check dirty state from ref (not closure)
-            const currentTab = openTabsRef.current.find(t => t.id === activeTabId);
-
-            // Only refresh if the file is NOT dirty (user hasn't made unsaved changes)
-            if (!currentTab?.isDirty) {
-                const freshContent = await fetchFileContent(activeTabId);
-
-                if (freshContent !== null) {
-                    setFileContents(prev => {
-                        // Only update if content actually changed
-                        if (prev[activeTabId] !== freshContent) {
-                            console.log(`[MonacoWorkspace] External change detected in ${activeTabId}`);
-                            console.log(`[MonacoWorkspace] Old length: ${prev[activeTabId]?.length || 0}, New length: ${freshContent.length}`);
-                            return { ...prev, [activeTabId]: freshContent };
-                        }
-                        return prev;
-                    });
-                }
-            } else {
-                console.log(`[MonacoWorkspace] Skipping poll - file is dirty`);
-            }
-        }, 3000);
-
-        // Cleanup on unmount or when activeTabId changes
-        return () => {
-            console.log(`[MonacoWorkspace] Cleaning up polling for ${activeTabId}`);
-            if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-                pollIntervalRef.current = null;
-            }
-        };
-    }, [activeTabId, fetchFileContent]);
 
     const handleFileSelect = async (node: FileNode) => {
         // Add to tabs if not already there

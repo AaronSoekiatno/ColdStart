@@ -9,7 +9,8 @@ export async function execInContainer(sessionId: string, containerUrl: string, c
   
   if (isFlyIo && !forceLocal) {
     const appName = containerUrl.replace('https://', '').replace('.fly.dev', '');
-    const fullCommand = `flyctl ssh console -a ${appName} -C "${command}"`;
+    const escapedCommand = command.replace(/"/g, '\\"');
+    const fullCommand = `flyctl ssh console -a ${appName} -C "${escapedCommand}"`;
     const { stdout, stderr } = await execAsync(fullCommand, {
       maxBuffer: 10 * 1024 * 1024,
     });

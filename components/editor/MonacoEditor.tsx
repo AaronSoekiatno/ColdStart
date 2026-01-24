@@ -26,21 +26,28 @@ export function MonacoEditor({
     useEffect(() => {
         console.log(`[MonacoEditor] useEffect triggered - path: ${path}, value length: ${value?.length || 0}, valueRef: ${valueRef.current?.length || 0}`);
 
-        if (editorRef.current && value !== valueRef.current) {
+        if (editorRef.current) {
             const editor = editorRef.current;
             const currentValue = editor.getValue();
 
-            console.log(`[MonacoEditor] Values differ - currentEditor: ${currentValue?.length || 0}, newValue: ${value?.length || 0}`);
+            console.log(`[MonacoEditor] Comparing - currentEditor: ${currentValue?.length || 0}, newValue: ${value?.length || 0}`);
 
-            // Only update if the value actually changed and differs from current editor content
+            // Update editor if the external value differs from current editor content
+            // This ensures external changes (from agent, polling, etc.) always sync
             if (currentValue !== value) {
+                console.log(`[MonacoEditor] 🔄 Values differ, updating editor for ${path}`);
+
                 const position = editor.getPosition();
+                const scrollTop = editor.getScrollTop();
+
+                // Update the value
                 editor.setValue(value);
 
-                // Restore cursor position if possible
+                // Restore cursor position and scroll if possible
                 if (position) {
                     editor.setPosition(position);
                 }
+                editor.setScrollTop(scrollTop);
 
                 console.log(`[MonacoEditor] ✅ Editor updated for ${path}`);
             }

@@ -38,6 +38,7 @@ export default function IDEPage() {
     const [errorDetails, setErrorDetails] = useState<string | null>(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [provisioningTime, setProvisioningTime] = useState(0);
+    const [startTime, setStartTime] = useState<number | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [previewKey, setPreviewKey] = useState(0);
@@ -65,30 +66,29 @@ export default function IDEPage() {
     // Timer for elapsed time - starts when Container is RUNNING
     // Max duration: 20 minutes (1200 seconds)
     useEffect(() => {
-        // Start timer when container is running AND iframe is fully loaded (user can see IDE)
-        if (containerStatus === 'running' && iframeLoaded && !timerRef.current) {
-            timerRef.current = setInterval(() => {
-                setElapsedTime((prev) => {
-                    // Check for auto-submit at 20 minutes
-                    if (prev >= 1200 - 1) { // 1200 seconds = 20 mins
-                        if (timerRef.current) clearInterval(timerRef.current);
-                        timerRef.current = null;
+        // Start timer when container is running AND iframe is fully loaded AND we have a start time
+        if (containerStatus === 'running' && iframeLoaded && startTime) {
+            const updateTimer = () => {
+                const now = Date.now();
+                const diffSeconds = Math.floor((now - startTime) / 1000);
+                const elapsed = Math.max(0, diffSeconds);
+                setElapsedTime(elapsed);
+            };
 
-                        // Auto-submit logic must be handled carefully to avoid loops
-                        // We'll trust the effect cleanup or separate trigger
-                        // But actually we can't call handleSubmit easily from inside setState callback properly without refs
-                        // So we'll trigger it via a separate effect or just check here to stop updates
-                        return 1200;
-                    }
-                    return prev + 1;
-                });
-            }, 1000);
+            // Initial update
+            updateTimer();
+
+            // Start interval
+            timerRef.current = setInterval(updateTimer, 1000);
         }
 
         return () => {
-            // Don't clear timer on phase change, only on unmount or finish
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
         };
-    }, [containerStatus, iframeLoaded]);
+    }, [containerStatus, iframeLoaded, startTime]);
 
     // Separate timer for provisioning time (used for progress UI)
     useEffect(() => {
@@ -249,7 +249,7 @@ export default function IDEPage() {
             // Get user's latest session with container info
             const { data: session, error } = await supabase
                 .from('interview_sessions')
-                .select('container_url, container_status, session_id, current_phase')
+                .select('container_url, container_status, session_id, current_phase, created_at, interview_start_time')
                 .eq('candidate_id', candidateId)
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -278,6 +278,12 @@ export default function IDEPage() {
 
             setSessionId(session.session_id);
             setCurrentPhase(session.current_phase || null);
+
+            // Set start time for timer - use server time to ensure async consistency
+            const activeStartTime = session.interview_start_time || session.created_at;
+            if (activeStartTime) {
+                setStartTime(new Date(activeStartTime).getTime());
+            }
 
             // Handle container status
             if (session.container_status === 'running' && session.container_url) {

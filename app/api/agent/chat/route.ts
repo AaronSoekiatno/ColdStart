@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainerBySessionId } from '@/lib/agent-executor';
 import { executeClaudeInFlyContainer } from '@/app/actions/execute-claude';
+import { createClient } from '@supabase/supabase-js';
 
 // Use Node.js runtime instead of Edge for SSH support
 export const runtime = 'nodejs';
