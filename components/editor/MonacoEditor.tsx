@@ -60,6 +60,73 @@ export function MonacoEditor({
         editorRef.current = editor;
         valueRef.current = value;
 
+        // Configure diagnostics to ignore specific errors related to missing types
+        monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+            noSemanticValidation: false,
+            noSyntaxValidation: false,
+            diagnosticCodesToIgnore: [
+                2792, // Cannot find module
+                2347, // Untyped function calls
+                2694, // Namespace has no exported member
+                2307, // Cannot find module (again)
+                2304, // Cannot find name
+                2875, // Cannot find namespace
+            ]
+        });
+
+        // 1. Configure compiler options to fix "Cannot find module" and path alias errors
+        const compilerOptions = {
+            target: monaco.languages.typescript.ScriptTarget.ES2020,
+            allowNonTsExtensions: true,
+            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+            module: monaco.languages.typescript.ModuleKind.CommonJS,
+            noEmit: true,
+            esModuleInterop: true,
+            jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+            reactNamespace: 'React',
+            allowJs: true,
+            typeRoots: ['node_modules/@types'],
+            baseUrl: '/', // Important for resolving @/ paths relative to root
+            paths: {
+                '@/*': ['./*'] // Map @/ imports to project root
+            }
+        };
+
+        monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
+        monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
+
+        // 2. Add safe type shims for common external libraries to silence unresolved module errors
+        // This is a browser-only editor, so we don't have real node_modules. 
+        // We declare these as 'any' to prevent red squiggles.
+        const commonLibs = [
+            'next-themes',
+            'next/navigation',
+            'next/headers',
+            'next/server',
+            'next/image',
+            'next/link',
+            'react',
+            'react-dom',
+            'lucide-react',
+            'clsx',
+            'tailwind-merge',
+            'sonner',
+            'zod',
+            'react-hook-form',
+            '@supabase/ssr',
+            '@supabase/supabase-js',
+            'framer-motion',
+            'recharts',
+            'date-fns'
+        ];
+
+        commonLibs.forEach(lib => {
+            monaco.languages.typescript.typescriptDefaults.addExtraLib(
+                `declare module '${lib}' { const content: any; export = content; export default content; }`,
+                `file:///node_modules/@types/${lib}/index.d.ts`
+            );
+        });
+
         // Set up custom theme
         monaco.editor.defineTheme('hermes-dark', {
             base: 'vs-dark',
