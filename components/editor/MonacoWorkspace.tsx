@@ -60,7 +60,7 @@ export function MonacoWorkspace({
     const fetchFileList = async () => {
         setIsLoading(true);
         try {
-            const resp = await fetch(`/api/files/list?sessionId=${sessionId}&t=${Date.now()}`);
+            const resp = await fetch(`/api/files/list?sessionId=${sessionId}`);
             const data = await resp.json();
             if (data.files) {
                 setFiles(data.files);
@@ -74,7 +74,7 @@ export function MonacoWorkspace({
 
     const fetchFileContent = useCallback(async (fileId: string) => {
         try {
-            const resp = await fetch(`/api/files/read?sessionId=${sessionId}&path=${fileId}&t=${Date.now()}`);
+            const resp = await fetch(`/api/files/read?sessionId=${sessionId}&path=${fileId}`);
             const data = await resp.json();
             return data.content || '';
         } catch (err) {

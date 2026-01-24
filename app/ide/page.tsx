@@ -288,9 +288,12 @@ export default function IDEPage() {
                 try {
                     const url = new URL(session.container_url);
                     const appName = url.hostname.split('.')[0];
-                    if (appName && appName !== 'localhost') {
-                        setFlyAppName(appName);
-                        console.log('[IDE] Set flyAppName for agent:', appName);
+                    if (appName) {
+                        // For local development, use the full container URL
+                        // For Fly.io, use just the app name
+                        const flyName = appName === 'localhost' ? session.container_url : appName;
+                        setFlyAppName(flyName);
+                        console.log('[IDE] Set flyAppName for agent:', flyName, '(isLocal:', appName === 'localhost', ')');
                     }
                 } catch (e) {
                     console.error('[IDE] Failed to parse app name from URL:', session.container_url);

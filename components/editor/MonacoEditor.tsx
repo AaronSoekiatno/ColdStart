@@ -54,32 +54,6 @@ export function MonacoEditor({
         valueRef.current = value;
 
         // Set up custom theme
-        // Configure TypeScript compiler options for JSX (React)
-        monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-            target: monaco.languages.typescript.ScriptTarget.ES2020,
-            allowNonTsExtensions: true,
-            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-            module: monaco.languages.typescript.ModuleKind.CommonJS,
-            noEmit: true,
-            esModuleInterop: true,
-            jsx: monaco.languages.typescript.JsxEmit.React,
-            reactNamespace: 'React',
-            allowJs: true,
-            typeRoots: ['node_modules/@types']
-        });
-
-        // Also apply to javascript defaults just in case
-        monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-            target: monaco.languages.typescript.ScriptTarget.ES2020,
-            allowNonTsExtensions: true,
-            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-            module: monaco.languages.typescript.ModuleKind.CommonJS,
-            noEmit: true,
-            esModuleInterop: true,
-            allowJs: true,
-            jsx: monaco.languages.typescript.JsxEmit.React,
-        });
-
         monaco.editor.defineTheme('hermes-dark', {
             base: 'vs-dark',
             inherit: true,
