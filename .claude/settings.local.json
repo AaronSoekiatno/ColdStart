@@ -38,7 +38,8 @@
       "Bash(docker tag:*)",
       "Bash(fly machine update:*)",
       "Bash(flyctl status:*)",
-      "Bash(flyctl logs:*)"
+      "Bash(flyctl logs:*)",
+      "Bash(lsof:*)"
     ],
     "deny": [],
     "ask": []

@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       const dir = parts.join('/');
       
       if (dir) {
-        command = `mkdir -p "/workspace/${dir}" && touch "/workspace/${path}"`;
+        command = `/bin/bash -c 'mkdir -p "/workspace/${dir}" && touch "/workspace/${path}"'`;
       } else {
         command = `touch "/workspace/${path}"`;
       }

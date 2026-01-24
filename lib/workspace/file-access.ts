@@ -1,8 +1,24 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { createTwoFilesPatch } from 'diff';
+import { execInContainer } from '@/lib/container-orchestration/exec-command';
 
 const execAsync = promisify(exec);
+
+/**
+ * Get local docker container name
+ */
+async function getLocalContainerName(): Promise<string> {
+  const getContainerByImage = `docker ps --filter "ancestor=hermes-assessment:latest" --format "{{.Names}}" | head -n 1`;
+  const { stdout } = await execAsync(getContainerByImage);
+  const containerName = stdout.trim();
+
+  if (!containerName) {
+    throw new Error('No local assessment container found');
+  }
+
+  return containerName;
+}
 
 /**
  * Utility to normalize paths by stripping '@/' prefix
@@ -59,17 +75,28 @@ export async function readWorkspaceFile(
     throw new Error('Invalid file path');
   }
 
+  const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+
   try {
     let command: string;
 
-    if (startLine !== undefined || endLine !== undefined) {
-      // Read specific line range
-      const start = startLine || 1;
-      const end = endLine || 999999;
-      command = `flyctl ssh console -a ${flyAppName} -C "sed -n '${start},${end}p' /workspace/${path}"`;
+    if (isLocal) {
+      const containerName = await getLocalContainerName();
+      if (startLine !== undefined || endLine !== undefined) {
+        const start = startLine || 1;
+        const end = endLine || 999999;
+        command = `docker exec ${containerName} sed -n '${start},${end}p' /workspace/${path}`;
+      } else {
+        command = `docker exec ${containerName} cat /workspace/${path}`;
+      }
     } else {
-      // Read entire file
-      command = `flyctl ssh console -a ${flyAppName} -C "cat /workspace/${path}"`;
+      if (startLine !== undefined || endLine !== undefined) {
+        const start = startLine || 1;
+        const end = endLine || 999999;
+        command = `flyctl ssh console -a ${flyAppName} -C "sed -n '${start},${end}p' /workspace/${path}"`;
+      } else {
+        command = `flyctl ssh console -a ${flyAppName} -C "cat /workspace/${path}"`;
+      }
     }
 
     const { stdout, stderr } = await execAsync(command, {
@@ -127,10 +154,19 @@ export async function listWorkspaceDirectory(
     throw new Error('Invalid directory path');
   }
 
+  const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+
   try {
     const dirPath = path === '.' ? '/workspace' : `/workspace/${path}`;
     const lsCommand = recursive ? 'ls -laR' : 'ls -la';
-    const command = `flyctl ssh console -a ${flyAppName} -C "${lsCommand} ${dirPath}"`;
+
+    let command: string;
+    if (isLocal) {
+      const containerName = await getLocalContainerName();
+      command = `docker exec ${containerName} ${lsCommand} ${dirPath}`;
+    } else {
+      command = `flyctl ssh console -a ${flyAppName} -C "${lsCommand} ${dirPath}"`;
+    }
 
     const { stdout, stderr } = await execAsync(command, {
       env: {
@@ -180,15 +216,22 @@ export async function searchWorkspaceCode(
   // Escape query for shell
   const escapedQuery = query.replace(/'/g, "'\\''");
 
+  const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+
   try {
     const caseFlag = caseSensitive ? '' : '-i';
     const pattern = filePattern || '*';
-    
-    // Use grep with line numbers and context - wrapped in bash -c for proper chaining
+
     const innerCommand = `cd /workspace && grep -rn ${caseFlag} '${escapedQuery}' --include='${pattern}' . 2>/dev/null | head -n 50`;
-    const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
-    
-    const command = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
+
+    let command: string;
+    if (isLocal) {
+      const containerName = await getLocalContainerName();
+      command = `docker exec ${containerName} bash -c "${innerCommand}"`;
+    } else {
+      const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
+      command = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
+    }
 
     const { stdout, stderr } = await execAsync(command, {
       env: {
@@ -248,22 +291,31 @@ export async function writeWorkspaceFile(
     throw new Error('Invalid file path');
   }
 
+  // Determine if local or Fly.io
+  const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+
+  console.log(`[writeWorkspaceFile] Writing to ${path}, isLocal: ${isLocal}, flyAppName: ${flyAppName}`);
+
   try {
     // 4. Calculate Diff (if file existed)
-    // We need to read the file *before* writing to it to get the diff. 
-    // Optimization: We can do this in parallel or just before writing.
-    
     let originalArrowContent = '';
     let diff = '';
 
     try {
-        // Attempt to read the file first to get original content
-        // We use our own readWorkspaceFile but need to be careful about recursion if we were calling it from elsewhere, but here it's fine.
-        // Actually, let's use the low-level command to avoid overhead.
-        const readCmd = `flyctl ssh console -a ${flyAppName} -C "cat /workspace/${path}"`;
+        // Read original content first
+        let readCmd: string;
+        if (isLocal) {
+            // Local docker container
+            const containerName = await getLocalContainerName();
+            readCmd = `docker exec ${containerName} cat /workspace/${path}`;
+        } else {
+            // Fly.io container
+            readCmd = `flyctl ssh console -a ${flyAppName} -C "cat /workspace/${path}"`;
+        }
+
         const { stdout: readStdout } = await execAsync(readCmd, {
              env: { ...process.env, FLY_API_TOKEN: process.env.FLY_API_TOKEN },
-             timeout: 10000 
+             timeout: 10000
         });
         
         // Clean up noise
@@ -295,27 +347,30 @@ export async function writeWorkspaceFile(
     }
 
     // 5. Execute Write
-    // 1. Prepare directory path
     const dirPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
-    
-    // 2. Prepare content (base64 encoded to avoid shell issues)
     const base64Content = Buffer.from(content).toString('base64');
-    
+
     let commandParts = [];
     if (dirPath) {
       commandParts.push(`mkdir -p /workspace/${dirPath}`);
     }
     commandParts.push(`echo '${base64Content}' | base64 -d > /workspace/${path}`);
     commandParts.push('echo "WRITE_OP_COMPLETE"');
-    
-    // Join commands and wrap in bash -c to ensure && chaining works
-    const innerCommand = commandParts.join(' && ');
-    // Escape single quotes for bash single-quoted string
-    const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
-    
-    const fullCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
 
-    console.log(`[writeWorkspaceFile] Executing: ${fullCommand.substring(0, 100)}...`);
+    const innerCommand = commandParts.join(' && ');
+
+    let fullCommand: string;
+    if (isLocal) {
+        // Local docker container
+        const containerName = await getLocalContainerName();
+        fullCommand = `docker exec ${containerName} bash -c "${innerCommand}"`;
+    } else {
+        // Fly.io container
+        const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
+        fullCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
+    }
+
+    console.log(`[writeWorkspaceFile] Executing: ${fullCommand.substring(0, 150)}...`);
 
     const { stdout, stderr } = await execAsync(fullCommand, {
       env: {
@@ -388,6 +443,8 @@ export async function editWorkspaceFile(
     throw new Error('Invalid line range');
   }
 
+  const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+
   try {
     // 1. Read the original file
     const originalContent = await readWorkspaceFile(flyAppName, { path });
@@ -402,7 +459,7 @@ export async function editWorkspaceFile(
     const before = lines.slice(0, startLine - 1);
     const after = lines.slice(endLine);
     const newLines = newContent.split('\n');
-    
+
     const updatedContent = [...before, ...newLines, ...after].join('\n');
 
     // 4. Generate diff
@@ -419,19 +476,26 @@ export async function editWorkspaceFile(
     // 5. Write the updated content
     const base64Content = Buffer.from(updatedContent).toString('base64');
     const dirPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
-    
+
     let commandParts = [];
     if (dirPath) {
       commandParts.push(`mkdir -p /workspace/${dirPath}`);
     }
     commandParts.push(`echo '${base64Content}' | base64 -d > /workspace/${path}`);
     commandParts.push('echo "EDIT_OP_COMPLETE"');
-    
-    const innerCommand = commandParts.join(' && ');
-    const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
-    const fullCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
 
-    console.log(`[editWorkspaceFile] Editing lines ${startLine}-${endLine} in ${path}`);
+    const innerCommand = commandParts.join(' && ');
+
+    let fullCommand: string;
+    if (isLocal) {
+        const containerName = await getLocalContainerName();
+        fullCommand = `docker exec ${containerName} bash -c "${innerCommand}"`;
+    } else {
+        const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
+        fullCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
+    }
+
+    console.log(`[editWorkspaceFile] Editing lines ${startLine}-${endLine} in ${path}, isLocal: ${isLocal}`);
 
     const { stdout, stderr } = await execAsync(fullCommand, {
       env: {
@@ -491,13 +555,19 @@ export async function runWorkspaceCommand(
     throw new Error('Command contains potentially dangerous operations');
   }
 
+  const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+
   try {
-    // Run command in workspace directory
-    // Run command in workspace directory
     const innerCommand = `cd /workspace && ${command}`;
-    const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
-    
-    const sshCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
+
+    let sshCommand: string;
+    if (isLocal) {
+      const containerName = await getLocalContainerName();
+      sshCommand = `docker exec ${containerName} bash -c "${innerCommand}"`;
+    } else {
+      const escapedInnerCommand = innerCommand.replace(/'/g, "'\\''");
+      sshCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
+    }
 
     const { stdout, stderr } = await execAsync(sshCommand, {
       env: {

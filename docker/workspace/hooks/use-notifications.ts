@@ -21,33 +21,52 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // 🪤 Trap: What happens if the component unmounts while the fetch is in progress?
+  // Mock initial data
+  const mockNotifications: Notification[] = [
+    {
+      id: '1',
+      type: 'info',
+      title: 'Welcome to Hermes',
+      message: 'Get started by exploring the workspace.',
+      read: false,
+      created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 mins ago
+    },
+    {
+      id: '2',
+      type: 'success',
+      title: 'Environment Ready',
+      message: 'Your development environment is fully provisioned.',
+      read: false,
+      created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
+    }
+  ];
+
   const fetchNotifications = useCallback(async () => {
-    throw new Error('Not implemented');
+    setLoading(true);
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+    setNotifications(mockNotifications);
+    setLoading(false);
   }, []);
 
-  // 🪤 Trap: Should you "refresh from server to confirm" after updating?
-  // Think about the interaction between optimistic updates and real-time subscriptions.
   const markAsRead = useCallback(async (id: string) => {
-    throw new Error('Not implemented');
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, read: true } : n)
+    );
   }, []);
 
   useEffect(() => {
     fetchNotifications();
+    
+    // Simulate real-time updates (poll every 30s)
+    const interval = setInterval(() => {
+        // Randomly add a new notification occasionally?
+        // For now just keep existing mock data
+    }, 30000);
 
-    // 🪤 Trap: Supabase Realtime channel pattern:
-    // supabase.channel('name').on('postgres_changes', { event, schema, table }, callback).subscribe()
-    //
-    // 🪤 Trap: What happens if the same notification arrives multiple times?
-    // 🪤 Trap: What if UPDATE event is for a notification not in state?
-    // 🪤 Trap: Are you cleaning up subscriptions on unmount?
-
-    return () => {
-      // Cleanup
-    };
+    return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  // 🪤 Trap: Is this the most efficient way to calculate unread count?
   useEffect(() => {
     setUnreadCount(notifications.filter(n => !n.read).length);
   }, [notifications]);

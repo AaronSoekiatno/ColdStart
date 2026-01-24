@@ -20,11 +20,66 @@ export function MonacoEditor({
     readOnly = false,
 }: MonacoEditorProps) {
     const editorRef = useRef<any>(null);
+    const valueRef = useRef<string>(value);
+
+    // Sync external value changes to editor (e.g., from agent edits)
+    useEffect(() => {
+        console.log(`[MonacoEditor] useEffect triggered - path: ${path}, value length: ${value?.length || 0}, valueRef: ${valueRef.current?.length || 0}`);
+
+        if (editorRef.current && value !== valueRef.current) {
+            const editor = editorRef.current;
+            const currentValue = editor.getValue();
+
+            console.log(`[MonacoEditor] Values differ - currentEditor: ${currentValue?.length || 0}, newValue: ${value?.length || 0}`);
+
+            // Only update if the value actually changed and differs from current editor content
+            if (currentValue !== value) {
+                const position = editor.getPosition();
+                editor.setValue(value);
+
+                // Restore cursor position if possible
+                if (position) {
+                    editor.setPosition(position);
+                }
+
+                console.log(`[MonacoEditor] ✅ Editor updated for ${path}`);
+            }
+
+            valueRef.current = value;
+        }
+    }, [value, path]);
 
     const handleEditorDidMount: OnMount = (editor, monaco) => {
         editorRef.current = editor;
+        valueRef.current = value;
 
         // Set up custom theme
+        // Configure TypeScript compiler options for JSX (React)
+        monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+            target: monaco.languages.typescript.ScriptTarget.ES2020,
+            allowNonTsExtensions: true,
+            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+            module: monaco.languages.typescript.ModuleKind.CommonJS,
+            noEmit: true,
+            esModuleInterop: true,
+            jsx: monaco.languages.typescript.JsxEmit.React,
+            reactNamespace: 'React',
+            allowJs: true,
+            typeRoots: ['node_modules/@types']
+        });
+
+        // Also apply to javascript defaults just in case
+        monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+            target: monaco.languages.typescript.ScriptTarget.ES2020,
+            allowNonTsExtensions: true,
+            moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+            module: monaco.languages.typescript.ModuleKind.CommonJS,
+            noEmit: true,
+            esModuleInterop: true,
+            allowJs: true,
+            jsx: monaco.languages.typescript.JsxEmit.React,
+        });
+
         monaco.editor.defineTheme('hermes-dark', {
             base: 'vs-dark',
             inherit: true,

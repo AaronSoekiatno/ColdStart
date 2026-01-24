@@ -108,7 +108,7 @@ export const EDIT_FILE_TOOL: Anthropic.Tool = {
       },
       new_content: {
         type: 'string',
-        description: 'The new content to replace the specified line range',
+        description: 'The new content to replace the specified line range. WARNING: content must ONLY contain the replacement for the specified lines. Do NOT include unchanged context lines from outside the range, or they will be duplicated.',
       },
     },
     required: ['path', 'start_line', 'end_line', 'new_content'],

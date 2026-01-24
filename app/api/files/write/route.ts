@@ -51,11 +51,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
     }
 
-    // Base64 encode content to safely write it via shell command
+    // Base64 encode content
     const base64Content = Buffer.from(content || '').toString('base64');
     
-    // Command: echo "base64" | base64 -d > /workspace/path
-    const command = `echo "${base64Content}" | base64 -d > /workspace/${path}`;
+    // Ensure parent directory exists and write content
+    // We wrap in bash -c to ensure pipe and redirection work correctly in both local and remote environments
+    const dirPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+    let innerCommand = '';
+    
+    if (dirPath) {
+        innerCommand = `mkdir -p "/workspace/${dirPath}" && echo "${base64Content}" | base64 -d > "/workspace/${path}"`;
+    } else {
+        innerCommand = `echo "${base64Content}" | base64 -d > "/workspace/${path}"`;
+    }
+
+    // Wrap in bash -c to ensure the host shell doesn't interpret I/O redirection
+    // Use single quotes for the bash command string, as base64Content is alnum+symbols safe for double quotes
+    const command = `/bin/bash -c '${innerCommand}'`;
     
     console.log(`[API files/write] Writing to ${path} in session ${sessionId}`);
     
