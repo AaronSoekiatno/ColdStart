@@ -140,6 +140,93 @@ export async function readWorkspaceFile(
 }
 
 /**
+ * Read ALL files from the workspace as a record (for preloading)
+ */
+export async function readAllWorkspaceFiles(
+    flyAppName: string
+): Promise<Record<string, string>> {
+     const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+
+     // Node script to recurse and read files, skipping node_modules, .git, etc.
+     // Returns a big JSON object.
+     const script = `
+const fs = require('fs');
+const path = require('path');
+const root = '/workspace';
+
+function getAllFiles(dir, fileList = []) {
+  const files = fs.readdirSync(dir);
+  files.forEach(file => {
+    if (file === 'node_modules' || file === '.git' || file === '.next' || file === '.vite' || file === '.vitest-cache') return;
+    const filePath = path.join(dir, file);
+    if (fs.statSync(filePath).isDirectory()) {
+      getAllFiles(filePath, fileList);
+    } else {
+      fileList.push(filePath);
+    }
+  });
+  return fileList;
+}
+
+try {
+  const files = getAllFiles(root);
+  const result = {};
+  files.forEach(f => {
+    try {
+        const relative = path.relative(root, f);
+        // Skip huge files > 1MB
+        if (fs.statSync(f).size < 1000000) {
+             result[relative] = fs.readFileSync(f, 'utf8');
+        }
+    } catch(e) {}
+  });
+  console.log('JSON_START');
+  console.log(JSON.stringify(result));
+  console.log('JSON_END');
+} catch(e) {
+  console.error(e);
+}
+`;
+
+     // Compress script to one line
+     const oneLiner = script.replace(/\\n/g, ' ').replace(/\\s+/g, ' ');
+
+     try {
+         let command: string;
+         // Cleanly escape the script for bash
+         // Since the script uses single quotes, we wrap in double quotes and escape internal double quotes if any (json has double quotes)
+         // Actually, better to pass as base64 to avoid escaping hell
+        
+         const base64Script = Buffer.from(script).toString('base64');
+         const runner = `node -e "eval(Buffer.from('${base64Script}', 'base64').toString())"`;
+         
+         if (isLocal) {
+            const containerName = await getLocalContainerName();
+            command = `docker exec ${containerName} ${runner}`;
+         } else {
+             // For Fly.io we need to be careful with quotes in ssh command
+             command = `flyctl ssh console -a ${flyAppName} -C "${runner.replace(/"/g, '\\"')}"`;
+         }
+         
+         const { stdout } = await execAsync(command, {
+            env: { ...process.env, FLY_API_TOKEN: process.env.FLY_API_TOKEN },
+            timeout: 60000,
+            maxBuffer: 50 * 1024 * 1024 // 50MB buffer
+         });
+
+         const jsonStr = stdout.split('JSON_START')[1]?.split('JSON_END')[0];
+         if (!jsonStr) {
+             throw new Error('Failed to parse read-all output');
+         }
+         
+         return JSON.parse(jsonStr);
+     } catch (e: any) {
+         console.error('Failed to read all files:', e);
+         throw new Error(`Failed to read all files: ${e.message}`);
+     }
+}
+
+/**
  * List directory contents
  */
 export async function listWorkspaceDirectory(

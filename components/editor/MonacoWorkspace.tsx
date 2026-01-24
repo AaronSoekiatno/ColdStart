@@ -61,11 +61,25 @@ export function MonacoWorkspace({
     const fetchFileList = async () => {
         setIsLoading(true);
         try {
+            // 1. Fetch File List (Tree)
             const resp = await fetch(`/api/files/list?sessionId=${sessionId}`);
             const data = await resp.json();
             if (data.files) {
                 setFiles(data.files);
             }
+
+            // 2. Fetch All File Contents (Background Preload)
+            // This allows instant clicking without waiting for individual fetches
+            fetch(`/api/files/read-all?sessionId=${sessionId}`)
+                .then(r => r.json())
+                .then(contentData => {
+                    if (contentData.files) {
+                        console.log(`[MonacoWorkspace] Preloaded ${Object.keys(contentData.files).length} files`);
+                        setFileContents(prev => ({ ...prev, ...contentData.files }));
+                    }
+                })
+                .catch(err => console.error('Failed to preload files:', err));
+
         } catch (err) {
             console.error('Failed to fetch files:', err);
         } finally {
