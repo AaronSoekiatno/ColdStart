@@ -21,30 +21,32 @@ export function useNotifications() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // Mock initial data
-  const mockNotifications: Notification[] = [
-    {
-      id: '1',
-      type: 'info',
-      title: 'Welcome to Hermes',
-      message: 'Get started by exploring the workspace.',
-      read: false,
-      created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 mins ago
-    },
-    {
-      id: '2',
-      type: 'success',
-      title: 'Environment Ready',
-      message: 'Your development environment is fully provisioned.',
-      read: false,
-      created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
-    }
-  ];
-
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Mock data with dynamic timestamps calculated at fetch time
+    const now = Date.now();
+    const mockNotifications: Notification[] = [
+      {
+        id: '1',
+        type: 'info',
+        title: 'Welcome to Hermes',
+        message: 'Get started by exploring the workspace.',
+        read: false,
+        created_at: new Date(now - 1000 * 60 * 30).toISOString(), // 30 mins ago
+      },
+      {
+        id: '2',
+        type: 'success',
+        title: 'Environment Ready',
+        message: 'Your development environment is fully provisioned.',
+        read: false,
+        created_at: new Date(now - 1000 * 60 * 60).toISOString(), // 1 hour ago
+      }
+    ];
+
     setNotifications(mockNotifications);
     setLoading(false);
   }, []);

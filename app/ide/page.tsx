@@ -783,20 +783,6 @@ export default function IDEPage() {
                         <MessageSquare className="mr-2 h-4 w-4" />
                         AI Chat
                     </Button>
-
-                    <Button
-                        onClick={() => setEditorMode(editorMode === 'classic' ? 'monaco' : 'classic')}
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                            "text-[10px] h-7 px-3 font-bold transition-all uppercase tracking-wider",
-                            editorMode === 'monaco'
-                                ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-700 hover:text-white"
-                                : "bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200"
-                        )}
-                    >
-                        {editorMode === 'monaco' ? 'MONACO ACTIVE' : 'TRY MONACO (BETA)'}
-                    </Button>
                 </div>
 
                 {/* Right: Preview and Maximize buttons */}
