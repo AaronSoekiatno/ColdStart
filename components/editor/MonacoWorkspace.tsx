@@ -7,6 +7,7 @@ import { TabManager, Tab } from './TabManager';
 // Used flexbox instead of react-resizable-panels for stability
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/lib/supabase';
 
 import AgentChat from '@/components/agent/AgentChat';
 import { ExternalLink, Eye, EyeOff, MessageSquare, X } from 'lucide-react';
@@ -83,6 +84,63 @@ export function MonacoWorkspace({
         }
     }, [sessionId]);
 
+    // Real-time file updates via Supabase Broadcast
+    useEffect(() => {
+        if (!sessionId) return;
+
+        console.log(`[MonacoWorkspace] Subscribing to real-time updates for session:${sessionId}`);
+        const channel = supabase
+            .channel(`session:${sessionId}`)
+            .on('broadcast', { event: 'file_update' }, async (payload: any) => {
+                console.log('[MonacoWorkspace] ⚡ Received file_update:', payload);
+                const { path } = payload.payload;
+
+                // 1. Refresh file list to show new files
+                fetchFileList();
+
+                // 2. Check if file is currently open
+                const isFileOpen = openTabsRef.current.some(t => t.id === path);
+
+                if (isFileOpen) {
+                    // It's open: Fetch fresh content immediately to update editor
+                    const tab = openTabsRef.current.find(t => t.id === path);
+                    if (tab && !tab.isDirty) {
+                        console.log(`[MonacoWorkspace] Auto-refreshing open file: ${path}`);
+                        const freshContent = await fetchFileContent(path);
+                        if (freshContent !== null) {
+                            setFileContents(prev => ({ ...prev, [path]: freshContent }));
+                        }
+                    } else {
+                        console.warn(`[MonacoWorkspace] Skipping update for ${path} because it has unsaved user changes.`);
+                    }
+                } else {
+                    // It's closed: Invalidate cache if present
+                    // This ensures that when the user DOES open it, we fetch fresh data instead of showing stale cache
+                    setFileContents(prev => {
+                        if (prev[path] !== undefined) {
+                            console.log(`[MonacoWorkspace] Invalidating stale cache for closed file: ${path}`);
+                            const next = { ...prev };
+                            delete next[path]; // Remove from cache
+                            return next;
+                        }
+                        return prev;
+                    });
+                }
+            })
+            .on('broadcast', { event: 'agent_complete' }, () => {
+                console.log('[MonacoWorkspace] 🤖 Agent run complete, refreshing file list...');
+                fetchFileList();
+            })
+            .subscribe((status: any) => {
+                console.log(`[MonacoWorkspace] Subscription status: ${status}`);
+            });
+
+        return () => {
+            console.log('[MonacoWorkspace] Unsubscribing from file updates');
+            supabase.removeChannel(channel);
+        };
+    }, [sessionId, fetchFileContent]);
+
 
 
     const handleFileSelect = async (node: FileNode) => {
@@ -93,7 +151,16 @@ export function MonacoWorkspace({
 
         setActiveTabId(node.id);
 
-        // Always fetch fresh content (no caching)
+        // OPTIMIZATION: Check if we already have the content in memory
+        // Since we use Realtime updates, our local cache should be reasonably fresh.
+        // This avoids the 2s fetch delay on every click.
+        if (fileContents[node.id] !== undefined) {
+            console.log(`[MonacoWorkspace] persisted cache hit for ${node.id}`);
+            return;
+        }
+
+        // Only fetch if we don't have it
+        console.log(`[MonacoWorkspace] fetching missing content for ${node.id}`);
         const content = await fetchFileContent(node.id);
         if (content !== null) {
             setFileContents(prev => ({ ...prev, [node.id]: content }));

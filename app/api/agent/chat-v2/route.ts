@@ -319,6 +319,20 @@ export async function POST(request: NextRequest) {
             }).catch(console.error);
         }
 
+        // Broadcast agent completion to refresh UI
+        if (supabaseAdmin) {
+             supabaseAdmin.channel(`session:${sessionId}`)
+                .send({
+                    type: 'broadcast',
+                    event: 'agent_complete',
+                    payload: { timestamp: Date.now() }
+                })
+                .then(() => {
+                    // console.log('Agent completion broadcast sent');
+                })
+                .catch(console.error);
+        }
+
         controller.close();
 
       } catch (error: any) {
