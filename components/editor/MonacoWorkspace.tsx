@@ -38,10 +38,59 @@ export function MonacoWorkspace({
     const [activeTabId, setActiveTabId] = useState<string>('');
     const [fileContents, setFileContents] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
+    const pollIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+    const autoSaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         fetchFileList();
+
+        // Cleanup timers on unmount
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        };
     }, [sessionId]);
+
+    // Polling for external file changes (e.g., from agent)
+    useEffect(() => {
+        // Clear any existing poll
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+
+        // Only poll if we have an active file
+        if (!activeTabId) return;
+
+        // Poll every 3 seconds for external changes
+        pollIntervalRef.current = setInterval(async () => {
+            const activeTab = openTabs.find(t => t.id === activeTabId);
+
+            // Only refresh if the file is NOT dirty (user hasn't made unsaved changes)
+            if (activeTab && !activeTab.isDirty) {
+                const freshContent = await fetchFileContent(activeTabId);
+
+                if (freshContent !== null) {
+                    setFileContents(prev => {
+                        // Only update if content actually changed
+                        if (prev[activeTabId] !== freshContent) {
+                            console.log(`[Monaco] External change detected in ${activeTabId}`);
+                            return { ...prev, [activeTabId]: freshContent };
+                        }
+                        return prev;
+                    });
+                }
+            }
+        }, 3000);
+
+        // Cleanup on unmount or when activeTabId changes
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+        };
+    }, [activeTabId, openTabs]);
 
     const fetchFileList = async () => {
         setIsLoading(true);
@@ -58,6 +107,17 @@ export function MonacoWorkspace({
         }
     };
 
+    const fetchFileContent = async (fileId: string) => {
+        try {
+            const resp = await fetch(`/api/files/read?sessionId=${sessionId}&path=${fileId}`);
+            const data = await resp.json();
+            return data.content || '';
+        } catch (err) {
+            console.error('Failed to read file:', err);
+            return null;
+        }
+    };
+
     const handleFileSelect = async (node: FileNode) => {
         // Add to tabs if not already there
         if (!openTabs.find(t => t.id === node.id)) {
@@ -66,15 +126,12 @@ export function MonacoWorkspace({
 
         setActiveTabId(node.id);
 
-        // Fetch content if not cached
-        if (fileContents[node.id] === undefined) {
-            try {
-                const resp = await fetch(`/api/files/read?sessionId=${sessionId}&path=${node.id}`);
-                const data = await resp.json();
-                setFileContents(prev => ({ ...prev, [node.id]: data.content || '' }));
-            } catch (err) {
-                console.error('Failed to read file:', err);
-            }
+        // Always fetch fresh content (no caching)
+        const content = await fetchFileContent(node.id);
+        if (content !== null) {
+            setFileContents(prev => ({ ...prev, [node.id]: content }));
+            // Mark as clean since we just loaded fresh content
+            setOpenTabs(prev => prev.map(t => t.id === node.id ? { ...t, isDirty: false } : t));
         }
     };
 
@@ -99,8 +156,6 @@ export function MonacoWorkspace({
             }, 1000); // Auto-save after 1s of inactivity
         }
     };
-
-    const autoSaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const saveFile = async (path: string, content: string) => {
         if (!content) return; // Don't save empty content if it's just loading
