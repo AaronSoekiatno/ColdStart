@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MonacoEditor } from './MonacoEditor';
 import { FileTree, FileNode } from './FileTree';
 import { TabManager, Tab } from './TabManager';
@@ -51,6 +51,32 @@ export function MonacoWorkspace({
         };
     }, [sessionId]);
 
+    const fetchFileList = async () => {
+        setIsLoading(true);
+        try {
+            const resp = await fetch(`/api/files/list?sessionId=${sessionId}`);
+            const data = await resp.json();
+            if (data.files) {
+                setFiles(data.files);
+            }
+        } catch (err) {
+            console.error('Failed to fetch files:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchFileContent = useCallback(async (fileId: string) => {
+        try {
+            const resp = await fetch(`/api/files/read?sessionId=${sessionId}&path=${fileId}`);
+            const data = await resp.json();
+            return data.content || '';
+        } catch (err) {
+            console.error('Failed to read file:', err);
+            return null;
+        }
+    }, [sessionId]);
+
     // Polling for external file changes (e.g., from agent)
     useEffect(() => {
         // Clear any existing poll
@@ -90,33 +116,7 @@ export function MonacoWorkspace({
                 pollIntervalRef.current = null;
             }
         };
-    }, [activeTabId, openTabs]);
-
-    const fetchFileList = async () => {
-        setIsLoading(true);
-        try {
-            const resp = await fetch(`/api/files/list?sessionId=${sessionId}`);
-            const data = await resp.json();
-            if (data.files) {
-                setFiles(data.files);
-            }
-        } catch (err) {
-            console.error('Failed to fetch files:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const fetchFileContent = async (fileId: string) => {
-        try {
-            const resp = await fetch(`/api/files/read?sessionId=${sessionId}&path=${fileId}`);
-            const data = await resp.json();
-            return data.content || '';
-        } catch (err) {
-            console.error('Failed to read file:', err);
-            return null;
-        }
-    };
+    }, [activeTabId, openTabs, fetchFileContent, sessionId]);
 
     const handleFileSelect = async (node: FileNode) => {
         // Add to tabs if not already there
@@ -278,7 +278,7 @@ export function MonacoWorkspace({
                             <div className="flex-1 bg-white relative">
                                 <iframe
                                     key={previewKey}
-                                    src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
+                                    src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}`}
                                     className="w-full h-full border-none"
                                     title="App Preview"
                                 />

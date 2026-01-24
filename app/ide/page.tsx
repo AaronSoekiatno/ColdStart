@@ -43,7 +43,7 @@ export default function IDEPage() {
     const [previewKey, setPreviewKey] = useState(0);
 
     const [showAgentChat, setShowAgentChat] = useState(false);
-    const [editorMode, setEditorMode] = useState<'classic' | 'monaco'>('classic');
+    const [editorMode, setEditorMode] = useState<'classic' | 'monaco'>('monaco');
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
     const [kickOffStarted, setKickOffStarted] = useState(false);
     const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -907,7 +907,7 @@ export default function IDEPage() {
                                 <div className="flex-1 bg-white relative">
                                     <iframe
                                         key={previewKey}
-                                        src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}proxy/3000/`}
+                                        src={`${containerUrl.endsWith('/') ? containerUrl : `${containerUrl}/`}`}
                                         className="absolute inset-0 w-full h-full border-0"
                                         title="Application Preview"
                                         allow="clipboard-read; clipboard-write; microphone; camera; geolocation"

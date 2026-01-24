@@ -60,7 +60,7 @@ setup_env_local() {
     done
 
     echo "HOST=0.0.0.0" >> "$ENV_FILE"
-    echo "PORT=3000" >> "$ENV_FILE"
+    echo "PORT=8080" >> "$ENV_FILE"
 }
 
 # ============================================
@@ -94,7 +94,7 @@ chown -R coder:coder /home/coder/.claude 2>/dev/null || true
 echo "✅ Environment setup complete!"
 
 echo "============================================"
-echo "🚀 Starting development server on 0.0.0.0:3000..."
+echo "🚀 Starting development server on 0.0.0.0:8080..."
 echo "============================================"
 
 # Navigate to workspace
@@ -102,4 +102,5 @@ cd /workspace
 
 # Start npm run dev. 
 # We use exec so it replaces the shell process and receives signals (SIGTERM) correctly.
+export PORT=8080
 exec npm run dev
