@@ -31,6 +31,38 @@ function normalizePath(path: string): string {
 }
 
 /**
+ * Assessment file whitelist - only these files can be edited by the agent
+ */
+const ALLOWED_FILES = [
+  'lib/notifications.service.ts',
+  'app/api/notifications/route.ts',
+  'app/api/notifications/unread-count/route.ts',
+  'app/api/notifications/[id]/mark-read/route.ts',
+  'hooks/use-notifications.ts',
+  'components/notifications/notification-bell.tsx',
+  'components/notifications/notification-dropdown.tsx',
+];
+
+/**
+ * Validate if a file is allowed to be edited (assessment restriction)
+ */
+function validateFileAccess(path: string): void {
+  const normalizedPath = normalizePath(path);
+
+  // Check if file is in allowed list
+  const isAllowed = ALLOWED_FILES.includes(normalizedPath);
+
+  if (!isAllowed) {
+    throw new Error(
+      `Access denied: "${path}" is not an editable file. ` +
+      `This assessment requires you to only modify the following TODO files:\n` +
+      ALLOWED_FILES.map(f => `  - ${f}`).join('\n') +
+      `\n\nPlease focus on implementing the required functionality in these files.`
+    );
+  }
+}
+
+/**
  * Workspace file access via SSH to Fly.io container
  */
 
@@ -378,6 +410,9 @@ export async function writeWorkspaceFile(
     throw new Error('Invalid file path');
   }
 
+  // Validate file access (assessment restriction)
+  validateFileAccess(path);
+
   // Determine if local or Fly.io
   const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
 
@@ -524,6 +559,9 @@ export async function editWorkspaceFile(
   if (path.includes('..') || path.startsWith('/')) {
     throw new Error('Invalid file path');
   }
+
+  // Validate file access (assessment restriction)
+  validateFileAccess(path);
 
   // Validate line numbers
   if (startLine < 1 || endLine < startLine) {

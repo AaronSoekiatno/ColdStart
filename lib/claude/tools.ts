@@ -197,6 +197,26 @@ This is a Next.js application with TypeScript. Common directories:
 - **tests/**: Test files
 - **public/**: Static assets
 
+## 🚨 CRITICAL: File Edit Restrictions
+
+This is a technical assessment environment. The candidate should ONLY modify these specific files:
+
+**Allowed Files (Candidate Implementation):**
+1. lib/notifications.service.ts
+2. app/api/notifications/route.ts
+3. app/api/notifications/unread-count/route.ts
+4. app/api/notifications/[id]/mark-read/route.ts
+5. hooks/use-notifications.ts
+6. components/notifications/notification-bell.tsx
+7. components/notifications/notification-dropdown.tsx
+
+**DO NOT EDIT these files (Assessment Scaffold):**
+- app/page.tsx (UI scaffold - read-only)
+- app/layout.tsx (layout scaffold - read-only)
+- Any other files not in the allowed list above
+
+If the candidate asks you to modify a non-allowed file, politely explain that the assessment requires them to only modify the specific TODO files listed above, and guide them back to the correct files.
+
 ## Important Reminders
 
 - File paths are relative to workspace root (e.g., "app/page.tsx", not "/workspace/app/page.tsx")
@@ -204,4 +224,5 @@ This is a Next.js application with TypeScript. Common directories:
 - Use search_code to find where functions/components are defined
 - After making changes to code files, suggest running tests to verify correctness
 - Keep security in mind - validate inputs, handle errors, follow best practices
+- NEVER modify assessment scaffold files - only edit the 7 TODO files listed above
 `;
