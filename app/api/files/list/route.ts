@@ -112,6 +112,22 @@ export async function GET(request: NextRequest) {
       });
     });
 
+    // Sort function: Folders first, then alphabetical
+    const sortNodes = (nodes: any[]) => {
+      nodes.sort((a, b) => {
+        if (a.isFolder && !b.isFolder) return -1;
+        if (!a.isFolder && b.isFolder) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      nodes.forEach(node => {
+        if (node.children) {
+          sortNodes(node.children);
+        }
+      });
+    };
+
+    sortNodes(rootNodes);
+
     console.log(`[API files/list] Built tree with ${rootNodes.length} root nodes`);
     return NextResponse.json({ files: rootNodes });
   } catch (error: any) {

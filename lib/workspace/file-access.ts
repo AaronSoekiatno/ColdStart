@@ -155,7 +155,7 @@ const path = require('path');
 const root = '/workspace';
 
 function getAllFiles(dir, fileList = []) {
-  const files = fs.readdirSync(dir);
+  const files = fs.readdirSync(dir).sort();
   files.forEach(file => {
     if (file === 'node_modules' || file === '.git' || file === '.next' || file === '.vite' || file === '.vitest-cache') return;
     const filePath = path.join(dir, file);
