@@ -94,13 +94,30 @@ chown -R coder:coder /home/coder/.claude 2>/dev/null || true
 echo "✅ Environment setup complete!"
 
 echo "============================================"
-echo "🚀 Starting development server on 0.0.0.0:8080..."
+echo "🚀 Starting Next.js development server on 0.0.0.0:8080..."
 echo "============================================"
 
 # Navigate to workspace
 cd /workspace
 
-# Start npm run dev. 
-# We use exec so it replaces the shell process and receives signals (SIGTERM) correctly.
+# Start the dev server in the background to pre-compile
 export PORT=8080
-exec npm run dev
+npm run dev &
+DEV_PID=$!
+
+# Wait for server to be ready
+echo "⏳ Pre-compiling application..."
+for i in {1..30}; do
+    if curl -sf http://localhost:8080 > /dev/null 2>&1; then
+        echo "✅ Application pre-compiled and ready!"
+        break
+    fi
+    if [ $i -eq 30 ]; then
+        echo "⚠️  Pre-compilation timeout, server will continue starting..."
+    fi
+    sleep 1
+done
+
+# Keep the server running in foreground
+# Wait for the background process instead of using exec
+wait $DEV_PID

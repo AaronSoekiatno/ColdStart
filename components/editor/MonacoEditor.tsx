@@ -80,6 +80,8 @@ export function MonacoEditor({
                 2307, // Cannot find module (again)
                 2304, // Cannot find name
                 2875, // Cannot find namespace
+                2614, // Module has no exported member
+                2580, // Cannot find name
             ]
         });
 
