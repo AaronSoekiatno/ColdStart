@@ -71,33 +71,48 @@ export async function POST(request: NextRequest) {
     const command = `/bin/bash -c '${innerCommand}'`;
     
     console.log(`[API files/write] Writing to ${path} in session ${sessionId}`);
-    
-    const { stderr } = await execInContainer(sessionId, session.container_url, command);
 
-    if (stderr) {
-      console.warn(`[API files/write] Container stderr: ${stderr}`);
-      // return NextResponse.json({ error: stderr }, { status: 500 }); // Some stderrs are warnings, don't fail hard
+    try {
+      const { stderr } = await execInContainer(sessionId, session.container_url, command);
+
+      if (stderr) {
+        console.warn(`[API files/write] Container stderr: ${stderr}`);
+        // Some stderrs are warnings, don't fail hard
+      }
+
+      // Broadcast file update
+      if (supabaseAdmin) {
+          // Run in background
+          supabaseAdmin.channel(`session:${sessionId}`)
+              .send({
+                  type: 'broadcast',
+                  event: 'file_update',
+                  payload: { path, timestamp: Date.now() }
+              })
+              .then(() => {
+                   // Remove channel is implicit/handled by client usually, but explicit cleanup if needed:
+                   // supabaseAdmin.removeChannel(...)
+              })
+              .catch(console.error);
+      }
+
+      return NextResponse.json({ success: true });
+    } catch (execError: any) {
+      console.error('[API files/write] Container execution error:', execError);
+
+      // Provide user-friendly error messages
+      if (execError.message?.includes('connection reset') || execError.message?.includes('tunnel')) {
+        return NextResponse.json({
+          error: 'Connection to container lost. Please try again.'
+        }, { status: 503 });
+      }
+
+      throw execError; // Re-throw to be caught by outer catch
     }
-
-    // Broadcast file update
-    if (supabaseAdmin) {
-        // Run in background
-        supabaseAdmin.channel(`session:${sessionId}`)
-            .send({
-                type: 'broadcast',
-                event: 'file_update',
-                payload: { path, timestamp: Date.now() }
-            })
-            .then(() => {
-                 // Remove channel is implicit/handled by client usually, but explicit cleanup if needed:
-                 // supabaseAdmin.removeChannel(...)
-            })
-            .catch(console.error);
-    }
-
-    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('[API files/write] Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({
+      error: error.message || 'Failed to save file'
+    }, { status: 500 });
   }
 }

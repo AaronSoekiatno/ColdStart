@@ -8,6 +8,7 @@ import { TabManager, Tab } from './TabManager';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/supabase';
+import { useToast } from '@/hooks/use-toast';
 
 import AgentChat from '@/components/agent/AgentChat';
 import { ExternalLink, Eye, EyeOff, MessageSquare, X } from 'lucide-react';
@@ -33,6 +34,7 @@ export function MonacoWorkspace({
     flyAppName,
     containerReady
 }: MonacoWorkspaceProps) {
+    const { toast } = useToast();
     const [previewKey, setPreviewKey] = useState(0);
     const [files, setFiles] = useState<FileNode[]>([]);
     const [openTabs, setOpenTabs] = useState<Tab[]>([]);
@@ -58,7 +60,7 @@ export function MonacoWorkspace({
         };
     }, [sessionId]);
 
-    const fetchFileList = async () => {
+    const fetchFileList = useCallback(async (preloadContents: boolean = true) => {
         setIsLoading(true);
         try {
             // 1. Fetch File List (Tree)
@@ -68,24 +70,26 @@ export function MonacoWorkspace({
                 setFiles(data.files);
             }
 
-            // 2. Fetch All File Contents (Background Preload)
+            // 2. Fetch All File Contents (Background Preload) - Only on initial load
             // This allows instant clicking without waiting for individual fetches
-            fetch(`/api/files/read-all?sessionId=${sessionId}`)
-                .then(r => r.json())
-                .then(contentData => {
-                    if (contentData.files) {
-                        console.log(`[MonacoWorkspace] Preloaded ${Object.keys(contentData.files).length} files`);
-                        setFileContents(prev => ({ ...prev, ...contentData.files }));
-                    }
-                })
-                .catch(err => console.error('Failed to preload files:', err));
+            if (preloadContents) {
+                fetch(`/api/files/read-all?sessionId=${sessionId}`)
+                    .then(r => r.json())
+                    .then(contentData => {
+                        if (contentData.files) {
+                            console.log(`[MonacoWorkspace] Preloaded ${Object.keys(contentData.files).length} files`);
+                            setFileContents(prev => ({ ...prev, ...contentData.files }));
+                        }
+                    })
+                    .catch(err => console.error('Failed to preload files:', err));
+            }
 
         } catch (err) {
             console.error('Failed to fetch files:', err);
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [sessionId]);
 
     const fetchFileContent = useCallback(async (fileId: string) => {
         try {
@@ -109,10 +113,10 @@ export function MonacoWorkspace({
                 console.log('[MonacoWorkspace] ⚡ Received file_update:', payload);
                 const { path } = payload.payload;
 
-                // 1. Refresh file list to show new files
-                fetchFileList();
+                // Note: We don't call fetchFileList() here to avoid rebuilding the tree multiple times
+                // during agent execution. The tree will be rebuilt once when agent_complete fires.
 
-                // 2. Check if file is currently open
+                // Check if file is currently open
                 const isFileOpen = openTabsRef.current.some(t => t.id === path);
 
                 if (isFileOpen) {
@@ -143,7 +147,8 @@ export function MonacoWorkspace({
             })
             .on('broadcast', { event: 'agent_complete' }, () => {
                 console.log('[MonacoWorkspace] 🤖 Agent run complete, refreshing file list...');
-                fetchFileList();
+                // Only fetch tree structure, don't preload all files again
+                fetchFileList(false);
             })
             .subscribe((status: any) => {
                 console.log(`[MonacoWorkspace] Subscription status: ${status}`);
@@ -153,7 +158,7 @@ export function MonacoWorkspace({
             console.log('[MonacoWorkspace] Unsubscribing from file updates');
             supabase.removeChannel(channel);
         };
-    }, [sessionId, fetchFileContent]);
+    }, [sessionId, fetchFileList, fetchFileContent]);
 
 
 
@@ -219,10 +224,30 @@ export function MonacoWorkspace({
                 // Mark tab as clean
                 setOpenTabs(prev => prev.map(t => t.id === path ? { ...t, isDirty: false } : t));
             } else {
-                console.error('Failed to save file:', await resp.text());
+                const errorData = await resp.json().catch(() => ({ error: 'Unknown error' }));
+                const errorMessage = errorData.error || 'Failed to save file';
+
+                console.error('Failed to save file:', errorMessage);
+
+                // Show user-friendly error toast
+                toast({
+                    title: "Failed to save file",
+                    description: errorMessage.includes('Connection')
+                        ? "Connection to container lost. Your changes will be retried automatically."
+                        : `Error saving ${path.split('/').pop()}: ${errorMessage}`,
+                    variant: "destructive",
+                });
+
+                // Keep tab dirty so user knows it needs to be saved
             }
         } catch (error) {
             console.error('Failed to save file:', error);
+
+            toast({
+                title: "Failed to save file",
+                description: "Network error. Your changes will be retried automatically.",
+                variant: "destructive",
+            });
         }
     };
 
@@ -243,7 +268,7 @@ export function MonacoWorkspace({
             <div className="w-[300px] flex-shrink-0 flex flex-col bg-slate-900 border-r border-slate-800 z-10">
                 <div className="py-3 px-4 border-b border-slate-800 flex items-center justify-between shrink-0">
                     <span className="text-[13px] font-bold uppercase tracking-wider text-slate-400">FILE EXPLORER</span>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-300" onClick={fetchFileList}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-300" onClick={() => fetchFileList()}>
                         <RefreshCw className="h-4 w-4" />
                     </Button>
                 </div>
