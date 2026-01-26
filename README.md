@@ -41,3 +41,12 @@ See [Interview API Endpoints](docs/interview-api-endpoints.md) for API details.
 
 - **Minerva**: Voice-driven interviewer system.
 - **Hermes**: Candidate matching and resume platform.
+- **TopCandidates**: GitHub analysis API (located in `services/top-candidates`).
+
+## Services
+
+### TopCandidates (GitHub Analysis)
+Located in `services/top-candidates/api`.
+- **Run**: `npm run top-candidates:dev` (starts on port 3001)
+- **Install**: `npm run top-candidates:install`
+- **Features**: Code extraction from GitHub, Repository evaluation, and Job matching analysis.

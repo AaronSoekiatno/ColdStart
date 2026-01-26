@@ -87,7 +87,9 @@
     "extract-majors": "tsx scripts/data/extract-candidate-majors.ts",
     "extract-majors:output": "tsx scripts/data/extract-candidate-majors.ts --output",
     "extract-majors:populate": "tsx scripts/data/extract-candidate-majors.ts --populate",
-    "extract-majors:populate:dry-run": "tsx scripts/data/extract-candidate-majors.ts --populate --dry-run"
+    "extract-majors:populate:dry-run": "tsx scripts/data/extract-candidate-majors.ts --populate --dry-run",
+    "top-candidates:dev": "cd services/top-candidates/api && npm run dev",
+    "top-candidates:install": "cd services/top-candidates/api && npm install"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
