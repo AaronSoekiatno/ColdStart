@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, FileCode } from 'lucide-react';
+import { X, FileCode, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
@@ -9,6 +9,7 @@ export interface Tab {
     id: string;
     name: string;
     isDirty?: boolean;
+    isPermanent?: boolean;
 }
 
 interface TabManagerProps {
@@ -39,25 +40,31 @@ export function TabManager({ tabs, activeTabId, onSelect, onClose }: TabManagerP
                                 onClick={() => onSelect(tab.id)}
                             >
                                 <div className="flex items-center gap-2 truncate pr-4">
-                                    <FileCode className={cn("h-3.5 w-3.5", isActive ? "text-blue-400" : "text-slate-500")} />
+                                    {tab.id === 'instructions' ? (
+                                        <Info className={cn("h-3.5 w-3.5", isActive ? "text-blue-400" : "text-slate-500")} />
+                                    ) : (
+                                        <FileCode className={cn("h-3.5 w-3.5", isActive ? "text-blue-400" : "text-slate-500")} />
+                                    )}
                                     <span className="truncate">{tab.name}</span>
                                     {tab.isDirty && (
                                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse ml-1" />
                                     )}
                                 </div>
 
-                                <button
-                                    className={cn(
-                                        "p-0.5 rounded-md hover:bg-slate-700 transition-colors opacity-0 group-hover:opacity-100",
-                                        isActive && "opacity-100"
-                                    )}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onClose(tab.id);
-                                    }}
-                                >
-                                    <X className="h-3 w-3" />
-                                </button>
+                                {!tab.isPermanent && (
+                                    <button
+                                        className={cn(
+                                            "p-0.5 rounded-md hover:bg-slate-700 transition-colors opacity-0 group-hover:opacity-100",
+                                            isActive && "opacity-100"
+                                        )}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onClose(tab.id);
+                                        }}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </button>
+                                )}
                             </div>
                         );
                     })}

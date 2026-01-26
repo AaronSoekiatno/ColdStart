@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import AgentChat from '@/components/agent/AgentChat';
 import { ExternalLink, Eye, EyeOff, MessageSquare, X } from 'lucide-react';
+import { WelcomeBriefing } from '../assessment/WelcomeBriefing';
 
 interface MonacoWorkspaceProps {
     sessionId: string;
@@ -37,8 +38,10 @@ export function MonacoWorkspace({
     const { toast } = useToast();
     const [previewKey, setPreviewKey] = useState(0);
     const [files, setFiles] = useState<FileNode[]>([]);
-    const [openTabs, setOpenTabs] = useState<Tab[]>([]);
-    const [activeTabId, setActiveTabId] = useState<string>('');
+    const [openTabs, setOpenTabs] = useState<Tab[]>([
+        { id: 'instructions', name: 'Instructions', isPermanent: true }
+    ]);
+    const [activeTabId, setActiveTabId] = useState<string>('instructions');
     const [fileContents, setFileContents] = useState<Record<string, string>>({});
     const [isLoading, setIsLoading] = useState(true);
     const pollIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -107,8 +110,17 @@ export function MonacoWorkspace({
         if (!sessionId) return;
 
         console.log(`[MonacoWorkspace] Subscribing to real-time updates for session:${sessionId}`);
+
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 3;
+
         const channel = supabase
-            .channel(`session:${sessionId}`)
+            .channel(`session:${sessionId}`, {
+                config: {
+                    broadcast: { self: false },
+                    presence: { key: '' }
+                }
+            })
             .on('broadcast', { event: 'file_update' }, async (payload: any) => {
                 console.log('[MonacoWorkspace] ⚡ Received file_update:', payload);
                 const { path } = payload.payload;
@@ -152,6 +164,31 @@ export function MonacoWorkspace({
             })
             .subscribe((status: any) => {
                 console.log(`[MonacoWorkspace] Subscription status: ${status}`);
+
+                // Handle subscription errors gracefully
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('[MonacoWorkspace] ❌ Realtime channel error - likely hit connection limit');
+                    if (reconnectAttempts < maxReconnectAttempts) {
+                        reconnectAttempts++;
+                        console.log(`[MonacoWorkspace] Attempting reconnect ${reconnectAttempts}/${maxReconnectAttempts}...`);
+                        setTimeout(() => {
+                            supabase.removeChannel(channel);
+                            // Will reconnect on next update
+                        }, 5000 * reconnectAttempts); // Exponential backoff
+                    } else {
+                        console.warn('[MonacoWorkspace] ⚠️ Max reconnect attempts reached. Falling back to polling.');
+                        toast({
+                            title: 'Real-time updates unavailable',
+                            description: 'Using manual refresh instead. Click the refresh button to see latest changes.',
+                            variant: 'default'
+                        });
+                    }
+                } else if (status === 'TIMED_OUT') {
+                    console.warn('[MonacoWorkspace] ⚠️ Realtime subscription timed out');
+                } else if (status === 'SUBSCRIBED') {
+                    console.log('[MonacoWorkspace] ✅ Successfully subscribed to realtime updates');
+                    reconnectAttempts = 0; // Reset on successful connection
+                }
             });
 
         return () => {
@@ -189,6 +226,9 @@ export function MonacoWorkspace({
     };
 
     const handleTabClose = (tabId: string) => {
+        const tab = openTabs.find(t => t.id === tabId);
+        if (tab?.isPermanent) return;
+
         const newTabs = openTabs.filter(t => t.id !== tabId);
         setOpenTabs(newTabs);
         if (activeTabId === tabId) {
@@ -292,7 +332,11 @@ export function MonacoWorkspace({
                             onClose={handleTabClose}
                         />
                         <div className="flex-1 relative min-h-0 w-full h-full">
-                            {activeTabId ? (
+                            {activeTabId === 'instructions' ? (
+                                <div className="absolute inset-0 bg-[#1e1e1e]">
+                                    <WelcomeBriefing />
+                                </div>
+                            ) : activeTabId ? (
                                 <div className="absolute inset-0">
                                     <MonacoEditor
                                         path={activeTabId}
@@ -305,7 +349,6 @@ export function MonacoWorkspace({
                                 <div className="flex items-center justify-center h-full text-slate-500 italic px-4 text-center bg-slate-900/50">
                                     <div className="max-w-sm">
                                         <p className="mb-2">Select a file from the explorer to start editing</p>
-                                        <p className="text-xs text-slate-600">You can also use the AI Chat to help you with your code.</p>
                                     </div>
                                 </div>
                             )}

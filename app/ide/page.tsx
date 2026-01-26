@@ -18,6 +18,7 @@ import {
     Maximize2,
     Minimize2,
     X,
+    CheckCircle2,
     Eye,
     MessageSquare,
     Mic,
@@ -568,11 +569,8 @@ export default function IDEPage() {
     }
 
     if (containerStatus === 'provisioning') {
-        // Calculate progress percentage based on elapsed time (0-100%)
-        // Typical provisioning: 20-40s, so we'll use 35s as baseline
         const progressPercent = Math.min(Math.floor((provisioningTime / 35) * 100), 95);
 
-        // Dynamic status message based on elapsed time
         const getStatusMessage = () => {
             if (provisioningTime < 5) return { step: 'Deploying container to Fly.io...', icon: '🚀' };
             if (provisioningTime < 10) return { step: 'Allocating compute resources...', icon: '⚙️' };
@@ -586,109 +584,134 @@ export default function IDEPage() {
         const estimatedRemaining = Math.max(35 - provisioningTime, 5);
 
         return (
-            <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+            <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 overflow-hidden">
                 <Header initialUser={user} />
-                {/* section adjusted with pt-16 to move card lower on the screen */}
-                <section className="flex-1 flex items-center justify-center px-4 pt-16">
-                    <div className="max-w-2xl w-full">
-                        {/* Main Loading Card */}
-                        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-                            {/* Animated Logo/Icon */}
-                            <div className="flex justify-center mb-8">
-                                <div className="relative">
-                                    <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
-                                    <Loader2 className="h-16 w-16 animate-spin text-blue-400 relative" />
+                <section className="flex-1 flex flex-col md:flex-row items-stretch justify-center gap-8 px-4 md:px-8 py-12 max-w-7xl mx-auto overflow-y-auto">
+                    {/* Left Side: Provisioning Status */}
+                    <div className="flex-1 flex flex-col justify-center max-w-xl">
+                        <div className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-slate-700">
+                                <div
+                                    className="h-full bg-blue-500 transition-all duration-1000 ease-out"
+                                    style={{ width: `${progressPercent}%` }}
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="p-3 bg-blue-500/10 rounded-xl">
+                                    <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">Provisioning Workspace</h2>
+                                    <p className="text-slate-400 text-sm">Setting up your cloud IDE on Fly.io</p>
                                 </div>
                             </div>
 
-                            {/* Main Title */}
-                            <h2 className="text-2xl font-bold text-white text-center mb-3">
-                                Setting Up Your Environment
-                            </h2>
-                            <p className="text-slate-400 text-center mb-8">
-                                We're provisioning your cloud IDE powered by Fly.io
-                            </p>
-
-                            {/* Progress Bar */}
-                            <div className="mb-6">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm text-slate-400">Progress</span>
-                                    <span className="text-sm font-mono text-blue-400">{progressPercent}%</span>
-                                </div>
-                                <div className="w-full bg-slate-700/50 rounded-full h-2.5 overflow-hidden">
-                                    <div
-                                        className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2.5 rounded-full transition-all duration-1000 ease-out"
-                                        style={{ width: `${progressPercent}%` }}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Current Status */}
-                            <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+                            <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 mb-8">
                                 <div className="flex items-center gap-3">
-                                    <div className="text-2xl">{currentStatus.icon}</div>
+                                    <span className="text-xl">{currentStatus.icon}</span>
                                     <div className="flex-1">
-                                        <p className="text-blue-300 font-medium text-sm mb-1">
-                                            {currentStatus.step}
-                                        </p>
-                                        <p className="text-blue-400/70 text-xs">
-                                            Estimated time remaining: ~{estimatedRemaining}s
-                                        </p>
+                                        <p className="text-blue-300 font-medium text-sm">{currentStatus.step}</p>
+                                        <p className="text-slate-500 text-xs">Remaining: ~{estimatedRemaining}s</p>
                                     </div>
-                                    <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                                    <span className="font-mono text-blue-400 text-sm">{progressPercent}%</span>
                                 </div>
                             </div>
 
-                            {/* Progress Steps */}
-                            <div className="space-y-3 mb-6">
-                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 5 ? 'text-green-400' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 5 ? 'bg-green-500' : 'bg-slate-600'}`} />
-                                    <span className="text-sm">Deploy container</span>
-                                    {provisioningTime >= 5 && <span className="text-xs">✓</span>}
-                                </div>
-                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 10 ? 'text-green-400' : provisioningTime >= 5 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 10 ? 'bg-green-500' : provisioningTime >= 5 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
-                                    <span className="text-sm">Allocate resources</span>
-                                    {provisioningTime >= 10 && <span className="text-xs">✓</span>}
-                                </div>
-                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 15 ? 'text-green-400' : provisioningTime >= 10 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 15 ? 'bg-green-500' : provisioningTime >= 10 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
-                                    <span className="text-sm">Load VS Code</span>
-                                    {provisioningTime >= 15 && <span className="text-xs">✓</span>}
-                                </div>
-                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 25 ? 'text-green-400' : provisioningTime >= 15 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 25 ? 'bg-green-500' : provisioningTime >= 15 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
-                                    <span className="text-sm">Start dev server</span>
-                                    {provisioningTime >= 25 && <span className="text-xs">✓</span>}
-                                </div>
-                                <div className={`flex items-center gap-3 transition-colors ${provisioningTime >= 35 ? 'text-green-400' : provisioningTime >= 25 ? 'text-blue-400 animate-pulse' : 'text-slate-400'}`}>
-                                    <div className={`w-2 h-2 rounded-full ${provisioningTime >= 35 ? 'bg-green-500' : provisioningTime >= 25 ? 'bg-blue-500 animate-pulse' : 'bg-slate-600'}`} />
-                                    <span className="text-sm">Warm up compiler</span>
-                                    {provisioningTime >= 35 && <span className="text-xs">✓</span>}
-                                </div>
-                            </div>
-
-                            {/* Helpful Tips */}
-                            <div className="text-center border-t border-slate-700 pt-4">
-                                <p className="text-slate-500 text-xs mb-2">💡 Pro Tip</p>
-                                <p className="text-slate-400 text-sm">
-                                    Your environment includes Claude Code, auto-save, and full terminal access
-                                </p>
+                            <div className="space-y-3">
+                                {[
+                                    { time: 5, label: 'Deploy container' },
+                                    { time: 10, label: 'Allocate resources' },
+                                    { time: 15, label: 'Load VS Code' },
+                                    { time: 25, label: 'Start dev server' },
+                                    { time: 35, label: 'Warm up compiler' },
+                                ].map((step, i) => (
+                                    <div key={i} className={cn(
+                                        "flex items-center gap-3 text-sm transition-colors",
+                                        provisioningTime >= step.time ? "text-green-400" : "text-slate-500"
+                                    )}>
+                                        <div className={cn(
+                                            "w-2 h-2 rounded-full",
+                                            provisioningTime >= step.time ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-slate-700"
+                                        )} />
+                                        <span>{step.label}</span>
+                                        {provisioningTime >= step.time && <span className="text-xs">✓</span>}
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        {/* Bottom Timer */}
-                        <div className="text-center mt-6">
-                            <p className="text-slate-500 text-sm">
-                                Elapsed time: <span className="font-mono text-slate-400">{formatTime(provisioningTime)}</span>
-                            </p>
+                        <div className="mt-6 flex items-center justify-center gap-2 text-slate-500 text-sm">
+                            <Clock className="h-4 w-4" />
+                            <span>Elapsed time: {formatTime(provisioningTime)}</span>
+                        </div>
+                    </div>
+
+                    {/* Right Side: Mission Briefing */}
+                    <div className="flex-1 flex flex-col justify-center max-w-xl">
+                        <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-8 space-y-6">
+                            <div>
+                                <h3 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-4">Assessment Briefing</h3>
+                                <h2 className="text-2xl font-bold text-white mb-2">Build a Real-Time Notification System 🔔</h2>
+                                <p className="text-slate-300">
+                                    You're working on <strong>InstaClone</strong>. Your task is to transform a static notification bell into a fully functional, real-time engine.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                    <div className="text-blue-400 font-bold text-xl mb-1">20m</div>
+                                    <div className="text-slate-400 text-xs font-semibold uppercase">Time Limit</div>
+                                </div>
+                                <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                    <div className="text-green-400 font-bold text-xl mb-1">100</div>
+                                    <div className="text-slate-400 text-xs font-semibold uppercase">Max Score</div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex gap-3">
+                                    <div className="p-2 bg-indigo-500/10 rounded-lg h-fit">
+                                        <CheckCircle2 className="h-4 w-4 text-indigo-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white text-sm font-semibold mb-1">What You'll Build</p>
+                                        <p className="text-slate-400 text-xs leading-relaxed">
+                                            Dynamic unread counts, functional dropdowns, and multi-tab synchronization using Supabase Realtime.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <div className="p-2 bg-amber-500/10 rounded-lg h-fit">
+                                        <Mic className="h-4 w-4 text-amber-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-white text-sm font-semibold mb-1">AI Tools Encouraged</p>
+                                        <p className="text-slate-400 text-xs leading-relaxed">
+                                            Use Claude Code, ChatGPT, or Copilot. We value speed, verification ability, and production quality.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-700/50">
+                                <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-2">Success Criteria</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {['Real-time Updates', 'Mark as Read', 'No Memory Leaks', 'Clean Security'].map((tag) => (
+                                        <span key={tag} className="px-2 py-1 bg-slate-700/50 rounded text-[11px] text-slate-300 border border-slate-600/30">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
             </div>
         );
-
     }
+
 
     if (containerStatus === 'error' || !containerUrl) {
         return (

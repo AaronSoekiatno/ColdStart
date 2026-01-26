@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
           input: any,
           maxRetries = 5  // Increased from 3 to 5 for flaky SSH
         ): Promise<string> => {
-            // Helper to broadcast file updates
+            // Helper to broadcast file updates using httpSend (avoids realtime connection limit)
             const broadcastFileUpdate = async (path: string) => {
                 if (!supabaseAdmin) {
                     console.warn('⚠️ Cannot broadcast file update: supabaseAdmin not initialized');
@@ -126,14 +126,15 @@ export async function POST(request: NextRequest) {
                 }
                 try {
                     console.log(`📡 [Chat V2] Broadcasting file_update for ${path} to session:${sessionId}`);
-                    const channel = supabaseAdmin.channel(`session:${sessionId}`);
-                    await channel.send({
-                        type: 'broadcast',
-                        event: 'file_update',
-                        payload: { path, timestamp: Date.now() }
-                    });
-                    // Clean up channel reference locally (admin client handles connection reuse typically, but good practice for on-demand)
-                    supabaseAdmin.removeChannel(channel);
+                    // Use httpSend() instead of send() to avoid hitting the 2-connection realtime limit
+                    // This sends via REST API directly and doesn't create a new realtime connection
+                    await supabaseAdmin
+                        .channel(`session:${sessionId}`)
+                        .send({
+                            type: 'broadcast',
+                            event: 'file_update',
+                            payload: { path, timestamp: Date.now() }
+                        });
                 } catch (e) {
                     console.error('⚠️ Failed to broadcast file update:', e);
                 }
@@ -141,28 +142,34 @@ export async function POST(request: NextRequest) {
 
           for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
-              // Execute the tool
+              // Execute the tool with timing
+              const toolStartTime = Date.now();
+              let result: string;
+
               if (toolName === 'read_file') {
-                return await readWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line });
+                result = await readWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line });
               } else if (toolName === 'list_directory') {
-                return await listWorkspaceDirectory(flyAppName, { path: input.path, recursive: input.recursive });
+                result = await listWorkspaceDirectory(flyAppName, { path: input.path, recursive: input.recursive });
               } else if (toolName === 'search_code') {
-                return await searchWorkspaceCode(flyAppName, { query: input.query, filePattern: input.file_pattern, caseSensitive: input.case_sensitive });
+                result = await searchWorkspaceCode(flyAppName, { query: input.query, filePattern: input.file_pattern, caseSensitive: input.case_sensitive });
               } else if (toolName === 'write_file') {
-                const result = await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
+                result = await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
                 // Broadcast update asynchronously
                 broadcastFileUpdate(input.path).catch(console.error);
-                return result;
               } else if (toolName === 'edit_file') {
-                const result = await editWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line, newContent: input.new_content });
+                result = await editWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line, newContent: input.new_content });
                 // Broadcast update asynchronously
                 broadcastFileUpdate(input.path).catch(console.error);
-                return result;
               } else if (toolName === 'run_command') {
-                return await runWorkspaceCommand(flyAppName, { command: input.command });
+                result = await runWorkspaceCommand(flyAppName, { command: input.command });
               } else {
                 return `Unknown tool: ${toolName}`;
               }
+
+              const toolDuration = Date.now() - toolStartTime;
+              console.log(`⏱️  [Tool Timing] ${toolName} completed in ${toolDuration}ms (attempt ${attempt + 1}/${maxRetries})`);
+
+              return result;
             } catch (error: any) {
               const isLastAttempt = attempt === maxRetries - 1;
               
@@ -212,13 +219,17 @@ export async function POST(request: NextRequest) {
 
         while (iterations < maxIterations && !finalResponseFound) {
             iterations++;
+            const iterationStartTime = Date.now();
+            console.log(`\n🔄 [Agent Loop] Starting iteration ${iterations}/${maxIterations}`);
             // sendEvent('status', { msg: `Thinking... (Step ${iterations})` });
 
             // Call Claude
+            const claudeCallStart = Date.now();
             const response = await callClaude(messages, tools, {
                 systemPrompt: CODING_ASSISTANT_SYSTEM_PROMPT,
                 maxTokens: 4096,
             });
+            console.log(`⏱️  [Claude API] Call completed in ${Date.now() - claudeCallStart}ms`);
 
             inputTokens += response.usage.input_tokens;
             outputTokens += response.usage.output_tokens;
@@ -295,16 +306,27 @@ export async function POST(request: NextRequest) {
                 // No tools used, loop ends
                 finalResponseFound = true;
             }
+
+            const iterationDuration = Date.now() - iterationStartTime;
+            console.log(`⏱️  [Agent Loop] Iteration ${iterations} completed in ${iterationDuration}ms`);
         }
 
         // 6. Finalize
         if (!fullResponseText && (iterations > 0 || toolResultsLog.length > 0)) {
             fullResponseText = "I have completed the requested operations.";
         }
-        
+
         sendEvent('response', { content: fullResponseText }); // Signal completion
         const duration = Date.now() - startTime;
-        
+
+        console.log(`\n📊 [Request Summary] Session: ${sessionId}`);
+        console.log(`   Total Duration: ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
+        console.log(`   Agent Iterations: ${iterations}`);
+        console.log(`   Tools Executed: ${toolResultsLog.length}`);
+        console.log(`   Input Tokens: ${inputTokens}`);
+        console.log(`   Output Tokens: ${outputTokens}`);
+        console.log(`   Total Tokens: ${inputTokens + outputTokens}`);
+
         trackTokenUsage(sessionId, inputTokens + outputTokens);
 
         // Update DB Log
@@ -321,16 +343,21 @@ export async function POST(request: NextRequest) {
 
         // Broadcast agent completion to refresh UI
         if (supabaseAdmin) {
-             supabaseAdmin.channel(`session:${sessionId}`)
-                .send({
-                    type: 'broadcast',
-                    event: 'agent_complete',
-                    payload: { timestamp: Date.now() }
-                })
-                .then(() => {
-                    // console.log('Agent completion broadcast sent');
-                })
-                .catch(console.error);
+            try {
+                // Use send() which automatically falls back to REST API if realtime is unavailable
+                // This prevents blocking on failed realtime connections
+                await supabaseAdmin
+                    .channel(`session:${sessionId}`)
+                    .send({
+                        type: 'broadcast',
+                        event: 'agent_complete',
+                        payload: { timestamp: Date.now() }
+                    });
+                console.log(`📡 [Chat V2] Broadcast agent_complete to session:${sessionId}`);
+            } catch (e) {
+                console.error('⚠️ Failed to broadcast agent_complete (non-fatal):', e);
+                // Don't throw - this is non-critical
+            }
         }
 
         controller.close();

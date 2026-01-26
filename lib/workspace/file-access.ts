@@ -108,6 +108,7 @@ export async function readWorkspaceFile(
   }
 
   const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+  const readStartTime = Date.now();
 
   try {
     let command: string;
@@ -162,8 +163,10 @@ export async function readWorkspaceFile(
       throw new Error(cleanStderr);
     }
 
+    console.log(`[readWorkspaceFile] ✅ Read ${path} in ${Date.now() - readStartTime}ms`);
     return cleanStdout;
   } catch (error: any) {
+    console.log(`[readWorkspaceFile] ❌ Failed to read ${path} after ${Date.now() - readStartTime}ms`);
     if (error.message.includes('File not found')) {
       throw error;
     }
@@ -274,6 +277,7 @@ export async function listWorkspaceDirectory(
   }
 
   const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+  const listStartTime = Date.now();
 
   try {
     const dirPath = path === '.' ? '/workspace' : `/workspace/${path}`;
@@ -306,7 +310,7 @@ export async function listWorkspaceDirectory(
     };
 
     const cleanStdout = cleanupNoise(stdout);
-    
+
     // Prevent overwhelming the context window
     const MAX_OUTPUT_SIZE = 50000; // ~50KB of text
     if (cleanStdout.length > MAX_OUTPUT_SIZE) {
@@ -315,9 +319,11 @@ export async function listWorkspaceDirectory(
       const shownLines = truncated.split('\n').length;
       return `${truncated}\n\n... [Output truncated: showing ${shownLines} of ${lineCount} lines. Total size: ${cleanStdout.length} chars. Use recursive=false or specify a subdirectory for more focused results.]`;
     }
-    
+
+    console.log(`[listWorkspaceDirectory] ✅ Listed ${path} in ${Date.now() - listStartTime}ms`);
     return cleanStdout;
   } catch (error: any) {
+    console.log(`[listWorkspaceDirectory] ❌ Failed to list ${path} after ${Date.now() - listStartTime}ms`);
     throw new Error(`Failed to list directory: ${error.message}`);
   }
 }
@@ -336,6 +342,7 @@ export async function searchWorkspaceCode(
   const escapedQuery = query.replace(/'/g, "'\\''");
 
   const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+  const searchStartTime = Date.now();
 
   try {
     const caseFlag = caseSensitive ? '' : '-i';
@@ -373,6 +380,7 @@ export async function searchWorkspaceCode(
     const cleanStdout = cleanupNoise(stdout);
 
     if (!cleanStdout || cleanStdout === '') {
+      console.log(`[searchWorkspaceCode] No matches for "${query}" in ${Date.now() - searchStartTime}ms`);
       return `No matches found for "${query}"`;
     }
 
@@ -384,13 +392,16 @@ export async function searchWorkspaceCode(
       const shownLines = truncated.split('\n').length;
       return `${truncated}\n\n... [Search results truncated: showing ${shownLines} of ${lineCount} matches. Use a more specific query or file_pattern.]`;
     }
-    
+
+    console.log(`[searchWorkspaceCode] ✅ Searched for "${query}" in ${Date.now() - searchStartTime}ms`);
     return cleanStdout;
   } catch (error: any) {
     // grep returns exit code 1 if no matches, which is not an error
     if (error.code === 1) {
+      console.log(`[searchWorkspaceCode] No matches for "${query}" in ${Date.now() - searchStartTime}ms`);
       return `No matches found for "${query}"`;
     }
+    console.log(`[searchWorkspaceCode] ❌ Failed search for "${query}" after ${Date.now() - searchStartTime}ms`);
     throw new Error(`Failed to search code: ${error.message}`);
   }
 }
@@ -416,6 +427,7 @@ export async function writeWorkspaceFile(
   // Determine if local or Fly.io
   const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
 
+  const writeStartTime = Date.now();
   console.log(`[writeWorkspaceFile] Writing to ${path}, isLocal: ${isLocal}, flyAppName: ${flyAppName}`);
 
   try {
@@ -425,6 +437,7 @@ export async function writeWorkspaceFile(
 
     try {
         // Read original content first
+        const readStartTime = Date.now();
         let readCmd: string;
         if (isLocal) {
             // Local docker container
@@ -439,6 +452,7 @@ export async function writeWorkspaceFile(
              env: { ...process.env, FLY_API_TOKEN: process.env.FLY_API_TOKEN },
              timeout: 10000
         });
+        console.log(`[writeWorkspaceFile] Read original file in ${Date.now() - readStartTime}ms`);
         
         // Clean up noise
         originalArrowContent = readStdout
@@ -492,6 +506,7 @@ export async function writeWorkspaceFile(
         fullCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
     }
 
+    const execStartTime = Date.now();
     console.log(`[writeWorkspaceFile] Executing: ${fullCommand.substring(0, 150)}...`);
 
     const { stdout, stderr } = await execAsync(fullCommand, {
@@ -502,6 +517,8 @@ export async function writeWorkspaceFile(
       timeout: 30000,
       maxBuffer: 10 * 1024 * 1024, // 10MB for large files
     });
+
+    console.log(`[writeWorkspaceFile] Write command executed in ${Date.now() - execStartTime}ms`);
 
     const cleanupNoise = (text: string) => {
       return text
@@ -526,14 +543,19 @@ export async function writeWorkspaceFile(
     }
 
     // Return structured result
+    const totalDuration = Date.now() - writeStartTime;
+    console.log(`[writeWorkspaceFile] ✅ Total write operation for ${path} took ${totalDuration}ms`);
+
     return JSON.stringify({
         status: 'success',
         path,
         diff,
-        originalContent: originalArrowContent 
+        originalContent: originalArrowContent
     });
 
   } catch (error: any) {
+    const totalDuration = Date.now() - writeStartTime;
+    console.log(`[writeWorkspaceFile] ❌ Failed write operation for ${path} after ${totalDuration}ms: ${error.message}`);
     throw new Error(`Failed to write file: ${error.message}`);
   }
 }
@@ -569,6 +591,8 @@ export async function editWorkspaceFile(
   }
 
   const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+  const editStartTime = Date.now();
+  console.log(`[editWorkspaceFile] Editing lines ${startLine}-${endLine} in ${path}, isLocal: ${isLocal}`);
 
   try {
     // 1. Read the original file
@@ -620,8 +644,7 @@ export async function editWorkspaceFile(
         fullCommand = `flyctl ssh console -a ${flyAppName} -C "bash -c '${escapedInnerCommand}'"`;
     }
 
-    console.log(`[editWorkspaceFile] Editing lines ${startLine}-${endLine} in ${path}, isLocal: ${isLocal}`);
-
+    const execStartTime = Date.now();
     const { stdout, stderr } = await execAsync(fullCommand, {
       env: {
         ...process.env,
@@ -643,6 +666,8 @@ export async function editWorkspaceFile(
     const cleanStdout = cleanupNoise(stdout);
     const cleanStderr = cleanupNoise(stderr);
 
+    console.log(`[editWorkspaceFile] Edit command executed in ${Date.now() - execStartTime}ms`);
+
     if (!cleanStdout.includes('EDIT_OP_COMPLETE')) {
       throw new Error(`Edit operation failed or incomplete. Stderr: ${cleanStderr}`);
     }
@@ -652,6 +677,9 @@ export async function editWorkspaceFile(
     }
 
     // Return structured result
+    const totalDuration = Date.now() - editStartTime;
+    console.log(`[editWorkspaceFile] ✅ Total edit operation for ${path} took ${totalDuration}ms`);
+
     return JSON.stringify({
       status: 'success',
       path,
@@ -661,6 +689,8 @@ export async function editWorkspaceFile(
     });
 
   } catch (error: any) {
+    const totalDuration = Date.now() - editStartTime;
+    console.log(`[editWorkspaceFile] ❌ Failed edit operation for ${path} after ${totalDuration}ms: ${error.message}`);
     throw new Error(`Failed to edit file: ${error.message}`);
   }
 }
@@ -681,6 +711,8 @@ export async function runWorkspaceCommand(
   }
 
   const isLocal = !flyAppName || flyAppName.includes('localhost') || flyAppName.includes('127.0.0.1');
+  const cmdStartTime = Date.now();
+  console.log(`[runWorkspaceCommand] Executing: ${command.substring(0, 100)}...`);
 
   try {
     const innerCommand = `cd /workspace && ${command}`;
@@ -718,6 +750,7 @@ export async function runWorkspaceCommand(
     // Combine stdout and stderr for full command output
     const output = [cleanStdout, cleanStderr].filter(Boolean).join('\n\n');
 
+    console.log(`[runWorkspaceCommand] ✅ Command completed in ${Date.now() - cmdStartTime}ms`);
     return output || 'Command executed successfully (no output)';
   } catch (error: any) {
     // Command failures (non-zero exit codes) are expected for things like failing tests
@@ -733,10 +766,12 @@ export async function runWorkspaceCommand(
 
       const cleanStdout = cleanupNoise(error.stdout || '');
       const cleanStderr = cleanupNoise(error.stderr || '');
-      
+
+      console.log(`[runWorkspaceCommand] ⚠️  Command failed (expected behavior) in ${Date.now() - cmdStartTime}ms`);
       return [cleanStdout, cleanStderr].filter(Boolean).join('\n\n') || `Command failed: ${error.message}`;
     }
-    
+
+    console.log(`[runWorkspaceCommand] ❌ Command failed unexpectedly after ${Date.now() - cmdStartTime}ms`);
     throw new Error(`Failed to run command: ${error.message}`);
   }
 }

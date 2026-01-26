@@ -21,10 +21,13 @@ const nextConfig: NextConfig = {
       };
     }
     
-    // Help webpack resolve lightningcss native modules
+    // Help webpack resolve lightningcss native modules and React Server Components
     // Merge with existing aliases
     config.resolve.alias = {
       ...config.resolve.alias,
+      'react': require.resolve('react'),
+      'react-dom': require.resolve('react-dom'),
+      'react-server-dom-webpack/client': require.resolve('react-server-dom-webpack/client'),
       ...(process.platform === 'win32' && process.arch === 'x64' 
         ? { 'lightningcss-win32-x64-msvc': require.resolve('lightningcss-win32-x64-msvc') }
         : {}),
