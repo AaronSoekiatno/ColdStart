@@ -33,6 +33,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [historyLoaded, setHistoryLoaded] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // File referencing state
@@ -49,6 +50,47 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Load chat history on mount
+    useEffect(() => {
+        if (sessionId && !historyLoaded) {
+            fetch(`/api/agent/chat-history?sessionId=${sessionId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.messages && data.messages.length > 0) {
+                        console.log(`[AgentChat] Loaded ${data.messages.length} messages from history`);
+                        setMessages(data.messages);
+                    }
+                    setHistoryLoaded(true);
+                })
+                .catch(err => {
+                    console.error('Failed to load chat history:', err);
+                    setHistoryLoaded(true);
+                });
+        }
+    }, [sessionId, historyLoaded]);
+
+    // Save chat history whenever messages change (debounced)
+    useEffect(() => {
+        if (!historyLoaded || messages.length === 0) return;
+
+        const saveTimer = setTimeout(() => {
+            fetch('/api/agent/chat-history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, messages })
+            })
+                .then(res => res.json())
+                .then(() => {
+                    console.log(`[AgentChat] Saved ${messages.length} messages to history`);
+                })
+                .catch(err => {
+                    console.error('Failed to save chat history:', err);
+                });
+        }, 2000); // Debounce 2 seconds
+
+        return () => clearTimeout(saveTimer);
+    }, [messages, sessionId, historyLoaded]);
 
     // Fetch workspace files when container is ready
     useEffect(() => {
