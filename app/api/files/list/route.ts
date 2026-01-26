@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { execInContainer } from '@/lib/container-orchestration/exec-command';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 1 minute for container operations
 
 export async function GET(request: NextRequest) {
   try {

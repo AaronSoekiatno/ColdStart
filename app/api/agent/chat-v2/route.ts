@@ -16,10 +16,12 @@ import {
   getSessionUsage,
 } from '@/lib/claude/cost-tracker';
 import { logPrompt, updateLogResponse } from '@/lib/claude/logger';
-import { supabaseAdmin } from '@/lib/supabase';
 
 // Prevent Next.js from caching the response
 export const dynamic = 'force-dynamic';
+
+// Increase max duration for long-running agent tasks (SSH operations can be slow)
+export const maxDuration = 300; // 5 minutes (same as chat v1)
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -118,28 +120,6 @@ export async function POST(request: NextRequest) {
           input: any,
           maxRetries = 5  // Increased from 3 to 5 for flaky SSH
         ): Promise<string> => {
-            // Helper to broadcast file updates using httpSend (avoids realtime connection limit)
-            const broadcastFileUpdate = async (path: string) => {
-                if (!supabaseAdmin) {
-                    console.warn('⚠️ Cannot broadcast file update: supabaseAdmin not initialized');
-                    return;
-                }
-                try {
-                    console.log(`📡 [Chat V2] Broadcasting file_update for ${path} to session:${sessionId}`);
-                    // Use httpSend() instead of send() to avoid hitting the 2-connection realtime limit
-                    // This sends via REST API directly and doesn't create a new realtime connection
-                    await supabaseAdmin
-                        .channel(`session:${sessionId}`)
-                        .send({
-                            type: 'broadcast',
-                            event: 'file_update',
-                            payload: { path, timestamp: Date.now() }
-                        });
-                } catch (e) {
-                    console.error('⚠️ Failed to broadcast file update:', e);
-                }
-            };
-
           for (let attempt = 0; attempt < maxRetries; attempt++) {
             try {
               // Execute the tool with timing
@@ -154,12 +134,25 @@ export async function POST(request: NextRequest) {
                 result = await searchWorkspaceCode(flyAppName, { query: input.query, filePattern: input.file_pattern, caseSensitive: input.case_sensitive });
               } else if (toolName === 'write_file') {
                 result = await writeWorkspaceFile(flyAppName, { path: input.path, content: input.content });
-                // Broadcast update asynchronously
-                broadcastFileUpdate(input.path).catch(console.error);
+                // Send file update event directly in stream (more reliable than realtime)
+                sendEvent('file_changed', {
+                  path: input.path,
+                  content: input.content,
+                  operation: 'write'
+                });
               } else if (toolName === 'edit_file') {
                 result = await editWorkspaceFile(flyAppName, { path: input.path, startLine: input.start_line, endLine: input.end_line, newContent: input.new_content });
-                // Broadcast update asynchronously
-                broadcastFileUpdate(input.path).catch(console.error);
+                // Fetch the updated file content to send back to client
+                try {
+                  const updatedContent = await readWorkspaceFile(flyAppName, { path: input.path });
+                  sendEvent('file_changed', {
+                    path: input.path,
+                    content: updatedContent,
+                    operation: 'edit'
+                  });
+                } catch (e) {
+                  console.warn('Failed to read updated file for stream:', e);
+                }
               } else if (toolName === 'run_command') {
                 result = await runWorkspaceCommand(flyAppName, { command: input.command });
               } else {
@@ -341,24 +334,8 @@ export async function POST(request: NextRequest) {
             }).catch(console.error);
         }
 
-        // Broadcast agent completion to refresh UI
-        if (supabaseAdmin) {
-            try {
-                // Use send() which automatically falls back to REST API if realtime is unavailable
-                // This prevents blocking on failed realtime connections
-                await supabaseAdmin
-                    .channel(`session:${sessionId}`)
-                    .send({
-                        type: 'broadcast',
-                        event: 'agent_complete',
-                        payload: { timestamp: Date.now() }
-                    });
-                console.log(`📡 [Chat V2] Broadcast agent_complete to session:${sessionId}`);
-            } catch (e) {
-                console.error('⚠️ Failed to broadcast agent_complete (non-fatal):', e);
-                // Don't throw - this is non-critical
-            }
-        }
+        // Send agent completion event in stream (replaces realtime broadcast)
+        sendEvent('agent_complete', { timestamp: Date.now() });
 
         controller.close();
 

@@ -3,6 +3,9 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { execInContainer } from '@/lib/container-orchestration/exec-command';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 1 minute for file deletion
+
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, path } = await request.json();

@@ -945,6 +945,11 @@ export default function IDEPage() {
                                     flyAppName={flyAppName || ''}
                                     containerReady={containerStatus === 'running'}
                                     onClose={() => setShowAgentChat(false)}
+                                    onFileChanged={() => {
+                                        // In classic mode, we don't have direct access to file contents
+                                        // This is mainly for Monaco mode
+                                        console.log('[IDE] File changed notification in classic mode');
+                                    }}
                                 />
                             )}
                         </div>

@@ -26,9 +26,10 @@ interface AgentChatProps {
     containerReady: boolean;
     onClose?: () => void;
     hideHeader?: boolean;
+    onFileChanged?: (path: string, content: string) => void; // NEW: Direct file update callback
 }
 
-export default function AgentChat({ sessionId, flyAppName, containerReady, onClose, hideHeader }: AgentChatProps) {
+export default function AgentChat({ sessionId, flyAppName, containerReady, onClose, hideHeader, onFileChanged }: AgentChatProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -280,6 +281,19 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                 try {
                     const event = JSON.parse(line);
 
+                    // Handle file_changed events directly (bypass realtime)
+                    if (event.type === 'file_changed' && onFileChanged) {
+                        console.log(`[AgentChat] 📄 File changed: ${event.path}`);
+                        onFileChanged(event.path, event.content);
+                    }
+
+                    // Handle agent_complete to trigger file list refresh
+                    if (event.type === 'agent_complete' && onFileChanged) {
+                        console.log('[AgentChat] 🤖 Agent complete, triggering refresh');
+                        // Signal to refresh file list (pass empty path as signal)
+                        onFileChanged('__REFRESH__', '');
+                    }
+
                     setMessages((prev) =>
                         prev.map((msg) => {
                             if (msg.id !== assistantMessageId) return msg;
@@ -368,6 +382,8 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                     flyAppName,
                     conversationHistory
                 }),
+                // Important: No client-side timeout - let the stream continue
+                // The server has a 5-minute maxDuration which is appropriate for agent tasks
             });
 
             await processResponseStream(response, assistantMessageId);

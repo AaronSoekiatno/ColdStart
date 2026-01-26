@@ -47,22 +47,14 @@ export function MonacoWorkspace({
     const pollIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
     const autoSaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
     const openTabsRef = React.useRef<Tab[]>(openTabs);
+    const [realtimeAvailable, setRealtimeAvailable] = React.useState<boolean>(true);
 
     // Keep ref in sync with state
     useEffect(() => {
         openTabsRef.current = openTabs;
     }, [openTabs]);
 
-    useEffect(() => {
-        fetchFileList();
-
-        // Cleanup timers on unmount
-        return () => {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-        };
-    }, [sessionId]);
-
+    // DEFINE CALLBACKS FIRST (before useEffects that depend on them)
     const fetchFileList = useCallback(async (preloadContents: boolean = true) => {
         setIsLoading(true);
         try {
@@ -104,6 +96,58 @@ export function MonacoWorkspace({
             return null;
         }
     }, [sessionId]);
+
+    // Handler for direct file updates from agent (bypasses realtime)
+    const handleFileChanged = useCallback((path: string, content: string) => {
+        // Special signal to refresh file tree
+        if (path === '__REFRESH__') {
+            console.log('[MonacoWorkspace] 🤖 Agent complete, refreshing file list');
+            fetchFileList(false);
+            return;
+        }
+
+        console.log(`[MonacoWorkspace] 📄 Direct file update received: ${path}`);
+
+        // Update file contents cache
+        setFileContents(prev => ({ ...prev, [path]: content }));
+
+        // Mark tab as clean (since this is from the agent, not user edits)
+        setOpenTabs(prev => prev.map(t => t.id === path ? { ...t, isDirty: false } : t));
+    }, [fetchFileList]);
+
+    // USEEFFECTS AFTER CALLBACKS ARE DEFINED
+    useEffect(() => {
+        fetchFileList();
+
+        // Cleanup timers on unmount
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        };
+    }, [fetchFileList]);
+
+    // Polling fallback when realtime is unavailable
+    useEffect(() => {
+        if (!realtimeAvailable && sessionId) {
+            console.log('[MonacoWorkspace] Realtime unavailable, starting polling fallback...');
+
+            // Poll every 5 seconds to check for file changes
+            const pollInterval = setInterval(() => {
+                // Only refresh tree, not individual files (to avoid disrupting user edits)
+                console.log('[MonacoWorkspace] 🔄 Polling for file tree updates...');
+                fetchFileList(false);
+            }, 5000);
+
+            pollIntervalRef.current = pollInterval;
+
+            return () => {
+                if (pollIntervalRef.current) {
+                    clearInterval(pollIntervalRef.current);
+                    pollIntervalRef.current = null;
+                }
+            };
+        }
+    }, [realtimeAvailable, sessionId, fetchFileList]);
 
     // Real-time file updates via Supabase Broadcast
     useEffect(() => {
@@ -168,6 +212,7 @@ export function MonacoWorkspace({
                 // Handle subscription errors gracefully
                 if (status === 'CHANNEL_ERROR') {
                     console.error('[MonacoWorkspace] ❌ Realtime channel error - likely hit connection limit');
+                    setRealtimeAvailable(false);
                     if (reconnectAttempts < maxReconnectAttempts) {
                         reconnectAttempts++;
                         console.log(`[MonacoWorkspace] Attempting reconnect ${reconnectAttempts}/${maxReconnectAttempts}...`);
@@ -178,15 +223,17 @@ export function MonacoWorkspace({
                     } else {
                         console.warn('[MonacoWorkspace] ⚠️ Max reconnect attempts reached. Falling back to polling.');
                         toast({
-                            title: 'Real-time updates unavailable',
-                            description: 'Using manual refresh instead. Click the refresh button to see latest changes.',
+                            title: 'Using automatic refresh',
+                            description: 'File updates will sync every 5 seconds',
                             variant: 'default'
                         });
                     }
                 } else if (status === 'TIMED_OUT') {
                     console.warn('[MonacoWorkspace] ⚠️ Realtime subscription timed out');
+                    setRealtimeAvailable(false);
                 } else if (status === 'SUBSCRIBED') {
                     console.log('[MonacoWorkspace] ✅ Successfully subscribed to realtime updates');
+                    setRealtimeAvailable(true);
                     reconnectAttempts = 0; // Reset on successful connection
                 }
             });
@@ -196,8 +243,6 @@ export function MonacoWorkspace({
             supabase.removeChannel(channel);
         };
     }, [sessionId, fetchFileList, fetchFileContent]);
-
-
 
     const handleFileSelect = async (node: FileNode) => {
         // Add to tabs if not already there
@@ -426,6 +471,7 @@ export function MonacoWorkspace({
                                     containerReady={containerReady}
                                     onClose={() => setShowAgentChat(false)}
                                     hideHeader={true}
+                                    onFileChanged={handleFileChanged}
                                 />
                             </div>
                         </div>

@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { execInContainer } from '@/lib/container-orchestration/exec-command';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120; // 2 minutes for reading all files (can be slow)
 
 export async function GET(request: NextRequest) {
   try {

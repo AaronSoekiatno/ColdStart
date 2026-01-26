@@ -4,6 +4,10 @@ import { cookies } from 'next/headers';
 import { execInContainer } from '@/lib/container-orchestration/exec-command';
 import { supabaseAdmin } from '@/lib/supabase';
 
+// Increase timeout for slow SSH operations
+export const maxDuration = 60; // 1 minute should be enough for file writes
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { sessionId, path, content } = await request.json();
@@ -80,20 +84,19 @@ export async function POST(request: NextRequest) {
         // Some stderrs are warnings, don't fail hard
       }
 
-      // Broadcast file update
+      // Broadcast file update (non-blocking, uses REST API fallback)
       if (supabaseAdmin) {
-          // Run in background
+          // Fire and forget - don't await or block on this
           supabaseAdmin.channel(`session:${sessionId}`)
               .send({
                   type: 'broadcast',
                   event: 'file_update',
                   payload: { path, timestamp: Date.now() }
               })
-              .then(() => {
-                   // Remove channel is implicit/handled by client usually, but explicit cleanup if needed:
-                   // supabaseAdmin.removeChannel(...)
-              })
-              .catch(console.error);
+              .catch(e => {
+                  // Log but don't fail the write operation
+                  console.warn('[API files/write] Failed to broadcast file_update (non-fatal):', e.message);
+              });
       }
 
       return NextResponse.json({ success: true });
