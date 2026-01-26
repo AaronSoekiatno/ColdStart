@@ -55,6 +55,23 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     useEffect(() => {
         if (!sessionId || historyLoaded) return;
 
+        // 1. Try to load from localStorage for instant recovery
+        const cacheKey = `agent-chat-v2-${sessionId}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                const messagesWithDates = parsed.map((msg: any) => ({
+                    ...msg,
+                    timestamp: new Date(msg.timestamp)
+                }));
+                console.log(`[AgentChat] Recovered ${messagesWithDates.length} messages from cache`);
+                setMessages(messagesWithDates);
+            } catch (e) {
+                console.error('[AgentChat] Failed to parse cached messages', e);
+            }
+        }
+
         console.log(`[AgentChat] Loading chat history for ${sessionId}`);
 
         const controller = new AbortController();
@@ -97,6 +114,10 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     useEffect(() => {
         if (!historyLoaded || messages.length === 0) return;
 
+        // Immediate localStorage sync for local persistence (prevents loss on fast reopen)
+        const cacheKey = `agent-chat-v2-${sessionId}`;
+        localStorage.setItem(cacheKey, JSON.stringify(messages));
+
         const saveTimer = setTimeout(() => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for saves
@@ -113,6 +134,9 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                 })
                 .then(() => {
                     console.log(`[AgentChat] Saved ${messages.length} messages to history`);
+                    // Also update localStorage cache
+                    const cacheKey = `agent-chat-v2-${sessionId}`;
+                    localStorage.setItem(cacheKey, JSON.stringify(messages));
                 })
                 .catch(err => {
                     clearTimeout(timeoutId);
@@ -482,24 +506,30 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     };
 
     return (
-        <div className="flex flex-col h-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex flex-col h-full bg-[#0B0F1A] text-slate-200 font-sans selection:bg-blue-500/30">
             {/* Header */}
             {!hideHeader && (
-                <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 p-4">
+                <div className="bg-[#151515]/80 backdrop-blur-xl border-b border-white/5 p-4 sticky top-0 z-10">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse" />
-                            <h2 className="text-lg font-semibold text-white">AI Coding Agent</h2>
-                            {!containerReady && (
-                                <span className="text-xs text-amber-400">Container starting...</span>
-                            )}
+                            <div className="relative">
+                                <img src="/images/claude-logo.png" className="w-6 h-6 object-contain" alt="Claude Logo" />
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-bold tracking-tight text-white uppercase flex items-center gap-2">
+                                    Claude Code
+                                </h2>
+                                {!containerReady && (
+                                    <span className="text-[10px] text-amber-400/80 font-medium">Initializing Environment...</span>
+                                )}
+                            </div>
                         </div>
                         {onClose && (
                             <button
                                 onClick={onClose}
-                                className="p-1 text-slate-400 hover:text-white transition-colors"
+                                className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-all"
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-4 w-4" />
                             </button>
                         )}
                     </div>
@@ -507,170 +537,234 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
             )}
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                 {messages.length === 0 && (
-                    <div className="text-center text-slate-400 mt-12">
-                        <p className="text-lg mb-2">👋 Hi! I'm your AI coding assistant</p>
-                        <p className="text-sm">
-                            Ask me to write code, fix bugs, or explain concepts
-                        </p>
+                    <div className="flex flex-col items-center justify-center h-full text-center space-y-6 max-w-md mx-auto">
+                        <div className="w-20 h-20 rounded-full bg-[#D97757]/10 flex items-center justify-center border border-[#D97757]/20 shadow-[0_0_30px_rgba(217,119,87,0.1)]">
+                            <img src="/images/claude-logo.png" className="w-10 h-10 object-contain" alt="Claude" />
+                        </div>
+                        <div>
+                            <p className="text-2xl font-semibold text-white font-serif italic">
+                                How can I help you today?
+                            </p>
+                            <p className="text-slate-400 mt-3 text-sm leading-relaxed max-w-xs mx-auto">
+                                I'm Claude, your AI coding assistant. I can help you build, debug, and understand complex codebases.
+                            </p>
+                        </div>
                     </div>
                 )}
 
                 {messages.map((message) => (
                     <div
                         key={message.id}
-                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'
-                            }`}
+                        className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} max-w-full`}
                     >
                         <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-800/50 backdrop-blur-sm text-slate-100 border border-slate-700/50'
+                            className={`group relative max-w-[92%] sm:max-w-[85%] rounded-[2rem] px-5 py-4 transition-all duration-300 shadow-xl ${message.role === 'user'
+                                ? 'bg-[#D97757] text-white rounded-br-none border border-white/10'
+                                : 'bg-[#1A1A1A] backdrop-blur-md text-slate-200 rounded-bl-none border border-white/5'
                                 }`}
                         >
-                            <div className="flex items-start gap-2">
-                                <div className="flex-1">
-                                    {/* Reasoning Block */}
-                                    {message.reasoning && (
-                                        <div className="mb-3 text-sm text-slate-400 italic border-l-2 border-slate-700 pl-3">
+                            <div className="flex flex-col space-y-3 min-w-0">
+                                {/* Reasoning / Thinking Block */}
+                                {message.reasoning && (
+                                    <div className="bg-black/20 rounded-2xl p-4 border border-white/5 relative overflow-hidden group/thinking">
+                                        <div className="flex items-center gap-2 mb-2 text-[10px] font-bold uppercase tracking-widest text-[#D97757]/80">
+                                            <div className="w-1 h-1 rounded-full bg-[#D97757] animate-pulse" />
+                                            Claude Thinking
+                                        </div>
+                                        <div className="text-xs text-slate-400/90 italic leading-relaxed break-words font-mono line-clamp-[10] group-hover/thinking:line-clamp-none transition-all cursor-pointer">
                                             {message.reasoning}
                                         </div>
-                                    )}
+                                    </div>
+                                )}
 
-                                    {message.toolActivity && message.toolActivity.length > 0 && (
-                                        <div className="mb-3 bg-slate-900/40 rounded-lg overflow-hidden border border-slate-700/50">
-                                            <div className="p-2 space-y-1.5">
-                                                <div className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                                                    <Cpu className="w-3 h-3" />
-                                                    Process
-                                                </div>
-                                                {message.toolActivity.map((act, i) => (
-                                                    <div key={i} className="flex items-start gap-2 text-xs font-mono text-slate-300 bg-slate-900/50 p-1.5 rounded border border-slate-800">
-                                                        <span className="mt-0.5 shrink-0">
+                                {/* Tools Execution Block */}
+                                {message.toolActivity && message.toolActivity.length > 0 && (
+                                    <div className="space-y-2 max-w-full overflow-hidden">
+                                        <div className="flex items-center gap-2 px-1 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                            <Terminal className="w-3 h-3" />
+                                            Active Processes
+                                        </div>
+                                        <div className="space-y-1.5 max-w-full">
+                                            {message.toolActivity.map((act, i) => (
+                                                <div key={i} className="flex flex-col bg-black/40 rounded-xl border border-white/5 overflow-hidden transition-all hover:border-white/10 max-w-full">
+                                                    <div className="flex items-center gap-3 p-2.5">
+                                                        <div className={`p-1.5 rounded-lg ${act.status === 'running' ? 'bg-blue-500/10' : 'bg-white/5'}`}>
                                                             {act.status === 'running' ? (
                                                                 <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
                                                             ) : (
                                                                 getToolIcon(act.toolName)
                                                             )}
-                                                        </span>
-                                                        <div className="flex-1 overflow-hidden break-all">
+                                                        </div>
+                                                        <div className="flex-1 min-w-0 overflow-hidden">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-blue-400 font-bold">{act.toolName}</span>
-                                                                {act.status === 'running' && <span className="text-xs text-slate-500 italic">running...</span>}
+                                                                <span className="text-[11px] font-bold font-mono text-[#D97757]">{act.toolName}</span>
+                                                                {act.status === 'running' && <span className="text-[9px] text-slate-500 font-medium animate-pulse">EXECUTING...</span>}
                                                             </div>
-                                                            <span className="opacity-75 block">{getToolSummary(act)}</span>
-                                                            {(act.toolName === 'write_file' || act.toolName === 'edit_file') && act.result && act.status === 'complete' ? (
-                                                                (() => {
-                                                                    let diff = null;
-                                                                    let originalContent = '';
-                                                                    try {
-                                                                        const parsed = JSON.parse(act.result);
-                                                                        diff = parsed.diff;
-                                                                        originalContent = parsed.originalContent;
-                                                                    } catch (e) {
-                                                                        // Legacy or error result
-                                                                        diff = null;
-                                                                    }
-
-                                                                    if (diff) {
-                                                                        return (
-                                                                            <div className="mt-2">
-                                                                                <details open className="group">
-                                                                                    <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none flex items-center gap-2">
-                                                                                        <span>Show Diff</span>
-                                                                                        <div className="flex-1 border-b border-slate-700/50 relative top-[1px]" />
-                                                                                    </summary>
-                                                                                    <div className="relative mt-2">
-                                                                                        <pre className="bg-black/40 p-2 rounded-md text-[10px] font-mono overflow-x-auto">
-                                                                                            {diff.split('\n').map((line: string, i: number) => {
-                                                                                                let colorClass = 'text-slate-400';
-                                                                                                if (line.startsWith('+')) colorClass = 'text-green-400 bg-green-900/10 block w-full';
-                                                                                                if (line.startsWith('-')) colorClass = 'text-red-400 bg-red-900/10 block w-full';
-                                                                                                if (line.startsWith('Index:') || line.startsWith('===')) colorClass = 'text-slate-500 italic';
-                                                                                                return (
-                                                                                                    <span key={i} className={colorClass}>
-                                                                                                        {line}{'\n'}
-                                                                                                    </span>
-                                                                                                );
-                                                                                            })}
-                                                                                        </pre>
-                                                                                        <div className="flex justify-end mt-2">
-                                                                                            <button
-                                                                                                onClick={() => handleUndo(act.input.path, diff || '')}
-                                                                                                disabled={isLoading}
-                                                                                                className="flex items-center gap-1.5 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px] text-slate-300 transition-colors disabled:opacity-50"
-                                                                                            >
-                                                                                                <RotateCcw className="w-3 h-3" />
-                                                                                                <span>Undo Change</span>
-                                                                                            </button>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </details>
-                                                                            </div>
-                                                                        );
-                                                                    }
-                                                                    // Fallback for non-JSON result
-                                                                    return (
-                                                                        <details className="mt-1">
-                                                                            <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">Show Result</summary>
-                                                                            <pre className="mt-1 bg-black/30 p-1 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-20">
-                                                                                {act.result.substring(0, 300) + (act.result.length > 300 ? '...' : '')}
-                                                                            </pre>
-                                                                        </details>
-                                                                    );
-                                                                })()
-                                                            ) : (
-                                                                act.result && (
-                                                                    <details className="mt-1">
-                                                                        <summary className="cursor-pointer text-[10px] text-slate-500 hover:text-slate-300 select-none">
-                                                                            {act.toolName === 'read_file' ? (
-                                                                                (() => {
-                                                                                    const lines = act.result.split('\n').length;
-                                                                                    const chars = act.result.length;
-                                                                                    return `Read ${lines} lines (${chars} characters)`;
-                                                                                })()
-                                                                            ) : 'Show Result'}
-                                                                        </summary>
-                                                                        <pre className="mt-1 bg-black/30 p-1 rounded text-[10px] text-slate-400 overflow-x-auto whitespace-pre-wrap max-h-20">
-                                                                            {act.result.substring(0, 300) + (act.result.length > 300 ? '...' : '')}
-                                                                        </pre>
-                                                                    </details>
-                                                                )
-                                                            )}
+                                                            <span className="text-[10px] text-slate-400 block truncate font-mono opacity-80">{getToolSummary(act)}</span>
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
+
+                                                    {(act.toolName === 'write_file' || act.toolName === 'edit_file') && act.result && act.status === 'complete' ? (
+                                                        (() => {
+                                                            let diff = null;
+                                                            try {
+                                                                const parsed = JSON.parse(act.result);
+                                                                diff = parsed.diff;
+                                                            } catch (e) {
+                                                                diff = null;
+                                                            }
+
+                                                            if (diff) {
+                                                                return (
+                                                                    <div className="px-2 pb-2 mt-1 w-full overflow-hidden">
+                                                                        <details className="group/diff bg-black/60 rounded-xl border border-white/5 overflow-hidden shadow-2xl">
+                                                                            <summary className="flex items-center justify-between p-2.5 cursor-pointer hover:bg-white/5 transition-colors">
+                                                                                <span className="text-[10px] font-bold text-slate-500 group-hover/diff:text-slate-300 tracking-tighter uppercase">Diff</span>
+                                                                                <ChevronDown className="w-3.5 h-3.5 text-slate-600 group-open/diff:rotate-180 transition-transform" />
+                                                                            </summary>
+                                                                            <div className="border-t border-white/5 overflow-hidden">
+                                                                                <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-white/10">
+                                                                                    <table className="w-full border-collapse text-[10px] font-mono leading-relaxed">
+                                                                                        <tbody>
+                                                                                            {diff.split('\n').map((line: string, idx: number) => {
+                                                                                                if (!line && idx === diff.split('\n').length - 1) return null;
+
+                                                                                                let colorClass = 'text-slate-500';
+                                                                                                let bgClass = '';
+                                                                                                if (line.startsWith('+')) {
+                                                                                                    colorClass = 'text-emerald-400';
+                                                                                                    bgClass = 'bg-emerald-500/10';
+                                                                                                } else if (line.startsWith('-')) {
+                                                                                                    colorClass = 'text-rose-400';
+                                                                                                    bgClass = 'bg-rose-500/10';
+                                                                                                } else if (line.startsWith('@@')) {
+                                                                                                    colorClass = 'text-blue-400';
+                                                                                                    bgClass = 'bg-blue-500/5';
+                                                                                                }
+
+                                                                                                return (
+                                                                                                    <tr key={idx} className={`${bgClass} group/line hover:bg-white/5 transition-colors`}>
+                                                                                                        <td className="w-10 shrink-0 select-none text-slate-700 text-right pr-3 border-r border-white/5 py-0.5 align-top group-hover/line:text-slate-500">
+                                                                                                            {idx + 1}
+                                                                                                        </td>
+                                                                                                        <td className={`${colorClass} pl-3 py-0.5 break-all whitespace-pre-wrap font-mono`}>
+                                                                                                            {line}
+                                                                                                        </td>
+                                                                                                    </tr>
+                                                                                                );
+                                                                                            })}
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+                                                                                <div className="flex justify-end p-2 bg-black/40 border-t border-white/5">
+                                                                                    <button
+                                                                                        onClick={() => handleUndo(act.input.path, diff || '')}
+                                                                                        disabled={isLoading}
+                                                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D97757] hover:bg-[#C86A4C] rounded-lg text-[10px] font-bold text-white transition-all disabled:opacity-50 shadow-lg shadow-[#D97757]/20 active:scale-95"
+                                                                                    >
+                                                                                        <RotateCcw className="w-3 h-3" />
+                                                                                        REVERT CHANGES
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        </details>
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()
+                                                    ) : act.result && (
+                                                        <div className="px-2 pb-2 mt-1 w-full overflow-hidden">
+                                                            <details className="group/result bg-black/40 rounded-xl border border-white/5 overflow-hidden">
+                                                                <summary className="flex items-center justify-between p-2.5 cursor-pointer hover:bg-white/5 transition-colors">
+                                                                    <span className="text-[10px] font-bold text-slate-500 group-hover/result:text-slate-300 tracking-tighter uppercase">
+                                                                        {act.toolName === 'read_file' ? 'FILE CONTENT' : 'COMMAND OUTPUT'}
+                                                                    </span>
+                                                                    <ChevronDown className="w-3.5 h-3.5 text-slate-600 group-open/result:rotate-180 transition-transform" />
+                                                                </summary>
+                                                                <div className="p-0 border-t border-white/5 backdrop-blur-sm shadow-inner">
+                                                                    <div className="p-4 max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+                                                                        <pre className="text-[10px] text-slate-400 font-mono whitespace-pre-wrap break-all leading-relaxed">
+                                                                            {act.result.length > 5000 ? act.result.substring(0, 5000) + '... (truncated)' : act.result}
+                                                                        </pre>
+                                                                    </div>
+                                                                </div>
+                                                            </details>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
-                                    )}
-                                    <p className="whitespace-pre-wrap">{message.content}</p>
-                                </div>
-                                {message.status === 'pending' || message.status === 'streaming' && (
-                                    <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
+                                    </div>
                                 )}
-                                {message.status === 'error' && (
-                                    <XCircle className="w-4 h-4 text-red-400" />
+
+                                {/* Main Text Content */}
+                                {message.content && (
+                                    <div className={`text-sm leading-relaxed ${message.role === 'user' ? 'font-medium' : ''} break-words min-w-0`}>
+                                        {message.content.split('```').map((block, i) => {
+                                            if (i % 2 === 1) {
+                                                const lines = block.split('\n');
+                                                const lang = lines[0].trim();
+                                                const code = lines.slice(1).join('\n').trim();
+                                                return (
+                                                    <div key={i} className="my-4 bg-black/40 rounded-xl overflow-hidden border border-white/10 max-w-full">
+                                                        <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5">
+                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{lang || 'code'}</span>
+                                                            <button
+                                                                onClick={() => navigator.clipboard.writeText(code)}
+                                                                className="p-1 text-slate-500 hover:text-white transition-colors"
+                                                            >
+                                                                <FileText className="w-3 h-3" />
+                                                            </button>
+                                                        </div>
+                                                        <pre className="p-4 text-xs font-mono overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 max-w-full">
+                                                            <code className="break-normal whitespace-pre">{code}</code>
+                                                        </pre>
+                                                    </div>
+                                                );
+                                            }
+                                            return <p key={i} className="whitespace-pre-wrap break-words">{block}</p>;
+                                        })}
+                                    </div>
                                 )}
                             </div>
-                            <p className="text-xs opacity-60 mt-1">
-                                {message.timestamp.toLocaleTimeString()}
-                            </p>
+
+                            {/* Status Indicators */}
+                            {(message.status === 'streaming' || message.status === 'pending') && (
+                                <div className="absolute -bottom-1 -right-1">
+                                    <div className="flex space-x-0.5 bg-[#D97757] p-1.5 rounded-full shadow-lg border border-white/20">
+                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" />
+                                    </div>
+                                </div>
+                            )}
+
+                            {message.status === 'error' && (
+                                <div className="absolute -bottom-2 -right-2 bg-rose-500 p-1.5 rounded-full shadow-lg border border-white/20">
+                                    <XCircle className="w-4 h-4 text-white" />
+                                </div>
+                            )}
                         </div>
+                        <span className="mt-1.5 px-3 text-[9px] font-bold text-slate-500/50 uppercase tracking-widest">
+                            {message.role === 'user' ? 'You' : 'Claude'} • {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                     </div>
                 ))}
-                <div ref={messagesEndRef} />
+                <div ref={messagesEndRef} className="h-4" />
             </div>
 
             {/* Input */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border-t border-slate-700/50 p-4 relative">
+            <div className="bg-slate-900 border-t border-white/5 p-4 relative shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
                 {/* Mention Popup */}
                 {showMentions && filteredFiles.length > 0 && (
-                    <div className="absolute bottom-full left-4 mb-2 w-80 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20">
-                        <div className="text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-900/50 border-b border-slate-700">
-                            Select File
+                    <div className="absolute bottom-full left-4 mb-3 w-80 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-20 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2">
+                        <div className="text-[10px] font-bold text-slate-500 px-4 py-2.5 bg-white/5 border-b border-white/5 uppercase tracking-widest">
+                            Contextual Assets
                         </div>
-                        <div className="max-h-48 overflow-y-auto">
+                        <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
                             {filteredFiles.map((file, i) => {
                                 const parts = file.split('/');
                                 const fileName = parts.pop();
@@ -680,15 +774,15 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                     <button
                                         key={file}
                                         onClick={() => handleMentionSelect(file)}
-                                        className={`w-full text-left px-3 py-2 text-xs transition-colors ${i === mentionIndex
-                                            ? 'bg-blue-600/20 text-blue-300'
-                                            : 'text-slate-300 hover:bg-slate-700/50'
+                                        className={`w-full text-left px-4 py-3 transition-all ${i === mentionIndex
+                                            ? 'bg-[#D97757]/20 text-[#D97757]'
+                                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                                             }`}
                                     >
-                                        <div className="flex flex-col">
-                                            <span className="font-medium truncate">{fileName}</span>
+                                        <div className="flex flex-col gap-0.5">
+                                            <span className="text-xs font-bold truncate">{fileName}</span>
                                             {dirPath && (
-                                                <span className="text-[10px] opacity-50 truncate">{dirPath}</span>
+                                                <span className="text-[10px] opacity-40 truncate font-mono">{dirPath}</span>
                                             )}
                                         </div>
                                     </button>
@@ -698,31 +792,34 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                     </div>
                 )}
 
-                <div className="flex gap-3 items-end">
-                    <textarea
-                        ref={inputRef}
-                        value={input}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                        placeholder={
-                            containerReady
-                                ? 'Ask me anything... (Use @ to reference files, Shift+Enter for new line)'
-                                : 'Waiting for container...'
-                        }
-                        disabled={isLoading || !containerReady}
-                        rows={1}
-                        className="flex-1 bg-slate-900/50 border border-slate-700/50 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:opacity-50 resize-none overflow-hidden min-h-[48px] max-h-[300px]"
-                        style={{ height: 'auto' }}
-                    />
+                <div className="max-w-4xl mx-auto flex gap-4 items-end relative">
+                    <div className="flex-1 relative group">
+                        <textarea
+                            ref={inputRef}
+                            value={input}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            placeholder={
+                                containerReady
+                                    ? 'Use @ for files'
+                                    : 'Environmental latency detecting...'
+                            }
+                            disabled={isLoading || !containerReady}
+                            rows={1}
+                            className="w-full bg-[#1A1A1A] border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#D97757] focus:ring-4 focus:ring-[#D97757]/10 transition-all disabled:opacity-50 resize-none overflow-hidden min-h-[56px] max-h-[400px]"
+                            style={{ height: 'auto' }}
+                        />
+
+                    </div>
                     <button
                         onClick={sendMessage}
                         disabled={isLoading || !input.trim() || !containerReady}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl px-4 py-3 font-medium transition-all flex items-center justify-center"
+                        className="h-14 w-14 shrink-0 bg-[#D97757] hover:bg-[#C86A4C] disabled:opacity-20 disabled:grayscale text-white rounded-2xl transition-all flex items-center justify-center shadow-lg shadow-[#D97757]/20 active:scale-90"
                     >
                         {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <Loader2 className="w-6 h-6 animate-spin" />
                         ) : (
-                            <Send className="w-5 h-5" />
+                            <Send className="w-5 h-5 fill-current" />
                         )}
                     </button>
                 </div>

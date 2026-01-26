@@ -2,7 +2,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default function Home() {
   return (
-    <div className="h-full overflow-y-auto bg-background">
+    <div className="h-full overflow-y-auto bg-background" suppressHydrationWarning>
       {/* Instagram-style Header */}
       <header className="sticky top-0 z-10 bg-background border-b border-border">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
