@@ -48,7 +48,8 @@ export default function IDEPage() {
     const [editorMode, setEditorMode] = useState<'classic' | 'monaco'>('monaco');
     const [currentPhase, setCurrentPhase] = useState<string | null>(null);
     const [kickOffStarted, setKickOffStarted] = useState(false);
-    const [iframeLoaded, setIframeLoaded] = useState(false);
+    const [isWorkspaceReady, setIsWorkspaceReady] = useState(false);
+    const [hasOfficialStartTime, setHasOfficialStartTime] = useState(false);
     const kickOffStartedRef = useRef(false);
     const isPreviewingRef = useRef(false);
     const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -67,8 +68,8 @@ export default function IDEPage() {
     // Timer for elapsed time - starts when Container is RUNNING
     // Max duration: 20 minutes (1200 seconds)
     useEffect(() => {
-        // Start timer when container is running AND iframe is fully loaded AND we have a start time
-        if (containerStatus === 'running' && iframeLoaded && startTime) {
+        // Start timer when container is running AND workspace (monaco or iframe) is fully loaded AND we have a start time
+        if (containerStatus === 'running' && isWorkspaceReady && startTime) {
             const updateTimer = () => {
                 const now = Date.now();
                 const diffSeconds = Math.floor((now - startTime) / 1000);
@@ -89,7 +90,7 @@ export default function IDEPage() {
                 timerRef.current = null;
             }
         };
-    }, [containerStatus, iframeLoaded, startTime]);
+    }, [containerStatus, isWorkspaceReady, startTime]);
 
     // Separate timer for provisioning time (used for progress UI)
     useEffect(() => {
@@ -281,9 +282,12 @@ export default function IDEPage() {
             setCurrentPhase(session.current_phase || null);
 
             // Set start time for timer - use server time to ensure async consistency
-            const activeStartTime = session.interview_start_time || session.created_at;
-            if (activeStartTime) {
-                setStartTime(new Date(activeStartTime).getTime());
+            if (session.interview_start_time) {
+                setStartTime(new Date(session.interview_start_time).getTime());
+                setHasOfficialStartTime(true);
+            } else if (session.created_at) {
+                setStartTime(new Date(session.created_at).getTime());
+                setHasOfficialStartTime(false);
             }
 
             // Handle container status
@@ -333,20 +337,47 @@ export default function IDEPage() {
         }
     };
 
-    // Safety timeout for iframe loading
+    // Safety timeout for workspace loading
     useEffect(() => {
-        if (containerStatus === 'running' && !iframeLoaded) {
-            // If iframe hasn't loaded in 15 seconds, remove the overlay to let user see potentially underlying browser errors
+        if (containerStatus === 'running' && !isWorkspaceReady) {
+            // If workspace hasn't loaded in 15 seconds, remove the overlay to let user see potentially underlying browser errors
             iframeTimeoutRef.current = setTimeout(() => {
-                console.warn('[IDE] Iframe load timed out, forcing display');
-                setIframeLoaded(true);
+                console.warn('[IDE] Workspace load timed out, forcing display');
+                handleWorkspaceLoad();
             }, 15000);
         }
 
         return () => {
             if (iframeTimeoutRef.current) clearTimeout(iframeTimeoutRef.current);
         };
-    }, [containerStatus, iframeLoaded]);
+    }, [containerStatus, isWorkspaceReady]);
+
+    const handleWorkspaceLoad = async () => {
+        if (isWorkspaceReady) return;
+
+        console.log('[IDE] Workspace Loaded - Starting Assessment Timer');
+        setIsWorkspaceReady(true);
+
+        // If this is the first time loading (no interview_start_time in DB),
+        // set the official start time to NOW so the user gets the full 20 mins.
+        if (!hasOfficialStartTime && sessionId && sessionId !== 'local-dev-session' && sessionId !== 'local-dev-docker') {
+            const now = new Date().toISOString();
+            console.log('[IDE] First load: Setting official start time to:', now);
+            setStartTime(new Date(now).getTime());
+            setHasOfficialStartTime(true);
+
+            try {
+                const { error } = await supabase
+                    .from('interview_sessions')
+                    .update({ interview_start_time: now })
+                    .eq('session_id', sessionId);
+
+                if (error) console.error('[IDE] Failed to update interview_start_time:', error);
+            } catch (err) {
+                console.error('[IDE] Error updating start time:', err);
+            }
+        }
+    };
 
     // Stop Vapi call if active
     const stopVapiCall = async (reason: string) => {
@@ -838,13 +869,14 @@ export default function IDEPage() {
                         containerUrl={containerUrl}
                         flyAppName={flyAppName}
                         containerReady={containerStatus === 'running'}
+                        onLoad={handleWorkspaceLoad}
                     />
                 ) : (
                     <>
                         {/* Code-Server Iframe Area */}
                         <div className={`relative transition-all duration-300 ${showPreview ? 'w-1/2 border-r border-slate-700' : 'flex-1'}`}>
                             {/* Loading Overlay */}
-                            {!iframeLoaded && containerStatus !== 'running' && (
+                            {!isWorkspaceReady && containerStatus !== 'running' && (
                                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
                                     <div className="max-w-md w-full mx-4">
                                         <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
@@ -885,7 +917,7 @@ export default function IDEPage() {
                                     src={containerUrl}
                                     className="absolute inset-0 w-full h-full border-0"
                                     allow="clipboard-read; clipboard-write; microphone"
-                                    onLoad={() => setIframeLoaded(true)}
+                                    onLoad={handleWorkspaceLoad}
                                     title="Code Server IDE"
                                 />
                             )}

@@ -51,23 +51,46 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
         scrollToBottom();
     }, [messages]);
 
-    // Load chat history on mount
+    // Load chat history on mount (only once per sessionId)
     useEffect(() => {
-        if (sessionId && !historyLoaded) {
-            fetch(`/api/agent/chat-history?sessionId=${sessionId}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.messages && data.messages.length > 0) {
-                        console.log(`[AgentChat] Loaded ${data.messages.length} messages from history`);
-                        setMessages(data.messages);
-                    }
-                    setHistoryLoaded(true);
-                })
-                .catch(err => {
+        if (!sessionId || historyLoaded) return;
+
+        console.log(`[AgentChat] Loading chat history for ${sessionId}`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+        fetch(`/api/agent/chat-history?sessionId=${sessionId}`, {
+            signal: controller.signal
+        })
+            .then(res => {
+                clearTimeout(timeoutId);
+                return res.json();
+            })
+            .then(data => {
+                if (data.messages && data.messages.length > 0) {
+                    console.log(`[AgentChat] Loaded ${data.messages.length} messages from history`);
+                    // Convert timestamp strings back to Date objects
+                    const messagesWithDates = data.messages.map((msg: any) => ({
+                        ...msg,
+                        timestamp: new Date(msg.timestamp)
+                    }));
+                    setMessages(messagesWithDates);
+                }
+                setHistoryLoaded(true);
+            })
+            .catch(err => {
+                clearTimeout(timeoutId);
+                if (err.name !== 'AbortError') {
                     console.error('Failed to load chat history:', err);
-                    setHistoryLoaded(true);
-                });
-        }
+                }
+                setHistoryLoaded(true);
+            });
+
+        return () => {
+            clearTimeout(timeoutId);
+            controller.abort();
+        };
     }, [sessionId, historyLoaded]);
 
     // Save chat history whenever messages change (debounced)
@@ -75,19 +98,29 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
         if (!historyLoaded || messages.length === 0) return;
 
         const saveTimer = setTimeout(() => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout for saves
+
             fetch('/api/agent/chat-history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionId, messages })
+                body: JSON.stringify({ sessionId, messages }),
+                signal: controller.signal
             })
-                .then(res => res.json())
+                .then(res => {
+                    clearTimeout(timeoutId);
+                    return res.json();
+                })
                 .then(() => {
                     console.log(`[AgentChat] Saved ${messages.length} messages to history`);
                 })
                 .catch(err => {
-                    console.error('Failed to save chat history:', err);
+                    clearTimeout(timeoutId);
+                    if (err.name !== 'AbortError') {
+                        console.error('Failed to save chat history:', err);
+                    }
                 });
-        }, 2000); // Debounce 2 seconds
+        }, 5000); // Increased debounce to 5 seconds (less aggressive)
 
         return () => clearTimeout(saveTimer);
     }, [messages, sessionId, historyLoaded]);

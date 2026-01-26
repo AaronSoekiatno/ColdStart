@@ -23,6 +23,7 @@ interface MonacoWorkspaceProps {
     containerUrl: string | null;
     flyAppName: string | null;
     containerReady: boolean;
+    onLoad?: () => void;
 }
 
 export function MonacoWorkspace({
@@ -33,7 +34,8 @@ export function MonacoWorkspace({
     setShowAgentChat,
     containerUrl,
     flyAppName,
-    containerReady
+    containerReady,
+    onLoad
 }: MonacoWorkspaceProps) {
     const { toast } = useToast();
     const [previewKey, setPreviewKey] = useState(0);
@@ -56,7 +58,12 @@ export function MonacoWorkspace({
 
     // DEFINE CALLBACKS FIRST (before useEffects that depend on them)
     const fetchFileList = useCallback(async (preloadContents: boolean = true) => {
-        setIsLoading(true);
+        // Only show loading spinner on initial load (with preload)
+        // For background refreshes, don't show loading to avoid cutting off the agent
+        if (preloadContents) {
+            setIsLoading(true);
+        }
+
         try {
             // 1. Fetch File List (Tree)
             const resp = await fetch(`/api/files/list?sessionId=${sessionId}`);
@@ -82,7 +89,11 @@ export function MonacoWorkspace({
         } catch (err) {
             console.error('Failed to fetch files:', err);
         } finally {
-            setIsLoading(false);
+            // Only clear loading if we set it
+            if (preloadContents) {
+                setIsLoading(false);
+                if (onLoad) onLoad();
+            }
         }
     }, [sessionId]);
 
