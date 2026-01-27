@@ -4,7 +4,7 @@
   "type": "module",
   "private": true,
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "dev": "node server.js",
@@ -76,6 +76,7 @@
     "retry:keywords-batch:dry-run": "tsx scripts/cleanup/retry_failed_keywords_batch.ts --dry-run",
     "send-waitlist": "tsx scripts/email/send-waitlist-emails.ts",
     "send-waitlist:sendgrid": "tsx scripts/email/sendgrid/sendgrid-send-waitlist-emails.ts",
+    "send-founding-engineer:sendgrid": "tsx scripts/email/sendgrid/sendgrid-send-founding-engineer-emails.ts",
     "send-campaign:leads": "tsx scripts/email/sendgrid/send-lead-campaign.ts",
     "send-campaign:users": "tsx scripts/email/sendgrid/send-user-campaign.ts",
     "send-campaign:beta": "tsx scripts/email/sendgrid/send-beta-campaign.ts",
@@ -157,6 +158,7 @@
     "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
+    "eslint-plugin-react-refresh": "^0.4.26",
     "form-data": "^4.0.5",
     "node-mocks-http": "^1.17.2",
     "tailwindcss": "^4",
