@@ -38,47 +38,84 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 3. Verify user owns this resume (security check)
-    const { data: resumeData, error: resumeError } = await supabase
+    // 3. Check authentication & authorization
+    // We import isAdmin dynamically to avoid circular dependencies
+    const { isAdmin } = await import('@/lib/admin-auth');
+    const isUserAdmin = isAdmin(user.email);
+
+    // 4. Verify resume exists
+    let { data: resumeData, error: resumeError } = await supabase
       .from('resumes')
       .select('candidate_id, id')
       .eq('resume_path', resumePath)
       .single();
 
+    // Fallback: Try checking via filename if full path match fails
+    // Sometimes 'resumes/' prefix is missing or added inconsistently
+    if (resumeError && (resumeError.code === 'PGRST116' || !resumeData)) {
+      const filename = resumePath.split('/').pop();
+      if (filename) {
+          console.log('[Resume Proxy] Exact path match failed, trying filename search:', filename);
+          const { data: altResumeData, error: altResumeError } = await supabase
+            .from('resumes')
+            .select('candidate_id, id')
+            .ilike('resume_path', `%${filename}`)
+            .limit(1)
+            .single();
+          
+          if (!altResumeError && altResumeData) {
+              console.log('[Resume Proxy] Found resume via filename match');
+              resumeData = altResumeData;
+              resumeError = null;
+          }
+      }
+    }
+
     if (resumeError || !resumeData) {
-      console.error('[Resume Proxy] Resume not found:', resumePath, resumeError);
-      return NextResponse.json(
-        { error: 'Resume not found' },
-        { status: 404 }
-      );
+      // Admin Override: If user is admin, allow trying to download directly from storage 
+      // even if DB record is missing (for legacy or broken records)
+      if (isUserAdmin) {
+          console.warn('[Resume Proxy] Resume DB record not found, but admin is bypassing check. Attempting raw storage download:', resumePath);
+          // Create a mock resumeData to bypass downstream checks
+          resumeData = { candidate_id: 'admin-bypass', id: 'admin-bypass' };
+      } else {
+          console.error('[Resume Proxy] Resume not found:', resumePath, resumeError);
+          return NextResponse.json(
+            { error: 'Resume not found' },
+            { status: 404 }
+          );
+      }
     }
 
-    // Get candidate ID for current user
-    const { data: candidate, error: candidateError } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('email', user.email)
-      .single();
+    // 5. If NOT admin, verify ownership
+    if (!isUserAdmin) {
+      // Get candidate ID for current user
+      const { data: candidate, error: candidateError } = await supabase
+        .from('candidates')
+        .select('id')
+        .eq('email', user.email)
+        .single();
 
-    if (candidateError || !candidate) {
-      console.error('[Resume Proxy] Candidate not found for user:', user.email);
-      return NextResponse.json(
-        { error: 'Candidate profile not found' },
-        { status: 404 }
-      );
-    }
+      if (candidateError || !candidate) {
+        console.error('[Resume Proxy] Candidate not found for user:', user.email);
+        return NextResponse.json(
+          { error: 'Candidate profile not found' },
+          { status: 404 }
+        );
+      }
 
-    // Security check: verify ownership
-    if (resumeData.candidate_id !== candidate.id) {
-      console.warn('[Resume Proxy] Access denied - User attempting to access another user\'s resume:', {
-        userId: user.id,
-        candidateId: candidate.id,
-        resumeCandidateId: resumeData.candidate_id,
-      });
-      return NextResponse.json(
-        { error: 'Access denied - This is not your resume' },
-        { status: 403 }
-      );
+      // Verify ownership
+      if (resumeData.candidate_id !== candidate.id) {
+        console.warn('[Resume Proxy] Access denied - User attempting to access another user\'s resume:', {
+          userId: user.id,
+          candidateId: candidate.id,
+          resumeCandidateId: resumeData.candidate_id,
+        });
+        return NextResponse.json(
+          { error: 'Access denied - This is not your resume' },
+          { status: 403 }
+        );
+      }
     }
 
     // 4. Fetch from Supabase Storage (private bucket)
@@ -87,14 +124,49 @@ export async function GET(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const { data, error } = await supabaseAdmin.storage
+    console.log('[Resume Proxy] Attempting download:', {
+        bucket: 'resumes',
+        path: resumePath,
+    });
+
+    let { data, error } = await supabaseAdmin.storage
       .from('resumes')
       .download(resumePath);
 
+    // Fallback: If path starts with 'resumes/' and failed, try removing the prefix
+    // This handles cases where we might have stored relative paths vs absolute paths inconsistently
+    if (error && resumePath.startsWith('resumes/')) {
+        const altPath = resumePath.replace(/^resumes\//, '');
+        console.log('[Resume Proxy] Primary download failed, trying alternative path:', altPath);
+        const { data: altData, error: altError } = await supabaseAdmin.storage
+            .from('resumes')
+            .download(altPath);
+        
+        if (!altError && altData) {
+            console.log('[Resume Proxy] Alternative path successful');
+            data = altData;
+            error = null;
+        }
+    }
+
     if (error || !data) {
-      console.error('[Resume Proxy] Failed to download resume:', error);
+      // DEBUG: List files in the parent folder to see what actually exists
+      const parentFolder = resumePath.split('/').slice(0, -1).join('/');
+      const { data: listData, error: listError } = await supabaseAdmin.storage
+        .from('resumes')
+        .list(parentFolder);
+
+      console.error('[Resume Proxy] Failed to download resume:', {
+          path: resumePath,
+          errorStr: JSON.stringify(error),
+          errorMessage: error?.message,
+          errorCode: (error as any)?.code,
+          folderListing: listData ? listData.map(f => f.name) : 'Failed to list',
+          folderPath: parentFolder
+      });
+
       return NextResponse.json(
-        { error: 'Failed to download resume' },
+        { error: 'Failed to download resume', details: error?.message },
         { status: 500 }
       );
     }
@@ -124,8 +196,10 @@ export async function GET(request: NextRequest) {
         'Cache-Control': cacheControl,
         // ETag for cache validation
         'ETag': `"${resumePath}"`,
-        // Allow inline display in iframes
-        'Content-Disposition': 'inline',
+        // Allow inline display in iframes unless download is requested
+        'Content-Disposition': request.nextUrl.searchParams.get('download') === 'true' 
+          ? `attachment; filename="${resumePath.split('/').pop()}"`
+          : 'inline',
       },
     });
   } catch (error) {

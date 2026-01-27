@@ -18,7 +18,8 @@ import {
   LayoutDashboard,
   Github,
   Terminal,
-  Download
+  Download,
+  Eye
 } from 'lucide-react';
 import { getScoreInterpretation } from '@/lib/github-verification/score-calculator';
 import { Button } from '@/components/ui/button';
@@ -443,10 +444,26 @@ export default function CandidateFullProfilePage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             {resume.resume_path && (
-                              <button className="text-blue-600 hover:text-blue-900 flex items-center justify-end gap-1 ml-auto">
-                                <Download className="w-4 h-4" />
-                                Download
-                              </button>
+                              <div className="flex items-center justify-end gap-3 ml-auto">
+                                <a
+                                  href={`/api/resumes/proxy?path=${encodeURIComponent(resume.resume_path)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-gray-600 hover:text-purple-600 flex items-center gap-1"
+                                  title="View Resume"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span className="sr-only">View</span>
+                                </a>
+                                <a
+                                  href={`/api/resumes/proxy?path=${encodeURIComponent(resume.resume_path)}&download=true`}
+                                  download={resume.file_name}
+                                  className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  Download
+                                </a>
+                              </div>
                             )}
                           </td>
                         </tr>

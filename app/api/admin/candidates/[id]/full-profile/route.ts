@@ -11,13 +11,13 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authenticate admin
     await requireAdmin();
 
-    const candidateId = params.id;
+    const { id: candidateId } = await params;
 
     // 2. Fetch all data in parallel
     // We fetch repos and code analyses instead of 'github_verifications' table
