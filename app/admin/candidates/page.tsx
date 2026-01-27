@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2, Search, CheckCircle, XCircle, Clock } from 'lucide-react';
+import CandidateFilterBar, { CandidateFilters } from './candidate-filter-bar';
 
 interface Candidate {
   id: string;
@@ -26,6 +27,14 @@ export default function AdminCandidatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [filters, setFilters] = useState<CandidateFilters>({
+    role: null,
+    job_type: null,
+    exp: null,
+    university: null,
+    verified: false,
+    min_score: null,
+  });
 
   useEffect(() => {
     async function checkAuth() {
@@ -35,13 +44,22 @@ export default function AdminCandidatesPage() {
         return;
       }
       setUser(user);
-      fetchCandidates();
+      // fetchCandidates(); // We call this in the next effect when filters change or user is set
     }
     checkAuth();
   }, [router]);
 
+  // Fetch when filters or user changes
   useEffect(() => {
-    // Filter candidates based on search query
+    if (user) {
+      fetchCandidates();
+    }
+    // Use JSON string representation of filters to avoid object reference loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, JSON.stringify(filters)]);
+
+  useEffect(() => {
+    // Filter candidates based on search query (client-side)
     if (!searchQuery.trim()) {
       setFilteredCandidates(candidates);
     } else {
@@ -62,7 +80,15 @@ export default function AdminCandidatesPage() {
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch('/api/admin/github/candidates');
+      const params = new URLSearchParams();
+      if (filters.role) params.append('role', filters.role);
+      if (filters.job_type) params.append('job_type', filters.job_type);
+      if (filters.exp) params.append('exp', filters.exp);
+      if (filters.university) params.append('university', filters.university);
+      if (filters.verified) params.append('verified', 'true');
+      if (filters.min_score) params.append('min_score', filters.min_score.toString());
+
+      const response = await fetch(`/api/admin/github/candidates?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch candidates');
@@ -70,7 +96,7 @@ export default function AdminCandidatesPage() {
 
       const data = await response.json();
       setCandidates(data.candidates || []);
-      setFilteredCandidates(data.candidates || []);
+      // filteredCandidates will be updated by the separate useEffect dependent on 'candidates'
     } catch (err: any) {
       console.error('Error fetching candidates:', err);
       setError(err.message || 'Failed to load candidates');
@@ -156,10 +182,13 @@ export default function AdminCandidatesPage() {
               placeholder="Search by name, email, or GitHub username..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
             />
           </div>
         </div>
+
+        {/* Filters */}
+        <CandidateFilterBar filters={filters} onFilterChange={setFilters} />
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -186,11 +215,11 @@ export default function AdminCandidatesPage() {
             <div className="text-2xl font-bold text-gray-900">
               {candidates.filter((c) => c.latest_score !== null).length > 0
                 ? Math.round(
-                    candidates
-                      .filter((c) => c.latest_score !== null)
-                      .reduce((sum, c) => sum + (c.latest_score || 0), 0) /
-                      candidates.filter((c) => c.latest_score !== null).length
-                  )
+                  candidates
+                    .filter((c) => c.latest_score !== null)
+                    .reduce((sum, c) => sum + (c.latest_score || 0), 0) /
+                  candidates.filter((c) => c.latest_score !== null).length
+                )
                 : 'N/A'}
             </div>
           </div>

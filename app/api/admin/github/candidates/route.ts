@@ -11,13 +11,43 @@ export async function GET(request: NextRequest) {
     // 1. Authenticate admin
     await requireAdmin();
 
-    // 2. Get all candidates with GitHub connected
-    const { data: candidates, error: candidatesError } = await supabaseAdmin
-      .from('candidates')
-      .select('id, name, email, github_username, github_connected_at, created_at')
-      .not('github_username', 'is', null)
-      .order('github_connected_at', { ascending: false });
+    // 2. Get all candidates with optional filters
+    const searchParams = request.nextUrl.searchParams;
+    const role = searchParams.get('role');
+    const jobType = searchParams.get('job_type');
+    const exp = searchParams.get('exp');
+    const university = searchParams.get('university');
+    const verifiedOnly = searchParams.get('verified') === 'true';
 
+    let query = supabaseAdmin
+      .from('candidates')
+      .select('id, name, email, github_username, github_connected_at, created_at, role_type, job_type, years_of_experience, university')
+      .order('created_at', { ascending: false })
+      .range(0, 9999); // Fetch up to 10000 candidates
+
+    // Apply filters
+    if (role) {
+      query = query.contains('role_type', [role]);
+    }
+
+    if (jobType) {
+      query = query.eq('job_type', jobType);
+    }
+
+    if (exp) {
+      query = query.ilike('years_of_experience', `%${exp}%`);
+    }
+
+    if (university) {
+      query = query.ilike('university', `%${university}%`);
+    }
+
+    if (verifiedOnly) {
+      query = query.not('github_username', 'is', null);
+    }
+
+    const { data: candidates, error: candidatesError } = await query;
+    
     if (candidatesError) {
       throw candidatesError;
     }
@@ -58,7 +88,9 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Combine data
-    const result = candidates?.map(candidate => {
+    const minScore = searchParams.get('min_score') ? parseInt(searchParams.get('min_score')!) : null;
+
+    let result = candidates?.map(candidate => {
       const analysis = scoreMap.get(candidate.id);
 
       return {
@@ -68,14 +100,24 @@ export async function GET(request: NextRequest) {
         github_username: candidate.github_username,
         github_connected_at: candidate.github_connected_at,
         created_at: candidate.created_at,
-        has_verification: !!analysis, // Considered "verified" if we have code analysis
+        has_verification: !!candidate.github_username, // Verified means they have connected GitHub
         latest_score: analysis?.score || null,
         verification_status: analysis ? 'analyzed' : null,
-        verified_at: analysis?.verified_at || null,
+        verified_at: candidate.github_connected_at || analysis?.verified_at || null,
+        // Include new fields for debugging/display if needed
+        role_type: candidate.role_type,
+        job_type: candidate.job_type, 
+        years_of_experience: candidate.years_of_experience,
+        university: candidate.university
       };
-    });
+    }) || [];
 
-    return NextResponse.json({ candidates: result || [] });
+    // Apply post-query filters (score only now)
+    if (minScore !== null) {
+      result = result.filter(c => (c.latest_score || 0) >= minScore);
+    }
+
+    return NextResponse.json({ candidates: result });
   } catch (error: any) {
     console.error('Get candidates error:', error);
     return NextResponse.json(
