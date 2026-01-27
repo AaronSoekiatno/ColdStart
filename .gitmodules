@@ -1,0 +1,3 @@
+[submodule "services/top-candidates"]
+	path = services/top-candidates
+	url = https://github.com/Hermes-Startup/TopCandidates.git

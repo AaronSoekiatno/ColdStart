@@ -6,28 +6,28 @@ import { Code, Zap, Users, Target } from "lucide-react";
 export function CompanyAIVettingSection() {
   const steps = [
     {
-      number: "01",
+      number: "1",
       title: "GitHub Deep Dive",
       description: "We analyze every candidate's GitHub. AI reviews actual code (not just resume claims). Evaluates: quality, architecture, tests, documentation.",
       icon: Code,
       color: "from-blue-500 to-blue-600",
     },
     {
-      number: "02",
+      number: "2",
       title: "Shipping Velocity Analysis",
       description: "How fast do they ship? Do they finish projects? Do they maintain code? We measure real productivity signals.",
       icon: Zap,
       color: "from-purple-500 to-purple-600",
     },
     {
-      number: "03",
+      number: "3",
       title: "Culture Fit Assessment",
       description: "Startup experience signals. Self-directed work patterns. Communication quality. We identify candidates who thrive in fast-paced environments.",
       icon: Users,
       color: "from-green-500 to-green-600",
     },
     {
-      number: "04",
+      number: "4",
       title: "Match Scoring",
       description: "AI compares to your specific role. Generates detailed report. Explains reasoning transparently. Every candidate comes with clear justification.",
       icon: Target,

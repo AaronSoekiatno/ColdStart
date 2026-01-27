@@ -16,7 +16,7 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
+    <section className="relative w-full flex items-start justify-center px-6 pt-20 pb-2">
       <div className="max-w-5xl mx-auto text-center">
         {/* Main Headline */}
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-ivy tracking-tight mb-4 leading-tight text-white drop-shadow-lg">
@@ -44,20 +44,7 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
           </Button>
         </div>
 
-        {/* Value Proposition */}
-        <div className="mt-24 relative">
-          {/* Foreground Text */}
-          <div className="relative z-10 space-y-6">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-normal tracking-tight leading-tight text-white drop-shadow-md">
-              Meet Your AI Outreaching Agent
-            </h2>
-            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto drop-shadow-md">
-              Hermes works 24/7 to connect you with startup founders.
-              <br />
-              Personalized. Professional. Proven.
-            </p>
-          </div>
-        </div>
+
       </div>
     </section>
   );

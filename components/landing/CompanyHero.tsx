@@ -9,18 +9,18 @@ interface CompanyHeroProps {
 
 export function CompanyHero({ onGetStarted }: CompanyHeroProps) {
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
+    <section className="relative w-full flex items-start justify-center px-6 pt-20 pb-2">
       <div className="max-w-5xl mx-auto text-center">
         {/* Main Headline */}
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-ivy tracking-tight mb-4 leading-tight text-white drop-shadow-lg">
-          Find Your Perfect
+          Hire Your Next
           <br />
-          <span className="text-white">Engineering Talent</span>
+          Founding Engineer
         </h1>
-        
+
         {/* Subtitle */}
         <p className="text-lg lg:text-xl text-white/80 mt-6 mb-12 leading-normal drop-shadow-sm">
-          AI-powered vetting finds candidates who will excel at your startup – 24/7 on autopilot
+          AI-powered vetting matches candidates who will excel at your startup – 24/7 on autopilot
         </p>
 
         {/* CTA Buttons */}

@@ -348,23 +348,61 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  // Validate that at least 1 repo is selected and at least 1 tag is attached
-  const validateReposSelection = useCallback(() => {
-    const selectedRepos = Array.from(repoSelections.values()).filter(
-      selection => selection.is_selected === true
-    );
+  // Trigger GitHub analysis in the background (fire-and-forget)
+  const triggerGitHubAnalysis = useCallback(async () => {
+    try {
+      // Get selected repository IDs (database UUIDs, not github_repo_ids)
+      const selectedRepos = githubRepos
+        .filter(repo => {
+          const selection = repoSelections.get(repo.github_repo_id);
+          return selection?.is_selected || (selection?.category_tags && selection.category_tags.length > 0);
+        })
+        .map(repo => repo.id) // Use database UUID
+        .filter(id => id); // Filter out any undefined IDs
 
-    if (selectedRepos.length === 0) {
-      return false; // At least 1 repo must be selected
+      if (selectedRepos.length === 0) {
+        console.log('[OnboardingModal] No repos selected, skipping GitHub analysis');
+        return;
+      }
+
+      // Get candidate info to extract candidate_id
+      const candidateResponse = await fetch('/api/candidate-info', {
+        credentials: 'include',
+      });
+
+      if (!candidateResponse.ok) {
+        console.warn('[OnboardingModal] Failed to get candidate info for GitHub analysis');
+        return;
+      }
+
+      const candidateInfo = await candidateResponse.json();
+      const candidateId = candidateInfo.id;
+
+      if (!candidateId) {
+        console.warn('[OnboardingModal] No candidate_id found, skipping GitHub analysis');
+        return;
+      }
+
+      // Trigger batch analysis (fire-and-forget - don't await)
+      fetch('/api/github/analyze/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          candidate_id: candidateId,
+          repository_ids: selectedRepos,
+        }),
+      }).catch(error => {
+        // Silently log error - don't block user
+        console.error('[OnboardingModal] Failed to trigger GitHub analysis:', error);
+      });
+
+      console.log('[OnboardingModal] GitHub analysis triggered for', selectedRepos.length, 'repositories');
+    } catch (error) {
+      // Silently log error - don't block user
+      console.error('[OnboardingModal] Error triggering GitHub analysis:', error);
     }
-
-    // Check if at least 1 selected repo has at least 1 tag
-    const hasTaggedRepo = selectedRepos.some(
-      selection => selection.category_tags && selection.category_tags.length > 0
-    );
-
-    return hasTaggedRepo;
-  }, [repoSelections]);
+  }, [githubRepos, repoSelections]);
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
@@ -413,22 +451,16 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [githubRepos, repoSelections]);
 
-  // Continue to step 9 without saving (repos are saved when onboarding completes)
-  const handleReposContinue = useCallback(async () => {
-    // Validate before continuing
-    if (!validateReposSelection()) {
-      toast({
-        title: 'Selection Required',
-        description: 'Please select at least one repository and add at least one category tag to continue.',
-        variant: 'destructive',
-      });
-      return; // Don't proceed if validation fails
-    }
 
+  // Complete onboarding after repo selection and redirect to assessment page
+  const handleReposContinue = useCallback(async () => {
     setIsTransitioning(true);
     try {
       // Save selected repos first
       await saveSelectedRepos();
+
+      // Trigger GitHub analysis in background (fire-and-forget)
+      triggerGitHubAnalysis();
 
       // Mark onboarding as complete
       await fetch('/api/candidate/mark-onboarding-complete', {
@@ -447,7 +479,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         variant: 'destructive',
       });
     }
-  }, [toast, validateReposSelection, saveSelectedRepos]);
+  }, [toast, triggerGitHubAnalysis, saveSelectedRepos]);
 
 
 

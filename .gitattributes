@@ -2,3 +2,6 @@
 .next export-ignore
 node_modules export-ignore
 
+# Force all shell scripts to use LF line endings (Critical for Docker on Windows)
+*.sh text eol=lf
+*.bash text eol=lf

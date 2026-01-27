@@ -115,7 +115,7 @@ function GenerateEmailPageContent() {
             if (founderEmails.length === 1) {
               setResolvedFounderEmail(founderEmails[0]);
               // Update URL to include the founder email
-              const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
+              const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
               params.set('founderEmail', founderEmails[0]);
               router.replace(`/generate-email?${params.toString()}`, { scroll: false });
             }
@@ -556,7 +556,7 @@ function GenerateEmailPageContent() {
                         // Show loading animation immediately
                         setIsPreviewLoading(true);
                         setEmailPersona('value-first');
-                        const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
+                        const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
                         params.set('persona', 'value-first');
                         const query = params.toString();
                         router.replace(`/generate-email?${query}`, { scroll: false });
@@ -591,7 +591,7 @@ function GenerateEmailPageContent() {
                         setEmailPersona('direct-ask');
 
                         // Sync persona into URL so future loads are consistent
-                        const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
+                        const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
                         params.set('persona', 'direct-ask');
                         const query = params.toString();
                         router.replace(`/generate-email?${query}`, { scroll: false });
@@ -622,7 +622,7 @@ function GenerateEmailPageContent() {
                         // Show loading animation immediately
                         setIsPreviewLoading(true);
                         setEmailPersona('genuine-fan');
-                        const params = new URLSearchParams(searchParams ? Array.from(searchParams.entries()) : []);
+                        const params = new URLSearchParams(Array.from(searchParams?.entries() || []));
                         params.set('persona', 'genuine-fan');
                         const query = params.toString();
                         router.replace(`/generate-email?${query}`, { scroll: false });

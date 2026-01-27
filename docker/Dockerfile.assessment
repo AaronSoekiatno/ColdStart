@@ -1,0 +1,107 @@
+# Dockerfile.assessment.minimal
+# Minimal Node.js Execution Environment - NO IDE/CODE-SERVER
+# Uses clean Ubuntu base + Node.js
+
+FROM ubuntu:22.04
+
+USER root
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Layer 1: Install system dependencies and Node.js
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    wget \
+    git \
+    jq \
+    procps \
+    ca-certificates \
+    sudo \
+    build-essential \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Layer 2: Create coder user (kept for compatibility with permissions)
+RUN useradd -m -s /bin/bash coder && \
+    echo "coder ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    chown -R coder:coder /home/coder
+
+# Layer 3: Install test dependencies
+RUN mkdir -p /usr/local/share/assessment && \
+    cd /usr/local/share/assessment && \
+    npm init -y && \
+    npm install --save \
+    vitest@^1.3.0 \
+    @vitejs/plugin-react-swc@^3.11.0 \
+    @testing-library/react@^14.2.0 \
+    @testing-library/jest-dom@^6.4.0 \
+    @testing-library/user-event@^14.5.2 \
+    happy-dom@^12.10.3 \
+    @typescript-eslint/parser@^8.52.0 \
+    @typescript-eslint/typescript-estree@^8.52.0 \
+    glob@^13.0.0 && \
+    npm cache clean --force
+
+# Layer 4: Create workspace directory
+RUN mkdir -p /workspace && chown -R coder:coder /workspace
+
+# Layer 5: Install workspace dependencies
+COPY --chown=coder:coder workspace/package.json workspace/package-lock.json* /workspace/
+COPY --chown=coder:coder workspace/scripts /workspace/scripts
+RUN cd /workspace && \
+    npm install --legacy-peer-deps && \
+    npm cache clean --force
+
+# Layer 6: Copy workspace source
+COPY --chown=coder:coder workspace /workspace/
+
+# Layer 7: Link test dependencies
+RUN cd /workspace && \
+    TEST_PACKAGES="vitest @vitejs/plugin-react-swc @testing-library/react @testing-library/jest-dom @testing-library/user-event happy-dom @typescript-eslint/parser @typescript-eslint/typescript-estree glob" && \
+    for pkg in $TEST_PACKAGES; do \
+    if echo "$pkg" | grep -q "^@"; then \
+    scope=$(echo "$pkg" | cut -d'/' -f1) && \
+    mkdir -p "node_modules/$scope" && \
+    if [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then \
+    ln -sf "/usr/local/share/assessment/node_modules/$pkg" "node_modules/$pkg"; \
+    fi; \
+    else \
+    if [ -d "/usr/local/share/assessment/node_modules/$pkg" ]; then \
+    ln -sf "/usr/local/share/assessment/node_modules/$pkg" "node_modules/$pkg"; \
+    fi; \
+    fi; \
+    done
+
+# Layer 8: Copy scripts
+# We reuse entrypoint-minimal.sh but it will need to be updated to NOT run code-server
+COPY --chown=coder:coder scripts/entrypoint-minimal.sh /usr/local/bin/entrypoint.sh
+COPY --chown=coder:coder scripts/run-tests.sh /usr/local/bin/
+COPY --chown=coder:coder scripts/log-prompt.sh /usr/local/bin/
+
+# Copy tests and config
+RUN mkdir -p /usr/local/share/assessment
+COPY --chown=coder:coder tests /usr/local/share/assessment/tests/
+COPY --chown=coder:coder config/vitest.assessment.ts /usr/local/share/assessment/vitest.config.ts
+
+RUN chmod +x /usr/local/bin/*.sh
+
+# Build version
+RUN echo "{\"built_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\", \"version\": \"$(date +%s)\", \"base\": \"node-execution-env\"}" > /home/coder/.hermes-version.json
+
+# Switch to coder user
+USER coder
+
+# Environment
+ENV WORKSPACE_DIR=/workspace
+ENV TELEMETRY_URL=""
+ENV CANDIDATE_ID=""
+ENV SESSION_ID=""
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

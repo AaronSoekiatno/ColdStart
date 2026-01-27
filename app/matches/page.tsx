@@ -76,6 +76,7 @@ export default function MatchesPage() {
   const [savedMatchIds, setSavedMatchIds] = useState<string[]>([]); // Store all saved match IDs from Supabase
   const [savedStartupIds, setSavedStartupIds] = useState<string[]>([]); // Store all saved startup IDs (to handle match ID changes)
   const [assessmentStatus, setAssessmentStatus] = useState<'not_started' | 'in_progress' | 'completed' | null>(null);
+  const [githubAnalysis, setGithubAnalysis] = useState<Record<string, any>>({});
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -166,9 +167,11 @@ export default function MatchesPage() {
           credentials: 'include',
           cache: 'no-store',
         });
+        let candidateId: string | null = null;
         if (candidateResponse.ok) {
           const candidateInfo = await candidateResponse.json();
           setIsPremium(isSubscribed(candidateInfo));
+          candidateId = candidateInfo.id;
         }
 
         // Get first 20 matches for immediate display
@@ -199,6 +202,22 @@ export default function MatchesPage() {
 
         // Fetch saved match IDs in batch (replaces 40+ individual calls)
         await fetchSavedMatchIds();
+
+        // Fetch GitHub analysis for current candidate
+        if (candidateId) {
+          try {
+            const response = await fetch(`/api/github/analyze/results/${candidateId}`, {
+              credentials: 'include',
+            });
+            if (response.ok) {
+              const analysisData = await response.json();
+              setGithubAnalysis({ [candidateId]: analysisData });
+            }
+          } catch (error) {
+            console.error('[Matches] Failed to fetch GitHub analysis:', error);
+            // Not critical - continue without analysis data
+          }
+        }
 
         // Fetch assessment status to update button text
         try {
@@ -460,6 +479,7 @@ export default function MatchesPage() {
                     userEmail={user?.email || ''}
                     initialIsSaved={currentMatchIsSaved}
                     currentIndex={currentMatchIndex}
+                    githubAnalysis={Object.values(githubAnalysis)[0] || null}
                     onSaveToggle={(matchId, isSaved) => {
                       // Optimistically update parent state for immediate UI feedback
                       // The actual state will be synced from Supabase on next refetch

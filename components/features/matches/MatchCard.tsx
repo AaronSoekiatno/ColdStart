@@ -78,9 +78,33 @@ interface MatchCardProps {
   onFounderError?: (error: string | null) => void;
   onSaveToggle?: (matchId: string, isSaved: boolean) => void;
   currentIndex?: number;
+  githubAnalysis?: {
+    repositories: Array<{
+      id: string;
+      name: string;
+      full_name: string;
+      language?: string;
+      languages: Record<string, number>;
+      stargazers_count: number;
+      forks_count: number;
+      quality_score?: number;
+      analyzed_at: string;
+    }>;
+    aggregate_stats: {
+      total_repositories: number;
+      top_languages: Array<{
+        language: string;
+        bytes: number;
+        percentage: number;
+      }>;
+      average_quality_score?: number | null;
+    };
+    total_count: number;
+    has_results: boolean;
+  } | null;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError, onSaveToggle, currentIndex = 0 }: MatchCardProps) => {
+const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError, onSaveToggle, currentIndex = 0, githubAnalysis = null }: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -796,6 +820,147 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
 
       {/* Line separator */}
       <div className="mt-4 sm:mt-6 md:mt-8 border-t border-gray-200"></div>
+
+      {/* GitHub Analysis Section */}
+      {githubAnalysis && githubAnalysis.has_results && (
+        <div className="mt-4 sm:mt-6 md:mt-8">
+          <h3 className="text-base sm:text-xl md:text-2xl font-bold text-gray-900 text-left mb-3 sm:mb-4">
+            GitHub Code Analysis
+          </h3>
+
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg sm:rounded-xl md:rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
+            {/* Aggregate Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-4">
+              {/* Total Repositories */}
+              <div className="text-left">
+                <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Repositories
+                </p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mt-1">
+                  {githubAnalysis.aggregate_stats.total_repositories}
+                </p>
+              </div>
+
+              {/* Average Quality Score */}
+              {githubAnalysis.aggregate_stats.average_quality_score !== null && (
+                <div className="text-left">
+                  <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Quality Score
+                  </p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mt-1">
+                    {githubAnalysis.aggregate_stats.average_quality_score}/100
+                  </p>
+                </div>
+              )}
+
+              {/* Top Language */}
+              {githubAnalysis.aggregate_stats.top_languages.length > 0 && (
+                <div className="text-left col-span-2 sm:col-span-1">
+                  <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-wide text-gray-400">
+                    Top Language
+                  </p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mt-1">
+                    {githubAnalysis.aggregate_stats.top_languages[0].language}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Top Languages Breakdown */}
+            {githubAnalysis.aggregate_stats.top_languages.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">
+                  Programming Languages
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {githubAnalysis.aggregate_stats.top_languages.map((lang, idx) => (
+                    <div
+                      key={idx}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-gray-200 shadow-sm"
+                    >
+                      <span className="text-xs sm:text-sm font-medium text-gray-900">
+                        {lang.language}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {lang.percentage > 0 ? `${lang.percentage}%` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Repository List */}
+            {githubAnalysis.repositories.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">
+                  Analyzed Repositories ({githubAnalysis.repositories.length})
+                </h4>
+                <div className="space-y-2">
+                  {githubAnalysis.repositories.slice(0, 5).map((repo, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-2 sm:p-3 bg-white rounded-lg border border-gray-200"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">
+                          {repo.name}
+                        </p>
+                        {repo.language && (
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                            {repo.language}
+                          </p>
+                        )}
+                      </div>
+                      {repo.quality_score !== null && repo.quality_score !== undefined && (
+                        <div className="ml-3 flex-shrink-0">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {repo.quality_score}/100
+                          </span>
+                        </div>
+                      )}
+                      {repo.stargazers_count > 0 && (
+                        <div className="ml-2 flex-shrink-0 flex items-center gap-1">
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                          <span className="text-[10px] sm:text-xs text-gray-600">
+                            {repo.stargazers_count}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {githubAnalysis.repositories.length > 5 && (
+                    <p className="text-xs text-gray-500 text-center pt-2">
+                      + {githubAnalysis.repositories.length - 5} more repositories
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Analysis Timestamp */}
+            {githubAnalysis.repositories.length > 0 && githubAnalysis.repositories[0].analyzed_at && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <p className="text-[10px] sm:text-xs text-gray-500 text-center">
+                  Analysis completed {new Date(githubAnalysis.repositories[0].analyzed_at).toLocaleDateString()}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {githubAnalysis && !githubAnalysis.has_results && (
+        <div className="mt-4 sm:mt-6 md:mt-8">
+          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
+            <p className="text-xs sm:text-sm text-gray-600">
+              GitHub code analysis is being processed...
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Founders Section */}
       {founderNames.length > 0 && (

@@ -29,7 +29,7 @@ async function handler(request: NextRequest) {
           getAll() {
             return cookieStore.getAll();
           },
-          setAll() {},
+          setAll() { },
         },
       }
     );
@@ -46,54 +46,17 @@ async function handler(request: NextRequest) {
         .select('id, email')
         .eq('email', user.email)
         .single();
-      
+
       if (!candidateError && candidateData) {
         candidateId = candidateData.id;
         candidateEmail = candidateData.email;
       }
     }
 
-    // 2. Try Authentication via Provisioning Token (Script/Header)
-    if (!candidateId) {
-        let token = null;
-        
-        // Check Authorization header
-        const authHeader = request.headers.get('Authorization');
-        if (authHeader && authHeader.startsWith('Bearer ')) {
-            token = authHeader.substring(7);
-        } 
-        
-        // If not found, check custom header (which might be passed by some clients)
-        if (!token) {
-            token = request.headers.get('X-Provisioning-Token');
-        }
-
-        // If still not found, check query parameter (easy for scripts)
-        if (!token) {
-             token = request.nextUrl.searchParams.get('token');
-        }
-
-        if (token) {
-            // Validate token against candidates table
-            const { data: tokenCandidate, error: tokenError } = await supabaseAdmin!
-                .from('candidates')
-                .select('id, email')
-                .eq('provisioning_token', token)
-                .single();
-
-            if (!tokenError && tokenCandidate) {
-                candidateId = tokenCandidate.id;
-                candidateEmail = tokenCandidate.email;
-                console.log(`[Provision] Authenticated via provisioning token for candidate: ${candidateEmail}`);
-            } else {
-                console.warn(`[Provision] Invalid provisioning token attempt: ${token}`);
-            }
-        }
-    }
-
+    // Authentication is now session-based only (no provisioning tokens)
     if (!candidateId) {
       return NextResponse.json(
-        { error: 'Unauthorized. Please sign in or provide a valid provisioning token.' },
+        { error: 'Unauthorized. Please sign in to access the assessment environment.' },
         { status: 401 }
       );
     }
@@ -107,9 +70,9 @@ async function handler(request: NextRequest) {
     if (rpcError) {
       console.error('[Provision] RPC error:', rpcError);
       return NextResponse.json(
-        { 
+        {
           error: 'Failed to create candidate schema',
-          details: rpcError.message 
+          details: rpcError.message
         },
         { status: 500 }
       );
@@ -130,9 +93,9 @@ async function handler(request: NextRequest) {
       const errorMessage = jwtError instanceof Error ? jwtError.message : 'Unknown error';
       console.error('[Provision] JWT generation error:', jwtError);
       return NextResponse.json(
-        { 
+        {
           error: 'Failed to generate authentication token',
-          details: errorMessage 
+          details: errorMessage
         },
         { status: 500 }
       );
@@ -146,9 +109,9 @@ async function handler(request: NextRequest) {
       const errorMessage = apiKeyError instanceof Error ? apiKeyError.message : 'Unknown error';
       console.error('[Provision] API key pool error:', apiKeyError);
       return NextResponse.json(
-        { 
+        {
           error: 'API key pool exhausted or not configured',
-          details: errorMessage 
+          details: errorMessage
         },
         { status: 503 }
       );
@@ -169,14 +132,16 @@ async function handler(request: NextRequest) {
     const proxyUrl = `${request.nextUrl.origin}/api/proxy/gemini`;
 
     return NextResponse.json({
+      // Candidate identification
       CANDIDATE_ID: candidateId,
+      // Supabase credentials
       SUPABASE_URL: supabaseUrl,
       SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       SUPABASE_PRIVATE_KEY: jwtToken,
-      // The client should use this Base URL for Google/Gemini requests
+      SUPABASE_SERVICE_ROLE_KEY: jwtToken,
+      // API proxy configuration
       GEMINI_BASE_URL: proxyUrl,
       GOOGLE_BASE_URL: proxyUrl,
-      // Legacy support or explicit "managed" flag
       GOOGLE_API_KEY: 'managed-by-proxy',
     });
 
@@ -184,9 +149,9 @@ async function handler(request: NextRequest) {
     console.error('[Provision] Unexpected error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        details: errorMessage 
+        details: errorMessage
       },
       { status: 500 }
     );

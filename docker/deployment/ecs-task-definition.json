@@ -1,0 +1,52 @@
+{
+    "family": "hermes-assessment-task",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "1024",
+    "memory": "2048",
+    "executionRoleArn": "arn:aws:iam::<account-id>:role/ecsTaskExecutionRole",
+    "containerDefinitions": [
+        {
+            "name": "hermes-assessment",
+            "image": "ghcr.io/hermes-startup/hermes-assessment:latest",
+            "essential": true,
+            "portMappings": [
+                {
+                    "containerPort": 8080,
+                    "protocol": "tcp"
+                }
+            ],
+            "environment": [
+                {
+                    "name": "GIT_USER_NAME",
+                    "value": "Candidate"
+                },
+                {
+                    "name": "GIT_USER_EMAIL",
+                    "value": "candidate@assessment.local"
+                }
+            ],
+            "secrets": [],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/hermes-assessment",
+                    "awslogs-region": "us-west-2",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            },
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "curl -f http://localhost:8080/healthz || exit 1"
+                ],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3,
+                "startPeriod": 10
+            }
+        }
+    ]
+}

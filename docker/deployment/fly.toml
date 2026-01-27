@@ -1,0 +1,39 @@
+# ==========================================
+# Fly.io App Configuration Template
+# ==========================================
+# Note: This is a TEMPLATE. For the actual assessment, 
+# we recommend using the Machines API for dynamic provisioning.
+# However, this file is useful for testing a single instance
+# or as a base reference.
+
+app = "hermes-assessment-production"
+primary_region = "sjc" # San Jose, CA (adjust as needed)
+
+# [build]
+#   image = "ghcr.io/hermes-startup/hermes-assessment:latest"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 2048
+
+[env]
+  # Default environment variables
+  # These are usually overridden during deployment/provisioning
+  GIT_USER_NAME = "Candidate"
+  GIT_USER_EMAIL = "candidate@assessment.local"
+  
+  # Credentials placeholders (will be injected at runtime)
+  # CANDIDATE_ID = ...
+  # SESSION_ID = ...
+  # PASSWORD = ...
+  # TELEMETRY_URL = ...
+  # SUPABASE_URL = ...

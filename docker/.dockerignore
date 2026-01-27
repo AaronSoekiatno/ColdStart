@@ -1,0 +1,13 @@
+workspace/node_modules
+workspace/.next
+workspace/dist
+workspace/build
+workspace/.cache
+workspace/*.log
+workspace/.cursor
+workspace/.github
+workspace/.vscode
+workspace/.hermes
+workspace/.claude
+.git
+.DS_Store

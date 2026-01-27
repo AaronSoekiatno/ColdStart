@@ -46,17 +46,13 @@ export async function POST(request: NextRequest) {
       headSha: testData.head_sha
     });
 
-    const result = await handleTestEvent(sessionId, testData);
-
-    // Handle different return shapes from handleTestEvent
-    const transitioned = 'transition' in result ? result.transition !== false : false;
-    const currentPhase = 'currentPhase' in result ? result.currentPhase : null;
+    const result = await handleTestEvent(sessionId, testData) as any;
 
     return NextResponse.json({
       success: true,
-      transitioned,
-      currentPhase: currentPhase?.id,
-      phase: currentPhase
+      transitioned: result.transition !== false,
+      currentPhase: result.currentPhase?.id,
+      phase: result.currentPhase
     });
 
   } catch (error) {

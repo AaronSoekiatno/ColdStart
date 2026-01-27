@@ -1,0 +1,162 @@
+/* NUCLEAR OPTION: Hide GitHub Copilot and AI Chat UI Elements */
+/* This CSS uses the most aggressive selectors possible to ensure hiding */
+
+/* Hide the CHAT sidebar panel completely - target by ID and class */
+#workbench\.parts\.sidebar,
+.part.sidebar.right,
+.sidebar.right,
+div[id*="workbench.view.extension.github-copilot-chat"],
+div[id*="workbench.panel.chat"],
+.composite[id*="workbench.view.extension.github-copilot"] {
+    display: none !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Hide any panel with "CHAT" in the header */
+.part.panel .composite.title:has([aria-label*="Chat"]),
+.part.panel .composite.title:has([aria-label*="chat"]),
+.part.sidebar .composite.title:has([aria-label*="Chat"]),
+.part.sidebar .composite.title:has([aria-label*="chat"]) {
+    display: none !important;
+}
+
+/* Hide the entire right sidebar if it contains chat */
+.part.sidebar.right:has([id*="chat"]),
+.part.sidebar.right:has([class*="chat"]) {
+    display: none !important;
+}
+
+/* Hide activity bar icons for chat/copilot */
+.activitybar .action-item[aria-label*="Chat"],
+.activitybar .action-item[aria-label*="Copilot"],
+.activitybar .action-item[title*="Chat"],
+.activitybar .action-item[title*="Copilot"],
+.activitybar .codicon-comment-discussion,
+.activitybar .codicon-copilot {
+    display: none !important;
+}
+
+/* Hide inline suggestions and ghost text */
+.ghost-text-decoration,
+.ghost-text-widget,
+.inline-chat,
+.copilot-chat,
+.suggest-widget,
+[class*="copilot"],
+[class*="inlineChat"],
+[class*="ghostText"] {
+    display: none !important;
+}
+
+/* Hide any element with copilot/chat in data attributes */
+[data-keybinding-context*="chat"],
+[data-keybinding-context*="copilot"],
+[aria-label*="GitHub Copilot"],
+[aria-label*="Copilot Chat"],
+[aria-label*="Build with Agent"] {
+    display: none !important;
+}
+
+/* Hide status bar items */
+.statusbar-item[id*="copilot"],
+.statusbar-item[id*="chat"],
+.statusbar-item .codicon-copilot {
+    display: none !important;
+}
+
+/* Force hide any view container with chat */
+.split-view-view:has([id*="chat"]),
+.split-view-view:has([class*="chat"]) {
+    display: none !important;
+    flex: 0 0 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+}
+
+/* Hide the composite bar items for chat */
+.composite-bar .monaco-action-bar .action-item[aria-label*="Chat"],
+.composite-bar .monaco-action-bar .action-item[title*="Chat"] {
+    display: none !important;
+}
+
+/* ============================================ */
+/* EXTENSIONS & SETTINGS LOCKDOWN */
+/* ============================================ */
+
+/* Hide Extensions view completely */
+.activitybar .action-item[aria-label*="Extensions"],
+.activitybar .action-item[title*="Extensions"],
+.activitybar .action-item[aria-label*="Extensions"],
+/* Duplicate but for safety */
+.activitybar .codicon-extensions,
+div[id*="workbench.view.extensions"],
+.part.sidebar:has([id*="extensions"]) {
+    display: none !important;
+}
+
+/* Hide Settings/Preferences UI - AGGRESSIVE */
+.activitybar .action-item[aria-label*="Settings"],
+.activitybar .action-item[title*="Settings"],
+.activitybar .action-item[aria-label*="Manage"],
+.activitybar .codicon-settings-gear,
+.activitybar .codicon-gear,
+.monaco-action-bar .action-item.codicon-gear,
+.preferences-editor,
+div[id*="workbench.view.settings"],
+.settings-editor,
+/* Hide the manage/accounts gear at bottom of activity bar */
+.global-activity[aria-label*="Manage"],
+.global-activity[aria-label*="Settings"],
+.part.activitybar>.content>.composite-bar>.monaco-action-bar>.actions-container>.action-item:last-child {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+/* Hide command center (reduces clutter) */
+.command-center,
+.quick-input-widget {
+    opacity: 0.3 !important;
+}
+
+/* Hide accounts/sync UI */
+.activitybar .action-item[aria-label*="Accounts"],
+.activitybar .action-item[aria-label*="Sync"],
+.activitybar .codicon-account,
+.activitybar .codicon-sync {
+    display: none !important;
+}
+
+/* Hide welcome/getting started */
+.welcomePage,
+.gettingStartedContainer,
+div[id*="workbench.parts.editor"]:has(.welcomePage) {
+    display: none !important;
+}
+
+/* Minimal activity bar - only Explorer, Search, Source Control, Debug, Terminal */
+.activitybar .action-item:not([aria-label*="Explorer"]):not([aria-label*="Search"]):not([aria-label*="Source Control"]):not([aria-label*="Run and Debug"]):not([aria-label*="Terminal"]) {
+    display: none !important;
+}
+
+/* Hide layout controls */
+.layout-control {
+    display: none !important;
+}
+
+/* Hide title bar menu (File, Edit, etc.) - force minimal */
+.menubar {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+}
+
+/* Hide notification badges on activity bar (reduces distractions) */
+.activitybar .badge {
+    display: none !important;
+}

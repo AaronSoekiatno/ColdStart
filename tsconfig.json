@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2017",
+    "baseUrl": ".",
     "lib": [
       "dom",
       "dom.iterable",
@@ -44,6 +45,8 @@
     "supabase/functions",
     "src",
     "vite.config.ts",
-    "scripts"
+    "scripts",
+    "missions",
+    "docker"
   ]
 }

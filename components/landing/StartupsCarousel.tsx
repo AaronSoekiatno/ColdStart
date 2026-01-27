@@ -37,12 +37,12 @@ export const UniversityCarousel = () => {
       if (!isPaused) {
         scrollPosition += scrollSpeed;
         const firstSetWidth = scrollContainer.scrollWidth / 2;
-        
+
         // When we've scrolled past the first set, reset to 0 seamlessly
         if (scrollPosition >= firstSetWidth) {
           scrollPosition = scrollPosition - firstSetWidth;
         }
-        
+
         scrollContainer.style.transform = `translateX(-${scrollPosition}px)`;
       }
       animationFrameId = requestAnimationFrame(scroll);
@@ -58,7 +58,7 @@ export const UniversityCarousel = () => {
 
     scrollContainer.addEventListener('mouseenter', handleMouseEnter);
     scrollContainer.addEventListener('mouseleave', handleMouseLeave);
-    
+
     animationFrameId = requestAnimationFrame(scroll);
 
     return () => {
@@ -69,14 +69,14 @@ export const UniversityCarousel = () => {
   }, []);
 
   return (
-    <section className="py-10 sm:py-12 md:py-16 overflow-hidden w-full relative">
+    <section className="mt-40 pt-0 pb-10 sm:pb-12 md:pb-16 overflow-hidden w-full relative">
       <div className="w-full">
-        <h3 className="text-center text-xl sm:text-2xl font-bold text-gray-900 mb-6 sm:mb-8 px-4 sm:px-6 md:px-8">
-          Trusted by UC & National Universities
+        <h3 className="text-center text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8 px-4 sm:px-6 md:px-8 uppercase tracking-wider">
+          TRUSTED BY STUDENTS AT
         </h3>
-        
+
         <div className="relative w-full overflow-hidden">
-          <div 
+          <div
             ref={scrollRef}
             className="flex"
             style={{ willChange: 'transform' }}
@@ -92,8 +92,8 @@ export const UniversityCarousel = () => {
                   alt={university.name}
                   width={160}
                   height={160}
-                  className={university.name === "Carnegie Mellon University" 
-                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain" 
+                  className={university.name === "Carnegie Mellon University"
+                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain"
                     : "h-12 sm:h-14 md:h-16 w-auto object-contain"}
                   unoptimized
                 />
@@ -110,8 +110,8 @@ export const UniversityCarousel = () => {
                   alt={university.name}
                   width={160}
                   height={160}
-                  className={university.name === "Carnegie Mellon University" 
-                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain" 
+                  className={university.name === "Carnegie Mellon University"
+                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain"
                     : "h-12 sm:h-14 md:h-16 w-auto object-contain"}
                   unoptimized
                 />

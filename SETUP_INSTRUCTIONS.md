@@ -33,8 +33,6 @@ VAPI_ASSISTANT_ID=your-assistant-id
 GITHUB_ACCESS_TOKEN=your-github-token
 GITHUB_ORG_NAME=your-org-name
 GITHUB_SEED_REPO=your-seed-repo
-GITHUB_WEBHOOK_SECRET=your-webhook-secret
-MINERVA_WEBHOOK_URL=your-webhook-url
 ```
 
 ## Testing the Interview System
