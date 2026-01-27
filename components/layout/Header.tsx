@@ -198,12 +198,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
               >
                 Email Tracker
               </Link>
-              <Link
-                href="/assessment"
-                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
-              >
-                Assessment
-              </Link>
+
               <Link
                 href="/resumes"
                 className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors"
@@ -340,15 +335,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 >
                   Email Tracker
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
-                  onSelect={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/assessment');
-                  }}
-                >
-                  Assessment
-                </DropdownMenuItem>
+
                 <DropdownMenuItem
                   className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
                   onSelect={() => {

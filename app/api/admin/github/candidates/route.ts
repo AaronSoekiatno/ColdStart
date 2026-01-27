@@ -19,34 +19,59 @@ export async function GET(request: NextRequest) {
     const university = searchParams.get('university');
     const verifiedOnly = searchParams.get('verified') === 'true';
 
-    let query = supabaseAdmin
-      .from('candidates')
-      .select('id, name, email, github_username, github_connected_at, created_at, role_type, job_type, years_of_experience, university')
-      .order('created_at', { ascending: false })
-      .range(0, 9999); // Fetch up to 10000 candidates
+    let allCandidates: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    // Apply filters
-    if (role) {
-      query = query.contains('role_type', [role]);
+    while (hasMore) {
+      let query = supabaseAdmin
+        .from('candidates')
+        .select('id, name, email, github_username, github_connected_at, created_at, role_type, job_type, years_of_experience, university')
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      // Apply filters
+      if (role) {
+        query = query.contains('role_type', [role]);
+      }
+
+      if (jobType) {
+        query = query.eq('job_type', jobType);
+      }
+
+      if (exp) {
+        query = query.ilike('years_of_experience', `%${exp}%`);
+      }
+
+      if (university) {
+        query = query.ilike('university', `%${university}%`);
+      }
+
+      if (verifiedOnly) {
+        query = query.not('github_username', 'is', null);
+      }
+
+      const { data, error } = await query;
+      
+      if (error) {
+        throw error;
+      }
+
+      if (data && data.length > 0) {
+        allCandidates = [...allCandidates, ...data];
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
-    if (jobType) {
-      query = query.eq('job_type', jobType);
-    }
-
-    if (exp) {
-      query = query.ilike('years_of_experience', `%${exp}%`);
-    }
-
-    if (university) {
-      query = query.ilike('university', `%${university}%`);
-    }
-
-    if (verifiedOnly) {
-      query = query.not('github_username', 'is', null);
-    }
-
-    const { data: candidates, error: candidatesError } = await query;
+    const candidates = allCandidates;
+    const candidatesError = null;
     
     if (candidatesError) {
       throw candidatesError;
@@ -63,14 +88,19 @@ export async function GET(request: NextRequest) {
     // If this table is also missing, we'll gracefully handle it
     let codeAnalyses: any[] = [];
     try {
-        const { data, error } = await supabaseAdmin
-        .from('github_code_analyses')
-        .select('candidate_id, overall_score, created_at')
-        .in('candidate_id', candidateIds)
-        .order('created_at', { ascending: false });
-        
-        if (!error && data) {
-            codeAnalyses = data;
+        // Chunk requests for analyses to avoid hitting limits
+        const chunkSize = 200; // conservative batch size for URL param length
+        for (let i = 0; i < candidateIds.length; i += chunkSize) {
+            const chunk = candidateIds.slice(i, i + chunkSize);
+            const { data, error } = await supabaseAdmin
+                .from('github_code_analyses')
+                .select('candidate_id, overall_score, created_at')
+                .in('candidate_id', chunk)
+                .order('created_at', { ascending: false });
+            
+            if (!error && data) {
+                codeAnalyses.push(...data);
+            }
         }
     } catch (e) {
         console.warn('Could not fetch github_code_analyses, proceeding without scores');

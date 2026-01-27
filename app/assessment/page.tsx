@@ -26,6 +26,9 @@ export default function AssessmentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingRepo, setIsCreatingRepo] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
   const { toast } = useToast();
 
   // Fetch assessment status
@@ -107,6 +110,46 @@ export default function AssessmentPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const handleVerifyAccessCode = async () => {
+    setIsVerifyingCode(true);
+
+    try {
+      // Call API to verify access code
+      const response = await fetch('/api/assessment/verify-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: accessCode }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.valid) {
+        setHasAccess(true);
+        toast({
+          title: "Access Granted",
+          description: "Welcome to the exclusive assessment!",
+        });
+      } else {
+        toast({
+          title: "Invalid Code",
+          description: "The access code you entered is not valid.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to verify access code. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsVerifyingCode(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
@@ -170,6 +213,90 @@ export default function AssessmentPage() {
                 >
                   Return to Home
                 </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // Access code gate - show this if user doesn't have access
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
+        <Header initialUser={user} />
+        <section className="flex-1 flex items-center justify-center px-4 py-16">
+          <div className="w-full max-w-md">
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-8 sm:p-10">
+              {/* Lock Icon */}
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-slate-200/50 rounded-full blur-xl" />
+                  <div className="relative w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Header */}
+              <div className="text-center mb-8">
+                <h1 className="text-2xl font-bold text-slate-900 mb-2">
+                  Exclusive Access Required
+                </h1>
+                <p className="text-slate-500 text-sm">
+                  Enter your invitation code to access the technical assessment
+                </p>
+              </div>
+
+              {/* Access Code Input */}
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="access-code" className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Access Code
+                  </label>
+                  <input
+                    id="access-code"
+                    type="text"
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && accessCode.trim()) {
+                        handleVerifyAccessCode();
+                      }
+                    }}
+                    placeholder="XXXX-XXXX-XXXX"
+                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-transparent text-center text-lg font-mono tracking-widest uppercase placeholder:text-slate-300"
+                    disabled={isVerifyingCode}
+                  />
+                </div>
+
+                <Button
+                  onClick={handleVerifyAccessCode}
+                  disabled={!accessCode.trim() || isVerifyingCode}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold h-12 rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isVerifyingCode ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify Access'
+                  )}
+                </Button>
+              </div>
+
+              {/* Help Text */}
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                <p className="text-xs text-slate-400 text-center">
+                  Don't have an access code? Contact your recruiter or{' '}
+                  <a href="mailto:support@joinhermes.co" className="text-slate-600 hover:text-slate-900 font-medium underline">
+                    support@joinhermes.co
+                  </a>
+                </p>
               </div>
             </div>
           </div>
