@@ -348,31 +348,61 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  // Complete onboarding after repo selection and redirect to assessment page
-  const handleReposContinue = useCallback(async () => {
-    setIsTransitioning(true);
+  // Trigger GitHub analysis in the background (fire-and-forget)
+  const triggerGitHubAnalysis = useCallback(async () => {
     try {
-      // Save selected repos first
-      await saveSelectedRepos();
+      // Get selected repository IDs (database UUIDs, not github_repo_ids)
+      const selectedRepos = githubRepos
+        .filter(repo => {
+          const selection = repoSelections.get(repo.github_repo_id);
+          return selection?.is_selected || (selection?.category_tags && selection.category_tags.length > 0);
+        })
+        .map(repo => repo.id) // Use database UUID
+        .filter(id => id); // Filter out any undefined IDs
 
-      // Mark onboarding as complete
-      await fetch('/api/candidate/mark-onboarding-complete', {
-        method: 'POST',
+      if (selectedRepos.length === 0) {
+        console.log('[OnboardingModal] No repos selected, skipping GitHub analysis');
+        return;
+      }
+
+      // Get candidate info to extract candidate_id
+      const candidateResponse = await fetch('/api/candidate-info', {
         credentials: 'include',
       });
 
-      // Redirect to assessment page
-      window.location.href = '/assessment';
-    } catch (error) {
-      console.error('Error completing onboarding:', error);
-      setIsTransitioning(false);
-      toast({
-        title: 'Error',
-        description: 'Failed to complete onboarding. Please try again.',
-        variant: 'destructive',
+      if (!candidateResponse.ok) {
+        console.warn('[OnboardingModal] Failed to get candidate info for GitHub analysis');
+        return;
+      }
+
+      const candidateInfo = await candidateResponse.json();
+      const candidateId = candidateInfo.id;
+
+      if (!candidateId) {
+        console.warn('[OnboardingModal] No candidate_id found, skipping GitHub analysis');
+        return;
+      }
+
+      // Trigger batch analysis (fire-and-forget - don't await)
+      fetch('/api/github/analyze/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          candidate_id: candidateId,
+          repository_ids: selectedRepos,
+        }),
+      }).catch(error => {
+        // Silently log error - don't block user
+        console.error('[OnboardingModal] Failed to trigger GitHub analysis:', error);
       });
+
+      console.log('[OnboardingModal] GitHub analysis triggered for', selectedRepos.length, 'repositories');
+    } catch (error) {
+      // Silently log error - don't block user
+      console.error('[OnboardingModal] Error triggering GitHub analysis:', error);
     }
-  }, [toast]);
+  }, [githubRepos, repoSelections]);
 
   // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
@@ -420,6 +450,38 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       }
     }
   }, [githubRepos, repoSelections]);
+
+
+  // Complete onboarding after repo selection and redirect to assessment page
+  const handleReposContinue = useCallback(async () => {
+    setIsTransitioning(true);
+    try {
+      // Save selected repos first
+      await saveSelectedRepos();
+
+      // Trigger GitHub analysis in background (fire-and-forget)
+      triggerGitHubAnalysis();
+
+      // Mark onboarding as complete
+      await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      // Redirect to assessment page
+      window.location.href = '/assessment';
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      setIsTransitioning(false);
+      toast({
+        title: 'Error',
+        description: 'Failed to complete onboarding. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  }, [toast, triggerGitHubAnalysis, saveSelectedRepos]);
+
+
 
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);

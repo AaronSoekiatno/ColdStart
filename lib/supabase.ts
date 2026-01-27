@@ -34,8 +34,14 @@ function getSupabaseClient(): SupabaseClient {
 }
 
 // Initialize Supabase client for browser/client components
-// This client properly handles cookies so sessions work across client/server
-export const supabase = getSupabaseClient();
+// Use globalThis to persist the client across hot reloads in development
+const globalForSupabase = globalThis as unknown as {
+  supabase: SupabaseClient | undefined
+}
+
+export const supabase = globalForSupabase.supabase ?? getSupabaseClient()
+
+if (process.env.NODE_ENV !== 'production') globalForSupabase.supabase = supabase
 
 // For server-side operations that require elevated permissions,
 // you can create a service role client (if needed)

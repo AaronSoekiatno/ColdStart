@@ -162,7 +162,13 @@ export function MonacoWorkspace({
 
     // Real-time file updates via Supabase Broadcast
     useEffect(() => {
-        if (!sessionId) return;
+        if (!sessionId || sessionId === 'local-dev-session' || sessionId === 'local-dev-docker') {
+            if (sessionId) {
+                console.log(`[MonacoWorkspace] Using polling for local dev session: ${sessionId}`);
+                setRealtimeAvailable(false);
+            }
+            return;
+        }
 
         console.log(`[MonacoWorkspace] Subscribing to real-time updates for session:${sessionId}`);
 
@@ -222,24 +228,19 @@ export function MonacoWorkspace({
 
                 // Handle subscription errors gracefully
                 if (status === 'CHANNEL_ERROR') {
-                    console.error('[MonacoWorkspace] ❌ Realtime channel error - likely hit connection limit');
+                    console.warn('[MonacoWorkspace] ⚠️ Realtime connection limit reached or channel blocked. Falling back to polling.');
                     setRealtimeAvailable(false);
                     if (reconnectAttempts < maxReconnectAttempts) {
                         reconnectAttempts++;
-                        console.log(`[MonacoWorkspace] Attempting reconnect ${reconnectAttempts}/${maxReconnectAttempts}...`);
+                        console.log(`[MonacoWorkspace] Retrying realtime connection (${reconnectAttempts}/${maxReconnectAttempts})...`);
                         setTimeout(() => {
                             supabase.removeChannel(channel);
-                            // Will reconnect on next update
-                        }, 5000 * reconnectAttempts); // Exponential backoff
+                        }, 5000 * reconnectAttempts);
                     } else {
-                        console.warn('[MonacoWorkspace] ⚠️ Max reconnect attempts reached. Falling back to polling.');
-                        toast({
-                            title: 'Using automatic refresh',
-                            description: 'File updates will sync every 5 seconds',
-                            variant: 'default'
-                        });
+                        console.warn('[MonacoWorkspace] 🛑 Max Realtime reconnect attempts reached.');
                     }
-                } else if (status === 'TIMED_OUT') {
+                }
+                else if (status === 'TIMED_OUT') {
                     console.warn('[MonacoWorkspace] ⚠️ Realtime subscription timed out');
                     setRealtimeAvailable(false);
                 } else if (status === 'SUBSCRIBED') {
