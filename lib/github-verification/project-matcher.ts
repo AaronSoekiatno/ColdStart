@@ -34,9 +34,14 @@ interface ProjectMatch {
  * Calculate Levenshtein distance between two strings
  * Used for fuzzy string matching
  */
+/**
+ * Calculate Levenshtein distance between two strings
+ * Used for fuzzy string matching
+ */
 function levenshteinDistance(str1: string, str2: string): number {
-  const s1 = str1.toLowerCase();
-  const s2 = str2.toLowerCase();
+  // Ensure inputs are strings
+  const s1 = String(str1 || '').toLowerCase();
+  const s2 = String(str2 || '').toLowerCase();
 
   const matrix: number[][] = [];
 
@@ -70,9 +75,13 @@ function levenshteinDistance(str1: string, str2: string): number {
  */
 function stringSimilarity(str1: string, str2: string): number {
   if (!str1 || !str2) return 0;
+  
+  // Ensure we're working with strings
+  const s1 = String(str1);
+  const s2 = String(str2);
 
-  const distance = levenshteinDistance(str1, str2);
-  const maxLength = Math.max(str1.length, str2.length);
+  const distance = levenshteinDistance(s1, s2);
+  const maxLength = Math.max(s1.length, s2.length);
 
   if (maxLength === 0) return 1;
 
@@ -90,8 +99,9 @@ function calculateTechOverlap(
     return 0;
   }
 
-  const resumeTechsLower = resumeTechs.map(t => t.toLowerCase());
-  const repoLanguagesLower = repoLanguages.map(l => l.toLowerCase());
+  // Ensure safer mapping
+  const resumeTechsLower = resumeTechs.map(t => String(t || '').toLowerCase()).filter(Boolean);
+  const repoLanguagesLower = repoLanguages.map(l => String(l || '').toLowerCase()).filter(Boolean);
 
   let matches = 0;
   for (const tech of resumeTechsLower) {
@@ -110,11 +120,14 @@ function calculateTechOverlap(
 /**
  * Check if URLs match (exact match)
  */
+/**
+ * Check if URLs match (exact match)
+ */
 function urlMatch(resumeLink: string | undefined, repoUrl: string): boolean {
   if (!resumeLink) return false;
 
-  const normalizedResume = resumeLink.toLowerCase().replace(/\/$/, '');
-  const normalizedRepo = repoUrl.toLowerCase().replace(/\/$/, '');
+  const normalizedResume = String(resumeLink).toLowerCase().replace(/\/$/, '');
+  const normalizedRepo = String(repoUrl || '').toLowerCase().replace(/\/$/, '');
 
   return normalizedResume === normalizedRepo;
 }
@@ -137,9 +150,18 @@ function calculateMatchScore(
   }
 
   // 2. Technology overlap (30% weight)
+  let repoLangs: string[] = [];
+  if (Array.isArray(repo.languages)) {
+    repoLangs = repo.languages;
+  } else if (typeof repo.languages === 'object' && repo.languages !== null) {
+    repoLangs = Object.keys(repo.languages);
+  } else if (repo.language) {
+    repoLangs = [repo.language];
+  }
+
   const techOverlap = calculateTechOverlap(
     project.technologies,
-    repo.languages || (repo.language ? [repo.language] : [])
+    repoLangs
   );
   score += techOverlap * 0.3;
   if (techOverlap > 0.5) {

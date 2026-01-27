@@ -2,9 +2,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 
 const ADMIN_EMAILS = [
-  'admin@hermes.com',
-  'aidan@hermes.com',
-  // Add more admin emails here
+  'aidan.nt76@gmail.com',
 ];
 
 export function isAdmin(email: string | null | undefined): boolean {

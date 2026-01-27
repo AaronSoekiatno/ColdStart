@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-<<<<<<< HEAD
   // External packages for server components (native modules)
   serverExternalPackages: [
     '@tailwindcss/oxide',
@@ -94,11 +93,10 @@ const nextConfig: NextConfig = {
     };
     
     return config;
-=======
+  },
   eslint: {
     // Disable ESLint during production builds
     ignoreDuringBuilds: true,
->>>>>>> main
   },
   images: {
     remotePatterns: [
