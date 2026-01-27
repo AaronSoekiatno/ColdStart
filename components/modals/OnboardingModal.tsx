@@ -54,6 +54,16 @@ interface RepoSelection {
   category_tags: RoleType[];
 }
 
+interface RepoMatch {
+  repo_name: string;
+  github_repo_id: number;
+  repo_id: string;
+  project_name: string;
+  confidence: number;
+  match_reasons: string[];
+  confidence_level: 'high' | 'good' | 'moderate' | 'low';
+}
+
 const OBJECTIVE_OPTIONS: Array<{ value: ObjectiveType; label: string }> = [
   { value: 'internship', label: 'Find my next internship' },
   { value: 'startup', label: 'Work at a Startup' },
@@ -123,6 +133,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
+  const [suggestedMatches, setSuggestedMatches] = useState<RepoMatch[]>([]);
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
+  const [showSuggestedOnly, setShowSuggestedOnly] = useState(false);
   // Assessment state
   const [isCreatingRepo, setIsCreatingRepo] = useState(false);
   const [assessmentRepoUrl, setAssessmentRepoUrl] = useState<string | null>(null);
@@ -153,22 +166,53 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [open]);
 
-  // Filter repos based on search query
+  // Filter repos based on search query and suggested filter
   const filteredRepos = useMemo(() => {
-    if (!repoSearchQuery.trim()) return githubRepos;
-    const query = repoSearchQuery.toLowerCase();
-    return githubRepos.filter(repo =>
-      repo.name.toLowerCase().includes(query) ||
-      repo.description?.toLowerCase().includes(query) ||
-      repo.language?.toLowerCase().includes(query) ||
-      repo.topics?.some(topic => topic.toLowerCase().includes(query))
-    );
-  }, [githubRepos, repoSearchQuery]);
+    let repos = githubRepos;
+
+    // Filter by suggested matches if toggle is on
+    if (showSuggestedOnly && suggestedMatches.length > 0) {
+      const suggestedRepoIds = new Set(suggestedMatches.map(m => m.github_repo_id));
+      repos = repos.filter(repo => suggestedRepoIds.has(repo.github_repo_id));
+    }
+
+    // Filter by search query
+    if (repoSearchQuery.trim()) {
+      const query = repoSearchQuery.toLowerCase();
+      repos = repos.filter(repo =>
+        repo.name.toLowerCase().includes(query) ||
+        repo.description?.toLowerCase().includes(query) ||
+        repo.language?.toLowerCase().includes(query) ||
+        repo.topics?.some(topic => topic.toLowerCase().includes(query))
+      );
+    }
+
+    return repos;
+  }, [githubRepos, repoSearchQuery, showSuggestedOnly, suggestedMatches]);
 
   // Role options for repo tagging (excluding "Other")
   const REPO_TAG_OPTIONS = useMemo(() =>
     ROLE_OPTIONS.filter(option => option.value !== 'Other'),
     []);
+
+  // Helper to get match info for a repo
+  const getRepoMatch = useCallback((githubRepoId: number): RepoMatch | undefined => {
+    return suggestedMatches.find(m => m.github_repo_id === githubRepoId);
+  }, [suggestedMatches]);
+
+  // Helper to get confidence badge styling
+  const getConfidenceBadge = (confidenceLevel: 'high' | 'good' | 'moderate' | 'low') => {
+    switch (confidenceLevel) {
+      case 'high':
+        return { label: 'High Match', color: 'bg-green-100 text-green-700 border-green-300' };
+      case 'good':
+        return { label: 'Good Match', color: 'bg-blue-100 text-blue-700 border-blue-300' };
+      case 'moderate':
+        return { label: 'Possible Match', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
+      case 'low':
+        return { label: 'Low Match', color: 'bg-gray-100 text-gray-600 border-gray-300' };
+    }
+  };
 
   const handleObjectiveSelect = useCallback((objective: ObjectiveType) => {
     setSelectedObjectives(prev => {
@@ -287,6 +331,46 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       fetchRepos();
     }
   }, [step, githubConnected, githubRepos.length, isLoadingRepos]);
+
+  // Fetch suggested matches from resume after repos are loaded
+  useEffect(() => {
+    if (step === 8 && githubRepos.length > 0 && suggestedMatches.length === 0 && !isLoadingMatches) {
+      const fetchMatches = async () => {
+        setIsLoadingMatches(true);
+        try {
+          const response = await fetch('/api/candidate/github/match-resume-projects', {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.matches) {
+              setSuggestedMatches(data.matches);
+
+              // Auto-select high-confidence matches (>= 0.7)
+              const updatedSelections = new Map(repoSelections);
+              for (const match of data.matches) {
+                if (match.confidence >= 0.7) {
+                  const existing = updatedSelections.get(match.github_repo_id);
+                  if (existing) {
+                    updatedSelections.set(match.github_repo_id, {
+                      ...existing,
+                      is_selected: true,
+                    });
+                  }
+                }
+              }
+              setRepoSelections(updatedSelections);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching suggested matches:', error);
+        } finally {
+          setIsLoadingMatches(false);
+        }
+      };
+      fetchMatches();
+    }
+  }, [step, githubRepos.length, suggestedMatches.length, isLoadingMatches, repoSelections]);
 
   const handleGithubConnect = () => {
     // Redirect to GitHub OAuth connection
@@ -1121,11 +1205,23 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 >
                   <div className="text-center">
                     <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                      Showcase your projects
+                      Select your project repositories
                     </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2">
-                      Select repositories to display on your profile and tag them by category.
+                    <DialogDescription className="text-gray-600 mt-2 space-y-2">
+                      <p className="font-medium">Choose repositories that match the projects on your resume.</p>
+                      <p className="text-sm">Repository names may differ slightly from your resume - that's okay! We use smart matching to verify your projects.</p>
                     </DialogDescription>
+                  </div>
+
+                  {/* Help banner explaining importance */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700">
+                    <div className="flex gap-2">
+                      <div className="text-blue-600 font-semibold flex-shrink-0">💡 Tip:</div>
+                      <div className="space-y-1">
+                        <p>Select repos that demonstrate your work experience and skills from your resume.</p>
+                        <p className="text-xs text-gray-600">This helps us verify your projects and match you with relevant opportunities.</p>
+                      </div>
+                    </div>
                   </div>
 
                   {isLoadingRepos ? (
@@ -1138,16 +1234,33 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     </div>
                   ) : hasBetaAccess ? (
                     <>
-                      {/* Enhanced UI for beta users: Search bar */}
-                      <div className="relative mb-4">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <Input
-                          type="text"
-                          placeholder="Search repositories..."
-                          value={repoSearchQuery}
-                          onChange={(e) => setRepoSearchQuery(e.target.value)}
-                          className="pl-10 bg-white border-gray-200"
-                        />
+                      {/* Enhanced UI for beta users: Search bar and filters */}
+                      <div className="space-y-3 mb-4">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            type="text"
+                            placeholder="Search repositories..."
+                            value={repoSearchQuery}
+                            onChange={(e) => setRepoSearchQuery(e.target.value)}
+                            className="pl-10 bg-white border-gray-200"
+                          />
+                        </div>
+                        {suggestedMatches.length > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id="show-suggested"
+                              checked={showSuggestedOnly}
+                              onCheckedChange={(checked) => setShowSuggestedOnly(checked as boolean)}
+                            />
+                            <label
+                              htmlFor="show-suggested"
+                              className="text-sm text-gray-700 cursor-pointer"
+                            >
+                              Show suggested matches only ({suggestedMatches.length} repos)
+                            </label>
+                          </div>
+                        )}
                       </div>
 
                       <div className="max-h-[55vh] overflow-y-auto px-2 py-2">
@@ -1161,6 +1274,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                               const selection = repoSelections.get(repo.github_repo_id);
                               const isSelected = selection?.is_selected || false;
                               const selectedCategories = selection?.category_tags || [];
+                              const matchInfo = getRepoMatch(repo.github_repo_id);
+                              const badge = matchInfo ? getConfidenceBadge(matchInfo.confidence_level) : null;
 
                               return (
                                 <div
@@ -1168,6 +1283,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                   onClick={() => handleRepoToggle(repo.github_repo_id)}
                                   className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
                                     ? 'border-[#498EDC] bg-blue-50'
+                                    : matchInfo && matchInfo.confidence >= 0.55
+                                    ? 'border-blue-300 bg-blue-50/30 hover:border-blue-400'
                                     : 'border-gray-200 bg-white hover:border-gray-300'
                                     }`}
                                 >
@@ -1180,14 +1297,26 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                       className="mt-1 flex-shrink-0"
                                     />
                                     <div className="flex-1 min-w-0">
-                                      <div className="font-semibold text-gray-900 block truncate">
-                                        {repo.name}
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <div className="font-semibold text-gray-900 truncate">
+                                          {repo.name}
+                                        </div>
                                         {repo.is_private && (
-                                          <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
+                                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded flex-shrink-0">
                                             Private
                                           </span>
                                         )}
+                                        {badge && (
+                                          <span className={`text-xs px-2 py-0.5 rounded border ${badge.color} flex-shrink-0`}>
+                                            {badge.label}
+                                          </span>
+                                        )}
                                       </div>
+                                      {matchInfo && (
+                                        <p className="text-xs text-blue-600 mt-0.5">
+                                          Matches: {matchInfo.project_name}
+                                        </p>
+                                      )}
                                       {repo.description && (
                                         <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                                           {repo.description}
@@ -1238,40 +1367,72 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       </div>
                     </>
                   ) : (
-                    // Simple UI for non-beta users - 2-column layout
-                    <div className="max-h-[60vh] overflow-y-auto px-2 py-2">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {githubRepos.map((repo) => {
-                          const selection = repoSelections.get(repo.github_repo_id);
-                          const isSelected = selection?.is_selected || false;
-                          const selectedCategories = selection?.category_tags || [];
+                    // Simple UI for non-beta users - 2-column layout with suggested filter
+                    <>
+                      {suggestedMatches.length > 0 && (
+                        <div className="flex items-center gap-2 mb-4">
+                          <Checkbox
+                            id="show-suggested-simple"
+                            checked={showSuggestedOnly}
+                            onCheckedChange={(checked) => setShowSuggestedOnly(checked as boolean)}
+                          />
+                          <label
+                            htmlFor="show-suggested-simple"
+                            className="text-sm text-gray-700 cursor-pointer"
+                          >
+                            Show suggested matches only ({suggestedMatches.length} repos)
+                          </label>
+                        </div>
+                      )}
+                      <div className="max-h-[60vh] overflow-y-auto px-2 py-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {filteredRepos.map((repo) => {
+                            const selection = repoSelections.get(repo.github_repo_id);
+                            const isSelected = selection?.is_selected || false;
+                            const selectedCategories = selection?.category_tags || [];
+                            const matchInfo = getRepoMatch(repo.github_repo_id);
+                            const badge = matchInfo ? getConfidenceBadge(matchInfo.confidence_level) : null;
 
-                          return (
-                            <div
-                              key={repo.github_repo_id}
-                              onClick={() => handleRepoToggle(repo.github_repo_id)}
-                              className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
-                                ? 'border-[#498EDC] bg-blue-50'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
-                                }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <Checkbox
-                                  id={`repo-${repo.github_repo_id}`}
-                                  checked={isSelected}
-                                  onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="mt-1 flex-shrink-0"
-                                />
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-semibold text-gray-900 block truncate">
-                                    {repo.name}
-                                    {repo.is_private && (
-                                      <span className="ml-2 text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded">
-                                        Private
-                                      </span>
+                            return (
+                              <div
+                                key={repo.github_repo_id}
+                                onClick={() => handleRepoToggle(repo.github_repo_id)}
+                                className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
+                                  ? 'border-[#498EDC] bg-blue-50'
+                                  : matchInfo && matchInfo.confidence >= 0.55
+                                  ? 'border-blue-300 bg-blue-50/30 hover:border-blue-400'
+                                  : 'border-gray-200 bg-white hover:border-gray-300'
+                                  }`}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <Checkbox
+                                    id={`repo-${repo.github_repo_id}`}
+                                    checked={isSelected}
+                                    onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-1 flex-shrink-0"
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <div className="font-semibold text-gray-900 truncate">
+                                        {repo.name}
+                                      </div>
+                                      {repo.is_private && (
+                                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded flex-shrink-0">
+                                          Private
+                                        </span>
+                                      )}
+                                      {badge && (
+                                        <span className={`text-xs px-2 py-0.5 rounded border ${badge.color} flex-shrink-0`}>
+                                          {badge.label}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {matchInfo && (
+                                      <p className="text-xs text-blue-600 mt-0.5">
+                                        Matches: {matchInfo.project_name}
+                                      </p>
                                     )}
-                                  </div>
                                   {repo.description && (
                                     <p className="text-sm text-gray-600 mt-1 line-clamp-2">
                                       {repo.description}
@@ -1316,9 +1477,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                               </div>
                             </div>
                           );
-                        })}
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
                   <div className="flex gap-4 mt-6">
