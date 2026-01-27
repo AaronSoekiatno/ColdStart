@@ -144,17 +144,19 @@ export function MonacoEditor({
             inherit: true,
             rules: [
                 { token: 'comment', foreground: '6272a4' },
-                { token: 'keyword', foreground: 'ff79c6' },
-                { token: 'string', foreground: 'f1fa8c' },
+                { token: 'keyword', foreground: 'ffffff', fontStyle: 'bold' },
+                { token: 'string', foreground: 'a3a3a3' },
+                { token: 'variable', foreground: 'e5e5e5' },
+                { token: 'type', foreground: 'ffffff' },
             ],
             colors: {
-                'editor.background': '#0f172a', // slate-900
-                'editor.foreground': '#f8f8f2',
-                'editorLineNumber.foreground': '#475569', // slate-600
-                'editorLineNumber.activeForeground': '#94a3b8', // slate-400
-                'editor.selectionBackground': '#334155', // slate-700
-                'editor.lineHighlightBackground': '#1e293b', // slate-800
-                'editorCursor.foreground': '#3b82f6', // blue-500
+                'editor.background': '#000000',
+                'editor.foreground': '#e5e5e5',
+                'editorLineNumber.foreground': '#404040',
+                'editorLineNumber.activeForeground': '#a3a3a3',
+                'editor.selectionBackground': '#262626',
+                'editor.lineHighlightBackground': '#0a0a0a',
+                'editorCursor.foreground': '#ffffff',
             },
         });
 

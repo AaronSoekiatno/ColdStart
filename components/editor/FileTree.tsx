@@ -41,14 +41,14 @@ export function FileTree({ data, onSelect, activeFileId }: FileTreeProps) {
     }, []);
 
     return (
-        <div ref={containerRef} className="h-full w-full bg-slate-900 text-slate-400 select-none overflow-hidden">
+        <div ref={containerRef} className="h-full w-full bg-black text-neutral-400 select-none overflow-hidden">
             <Tree
                 initialData={data}
                 openByDefault={true}
                 width={dimensions.width || 300}
                 height={dimensions.height || 500}
                 indent={20}
-                rowHeight={36}
+                rowHeight={32}
                 overscanCount={5}
                 paddingTop={10}
                 paddingBottom={10}
@@ -62,8 +62,8 @@ export function FileTree({ data, onSelect, activeFileId }: FileTreeProps) {
                             style={style}
                             ref={dragHandle}
                             className={cn(
-                                "flex items-center gap-2 px-2 cursor-pointer transition-colors duration-150",
-                                isActive ? "bg-blue-600/20 text-blue-400 border-l-2 border-blue-500" : "hover:bg-slate-800 hover:text-slate-200"
+                                "flex items-center gap-2 px-3 cursor-pointer transition-all duration-150 border-y border-transparent",
+                                isActive ? "bg-white/5 text-white border-white/5" : "hover:bg-white/[0.02] hover:text-neutral-200"
                             )}
                             onClick={() => {
                                 if (!node.data.isFolder) {

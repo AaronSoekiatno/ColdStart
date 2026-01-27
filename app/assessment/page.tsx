@@ -197,98 +197,88 @@ export default function AssessmentPage() {
             {/* Start Assessment */}
             <div className="space-y-6">
               {/* Mission Overview */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
-                <h3 className="font-semibold text-lg text-gray-900 mb-3 flex items-center gap-2">
-                  🎯 Your Mission
+              <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-8 overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl -mr-16 -mt-16" />
+                <h3 className="font-bold text-xl text-slate-800 mb-4 flex items-center gap-3">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">01</span>
+                  Objective
                 </h3>
-                <p className="text-gray-700 mb-4">
-                  Build a <strong>real-time notification bell</strong> for InstaClone (a social media app).
-                  Make it update instantly across all browser tabs when new notifications arrive.
+                <p className="text-slate-500 mb-8 max-w-2xl leading-relaxed">
+                  Transform <strong>InstaClone's</strong> static notification system into a high-performance, real-time engine that synchronizes instantly across all active sessions.
                 </p>
-                <div className="bg-white/60 rounded-lg p-4 space-y-2">
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">✓</span>
-                    <span className="text-gray-700">Notification bell with dynamic unread count badge</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">✓</span>
-                    <span className="text-gray-700">Dropdown showing all notifications</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">✓</span>
-                    <span className="text-gray-700">Real-time updates (no refresh needed)</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">✓</span>
-                    <span className="text-gray-700">Mark as read functionality</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-green-600 font-bold">✓</span>
-                    <span className="text-gray-700">Multi-tab sync across all browser windows</span>
-                  </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {[
+                    "Dynamic unread count badges",
+                    "Live notification dropdowns",
+                    "Supabase Realtime integration",
+                    "Cross-tab synchronization logic",
+                    "Mark-as-read functionality"
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-white border border-slate-100 rounded-xl p-3 shadow-sm shadow-slate-200/20">
+                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center">
+                        <CheckCircle2 className="h-3 w-3 text-blue-600" />
+                      </div>
+                      <span className="text-slate-700 text-sm font-medium">{item}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* Scoring Breakdown */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold text-purple-600 mb-1">40</div>
-                  <div className="text-sm font-semibold text-gray-900">Backend APIs</div>
-                  <div className="text-xs text-gray-600 mt-1">Database queries & endpoints</div>
-                </div>
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold text-blue-600 mb-1">40</div>
-                  <div className="text-sm font-semibold text-gray-900">Frontend UI</div>
-                  <div className="text-xs text-gray-600 mt-1">Components & state management</div>
-                </div>
-                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-1">20</div>
-                  <div className="text-sm font-semibold text-gray-900">Real-time Sync</div>
-                  <div className="text-xs text-gray-600 mt-1">Supabase Realtime integration</div>
-                </div>
-              </div>
-
-              {/* AI Tools Encouraged */}
-              <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-6">
-                <h3 className="font-semibold text-lg text-gray-900 mb-3 flex items-center gap-2">
-                  🤖 AI Tools Are ENCOURAGED!
-                </h3>
-                <p className="text-gray-700 mb-3">
-                  Use Claude Code, GitHub Copilot, ChatGPT, or any AI tool you want.
-                  We're testing your ability to <strong>verify and ship AI-generated code</strong>, not memorize syntax.
-                </p>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <div>✓ Speed - Can you implement features quickly with AI?</div>
-                  <div>✓ Verification - Can you catch mistakes in AI output?</div>
-                  <div>✓ Quality - Does your code handle edge cases & security?</div>
-                </div>
+              <div className="grid md:grid-cols-3 gap-6">
+                {[
+                  {
+                    score: 40,
+                    label: "Backend Logic",
+                    desc: "API architecture & database queries",
+                    icon: <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-3"><div className="w-5 h-5 border-2 border-slate-800 rounded-sm" /></div>
+                  },
+                  {
+                    score: 40,
+                    label: "Frontend UI",
+                    desc: "React components & state flow",
+                    icon: <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-3"><div className="w-5 h-2 border-2 border-slate-800 rounded-sm" /></div>
+                  },
+                  {
+                    score: 20,
+                    label: "Real-time Sync",
+                    desc: "Broadcasts & channel subscription",
+                    icon: <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mb-3"><div className="w-2 h-5 bg-slate-800 rounded-full" /></div>
+                  }
+                ].map((item, idx) => (
+                  <div key={idx} className="relative group overflow-hidden bg-white border border-slate-100 rounded-2xl p-6 transition-all duration-300 hover:shadow-lg hover:shadow-slate-100/50 hover:border-slate-200">
+                    <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.06] transition-opacity">
+                      <span className="text-6xl font-black italic select-none">{item.score}</span>
+                    </div>
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                      <div className="text-3xl font-black text-slate-800 mb-2">{item.score} <span className="text-xs text-slate-400 font-bold uppercase tracking-widest leading-none">pts</span></div>
+                      <div className="h-px w-8 bg-slate-100 mb-4" />
+                      <div className="text-sm font-bold text-slate-700 mb-1">{item.label}</div>
+                      <div className="text-[11px] text-slate-500 font-medium leading-relaxed max-w-[140px]">{item.desc}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {/* What to Expect */}
-              <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-                <h3 className="font-semibold text-lg text-gray-900 mb-3">What to Expect:</h3>
-                <ul className="space-y-2 text-gray-700 text-sm">
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">→</span>
-                    <span>Cloud-based IDE with Next.js, TypeScript, and Supabase pre-configured</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">→</span>
-                    <span>7 files with TODO comments guiding you step-by-step</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">→</span>
-                    <span>Automated tests that tell you exactly what's working</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">→</span>
-                    <span>Database already seeded with 5 sample notifications</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-blue-600 font-bold">→</span>
-                    <span><strong>No manual testing required</strong> - tests run automatically</span>
-                  </li>
-                </ul>
+              <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm">
+                <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2">
+                  What to Expect
+                </h3>
+                <div className="space-y-4">
+                  {[
+                    "Cloud-based IDE with Next.js & Supabase pre-configured",
+                    "7 guided files with TODO comments and clear objectives",
+                    "Automated test suite with real-time feedback",
+                    "Pre-seeded database for immediate development",
+                    "Zero manual testing - your code is verified instantly"
+                  ].map((text, idx) => (
+                    <div key={idx} className="flex items-center gap-4 group">
+                      <div className="h-1.5 w-1.5 rounded-full bg-slate-300 group-hover:bg-blue-500 transition-colors" />
+                      <span className="text-slate-600 text-sm group-hover:text-slate-900 transition-colors">{text}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
 
 
@@ -296,17 +286,17 @@ export default function AssessmentPage() {
               <Button
                 onClick={handleStartAssessment}
                 disabled={isCreatingRepo}
-                className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
+                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold h-16 text-lg rounded-2xl transition-all shadow-xl shadow-slate-200/40 active:scale-[0.98]"
               >
                 {isCreatingRepo ? (
                   <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Launching workspace...
+                    <Loader2 className="mr-3 h-6 w-6 animate-spin text-white/50" />
+                    Initializing Environment...
                   </>
                 ) : (
                   <>
-                    <Play className="mr-2 h-5 w-5" />
-                    Start Assessment
+                    <Play className="mr-3 h-6 w-6 fill-current opacity-90" />
+                    Enter Workspace
                   </>
                 )}
               </Button>

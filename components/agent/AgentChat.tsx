@@ -506,7 +506,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#0B0F1A] text-slate-200 font-sans selection:bg-blue-500/30">
+        <div className="flex flex-col h-full bg-[#050505] text-neutral-200 font-sans selection:bg-white/10">
             {/* Header */}
             {!hideHeader && (
                 <div className="bg-[#151515]/80 backdrop-blur-xl border-b border-white/5 p-4 sticky top-0 z-10">
@@ -560,18 +560,18 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                         className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'} max-w-full`}
                     >
                         <div
-                            className={`group relative max-w-[92%] sm:max-w-[85%] rounded-[2rem] px-5 py-4 transition-all duration-300 shadow-xl ${message.role === 'user'
-                                ? 'bg-[#D97757] text-white rounded-br-none border border-white/10'
-                                : 'bg-[#1A1A1A] backdrop-blur-md text-slate-200 rounded-bl-none border border-white/5'
+                            className={`group relative max-w-[92%] sm:max-w-[85%] rounded-3xl px-5 py-4 transition-all duration-300 ${message.role === 'user'
+                                ? 'bg-white text-black rounded-br-none'
+                                : 'bg-[#111111] text-neutral-200 rounded-bl-none border border-white/5'
                                 }`}
                         >
                             <div className="flex flex-col space-y-3 min-w-0">
                                 {/* Reasoning / Thinking Block */}
                                 {message.reasoning && (
                                     <div className="bg-black/20 rounded-2xl p-4 border border-white/5 relative overflow-hidden group/thinking">
-                                        <div className="flex items-center gap-2 mb-2 text-[10px] font-bold uppercase tracking-widest text-[#D97757]/80">
-                                            <div className="w-1 h-1 rounded-full bg-[#D97757] animate-pulse" />
-                                            Claude Thinking
+                                        <div className="flex items-center gap-2 mb-2 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+                                            <div className="w-1 h-1 rounded-full bg-white/50 animate-pulse" />
+                                            Thinking
                                         </div>
                                         <div className="text-xs text-slate-400/90 italic leading-relaxed break-words font-mono line-clamp-[10] group-hover/thinking:line-clamp-none transition-all cursor-pointer">
                                             {message.reasoning}
@@ -590,19 +590,19 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                             {message.toolActivity.map((act, i) => (
                                                 <div key={i} className="flex flex-col bg-black/40 rounded-xl border border-white/5 overflow-hidden transition-all hover:border-white/10 max-w-full">
                                                     <div className="flex items-center gap-3 p-2.5">
-                                                        <div className={`p-1.5 rounded-lg ${act.status === 'running' ? 'bg-blue-500/10' : 'bg-white/5'}`}>
+                                                        <div className={`p-1.5 rounded-lg ${act.status === 'running' ? 'bg-white/5' : 'bg-white/5'}`}>
                                                             {act.status === 'running' ? (
-                                                                <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                                                                <Loader2 className="w-3 h-3 animate-spin text-white/40" />
                                                             ) : (
                                                                 getToolIcon(act.toolName)
                                                             )}
                                                         </div>
                                                         <div className="flex-1 min-w-0 overflow-hidden">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[11px] font-bold font-mono text-[#D97757]">{act.toolName}</span>
-                                                                {act.status === 'running' && <span className="text-[9px] text-slate-500 font-medium animate-pulse">EXECUTING...</span>}
+                                                                <span className="text-[11px] font-bold font-mono text-white/60">{act.toolName}</span>
+                                                                {act.status === 'running' && <span className="text-[9px] text-neutral-500 font-medium animate-pulse">EXECUTING...</span>}
                                                             </div>
-                                                            <span className="text-[10px] text-slate-400 block truncate font-mono opacity-80">{getToolSummary(act)}</span>
+                                                            <span className="text-[10px] text-neutral-400 block truncate font-mono opacity-80">{getToolSummary(act)}</span>
                                                         </div>
                                                     </div>
 
@@ -662,7 +662,7 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                                                                     <button
                                                                                         onClick={() => handleUndo(act.input.path, diff || '')}
                                                                                         disabled={isLoading}
-                                                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#D97757] hover:bg-[#C86A4C] rounded-lg text-[10px] font-bold text-white transition-all disabled:opacity-50 shadow-lg shadow-[#D97757]/20 active:scale-95"
+                                                                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-neutral-200 rounded-lg text-[10px] font-bold text-black transition-all disabled:opacity-50"
                                                                                     >
                                                                                         <RotateCcw className="w-3 h-3" />
                                                                                         REVERT CHANGES
@@ -734,10 +734,10 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                             {/* Status Indicators */}
                             {(message.status === 'streaming' || message.status === 'pending') && (
                                 <div className="absolute -bottom-1 -right-1">
-                                    <div className="flex space-x-0.5 bg-[#D97757] p-1.5 rounded-full shadow-lg border border-white/20">
-                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:-0.3s]" />
-                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce [animation-delay:-0.15s]" />
-                                        <div className="w-1.5 h-1.5 bg-white rounded-full animate-bounce" />
+                                    <div className="flex space-x-0.5 bg-neutral-800 p-1.5 rounded-full shadow-lg border border-white/10">
+                                        <div className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                                        <div className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                                        <div className="w-1.5 h-1.5 bg-neutral-400 rounded-full animate-bounce" />
                                     </div>
                                 </div>
                             )}
@@ -775,8 +775,8 @@ export default function AgentChat({ sessionId, flyAppName, containerReady, onClo
                                         key={file}
                                         onClick={() => handleMentionSelect(file)}
                                         className={`w-full text-left px-4 py-3 transition-all ${i === mentionIndex
-                                            ? 'bg-[#D97757]/20 text-[#D97757]'
-                                            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+                                            ? 'bg-white/10 text-white'
+                                            : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-200'
                                             }`}
                                     >
                                         <div className="flex flex-col gap-0.5">

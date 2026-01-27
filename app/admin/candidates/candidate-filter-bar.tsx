@@ -58,7 +58,7 @@ export default function CandidateFilterBar({ filters, onFilterChange }: Candidat
             <div className="p-4 flex flex-col gap-4">
                 {/* Top Row: Primary Filters */}
                 <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2 text-gray-500 mr-2">
+                    <div className="flex items-center gap-2 text-black mr-2">
                         <Filter className="w-5 h-5" />
                         <span className="text-sm font-medium">Filters</span>
                     </div>
@@ -111,7 +111,7 @@ export default function CandidateFilterBar({ filters, onFilterChange }: Candidat
                             placeholder="University..."
                             value={localUniversity}
                             onChange={(e) => setLocalUniversity(e.target.value)}
-                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 py-1.5 pl-3 pr-8 w-40 text-black"
+                            className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 py-1.5 pl-3 pr-8 w-40 text-black placeholder:text-gray-500"
                         />
                     </div>
 
@@ -119,8 +119,8 @@ export default function CandidateFilterBar({ filters, onFilterChange }: Candidat
                     <button
                         onClick={() => updateFilter('verified', !filters.verified)}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm border transition-colors ${filters.verified
-                            ? 'bg-blue-50 border-blue-200 text-blue-700'
-                            : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                            ? 'bg-blue-50 border-blue-200 text-black'
+                            : 'bg-white border-gray-300 text-black hover:bg-gray-50'
                             }`}
                     >
                         <div className={`w-4 h-4 rounded border flex items-center justify-center ${filters.verified ? 'bg-blue-600 border-blue-600' : 'border-gray-400'

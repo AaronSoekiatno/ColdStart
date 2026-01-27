@@ -163,7 +163,7 @@ export default function AdminCandidatesPage() {
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <h1 className="text-3xl font-bold text-gray-900">
-            GitHub Verification Admin
+            Admin Portal
           </h1>
           <p className="mt-2 text-gray-600">
             Verify candidate resumes against GitHub activity

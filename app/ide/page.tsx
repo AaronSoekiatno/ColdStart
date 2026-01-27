@@ -587,12 +587,12 @@ export default function IDEPage() {
 
     if (isLoading || containerStatus === 'loading') {
         return (
-            <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
+            <div className="h-screen flex flex-col bg-black overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="text-center">
-                        <Loader2 className="h-12 w-12 animate-spin text-blue-400 mx-auto mb-4" />
-                        <p className="text-slate-300">Loading IDE environment...</p>
+                        <Loader2 className="h-12 w-12 animate-spin text-white/50 mx-auto mb-4" />
+                        <p className="text-neutral-400">Loading IDE environment...</p>
                     </div>
                 </section>
             </div>
@@ -615,37 +615,37 @@ export default function IDEPage() {
         const estimatedRemaining = Math.max(35 - provisioningTime, 5);
 
         return (
-            <div className="h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 overflow-hidden">
+            <div className="h-screen flex flex-col bg-black overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex flex-col md:flex-row items-stretch justify-center gap-8 px-4 md:px-8 py-12 max-w-7xl mx-auto overflow-y-auto">
                     {/* Left Side: Provisioning Status */}
                     <div className="flex-1 flex flex-col justify-center max-w-xl">
-                        <div className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-slate-700">
+                        <div className="bg-neutral-900/40 backdrop-blur-md border border-neutral-800/50 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-neutral-800">
                                 <div
-                                    className="h-full bg-blue-500 transition-all duration-1000 ease-out"
+                                    className="h-full bg-white transition-all duration-1000 ease-out"
                                     style={{ width: `${progressPercent}%` }}
                                 />
                             </div>
 
                             <div className="flex items-center gap-4 mb-6">
-                                <div className="p-3 bg-blue-500/10 rounded-xl">
-                                    <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+                                <div className="p-3 bg-white/5 rounded-xl">
+                                    <Loader2 className="h-8 w-8 animate-spin text-white/80" />
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-bold text-white">Provisioning Workspace</h2>
-                                    <p className="text-slate-400 text-sm">Setting up your cloud IDE on Fly.io</p>
+                                    <p className="text-neutral-500 text-sm">Setting up your cloud IDE</p>
                                 </div>
                             </div>
 
-                            <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-4 mb-8">
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-8">
                                 <div className="flex items-center gap-3">
                                     <span className="text-xl">{currentStatus.icon}</span>
                                     <div className="flex-1">
-                                        <p className="text-blue-300 font-medium text-sm">{currentStatus.step}</p>
-                                        <p className="text-slate-500 text-xs">Remaining: ~{estimatedRemaining}s</p>
+                                        <p className="text-white font-medium text-sm">{currentStatus.step}</p>
+                                        <p className="text-neutral-500 text-xs">Remaining: ~{estimatedRemaining}s</p>
                                     </div>
-                                    <span className="font-mono text-blue-400 text-sm">{progressPercent}%</span>
+                                    <span className="font-mono text-white text-sm">{progressPercent}%</span>
                                 </div>
                             </div>
 
@@ -659,20 +659,20 @@ export default function IDEPage() {
                                 ].map((step, i) => (
                                     <div key={i} className={cn(
                                         "flex items-center gap-3 text-sm transition-colors",
-                                        provisioningTime >= step.time ? "text-green-400" : "text-slate-500"
+                                        provisioningTime >= step.time ? "text-white" : "text-neutral-600"
                                     )}>
                                         <div className={cn(
-                                            "w-2 h-2 rounded-full",
-                                            provisioningTime >= step.time ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-slate-700"
+                                            "w-2 h-2 rounded-full transition-all duration-500",
+                                            provisioningTime >= step.time ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]" : "bg-neutral-800"
                                         )} />
                                         <span>{step.label}</span>
-                                        {provisioningTime >= step.time && <span className="text-xs">✓</span>}
+                                        {provisioningTime >= step.time && <span className="text-xs opacity-50">✓</span>}
                                     </div>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="mt-6 flex items-center justify-center gap-2 text-slate-500 text-sm">
+                        <div className="mt-6 flex items-center justify-center gap-2 text-neutral-600 text-sm font-medium">
                             <Clock className="h-4 w-4" />
                             <span>Elapsed time: {formatTime(provisioningTime)}</span>
                         </div>
@@ -680,57 +680,57 @@ export default function IDEPage() {
 
                     {/* Right Side: Mission Briefing */}
                     <div className="flex-1 flex flex-col justify-center max-w-xl">
-                        <div className="bg-slate-800/20 border border-slate-700/30 rounded-2xl p-8 space-y-6">
+                        <div className="bg-neutral-900/20 border border-neutral-800/30 rounded-2xl p-8 space-y-6 backdrop-blur-sm">
                             <div>
-                                <h3 className="text-blue-400 font-bold uppercase tracking-wider text-xs mb-4">Assessment Briefing</h3>
-                                <h2 className="text-2xl font-bold text-white mb-2">Build a Real-Time Notification System 🔔</h2>
-                                <p className="text-slate-300">
+                                <h3 className="text-white/40 font-bold uppercase tracking-widest text-[10px] mb-4">Assessment Briefing</h3>
+                                <h2 className="text-2xl font-bold text-white mb-2 leading-tight">Build a Real-Time Notification System</h2>
+                                <p className="text-neutral-400 text-sm leading-relaxed">
                                     You're working on <strong>InstaClone</strong>. Your task is to transform a static notification bell into a fully functional, real-time engine.
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                                    <div className="text-blue-400 font-bold text-xl mb-1">20m</div>
-                                    <div className="text-slate-400 text-xs font-semibold uppercase">Time Limit</div>
+                                    <div className="text-white font-bold text-xl mb-1">20m</div>
+                                    <div className="text-neutral-500 text-[10px] font-bold uppercase tracking-wider">Time Limit</div>
                                 </div>
                                 <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                                    <div className="text-green-400 font-bold text-xl mb-1">100</div>
-                                    <div className="text-slate-400 text-xs font-semibold uppercase">Max Score</div>
+                                    <div className="text-white font-bold text-xl mb-1">100</div>
+                                    <div className="text-neutral-500 text-[10px] font-bold uppercase tracking-wider">Max Score</div>
                                 </div>
                             </div>
 
                             <div className="space-y-4">
-                                <div className="flex gap-3">
-                                    <div className="p-2 bg-indigo-500/10 rounded-lg h-fit">
-                                        <CheckCircle2 className="h-4 w-4 text-indigo-400" />
+                                <div className="flex gap-4">
+                                    <div className="p-2.5 bg-white/5 rounded-xl border border-white/5 h-fit mt-1">
+                                        <CheckCircle2 className="h-4 w-4 text-white/60" />
                                     </div>
                                     <div>
-                                        <p className="text-white text-sm font-semibold mb-1">What You'll Build</p>
-                                        <p className="text-slate-400 text-xs leading-relaxed">
+                                        <p className="text-white text-sm font-bold mb-1">Real-time Engine</p>
+                                        <p className="text-neutral-500 text-xs leading-relaxed">
                                             Dynamic unread counts, functional dropdowns, and multi-tab synchronization using Supabase Realtime.
                                         </p>
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3">
-                                    <div className="p-2 bg-amber-500/10 rounded-lg h-fit">
-                                        <Mic className="h-4 w-4 text-amber-400" />
+                                <div className="flex gap-4">
+                                    <div className="p-2.5 bg-white/5 rounded-xl border border-white/5 h-fit mt-1">
+                                        <Mic className="h-4 w-4 text-white/60" />
                                     </div>
                                     <div>
-                                        <p className="text-white text-sm font-semibold mb-1">AI Tools Encouraged</p>
-                                        <p className="text-slate-400 text-xs leading-relaxed">
+                                        <p className="text-white text-sm font-bold mb-1">AI Amplification</p>
+                                        <p className="text-neutral-500 text-xs leading-relaxed">
                                             Use Claude Code, ChatGPT, or Copilot. We value speed, verification ability, and production quality.
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t border-slate-700/50">
-                                <p className="text-slate-500 text-[10px] uppercase font-bold tracking-widest mb-2">Success Criteria</p>
+                            <div className="pt-6 border-t border-neutral-800">
+                                <p className="text-neutral-600 text-[9px] uppercase font-bold tracking-[0.2em] mb-3">Core Requirements</p>
                                 <div className="flex flex-wrap gap-2">
-                                    {['Real-time Updates', 'Mark as Read', 'No Memory Leaks', 'Clean Security'].map((tag) => (
-                                        <span key={tag} className="px-2 py-1 bg-slate-700/50 rounded text-[11px] text-slate-300 border border-slate-600/30">
+                                    {['Persistence', 'Latency', 'Security'].map((tag) => (
+                                        <span key={tag} className="px-3 py-1 bg-neutral-900 rounded-full text-[10px] text-neutral-400 border border-neutral-800 font-medium">
                                             {tag}
                                         </span>
                                     ))}
@@ -746,22 +746,22 @@ export default function IDEPage() {
 
     if (containerStatus === 'error' || !containerUrl) {
         return (
-            <div className="h-screen flex flex-col bg-slate-900 overflow-hidden">
+            <div className="h-screen flex flex-col bg-black overflow-hidden">
                 <Header initialUser={user} />
                 <section className="flex-1 flex items-center justify-center px-4">
                     <div className="text-center max-w-md">
-                        <div className="text-red-400 mb-4">
-                            <X className="h-12 w-12 mx-auto" />
+                        <div className="text-white/20 mb-6">
+                            <X className="h-16 w-16 mx-auto stroke-[1]" />
                         </div>
-                        <h2 className="text-xl font-semibold text-white mb-2">Container Not Available</h2>
-                        <p className="text-slate-400 mb-6">
+                        <h2 className="text-2xl font-bold text-white mb-3">Connection Lost</h2>
+                        <p className="text-neutral-500 mb-8 text-sm leading-relaxed">
                             {errorDetails || 'Your assessment environment could not be loaded. Please start an assessment first.'}
                         </p>
                         <Button
                             onClick={() => router.push('/assessment')}
-                            className="bg-blue-600 hover:bg-blue-700"
+                            className="bg-white text-black hover:bg-neutral-200 transition-colors px-8 h-12 font-bold"
                         >
-                            Go to Assessment
+                            Retry Environment
                         </Button>
                     </div>
                 </section>
@@ -770,7 +770,7 @@ export default function IDEPage() {
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-900 overflow-hidden relative">
+        <div className="h-screen flex flex-col bg-black overflow-hidden relative font-sans">
             {/* Tab Switch Warning Banner */}
             {showTabSwitchWarning && (
                 <div className="absolute top-0 left-0 right-0 z-50 bg-red-600/90 backdrop-blur-sm text-white px-4 py-2 flex items-center justify-between shadow-lg animate-in slide-in-from-top-full duration-300">
@@ -792,12 +792,12 @@ export default function IDEPage() {
             )}
 
             {/* Compact Header Bar */}
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
+            <div className="flex items-center justify-between px-4 py-2 bg-[#0a0a0a] border-b border-white/5">
                 {/* Left section - fixed width to prevent overlap */}
                 <div className="flex items-center gap-4 shrink-0">
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-sm text-slate-300 font-medium">IDE Connected</span>
+                        <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+                        <span className="text-[11px] text-white/60 font-bold uppercase tracking-wider">Workspace Live</span>
                     </div>
                     <div className="h-4 w-px bg-slate-600" />
                     <div className="flex items-center gap-2 text-slate-400">
