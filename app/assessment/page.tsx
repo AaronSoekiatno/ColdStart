@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
-import { Loader2, Play, CheckCircle2 } from 'lucide-react';
+import { Loader2, Play, CheckCircle2, Instagram } from 'lucide-react';
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import type { User } from '@supabase/supabase-js';
 
@@ -189,9 +190,16 @@ export default function AssessmentPage() {
               <h1 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
                 Build a Real-Time Notification System
               </h1>
-              <p className="text-gray-600 text-lg">
-                20-minute coding challenge • 100 points • Powered by Claude Code
-              </p>
+              <div className="flex items-center justify-center gap-2 text-slate-500 text-lg">
+                <span>20-minute coding challenge</span>
+                <span className="opacity-30">•</span>
+                <span>100 points</span>
+                <span className="opacity-30">•</span>
+                <div className="flex items-center gap-1.5 bg-slate-100/50 px-2 py-0.5 rounded-md border border-slate-200">
+                  <Image src="/images/claude-logo.png" alt="Claude" width={14} height={14} className="opacity-80" />
+                  <span className="text-xs font-bold tracking-tight">Claude Code</span>
+                </div>
+              </div>
             </div>
 
             {/* Start Assessment */}
@@ -199,9 +207,12 @@ export default function AssessmentPage() {
               {/* Mission Overview */}
               <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-8 overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl -mr-16 -mt-16" />
-                <h3 className="font-bold text-xl text-slate-800 mb-4 flex items-center gap-3">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">01</span>
-                  Objective
+                <h3 className="font-bold text-xl text-slate-800 mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">01</span>
+                    Objective
+                  </div>
+                  <Instagram className="w-5 h-5 text-slate-300" />
                 </h3>
                 <p className="text-slate-500 mb-8 max-w-2xl leading-relaxed">
                   Transform <strong>InstaClone's</strong> static notification system into a high-performance, real-time engine that synchronizes instantly across all active sessions.
