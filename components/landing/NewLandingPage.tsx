@@ -336,17 +336,11 @@ export function NewLandingPage() {
           <div className="flex items-center gap-3 pr-1 relative z-10">
             {!user ? (
               <>
-                <button
-                  onClick={() => setShowSignIn(true)}
-                  className="hidden sm:block text-sm font-medium text-white/70 hover:text-white transition-colors px-4"
-                >
-                  Sign In
-                </button>
                 <Button
                   onClick={handleGetStarted}
                   className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
                 >
-                  Apply Now!
+                  Sign In / Apply
                 </Button>
               </>
             ) : (
