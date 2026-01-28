@@ -21,16 +21,13 @@ const nextConfig: NextConfig = {
       };
     }
     
-    // Help webpack resolve lightningcss native modules and React Server Components
+    // Help webpack resolve lightningcss native modules
     // Merge with existing aliases
     config.resolve.alias = {
       ...config.resolve.alias,
       ...(process.platform === 'win32' && process.arch === 'x64'
         ? { 'lightningcss-win32-x64-msvc': require.resolve('lightningcss-win32-x64-msvc') }
         : {}),
-      // Fix react-server-dom-webpack resolution
-      'react-server-dom-webpack/client': require.resolve('react-server-dom-webpack/client'),
-      'react-server-dom-webpack/server': require.resolve('react-server-dom-webpack/server'),
     };
     
     // Ensure @vapi-ai/web is bundled (not externalized)

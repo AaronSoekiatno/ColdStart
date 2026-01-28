@@ -19,20 +19,22 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
     <section className="relative w-full flex items-start justify-center px-6 pt-20 pb-2">
       <div className="max-w-5xl mx-auto text-center">
         {/* Main Headline */}
-        <h1 className="text-5xl md:text-6xl lg:text-7xl font-ivy tracking-tight mb-4 leading-tight text-white drop-shadow-lg">
+        <h1 className="text-5xl md:text-6xl lg:text-7xl font-ivy tracking-tight mb-6 leading-tight text-white drop-shadow-lg">
           Land Jobs at Top Startups
-          <br />
-          <span className="text-white">while you sleep</span>
         </h1>
+
+        <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto mb-8 font-medium drop-shadow-md">
+          Get matched and direct intros to founders based on what you know not who.
+        </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12">
           <Button
             onClick={onGetStarted}
             size="lg"
-            className="rounded-full px-8 py-6 text-base font-medium bg-white text-[#498EDC] hover:bg-white/90 transition-all duration-300 shadow-xl hover:shadow-2xl cursor-pointer"
+            className="rounded-full px-8 py-6 text-base font-bold bg-white text-[#498EDC] hover:bg-white/90 transition-all duration-300 shadow-xl hover:shadow-2xl cursor-pointer"
           >
-            Get Started
+            Apply Now!
           </Button>
           <Button
             onClick={handleCompanyClick}

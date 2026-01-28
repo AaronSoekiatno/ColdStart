@@ -137,7 +137,6 @@
     "react-arborist": "^3.4.3",
     "react-dom": "^19.2.3",
     "react-resizable-panels": "^4.4.1",
-    "react-server-dom-webpack": "^19.0.0",
     "resend": "^6.6.0",
     "sodium-javascript": "^0.8.0",
     "stripe": "^20.0.0",

@@ -93,8 +93,8 @@ export const UniversityCarousel = () => {
                   width={160}
                   height={160}
                   className={university.name === "Carnegie Mellon University"
-                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain"
-                    : "h-12 sm:h-14 md:h-16 w-auto object-contain"}
+                    ? "h-12 sm:h-16 md:h-20 w-auto object-contain"
+                    : "h-8 sm:h-10 md:h-12 w-auto object-contain"}
                   unoptimized
                 />
               </div>
@@ -111,8 +111,8 @@ export const UniversityCarousel = () => {
                   width={160}
                   height={160}
                   className={university.name === "Carnegie Mellon University"
-                    ? "h-16 sm:h-20 md:h-24 w-auto object-contain"
-                    : "h-12 sm:h-14 md:h-16 w-auto object-contain"}
+                    ? "h-12 sm:h-16 md:h-20 w-auto object-contain"
+                    : "h-8 sm:h-10 md:h-12 w-auto object-contain"}
                   unoptimized
                 />
               </div>

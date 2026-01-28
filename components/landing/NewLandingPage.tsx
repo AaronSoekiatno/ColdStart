@@ -373,7 +373,7 @@ export function NewLandingPage() {
                   onClick={handleGetStarted}
                   className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
                 >
-                  Get started
+                  Apply Now!
                 </Button>
               </>
             ) : (
@@ -506,10 +506,10 @@ export function NewLandingPage() {
           {/* Sky Background Image with Bottom Fade */}
           <div className="absolute top-0 left-0 right-0 h-[120vh] z-0 select-none pointer-events-none">
             <Image
-              src="/images/newHermes.png"
+              src="/images/hermes2bg.png"
               alt="Sky Background"
               fill
-              className="object-cover object-top"
+              className="object-cover object-top scale-110 blur-[2px]"
               priority
               style={{
                 maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
@@ -537,7 +537,7 @@ export function NewLandingPage() {
           <div id="integrations" className="scroll-mt-32">
             <StartupLogoDeck />
           </div>
-          <DemoMatchCard />
+
           <div id="pricing" className="scroll-mt-32">
             <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />
           </div>

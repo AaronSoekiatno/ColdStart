@@ -11,13 +11,23 @@ import { SignInModal } from "@/components/modals/SignInModal";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 import { motion, useScroll, useTransform } from "framer-motion";
 
 export function CompanyLandingPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { scrollY } = useScroll();
   const headerOpacity = useTransform(scrollY, [0, 200], [1, 0.8]);
   const headerScale = useTransform(scrollY, [0, 200], [1, 0.95]);
@@ -97,53 +107,77 @@ export function CompanyLandingPage() {
                 Sign In
               </Button>
             ) : (
-              <Button
-                onClick={handleSignOut}
-                variant="ghost"
-                className="rounded-full h-9 px-4 text-white hover:bg-white/10 hover:text-white transition-colors ring-0 focus-visible:ring-0"
-              >
-                Sign Out
-              </Button>
+              <>
+                <div className="hidden md:flex items-center gap-4">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="rounded-full h-9 px-4 text-white hover:bg-white/10 hover:text-white transition-colors ring-0 focus-visible:ring-0"
+                      >
+                        <span className="truncate max-w-[150px]">{user.email}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 mt-2">
+                      <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
+                        Sign Out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {/* Mobile Menu Toggle */}
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="md:hidden p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+                  aria-label="Toggle menu"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {mobileMenuOpen ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
+                  </svg>
+                </button>
+              </>
             )}
           </div>
         </motion.div>
+
+        {/* Mobile Menu Dropdown */}
+        {user && mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="pointer-events-auto absolute top-[80px] w-[90%] max-w-md bg-[#121212]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 md:hidden"
+          >
+            <div className="space-y-1">
+              <div className="px-4 py-2 text-xs text-white/50 truncate">{user.email}</div>
+              <div className="border-t border-white/10 my-2"></div>
+              <button
+                onClick={() => {
+                  handleSignOut();
+                  setMobileMenuOpen(false);
+                }}
+                className="block w-full text-left px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 rounded-xl transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </motion.div>
+        )}
       </motion.header>
 
-      {/* Main Content */}
       <main>
-        {/* First Half with Custom Blue Cloud Background */}
-        <div className="relative min-h-screen pt-16 overflow-hidden bg-white">
-          {/* Pastel Clouds - Same as main landing page */}
-          <div className="absolute top-0 left-0 right-0 h-[120vh] z-0 select-none pointer-events-none">
-            <Image
-              src="/images/newHermes.png"
-              alt="Sky Background"
-              fill
-              className="object-cover object-top"
-              priority
-              style={{
-                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
-              }}
-            />
-          </div>
-
-          {/* Content with relative positioning */}
-          <div className="relative z-10">
-            <CompanyHero onGetStarted={handleGetStarted} />
-          </div>
-        </div>
-
-        {/* Second Half with White Background */}
-        <div className="bg-white">
-          <CompanyAIVettingSection />
-        </div>
+        <CompanyHero onGetStarted={handleGetStarted} />
+        <CompanyAIVettingSection />
       </main>
 
-      {/* Footer */}
       <Footer />
 
-      {/* Modals */}
       <SignInModal
         open={showSignIn}
         onOpenChange={setShowSignIn}
