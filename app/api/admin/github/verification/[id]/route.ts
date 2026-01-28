@@ -11,13 +11,13 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. Authenticate admin
     await requireAdmin();
 
-    const candidateId = params.id;
+    const { id: candidateId } = await params;
 
     // 2. Fetch all necessary data to construct verification on-the-fly
     const { data: candidate, error: candidateError } = await supabaseAdmin

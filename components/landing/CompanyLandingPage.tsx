@@ -11,12 +11,17 @@ import { SignInModal } from "@/components/modals/SignInModal";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 export function CompanyLandingPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { scrollY } = useScroll();
+  const headerOpacity = useTransform(scrollY, [0, 200], [1, 0.8]);
+  const headerScale = useTransform(scrollY, [0, 200], [1, 0.95]);
+  const headerWidth = useTransform(scrollY, [0, 200], ["100%", "90%"]);
 
   useEffect(() => {
     // Check initial session
@@ -56,22 +61,38 @@ export function CompanyLandingPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
-        <div className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      {/* Header */}
+      <motion.header
+        className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none"
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      >
+        <motion.div
+          className="pointer-events-auto w-full max-w-3xl bg-[#121212]/70 backdrop-blur-2xl border border-white/10 rounded-full px-5 py-3 flex items-center justify-between shadow-2xl transition-all duration-300 relative overflow-hidden"
+          layout
+          style={{
+            boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+            opacity: headerOpacity,
+            scale: headerScale,
+            width: headerWidth
+          }}
+        >
+          {/* Shimmer/Reflection Effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none skew-x-12" />
+
           {/* Logo - Left side */}
-          <Link href="/" className={`flex items-center gap-2 sm:gap-3 transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            }`}>
+          <Link href="/" className="flex items-center gap-3 pl-2 transition-opacity hover:opacity-80 relative z-10">
             <Image src="/images/hermes.png" alt="Hermes" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-lg sm:text-xl font-semibold text-white drop-shadow-md">Hermes</span>
+            <span className="text-lg font-bold text-white tracking-tight">Hermes</span>
           </Link>
 
           {/* Right side */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3 pr-1 relative z-10">
             {!user ? (
               <Button
                 onClick={() => setShowSignIn(true)}
-                className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300 ${isScrolled ? 'hidden sm:flex' : 'flex'
-                  }`}
+                className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
               >
                 Sign In
               </Button>
@@ -79,72 +100,32 @@ export function CompanyLandingPage() {
               <Button
                 onClick={handleSignOut}
                 variant="ghost"
-                className="rounded-full h-9 px-4 text-white drop-shadow-md text-sm"
+                className="rounded-full h-9 px-4 text-white hover:bg-white/10 hover:text-white transition-colors ring-0 focus-visible:ring-0"
               >
                 Sign Out
               </Button>
             )}
           </div>
-        </div>
-      </header>
+        </motion.div>
+      </motion.header>
 
       {/* Main Content */}
       <main>
         {/* First Half with Custom Blue Cloud Background */}
-        <div className="relative bg-gradient-to-b from-[#498EDC] via-[#6BA3E3] via-[#8DB8EA] to-white min-h-screen pt-16">
+        <div className="relative min-h-screen pt-16 overflow-hidden bg-white">
           {/* Pastel Clouds - Same as main landing page */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Cloud 1 */}
-            <svg
-              className="absolute top-20 left-10 opacity-40 blur-sm"
-              width="200"
-              height="120"
-              viewBox="0 0 200 120"
-            >
-              <defs>
-                <radialGradient id="cloud1-company" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#E8F4FD" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#D1E9F8" stopOpacity="0.4" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="50" cy="60" rx="40" ry="30" fill="url(#cloud1-company)" />
-              <ellipse cx="80" cy="50" rx="35" ry="25" fill="url(#cloud1-company)" />
-              <ellipse cx="110" cy="60" rx="40" ry="30" fill="url(#cloud1-company)" />
-            </svg>
-            {/* Cloud 2 */}
-            <svg
-              className="absolute top-40 right-20 opacity-35 blur-[2px]"
-              width="250"
-              height="140"
-              viewBox="0 0 250 140"
-            >
-              <defs>
-                <radialGradient id="cloud2-company" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#F0F8FF" stopOpacity="0.7" />
-                  <stop offset="100%" stopColor="#D6E9F5" stopOpacity="0.3" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="60" cy="70" rx="50" ry="35" fill="url(#cloud2-company)" />
-              <ellipse cx="100" cy="60" rx="45" ry="30" fill="url(#cloud2-company)" />
-              <ellipse cx="140" cy="70" rx="50" ry="35" fill="url(#cloud2-company)" />
-            </svg>
-            {/* Cloud 3 */}
-            <svg
-              className="absolute top-60 left-1/3 opacity-38 blur-sm"
-              width="180"
-              height="100"
-              viewBox="0 0 180 100"
-            >
-              <defs>
-                <radialGradient id="cloud3-company" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#E8F4FD" stopOpacity="0.75" />
-                  <stop offset="100%" stopColor="#CEE4F2" stopOpacity="0.35" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="45" cy="50" rx="35" ry="25" fill="url(#cloud3-company)" />
-              <ellipse cx="70" cy="42" rx="30" ry="20" fill="url(#cloud3-company)" />
-              <ellipse cx="95" cy="50" rx="35" ry="25" fill="url(#cloud3-company)" />
-            </svg>
+          <div className="absolute top-0 left-0 right-0 h-[120vh] z-0 select-none pointer-events-none">
+            <Image
+              src="/images/newHermes.png"
+              alt="Sky Background"
+              fill
+              className="object-cover object-top"
+              priority
+              style={{
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+              }}
+            />
           </div>
 
           {/* Content with relative positioning */}

@@ -1,5 +1,3 @@
-'use server';
-
 import { exec } from 'child_process';
 import { promisify } from 'util';
 
@@ -7,7 +5,7 @@ const execAsync = promisify(exec);
 
 /**
  * Executes claude-code wrapper in a Fly.io container via SSH
- * This runs in Node.js runtime (server action)
+ * This runs in Node.js runtime
  */
 export async function executeClaudeInFlyContainer(
   flyAppName: string,

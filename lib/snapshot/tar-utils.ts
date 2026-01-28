@@ -144,7 +144,7 @@ export async function listEntriesInTarGz(buffer: Buffer): Promise<TarFileEntry[]
       entries.push({
         path: normalizedPath,
         size: header.size || 0,
-        type: header.type,
+        type: header.type || 'file',
         mtime: header.mtime,
       });
 

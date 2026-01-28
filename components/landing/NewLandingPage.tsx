@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 export function NewLandingPage() {
   const router = useRouter();
@@ -48,6 +49,10 @@ export function NewLandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
+  const { scrollY } = useScroll();
+  const headerOpacity = useTransform(scrollY, [0, 200], [1, 0.8]);
+  const headerScale = useTransform(scrollY, [0, 200], [1, 0.95]);
+  const headerWidth = useTransform(scrollY, [0, 200], ["100%", "90%"]);
 
   // Memoize user email to prevent unnecessary re-fetches
   const userEmail = useMemo(() => user?.email, [user?.email]);
@@ -275,76 +280,115 @@ export function NewLandingPage() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-transparent transition-all duration-300">
-        <div className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      {/* Header */}
+      <motion.header
+        className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none"
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      >
+        <motion.div
+          className="pointer-events-auto w-full max-w-3xl bg-[#121212]/70 backdrop-blur-2xl border border-white/10 rounded-full px-5 py-3 flex items-center justify-between shadow-2xl transition-all duration-300 relative overflow-hidden"
+          layout
+          style={{
+            boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+            opacity: headerOpacity,
+            scale: headerScale,
+            width: headerWidth
+          }}
+        >
+          {/* Shimmer/Reflection Effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none skew-x-12" />
+
           {/* Logo - Left side */}
-          <Link href="/" className={`flex items-center gap-2 sm:gap-3 transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            }`}>
+          <Link href="/" className="flex items-center gap-3 pl-2 transition-opacity hover:opacity-80 relative z-10">
             <Image src="/images/hermes.png" alt="Hermes" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-lg sm:text-xl font-semibold text-white drop-shadow-md">Hermes</span>
+            <span className="text-lg font-bold text-white tracking-tight">Hermes</span>
           </Link>
 
-          {/* Navigation - Desktop only, Centered, Hidden when scrolled */}
-          <nav className={`hidden md:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-4 transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-            }`}>
+          {/* Navigation - Desktop only, Centered */}
+          <nav className="hidden md:flex items-center gap-8 relative z-10">
             {user ? (
               <>
                 <Link
                   href="/matches"
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
                 >
                   Your Matches
                 </Link>
                 <Link
                   href="/tracker"
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
                 >
                   Email Tracker
                 </Link>
                 <Link
                   href="/resumes"
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md"
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
                 >
                   Resumes
                 </Link>
-                <button
-                  onClick={handlePremiumClick}
-                  className="text-sm text-white hover:text-white/80 transition-colors drop-shadow-md cursor-pointer"
-                >
-                  Premium
-                </button>
               </>
-            ) : null}
+            ) : (
+              <>
+                <Link
+                  href="#features"
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                >
+                  Features
+                </Link>
+                <Link
+                  href="#integrations"
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                >
+                  Integrations
+                </Link>
+                <Link
+                  href="#pricing"
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                >
+                  Pricing
+                </Link>
+                <Link
+                  href="#faq"
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                >
+                  FAQ
+                </Link>
+              </>
+            )}
           </nav>
 
-          {/* Right side - Always on the right */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Right side - always visible */}
+          <div className="flex items-center gap-3 pr-1 relative z-10">
             {!user ? (
               <>
-                {/* Sign In Button - Hidden when scrolled on mobile */}
-                <Button
+                <button
                   onClick={() => setShowSignIn(true)}
-                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md bg-white/10 hover:bg-white/20 border border-white/30 transition-all duration-300 cursor-pointer ${isScrolled ? 'hidden sm:flex' : 'flex'
-                    }`}
+                  className="hidden sm:block text-sm font-medium text-white/70 hover:text-white transition-colors px-4"
                 >
                   Sign In
+                </button>
+                <Button
+                  onClick={handleGetStarted}
+                  className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
+                >
+                  Get started
                 </Button>
               </>
             ) : (
               <>
-                {/* Desktop: Email Dropdown - Hidden when scrolled */}
-                <div className={`hidden md:block transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                  }`}>
+                <div className="hidden md:flex items-center gap-4">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
-                        className="rounded-full h-9 px-4 text-white drop-shadow-md text-sm max-w-[200px] truncate cursor-pointer"
+                        className="rounded-full h-9 px-4 text-white hover:bg-white/10 hover:text-white transition-colors ring-0 focus-visible:ring-0"
                       >
-                        {user.email}
+                        <span className="truncate max-w-[150px]">{user.email}</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-56 mt-2">
                       {isPremium && (
                         <DropdownMenuItem
                           className="cursor-pointer"
@@ -364,7 +408,6 @@ export function NewLandingPage() {
                                 throw new Error(data.error || 'Failed to create portal session');
                               }
 
-                              // Redirect to Stripe Customer Portal
                               if (data.url) {
                                 window.location.href = data.url;
                               }
@@ -382,238 +425,97 @@ export function NewLandingPage() {
                         </DropdownMenuItem>
                       )}
                       {isPremium && <DropdownMenuSeparator />}
-                      <DropdownMenuItem onClick={handleSignOut}>
+                      <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                         Sign Out
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
 
-                {/* View Matches Button - Only visible when scrolled */}
-                <Button
-                  onClick={handleGetStarted}
-                  className={`rounded-full px-4 sm:px-6 py-2 text-sm sm:text-base text-white font-medium drop-shadow-md transition-all duration-300 transform cursor-pointer ${isScrolled ? 'opacity-100 pointer-events-auto bg-[#498EDC] hover:bg-[#3a7bc4] hover:scale-105 hover:shadow-lg' : 'opacity-0 pointer-events-none hidden'
-                    }`}
+                {/* Mobile Menu Toggle */}
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="md:hidden p-2 text-white hover:bg-white/10 rounded-full transition-colors"
+                  aria-label="Toggle menu"
                 >
-                  View Matches
-                </Button>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {mobileMenuOpen ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
+                  </svg>
+                </button>
               </>
             )}
-
-            {/* Mobile: Hamburger Menu Button - Always on the right for logged in users */}
-            {user && (
-              <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className={`md:hidden p-2 text-white transition-opacity duration-300 ${isScrolled ? 'opacity-0 pointer-events-none' : 'opacity-100'
-                  }`}
-                aria-label="Toggle menu"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {mobileMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
-              </button>
-            )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Mobile Menu Dropdown */}
-        {user && mobileMenuOpen && !isScrolled && (
-          <div className="md:hidden bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-lg">
-            <div className="px-4 py-3 space-y-1">
+        {user && mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="pointer-events-auto absolute top-[80px] w-[90%] max-w-md bg-[#121212]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 md:hidden"
+          >
+            <div className="space-y-1">
               <Link
                 href="/matches"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="block px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
               >
                 Your Matches
               </Link>
               <Link
                 href="/tracker"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="block px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
               >
                 Email Tracker
               </Link>
               <Link
                 href="/resumes"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="block px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
               >
                 Resumes
               </Link>
-              <button
-                onClick={() => {
-                  handlePremiumClick();
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Premium
-              </button>
-              <div className="border-t border-gray-200 my-2"></div>
-              <div className="px-3 py-2 text-xs text-gray-500 truncate">{user.email}</div>
-              {isPremium && (
-                <button
-                  onClick={async () => {
-                    setMobileMenuOpen(false);
-                    try {
-                      const response = await fetch('/api/stripe/create-portal-session', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ email: user.email ?? '' }),
-                      });
 
-                      const data = await response.json();
-
-                      if (!response.ok) {
-                        throw new Error(data.error || 'Failed to create portal session');
-                      }
-
-                      if (data.url) {
-                        window.location.href = data.url;
-                      }
-                    } catch (error: any) {
-                      console.error('Error opening portal:', error);
-                      toast({
-                        title: "Error",
-                        description: error.message || 'Failed to open subscription management',
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  Manage Subscription
-                </button>
-              )}
+              <div className="border-t border-white/10 my-2"></div>
+              <div className="px-4 py-2 text-xs text-white/50 truncate">{user.email}</div>
               <button
                 onClick={() => {
                   handleSignOut();
                   setMobileMenuOpen(false);
                 }}
-                className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="block w-full text-left px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 rounded-xl transition-colors"
               >
                 Sign Out
               </button>
             </div>
-          </div>
+          </motion.div>
         )}
-      </header>
+      </motion.header>
 
       {/* Main Content */}
       <main>
-        {/* First Half with Custom Blue Cloud Background */}
-        <div className="relative bg-gradient-to-b from-[#498EDC] via-[#6BA3E3] via-[#8DB8EA] to-white min-h-screen pt-16">
-          {/* Pastel Clouds */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {/* Cloud 1 - Soft pastel with gradient */}
-            <svg
-              className="absolute top-20 left-10 opacity-40 blur-sm"
-              width="200"
-              height="120"
-              viewBox="0 0 200 120"
-            >
-              <defs>
-                <radialGradient id="cloud1" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#E8F4FD" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#D1E9F8" stopOpacity="0.4" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="50" cy="60" rx="40" ry="30" fill="url(#cloud1)" />
-              <ellipse cx="80" cy="50" rx="35" ry="25" fill="url(#cloud1)" />
-              <ellipse cx="110" cy="60" rx="40" ry="30" fill="url(#cloud1)" />
-            </svg>
-            {/* Cloud 2 - Larger, softer */}
-            <svg
-              className="absolute top-40 right-20 opacity-35 blur-[2px]"
-              width="250"
-              height="140"
-              viewBox="0 0 250 140"
-            >
-              <defs>
-                <radialGradient id="cloud2" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#F0F8FF" stopOpacity="0.7" />
-                  <stop offset="100%" stopColor="#D6E9F5" stopOpacity="0.3" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="60" cy="70" rx="50" ry="35" fill="url(#cloud2)" />
-              <ellipse cx="100" cy="60" rx="45" ry="30" fill="url(#cloud2)" />
-              <ellipse cx="140" cy="70" rx="50" ry="35" fill="url(#cloud2)" />
-            </svg>
-            {/* Cloud 3 - Medium soft */}
-            <svg
-              className="absolute top-60 left-1/3 opacity-38 blur-sm"
-              width="180"
-              height="100"
-              viewBox="0 0 180 100"
-            >
-              <defs>
-                <radialGradient id="cloud3" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#E8F4FD" stopOpacity="0.75" />
-                  <stop offset="100%" stopColor="#CEE4F2" stopOpacity="0.35" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="45" cy="50" rx="35" ry="25" fill="url(#cloud3)" />
-              <ellipse cx="70" cy="42" rx="30" ry="20" fill="url(#cloud3)" />
-              <ellipse cx="95" cy="50" rx="35" ry="25" fill="url(#cloud3)" />
-            </svg>
-            {/* Cloud 4 - Subtle lavender tint */}
-            <svg
-              className="absolute top-96 right-1/4 opacity-32 blur-[2px]"
-              width="220"
-              height="130"
-              viewBox="0 0 220 130"
-            >
-              <defs>
-                <radialGradient id="cloud4" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#F5F9FF" stopOpacity="0.7" />
-                  <stop offset="100%" stopColor="#E1EDF8" stopOpacity="0.3" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="55" cy="65" rx="45" ry="32" fill="url(#cloud4)" />
-              <ellipse cx="90" cy="55" rx="40" ry="28" fill="url(#cloud4)" />
-              <ellipse cx="125" cy="65" rx="45" ry="32" fill="url(#cloud4)" />
-            </svg>
-            {/* Cloud 5 - Lower, very soft */}
-            <svg
-              className="absolute top-[500px] left-20 opacity-30 blur-sm"
-              width="200"
-              height="120"
-              viewBox="0 0 200 120"
-            >
-              <defs>
-                <radialGradient id="cloud5" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#F8FBFF" stopOpacity="0.6" />
-                  <stop offset="100%" stopColor="#E8F4FD" stopOpacity="0.25" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="50" cy="60" rx="40" ry="30" fill="url(#cloud5)" />
-              <ellipse cx="80" cy="50" rx="35" ry="25" fill="url(#cloud5)" />
-              <ellipse cx="110" cy="60" rx="40" ry="30" fill="url(#cloud5)" />
-            </svg>
-            {/* Cloud 6 - Additional subtle cloud */}
-            <svg
-              className="absolute top-[300px] right-10 opacity-28 blur-[3px]"
-              width="160"
-              height="90"
-              viewBox="0 0 160 90"
-            >
-              <defs>
-                <radialGradient id="cloud6" cx="50%" cy="50%">
-                  <stop offset="0%" stopColor="#F0F8FF" stopOpacity="0.65" />
-                  <stop offset="100%" stopColor="#DCE9F5" stopOpacity="0.3" />
-                </radialGradient>
-              </defs>
-              <ellipse cx="40" cy="45" rx="32" ry="22" fill="url(#cloud6)" />
-              <ellipse cx="65" cy="38" rx="28" ry="18" fill="url(#cloud6)" />
-              <ellipse cx="88" cy="45" rx="32" ry="22" fill="url(#cloud6)" />
-            </svg>
+        {/* First Half with Sky Background */}
+        <div className="relative min-h-screen pt-16 overflow-hidden bg-white">
+          {/* Sky Background Image with Bottom Fade */}
+          <div className="absolute top-0 left-0 right-0 h-[120vh] z-0 select-none pointer-events-none">
+            <Image
+              src="/images/newHermes.png"
+              alt="Sky Background"
+              fill
+              className="object-cover object-top"
+              priority
+              style={{
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+              }}
+            />
           </div>
 
           {/* Content with relative positioning */}
@@ -621,16 +523,24 @@ export function NewLandingPage() {
             <NewHero onGetStarted={handleGetStarted} />
             <TrustBadge />
             <UniversityCarousel />
-            <AIAgentSection />
+            <div id="features" className="scroll-mt-32">
+              <AIAgentSection />
+            </div>
           </div>
         </div>
 
         {/* Second Half with White Background */}
         <div className="bg-white">
-          <NewHowItWorks />
-          <StartupLogoDeck />
+          <div id="how-it-works" className="scroll-mt-32">
+            <NewHowItWorks />
+          </div>
+          <div id="integrations" className="scroll-mt-32">
+            <StartupLogoDeck />
+          </div>
           <DemoMatchCard />
-          <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />
+          <div id="pricing" className="scroll-mt-32">
+            <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />
+          </div>
         </div>
       </main>
 

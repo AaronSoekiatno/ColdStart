@@ -169,7 +169,7 @@ export async function GET(request: NextRequest) {
     const fileName = storagePath.split('/').pop() || 'snapshot.tar.gz';
 
     // Return binary response with appropriate headers
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         'Content-Type': 'application/gzip',

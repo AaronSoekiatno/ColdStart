@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
   validateFile,
@@ -9,7 +9,7 @@ import {
   type ResumeProcessingResult,
 } from './utils';
 import { upsertCandidate, findMatchingStartups } from '@/lib/pinecone';
-import { saveCandidate, saveMatches, saveStartup, findStartupIdsByNames, getResumeCountForCandidate, createResume } from '@/lib/supabase';
+import { saveCandidate, saveMatches, saveStartup, findStartupIdsByNames, getResumeCountForCandidate, createResume, updateResume } from '@/lib/supabase';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
@@ -158,8 +158,6 @@ export async function POST(request: NextRequest) {
     // Check for API key
     const apiKey = process.env.GEMINI_API_KEY;
     console.log('GEMINI_API_KEY exists:', !!apiKey);
-    console.log('GEMINI_API_KEY length:', apiKey?.length);
-    console.log('GEMINI_API_KEY first 10 chars:', apiKey?.substring(0, 10));
 
     if (!apiKey) {
       return NextResponse.json(
@@ -188,10 +186,6 @@ export async function POST(request: NextRequest) {
 
     // Get optional resume name from form data
     const resumeName = formData.get('resumeName') as string | null;
-
-    // Resume upload limits temporarily removed - all users can upload multiple resumes
-    // TODO: Re-implement premium-based resume limits if needed in the future
-
     const file = formData.get('resume') as File | null;
 
     // Validate the uploaded file
@@ -219,8 +213,312 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ==========================================================================================
+    // AUTHENTICATED USERS: ASYNC PROCESSING (Wait-free)
+    // ==========================================================================================
+    if (isAuthenticated && accountEmail) {
+      console.log('Authenticated user detected. Starting asynchronous processing...');
+
+      // 1. Upload file to Supabase Storage Synchronously
+      let resumePath: string | undefined;
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (serviceRoleKey) {
+        try {
+          const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            serviceRoleKey
+          );
+
+          const userId = user!.id;
+          const folderPath = `resumes/${userId}`;
+          const timestamp = Date.now();
+          const originalName = file!.name || 'resume.pdf';
+          const sanitizedName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const uniqueFileName = `${timestamp}-${sanitizedName}`;
+          const objectPath = `${folderPath}/${uniqueFileName}`;
+
+          console.log('Uploading resume to Storage (Sync)...');
+          const { error: uploadError } = await supabaseAdmin.storage
+            .from('resumes')
+            .upload(objectPath, buffer, {
+              contentType: file!.type || 'application/octet-stream',
+              upsert: false,
+            });
+
+          if (uploadError) {
+             console.error('Failed to upload resume file to Storage:', uploadError);
+             // We can proceed without storage, but warn
+          } else {
+             console.log('✓ Successfully uploaded resume file to Storage at path:', objectPath);
+             resumePath = objectPath;
+          }
+        } catch (error) {
+           console.error('Unexpected error uploading resume to Storage:', error);
+        }
+      }
+
+      // 2. Save minimal Candidate record (Sync) to ensure ID exists
+      let candidateId: string;
+      try {
+        const savedCandidate = await saveCandidate({
+          email: accountEmail,
+          name: accountName || 'Unknown',
+          skills: '', // Will be updated async
+          // Default/Empty values for now
+          location: '',
+          education_level: '',
+          university: '',
+          experience: '',
+          technical_projects: '',
+        });
+        candidateId = savedCandidate.id!;
+      } catch (error) {
+        throw new Error(`Failed to initialize candidate record: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+
+      // 3. Create Resume record (Sync)
+      let resumeId: string | undefined;
+      try {
+          const finalResumeName = resumeName?.trim() || `${accountName || 'New'} Resume`;
+          const resumeFileName = file!.name;
+          
+          // Check if this is the first resume
+          const resumeCount = await getResumeCountForCandidate(candidateId);
+          const shouldSetAsPrimary = resumeCount === 0;
+
+          const savedResume = await createResume({
+            candidate_id: candidateId,
+            name: finalResumeName,
+            file_name: resumeFileName,
+            resume_path: resumePath, // Might be undefined if upload failed, but usually defined
+            is_active: true,
+            is_primary: shouldSetAsPrimary,
+            // structured_data and full_text will be updated async
+          });
+          resumeId = savedResume.id;
+      } catch (error) {
+         console.warn('Failed to create initial resume record:', error);
+         // Proceeding, but async part will fail to update resume if ID missing
+      }
+
+      // 4. Return Early Response
+      // Schedule heavy lifting in background
+      after(async () => {
+         console.log('>>> Starting background resume processing for:', accountEmail);
+         try {
+            // A. Extract Text & Parse
+            let resumeFullText = '';
+            let structuredResumeData: any = null;
+            let resumeLatex = '';
+            
+            if (isPdfFile(file!)) {
+                resumeFullText = await extractFullTextFromPdf(buffer);
+            } else {
+                const docxText = await extractDocxText(buffer);
+                resumeFullText = docxText || '';
+            }
+
+            // B. Parse Structure & Latex
+            if (resumeFullText && resumeFullText.trim().length > 0) {
+               try {
+                  structuredResumeData = await parseResumeToStructured(resumeFullText);
+               } catch (e) {
+                  console.error('Background: Failed to parse structured data', e);
+               }
+               try {
+                  resumeLatex = generateLatexFromResumeText(resumeFullText);
+               } catch (e) {
+                  console.error('Background: Failed to generate latex', e);
+               }
+            }
+
+            // C. Derive Extraction Result
+             // 3) Derive high-level extraction fields from structured data, with sensible fallbacks
+            const personal = structuredResumeData?.personal || {};
+            const educationArr = Array.isArray(structuredResumeData?.education) ? structuredResumeData.education : [];
+            const experienceArr = Array.isArray(structuredResumeData?.experience) ? structuredResumeData.experience : [];
+            const projectsArr = Array.isArray(structuredResumeData?.projects) ? structuredResumeData.projects : [];
+            const skillsArr = Array.isArray(structuredResumeData?.skills) ? structuredResumeData.skills : [];
+
+            const primaryEducation = educationArr[0] || {};
+
+            const isRemoteLocation = (location: string): boolean => {
+                if (!location) return false;
+                const locLower = location.toLowerCase().trim();
+                return locLower === 'remote' || 
+                       locLower.startsWith('r emote,') ||
+                       (locLower.includes('remote') && locLower.length < 20);
+            };
+
+            const getLocationWithFallbacks = (): string => {
+                const personalLoc = (personal.location as string) || '';
+                if (personalLoc && !isRemoteLocation(personalLoc)) return personalLoc;
+                
+                for (const exp of experienceArr) {
+                    const expLocation = (exp.location as string) || '';
+                    if (expLocation && !isRemoteLocation(expLocation)) return expLocation;
+                }
+                
+                const eduLocation = (primaryEducation.location as string) || '';
+                if (eduLocation && !isRemoteLocation(eduLocation)) return eduLocation;
+                
+                return '';
+            };
+
+            const extractionResult: ResumeExtractionResult = {
+                name: (personal.name as string) || accountName || 'Unknown',
+                email: (personal.email as string) || accountEmail || '',
+                skills: skillsArr.filter((s: string) => !!s && s.trim().length > 0),
+                location: getLocationWithFallbacks(),
+                education_level: (primaryEducation.degree as string) || '',
+                university: (primaryEducation.school as string) || '',
+                experience: experienceArr.map((exp: any) => {
+                    const title = exp.title || '';
+                    const company = exp.company || '';
+                    const location = exp.location || '';
+                    const dateRange = [exp.startDate, exp.endDate].filter(Boolean).join(' - ');
+                    const parts = [title, company, location, dateRange].filter((p) => !!p && String(p).trim().length > 0);
+                    return parts.join(' | ');
+                }).filter((s: string) => !!s && s.trim().length > 0),
+                technical_projects: projectsArr.map((proj: any) => {
+                    const name = proj.name || '';
+                    const technologies = Array.isArray(proj.technologies) ? proj.technologies.join(', ') : '';
+                    const descArray = Array.isArray(proj.description) ? proj.description : [];
+                    const desc = descArray.join(' ');
+                    const parts = [name, technologies, desc].filter((p) => !!p && String(p).trim().length > 0);
+                    return parts.join(' | ');
+                }).filter((s: string) => !!s && s.trim().length > 0),
+            };
+
+            // D. Generate Embedding
+            let embedding: number[] = [];
+            try {
+                embedding = await generateEmbedding(extractionResult);
+            } catch (e) {
+                console.error('Background: Failed to generate embedding', e);
+                // Can't proceed with matches if embedding failed, but can save other data
+            }
+
+            // E. Consolidate Updates (Candidate & Resume)
+            // Save Candidate with full data
+            await saveCandidate({
+                email: accountEmail,
+                name: extractionResult.name || accountName || 'Unknown',
+                skills: extractionResult.skills.join(', '),
+                location: extractionResult.location,
+                education_level: extractionResult.education_level,
+                university: extractionResult.university,
+                experience: extractionResult.experience.join(', '),
+                technical_projects: extractionResult.technical_projects.join(', '),
+                // Keeping deprecated fields for now as per original code
+                resume_latex: resumeLatex, 
+                structured_resume_data: structuredResumeData, 
+            });
+
+            // Pinecone Upsert
+            if (embedding.length > 0) {
+                 await upsertCandidate(accountEmail, embedding, {
+                    name: extractionResult.name || accountName || 'Unknown',
+                    email: accountEmail,
+                    skills: extractionResult.skills.join(', '),
+                    location: extractionResult.location,
+                    education_level: extractionResult.education_level,
+                    university: extractionResult.university,
+                    experience: extractionResult.experience.join(', '),
+                    technical_projects: extractionResult.technical_projects.join(', '),
+                 });
+                 console.log('Background: Pinecone upsert success');
+            }
+
+            // Update Resume Record
+            if (resumeId) {
+                await updateResume(resumeId, {
+                    resume_full_text: resumeFullText,
+                    structured_data: structuredResumeData,
+                });
+            }
+
+            // F. Find & Save Matches
+             if (embedding.length > 0) {
+                 const matches = await findMatchingStartups(embedding, 10000);
+                 if (matches.length > 0 && candidateId) {
+                      const startupNames = matches.map(match => match.metadata.name || 'Unknown');
+                      const startupIdMap = await findStartupIdsByNames(startupNames);
+                      
+                      const matchMappings: Array<{ startup_id: string; score: number }> = [];
+                      const startupsToCreate: Array<{ match: typeof matches[0], index: number }> = [];
+
+                      for (let i = 0; i < matches.length; i++) {
+                        const match = matches[i];
+                        const startupName = match.metadata.name || 'Unknown';
+                        const supabaseStartupId = startupIdMap.get(startupName);
+
+                        if (supabaseStartupId) {
+                           matchMappings.push({ startup_id: supabaseStartupId, score: match.score });
+                        } else {
+                           startupsToCreate.push({ match, index: i });
+                        }
+                      }
+
+                      // Create missing startups
+                      if (startupsToCreate.length > 0) {
+                        const createPromises = startupsToCreate.map(async ({ match }) => {
+                          try {
+                            const startupName = match.metadata.name || 'Unknown';
+                            await saveStartup({
+                              id: match.id, 
+                              name: startupName,
+                              industry: match.metadata.industry || '',
+                              description: match.metadata.description || '',
+                              funding_stage: match.metadata.funding_stage || '',
+                              funding_amount: match.metadata.funding_amount || '',
+                              location: match.metadata.location || '',
+                              website: match.metadata.website || '',
+                              keywords: (match.metadata as any).keywords || match.metadata.tags || '',
+                            });
+                            return { match, startupId: match.id };
+                          } catch (error) {
+                            return null;
+                          }
+                        });
+                        const createdStartups = await Promise.all(createPromises);
+                        createdStartups.forEach((result) => {
+                          if (result) {
+                            matchMappings.push({ startup_id: result.startupId, score: result.match.score });
+                          }
+                        });
+                      }
+
+                      if (matchMappings.length > 0) {
+                          await saveMatches(candidateId, matchMappings);
+                          console.log(`Background: Saved ${matchMappings.length} matches.`);
+                      }
+                 }
+            } else {
+                console.warn('Background: No embedding, skipping matching.');
+            }
+
+            console.log('<<< Background resume processing completed successfully.');
+
+         } catch (error) {
+             console.error('CRITICAL: Background resume processing failed:', error);
+             // Since we already responded 200, user won't know unless they check data.
+         }
+      });
+
+      return NextResponse.json({
+         success: true, 
+         savedToDatabase: true, // Signal to frontend that we are done "uploading"
+         message: 'Resume upload started. Processing in background.'
+      }, { status: 200 });
+    }
+
+    // ==========================================================================================
+    // UNAUTHENTICATED USERS: SYNC PROCESSING (Existing Behavior)
+    // ==========================================================================================
+    console.log('Unauthenticated Flow (Sync)...');
+    
     // Extract full text locally and derive fields from structured parsing
-    // No Gemini File API upload is used here.
     let extractionResult: ResumeExtractionResult;
     let resumeFullText: string = '';
     let resumeLatex: string = '';
@@ -249,17 +547,14 @@ export async function POST(request: NextRequest) {
             hasPersonal: !!structuredResumeData?.personal,
             experienceCount: structuredResumeData?.experience?.length || 0,
             educationCount: structuredResumeData?.education?.length || 0,
-            projectsCount: structuredResumeData?.projects?.length || 0,
-            skillsCount: structuredResumeData?.skills?.length || 0,
           });
         } catch (parseError) {
           console.error('Failed to parse resume into structured format:', parseError);
-          console.error('Parse error details:', parseError instanceof Error ? parseError.message : parseError);
           structuredResumeData = null;
         }
       }
 
-      // 3) Derive high-level extraction fields from structured data, with sensible fallbacks
+      // 3) Derive high-level extraction fields
       const personal = structuredResumeData?.personal || {};
       const educationArr = Array.isArray(structuredResumeData?.education) ? structuredResumeData.education : [];
       const experienceArr = Array.isArray(structuredResumeData?.experience) ? structuredResumeData.experience : [];
@@ -268,38 +563,25 @@ export async function POST(request: NextRequest) {
 
       const primaryEducation = educationArr[0] || {};
 
-      // Helper function to check if location is Remote
       const isRemoteLocation = (location: string): boolean => {
         if (!location) return false;
         const locLower = location.toLowerCase().trim();
-        // Check for common remote patterns
         return locLower === 'remote' || 
                locLower.startsWith('r emote,') ||
-               (locLower.includes('remote') && locLower.length < 20); // "Remote" or "Remote, US" but not "Remote Office Location"
+               (locLower.includes('remote') && locLower.length < 20); 
       };
 
-      // Helper function to get location with fallbacks (excluding Remote)
       const getLocationWithFallbacks = (): string => {
-        // 1. Try personal location first
         const personalLoc = (personal.location as string) || '';
-        if (personalLoc && !isRemoteLocation(personalLoc)) {
-          return personalLoc;
-        }
+        if (personalLoc && !isRemoteLocation(personalLoc)) return personalLoc;
         
-        // 2. Try most recent experience location (excluding Remote)
-        // Experience array is usually ordered most recent first
         for (const exp of experienceArr) {
           const expLocation = (exp.location as string) || '';
-          if (expLocation && !isRemoteLocation(expLocation)) {
-            return expLocation;
-          }
+          if (expLocation && !isRemoteLocation(expLocation)) return expLocation;
         }
         
-        // 3. Try education location as last resort
         const eduLocation = (primaryEducation.location as string) || '';
-        if (eduLocation && !isRemoteLocation(eduLocation)) {
-          return eduLocation;
-        }
+        if (eduLocation && !isRemoteLocation(eduLocation)) return eduLocation;
         
         return '';
       };
@@ -329,365 +611,44 @@ export async function POST(request: NextRequest) {
         }).filter((s: string) => !!s && s.trim().length > 0),
       };
 
-      // 4) Generate LaTeX locally from full text
+      // 4) Generate LaTeX locally
       if (resumeFullText && resumeFullText.trim().length > 0) {
-        console.log('Generating LaTeX from extracted text...');
         resumeLatex = generateLatexFromResumeText(resumeFullText);
       } else {
         resumeLatex = '';
       }
 
-      // Raw text for response
       rawText = resumeFullText || 'Resume text extraction completed';
     } catch (error) {
+       // Simplified error handling for unauth flow as this is mostly legacy/demo
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      
-      console.error('Gemini skills extraction error:', {
-        message: errorMessage,
-        stack: errorStack,
-        fileType: file!.type,
-        fileName: file!.name,
-        fileSize: file!.size,
-      });
-      
-      // Return more helpful error messages based on the error type
-      let userMessage = 'Failed to analyze resume content.';
-      let statusCode = 500;
-      
-      if (errorMessage.includes('API key')) {
-        userMessage = 'Server configuration error: Invalid or missing Gemini API key.';
-        statusCode = 500;
-      } else if (errorMessage.includes('quota')) {
-        userMessage = 'API quota exceeded. Please try again later.';
-        statusCode = 429;
-      } else if (errorMessage.includes('safety')) {
-        userMessage = 'Content was blocked by safety filters. Please try a different resume.';
-        statusCode = 400;
-      } else if (errorMessage.includes('too large')) {
-        userMessage = 'File is too large. Maximum file size is 10MB.';
-        statusCode = 400;
-      } else if (errorMessage.includes('extract text')) {
-        userMessage = 'Could not read the file. Please ensure it is a valid PDF or DOCX file.';
-        statusCode = 400;
-      } else {
-        userMessage = `Failed to analyze resume: ${errorMessage}`;
-      }
-      
       return NextResponse.json(
-        {
-          success: false,
-          error: userMessage,
-          details: errorMessage,
-        },
-        { status: statusCode }
-      );
-    }
-
-    // Generate embedding for the candidate profile (includes all extracted fields)
-    let embedding: number[];
-    try {
-      embedding = await generateEmbedding(extractionResult);
-    } catch (error) {
-      console.error('Embedding generation error:', error);
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            'Failed to generate embedding. Please try again or contact support.',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
+        { success: false, error: `Failed to analyze resume: ${errorMessage}`, details: errorMessage },
         { status: 500 }
       );
     }
 
-    // Save candidate to Pinecone (for vector search) and Supabase (for queries) - only if authenticated
-    let savedToDatabase = false;
-    let databaseError: string | undefined;
-    let candidateId: string | null = null; // Declare at this scope level
-    let subscriptionTier: 'free' | 'premium' = 'free';
-    let subscriptionStatus: 'active' | 'inactive' | 'canceled' | 'past_due' | 'trialing' = 'inactive';
-
-    if (isAuthenticated && accountEmail) {
-      // Upload raw resume file to Supabase Storage (resumes bucket)
-      // Support multiple resumes per user - each resume gets a unique path
-      // Strategy:
-      // 1. Generate a unique filename using timestamp and original filename
-      // 2. Upload to path: resumes/{userId}/{timestamp}-{sanitized-filename}
-      // 3. This allows multiple resumes without overwriting previous ones
-      let resumePath: string | undefined;
-      try {
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-        if (serviceRoleKey) {
-          const supabaseAdmin = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            serviceRoleKey
-          );
-
-          const userId = user!.id;
-          const folderPath = `resumes/${userId}`;
-
-          // Generate unique filename: timestamp-originalname
-          const timestamp = Date.now();
-          const originalName = file!.name || 'resume.pdf';
-          // Sanitize filename: remove special chars, keep alphanumeric, dots, dashes, underscores
-          const sanitizedName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const ext = originalName.includes('.') ? originalName.split('.').pop() : 'pdf';
-          const safeExt = ext || 'pdf';
-          const uniqueFileName = `${timestamp}-${sanitizedName}`;
-          const objectPath = `${folderPath}/${uniqueFileName}`;
-
-          console.log('Attempting to upload resume to Storage:', {
-            objectPath,
-            fileType: file!.type,
-            bufferSize: buffer.length,
-          });
-
-          const { error: uploadError } = await supabaseAdmin.storage
-            .from('resumes')
-            .upload(objectPath, buffer, {
-              contentType: file!.type || 'application/octet-stream',
-              upsert: false, // Don't overwrite - each resume should be unique
-            });
-
-          if (uploadError) {
-            console.error('Failed to upload resume file to Storage:', {
-              error: uploadError,
-              message: uploadError.message,
-              objectPath,
-            });
-          } else {
-            console.log('✓ Successfully uploaded resume file to Storage at path:', objectPath);
-            resumePath = objectPath; // Store the path to attach when saving resume
-          }
-        } else {
-          console.warn('SUPABASE_SERVICE_ROLE_KEY is not set; skipping resume file upload.');
-        }
-      } catch (error) {
-        console.error('Unexpected error uploading resume to Storage:', error);
-      }
-
-      try {
-        await upsertCandidate(accountEmail, embedding, {
-          // Prioritize resume-extracted name over auth metadata
-          name: extractionResult.name || accountName || 'Unknown',
-          email: accountEmail,
-          skills: extractionResult.skills.join(', '),
-          location: extractionResult.location,
-          education_level: extractionResult.education_level,
-          university: extractionResult.university,
-          experience: extractionResult.experience.join(', '),
-          technical_projects: extractionResult.technical_projects.join(', '),
-        });
-        savedToDatabase = true;
-        console.log('Successfully saved candidate to Pinecone:', {
-          name: extractionResult.name,
-          email: accountEmail,
-        });
-      } catch (error) {
-        databaseError = error instanceof Error ? error.message : 'Unknown database error';
-        console.error('Failed to save candidate to Pinecone:', {
-          error: databaseError,
-          candidate: {
-            name: extractionResult.name,
-            email: accountEmail,
-          },
-          fullError: error,
-        });
-        // Continue even if DB save fails - we still want to return the extracted data
-      }
-
-      // Save candidate to Supabase (for detailed queries) and get the UUID
-      try {
-        const savedCandidate = await saveCandidate({
-          email: accountEmail,
-          // Prioritize resume-extracted name over auth metadata
-          name: extractionResult.name || accountName || 'Unknown',
-          skills: extractionResult.skills.join(', '),
-          location: extractionResult.location,
-          education_level: extractionResult.education_level,
-          university: extractionResult.university,
-          experience: extractionResult.experience.join(', '),
-          technical_projects: extractionResult.technical_projects.join(', '),
-          // Note: resume_path and resume_full_text are deprecated - using resumes table instead
-          resume_latex: resumeLatex, // Store LaTeX source for editing
-          structured_resume_data: structuredResumeData, // Store structured data for template editing
-        });
-        candidateId = savedCandidate.id ?? null; // Get the UUID, fix TS type issue
-        subscriptionTier = savedCandidate.subscription_tier ?? 'free';
-        subscriptionStatus = savedCandidate.subscription_status ?? 'inactive';
-
-        // Save resume to the new resumes table
-        // Use provided resume name, or generate one from candidate name
-        const finalResumeName = resumeName?.trim() || `${extractionResult.name || 'Unknown'} Resume`;
-        const resumeFileName = file!.name;
-        
-        // Ensure candidateId is valid before creating resume
-        if (!candidateId) {
-          throw new Error('Failed to get candidate ID after saving candidate');
-        }
-        
-        // Check if this is the first resume (should be set as primary)
-        const resumeCount = await getResumeCountForCandidate(candidateId);
-        const shouldSetAsPrimary = resumeCount === 0; // First resume is automatically primary
-
-        console.log('Creating resume with:', {
-          candidateId,
-          finalResumeName,
-          resumeFileName,
-          resumePath,
-          resumePathDefined: resumePath !== undefined,
-          resumeFullTextLength: resumeFullText?.length || 0,
-        });
-
-        await createResume({
-          candidate_id: candidateId,
-          name: finalResumeName,
-          file_name: resumeFileName,
-          resume_path: resumePath,
-          resume_full_text: resumeFullText,
-          structured_data: structuredResumeData, // Store structured data per-resume for template-based editing
-          is_active: true, // New resumes are active by default
-          is_primary: shouldSetAsPrimary, // First resume is automatically primary
-        });
-
-        console.log('Successfully saved candidate and resume to Supabase:', {
-          name: extractionResult.name,
-          email: accountEmail,
-          candidateId,
-          resumeName: finalResumeName,
-          subscriptionTier,
-          subscriptionStatus,
-        });
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error('Failed to save candidate/resume to Supabase:', {
-          error: errorMessage,
-          candidate: {
-            name: extractionResult.name,
-            email: accountEmail,
-            candidateId,
-          },
-          fullError: error,
-        });
-        // Re-throw the error so it's properly handled by the outer error handler
-        // This ensures the API returns an error response instead of silently failing
-        throw new Error(`Failed to save resume: ${errorMessage}`);
-      }
-    } else {
-      console.log('User not authenticated - skipping database save. Results will be returned for preview.');
-    }
-
-    // Find matching startups - no minimum score threshold, show all matches
-    // Matches are ordered by score descending (highest to lowest)
-    let matches: Array<{ id: string; score: number; metadata: any }> = [];
-    let matchingError: string | undefined;
+    // Generate embedding (Unauth)
+    let embedding: number[];
     try {
-      // Find all matches - no minimum score threshold
-      // Pinecone serverless free tier: max 100, paid tiers: up to 10000
-      // Using 10000 to get all matches (will be limited by plan if needed)
-      const maxMatches = 10000;
-      matches = await findMatchingStartups(embedding, maxMatches);
-
-      // Save matches to Supabase - only if authenticated and we have a candidate ID
-      if (matches.length > 0 && isAuthenticated && candidateId) {
-        try {
-          // OPTIMIZED: Batch lookup all startup IDs at once instead of sequential queries
-          // This reduces lookup time from 5-10 seconds to <1 second for large match sets
-          const startupNames = matches.map(match => match.metadata.name || 'Unknown');
-          const startupIdMap = await findStartupIdsByNames(startupNames);
-          
-          // Map Pinecone matches to Supabase startup IDs
-          // This ensures we use existing Supabase data (with founder emails) instead of creating duplicates
-          const matchMappings: Array<{ startup_id: string; score: number }> = [];
-          const startupsToCreate: Array<{ match: typeof matches[0], index: number }> = [];
-
-          for (let i = 0; i < matches.length; i++) {
-            const match = matches[i];
-            const startupName = match.metadata.name || 'Unknown';
-            
-            // Check if we found the startup ID in the batch lookup
-            const supabaseStartupId = startupIdMap.get(startupName);
-
-            if (supabaseStartupId) {
-              // Startup exists in Supabase - use that ID
-              matchMappings.push({
-                startup_id: supabaseStartupId,
-                score: match.score,
-              });
-            } else {
-              // Startup doesn't exist - queue for creation
-              // We'll create these in parallel after the batch lookup
-              startupsToCreate.push({ match, index: i });
-            }
-          }
-
-          // Create missing startups in parallel (if any)
-          if (startupsToCreate.length > 0) {
-            const createPromises = startupsToCreate.map(async ({ match }) => {
-              try {
-                const startupName = match.metadata.name || 'Unknown';
-                await saveStartup({
-                  id: match.id, // Use Pinecone ID for new startups
-                  name: startupName,
-                  industry: match.metadata.industry || '',
-                  description: match.metadata.description || '',
-                  funding_stage: match.metadata.funding_stage || '',
-                  funding_amount: match.metadata.funding_amount || '',
-                  location: match.metadata.location || '',
-                  website: match.metadata.website || '',
-                  keywords: match.metadata.keywords || match.metadata.tags || '',
-                });
-                return { match, startupId: match.id };
-              } catch (error) {
-                console.warn(`Failed to create startup "${match.metadata.name}":`, error instanceof Error ? error.message : 'Unknown error');
-                return null;
-              }
-            });
-
-            const createdStartups = await Promise.all(createPromises);
-            
-            // Add created startups to mappings
-            createdStartups.forEach((result) => {
-              if (result) {
-                matchMappings.push({
-                  startup_id: result.startupId,
-                  score: result.match.score,
-                });
-              }
-            });
-          }
-
-          // Now save the matches using Supabase startup IDs
-          // Always save all quality matches so the UI can upsell based on hidden matches.
-          // Free users will still only SEE the first match in the UI, but additional
-          // matches are stored and counted for the Premium upgrade modal.
-          await saveMatches(
-            candidateId, // Use UUID instead of email
-            matchMappings
-          );
-        } catch (error) {
-          console.error('✗ Failed to save matches to Supabase:', {
-            error: error instanceof Error ? error.message : 'Unknown error',
-            candidateId,
-          });
-          // Continue even if Supabase save fails
-        }
-      } else if (!isAuthenticated) {
-        console.log('⚠ User not authenticated - matches will not be saved to database (preview only)');
-      } else if (!candidateId) {
-        console.log('⚠ Candidate ID not available - matches will not be saved to database');
-      }
+      embedding = await generateEmbedding(extractionResult);
     } catch (error) {
-      matchingError = error instanceof Error ? error.message : 'Unknown matching error';
-      console.error('Failed to find matching startups:', {
-        error: matchingError,
-        fullError: error,
-      });
-      // Continue even if matching fails
+      return NextResponse.json(
+        { success: false, error: 'Failed to generate embedding.' },
+        { status: 500 }
+      );
     }
 
-    // Build the successful response
+    // Find matches (Unauth)
+    // Matches logic copied from original code (with 10000 limit)
+    let matches: Array<{ id: string; score: number; metadata: any }> = [];
+    try {
+      matches = await findMatchingStartups(embedding, 10000);
+    } catch (error) {
+      console.error('Failed to find matching startups:', error);
+    }
+
+    // Build response
     const result: ResumeProcessingResult = {
       success: true,
       rawText,
@@ -700,17 +661,16 @@ export async function POST(request: NextRequest) {
       experience: extractionResult.experience,
       technical_projects: extractionResult.technical_projects,
       embedding,
-      savedToDatabase,
+      savedToDatabase: false,
       matches: matches.map((match) => ({
         startup: match.metadata,
         score: match.score,
         id: match.id,
       })),
-      ...(databaseError && { databaseError }),
-      ...(matchingError && { matchingError }),
     };
 
     return NextResponse.json(result, { status: 200 });
+
   } catch (error) {
     console.error('Unexpected error processing resume:', error);
     return NextResponse.json(

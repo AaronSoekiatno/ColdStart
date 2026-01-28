@@ -23,10 +23,10 @@ import { cookies } from 'next/headers';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { candidate_id: string } }
+  { params }: { params: Promise<{ candidate_id: string }> }
 ) {
   try {
-    const { candidate_id } = params;
+    const { candidate_id } = await params;
 
     if (!candidate_id) {
       return NextResponse.json(

@@ -108,8 +108,8 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
-  // Unified onboarding flow: Steps 1-4 (basic info), Step 6 (resume, optional), Step 7 (GitHub), Step 8 (repo selection), Step 10 (assessment), Step 11 (completion)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11>(1);
+  // Unified onboarding flow: Steps 1-4 (basic info), Step 6 (resume, optional), Step 7 (GitHub), Step 8 (repo selection), Step 11 (completion)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11>(1);
 
   // Safeguard: Redirect from removed step 5
   useEffect(() => {
@@ -136,13 +136,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [suggestedMatches, setSuggestedMatches] = useState<RepoMatch[]>([]);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [showSuggestedOnly, setShowSuggestedOnly] = useState(false);
-  // Assessment state
-  const [isCreatingRepo, setIsCreatingRepo] = useState(false);
-  const [assessmentRepoUrl, setAssessmentRepoUrl] = useState<string | null>(null);
-  const [assessmentCloneUrl, setAssessmentCloneUrl] = useState<string | null>(null);
-  const [assessmentCredentials, setAssessmentCredentials] = useState<any>(null);
-  const [provisioningToken, setProvisioningToken] = useState<string | null>(null);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
   const { toast } = useToast();
 
 
@@ -245,8 +238,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             targetStep = 8; // Always go to repo selection after GitHub connection
           } else if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            if (stepNum >= 1 && stepNum <= 11) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11);
+            if (stepNum >= 1 && stepNum <= 11 && stepNum !== 10) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11);
               // Clean up URL params after processing
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
@@ -271,8 +264,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
           // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
           if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            if (stepNum >= 1 && stepNum <= 10) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10);
+            if (stepNum >= 1 && stepNum <= 11 && stepNum !== 10) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11);
             }
           } else {
             // Default to step 7 if no step specified
@@ -383,7 +376,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleGithubSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(10); // Skip to Assessment
+      setStep(11); // Skip to completion
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -536,41 +529,38 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   }, [githubRepos, repoSelections]);
 
 
-  // Complete onboarding after repo selection and redirect to assessment page
+  // Complete onboarding after repo selection
   const handleReposContinue = useCallback(async () => {
     setIsTransitioning(true);
     try {
       // Save selected repos first
       await saveSelectedRepos();
 
-      // Trigger GitHub analysis in background (fire-and-forget)
-      triggerGitHubAnalysis();
+      // GitHub analysis disabled - now triggered manually by admin
+      // triggerGitHubAnalysis();
 
-      // Mark onboarding as complete
-      await fetch('/api/candidate/mark-onboarding-complete', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      // Redirect to assessment page
-      window.location.href = '/assessment';
+      // Go to completion screen
+      setTimeout(() => {
+        setStep(11);
+        setIsTransitioning(false);
+      }, 200);
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('Error saving repos:', error);
       setIsTransitioning(false);
       toast({
         title: 'Error',
-        description: 'Failed to complete onboarding. Please try again.',
+        description: 'Failed to save repositories. Please try again.',
         variant: 'destructive',
       });
     }
-  }, [toast, triggerGitHubAnalysis, saveSelectedRepos]);
+  }, [toast, saveSelectedRepos]);
 
 
 
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(10); // Go to Assessment step
+      setStep(11); // Go to completion
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -674,14 +664,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   };
 
-  const handleAssessmentSkip = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(11);
-      setIsTransitioning(false);
-    }, 200);
-  }, []);
-
   const handleResumeSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
@@ -689,63 +671,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       setIsTransitioning(false);
     }, 200);
   }, []);
-
-  // Handle assessment start (Step 10 for top candidates)
-  const handleStartAssessment = useCallback(async () => {
-    setIsCreatingRepo(true);
-    try {
-      const response = await fetch('/api/topcandidates/create-assessment-repo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({}),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create assessment repository');
-      }
-
-      const data = await response.json();
-      setAssessmentRepoUrl(data.repoUrl);
-      setAssessmentCloneUrl(data.cloneUrl);
-      if (data.credentials) {
-        setAssessmentCredentials(data.credentials);
-      }
-      if (data.provisioningToken) {
-        setProvisioningToken(data.provisioningToken);
-      }
-
-      toast({
-        title: "Assessment repository created!",
-        description: "Your private workspace is ready.",
-      });
-
-      // Do not auto-advance to step 11 - let user see the clone instructions (step 10 success state)
-    } catch (error) {
-      console.error('Error creating assessment repo:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create repository';
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingRepo(false);
-    }
-  }, [toast]);
-
-  const handleCopy = useCallback((text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    toast({
-      title: "Copied!",
-      description: `${field} copied to clipboard`,
-    });
-    setTimeout(() => setCopiedField(null), 2000);
-  }, [toast]);
 
   const handleViewMatches = async () => {
     try {
@@ -786,8 +711,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="flex items-center justify-center gap-2 mb-4">
                   {(() => {
                     const steps = skipResumeUpload
-                      ? [1, 2, 3, 4, 7, 8, 10, 11]
-                      : [1, 2, 3, 4, 6, 7, 8, 10, 11];
+                      ? [1, 2, 3, 4, 7, 8, 11]
+                      : [1, 2, 3, 4, 6, 7, 8, 11];
                     return steps.map((stepNum) => (
                       <div
                         key={stepNum}
@@ -799,7 +724,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 </div>
                 <p className="text-center text-gray-500 text-sm">
                   Step {(() => {
-                    // Calculate step display: remove step 5 (removed), adjust for skipped resume
+                    // Calculate step display: remove steps 5, 9, 10 (removed), adjust for skipped resume
                     let currentStepDisplay = step > 5 ? step - 1 : step;
 
                     // Handle skip resume (remove step 6)
@@ -807,13 +732,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       currentStepDisplay -= 1;
                     }
 
-                    // Step 9 is removed, so step 10 becomes step 9 in display
-                    if (step >= 10) {
-                      currentStepDisplay -= 1;
+                    // Steps 9 and 10 are removed
+                    if (step >= 11) {
+                      currentStepDisplay -= 2;
                     }
 
                     return currentStepDisplay;
-                  })()} of {skipResumeUpload ? 8 : 9}
+                  })()} of {skipResumeUpload ? 7 : 8}
                 </p>
               </div>
             </DialogHeader>
@@ -1509,179 +1434,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               )}
 
 
-
-              {/* Step 10: Assessment Prompt */}
-              {step === 10 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center mb-8">
-                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                      {assessmentRepoUrl ? "Your Assessment Workspace is Ready!" : "Start Your 20-Minute Assessment"}
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2 text-lg">
-                      {assessmentRepoUrl
-                        ? "Clone your repository and follow the instructions to begin."
-                        : "Complete a quick assessment to demonstrate your skills. We'll set up a private workspace for you."}
-                    </DialogDescription>
-                  </div>
-
-                  {!assessmentRepoUrl ? (
-                    <div className="space-y-6 mt-6">
-                      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
-                        <h3 className="font-semibold text-lg text-gray-900 mb-3">What you'll do:</h3>
-                        <ul className="space-y-2 text-gray-700 list-disc list-inside">
-                          <li>Work in a private GitHub repository</li>
-                          <li>Complete database tasks in your isolated workspace</li>
-                          <li>Demonstrate your problem-solving skills</li>
-                          <li>Showcase your technical abilities</li>
-                        </ul>
-                      </div>
-
-                      <div className="bg-gray-50 border-2 border-gray-200 rounded-xl p-6">
-                        <h3 className="font-semibold text-lg text-gray-900 mb-3">Time required:</h3>
-                        <p className="text-gray-700">Approximately 20 minutes</p>
-                      </div>
-
-                      <div className="flex gap-4 mt-6">
-                        <Button
-                          onClick={() => {
-                            setIsTransitioning(true);
-                            setTimeout(() => {
-                              setStep(8);
-                              setIsTransitioning(false);
-                            }, 200);
-                          }}
-                          variant="outline"
-                          className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                        >
-                          Back
-                        </Button>
-                        <Button
-                          onClick={handleAssessmentSkip}
-                          variant="ghost"
-                          className="flex-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                        >
-                          Skip for now
-                        </Button>
-                        <Button
-                          onClick={handleStartAssessment}
-                          disabled={isCreatingRepo}
-                          className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                        >
-                          {isCreatingRepo ? (
-                            <>
-                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                              Creating...
-                            </>
-                          ) : (
-                            "Start Assessment"
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-6 mt-6">
-                      <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="text-green-600 text-2xl">✓</div>
-                          <h3 className="font-semibold text-lg text-gray-900">
-                            Repository Created Successfully
-                          </h3>
-                        </div>
-                        <p className="text-gray-700 mb-4">
-                          Your private assessment workspace has been created. Follow these steps to get started:
-                        </p>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Step 1: Clone the repository</h4>
-                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
-                            <code className="flex-1 break-all">
-                              git clone {assessmentCloneUrl || assessmentRepoUrl + '.git'}
-                            </code>
-                            <button
-                              onClick={() => handleCopy(`git clone ${assessmentCloneUrl || assessmentRepoUrl + '.git'}`, 'clone')}
-                              className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
-                              title="Copy clone command"
-                            >
-                              {copiedField === 'clone' ? (
-                                <Check className="h-4 w-4 text-green-400" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Step 2: Navigate to the repository</h4>
-                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm">
-                            <code>cd {assessmentRepoUrl?.split('/').pop() || 'hermes-assessment-*'}</code>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-2">Step 3: Install and start assessment</h4>
-                          <div className="bg-gray-900 text-gray-100 p-4 rounded-lg font-mono text-sm flex items-center justify-between gap-4">
-                            <code className="text-xs md:text-sm break-all">yarn && yarn mission:start</code>
-                            <button
-                              onClick={() => handleCopy(`yarn && yarn mission:start`, 'start')}
-                              className="flex-shrink-0 p-2 hover:bg-gray-800 rounded transition-colors"
-                              title="Copy command"
-                            >
-                              {copiedField === 'start' ? (
-                                <Check className="h-4 w-4 text-green-400" />
-                              ) : (
-                                <Copy className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-2">
-                            This installs the required packages and starts the assessment environment.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {assessmentRepoUrl && (
-                    <div className="flex flex-col gap-4 mt-6">
-                      <Button
-                        onClick={async () => {
-                          // Save repos and mark onboarding complete before starting interview
-                          try {
-                            await saveSelectedRepos();
-                            await fetch('/api/candidate/mark-onboarding-complete', {
-                              method: 'POST',
-                              credentials: 'include',
-                            });
-                          } catch (error) {
-                            console.error('Error completing onboarding:', error);
-                          }
-                          // Navigate to interview to start Minerva session
-                          window.location.href = '/interview';
-                        }}
-                        className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all h-12 text-lg"
-                      >
-                        🎙️ Start Interview with Minerva
-                      </Button>
-                      <Button
-                        onClick={() => window.open(assessmentRepoUrl, '_blank')}
-                        variant="outline"
-                        className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400"
-                      >
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open Repository
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Step 11: Completion Screen (Matches vs Enhance) */}
               {step === 11 && (
