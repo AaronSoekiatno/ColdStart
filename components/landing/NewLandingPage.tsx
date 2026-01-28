@@ -329,34 +329,7 @@ export function NewLandingPage() {
                   Resumes
                 </Link>
               </>
-            ) : (
-              <>
-                <Link
-                  href="#features"
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-                >
-                  Features
-                </Link>
-                <Link
-                  href="#integrations"
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-                >
-                  Integrations
-                </Link>
-                <Link
-                  href="#pricing"
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-                >
-                  Pricing
-                </Link>
-                <Link
-                  href="#faq"
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors"
-                >
-                  FAQ
-                </Link>
-              </>
-            )}
+            ) : null}
           </nav>
 
           {/* Right side - always visible */}

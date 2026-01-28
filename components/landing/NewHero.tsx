@@ -24,7 +24,7 @@ export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
         </h1>
 
         <p className="text-xl md:text-2xl text-white/90 max-w-2xl mx-auto mb-8 font-medium drop-shadow-md">
-          Get matched and direct intros to founders based on what you know not who.
+          Get direct intros to founders based on what you know not who you know
         </p>
 
         {/* CTA Buttons */}

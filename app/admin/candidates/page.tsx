@@ -27,6 +27,7 @@ export default function AdminCandidatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [universitySuggestions, setUniversitySuggestions] = useState<string[]>([]);
   const [filters, setFilters] = useState<CandidateFilters>({
     role: null,
     job_type: null,
@@ -48,6 +49,31 @@ export default function AdminCandidatesPage() {
     }
     checkAuth();
   }, [router]);
+
+  // Fetch all universities once for auto-complete
+  useEffect(() => {
+    async function fetchAllUniversities() {
+      try {
+        const response = await fetch('/api/admin/github/candidates');
+        if (response.ok) {
+          const data = await response.json();
+          const universities = new Set<string>();
+          data.candidates?.forEach((candidate: any) => {
+            if (candidate.university && candidate.university.trim()) {
+              universities.add(candidate.university.trim());
+            }
+          });
+          setUniversitySuggestions(Array.from(universities).sort());
+        }
+      } catch (err) {
+        console.error('Error fetching universities:', err);
+      }
+    }
+
+    if (user && universitySuggestions.length === 0) {
+      fetchAllUniversities();
+    }
+  }, [user, universitySuggestions.length]);
 
   // Fetch when filters or user changes
   useEffect(() => {
@@ -188,7 +214,11 @@ export default function AdminCandidatesPage() {
         </div>
 
         {/* Filters */}
-        <CandidateFilterBar filters={filters} onFilterChange={setFilters} />
+        <CandidateFilterBar
+          filters={filters}
+          onFilterChange={setFilters}
+          universitySuggestions={universitySuggestions}
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

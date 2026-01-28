@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Filter, X, ChevronDown, Check } from 'lucide-react';
 
 export interface CandidateFilters {
@@ -15,23 +15,65 @@ export interface CandidateFilters {
 interface CandidateFilterBarProps {
     filters: CandidateFilters;
     onFilterChange: (filters: CandidateFilters) => void;
+    universitySuggestions?: string[];
 }
 
-export default function CandidateFilterBar({ filters, onFilterChange }: CandidateFilterBarProps) {
+export default function CandidateFilterBar({ filters, onFilterChange, universitySuggestions = [] }: CandidateFilterBarProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [localUniversity, setLocalUniversity] = useState(filters.university || '');
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+    const suggestionBoxRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    // Update local state when filters change externally (e.g., clear filters)
+    useEffect(() => {
+        setLocalUniversity(filters.university || '');
+    }, [filters.university]);
 
     // Debounce university input
     useEffect(() => {
         const timer = setTimeout(() => {
-            const currentUni = filters.university || '';
-            // Only update if the value effectively changed (treating null and '' as same)
-            if (localUniversity !== currentUni) {
+            // Only update if the value actually changed
+            if (localUniversity !== (filters.university || '')) {
                 onFilterChange({ ...filters, university: localUniversity || null });
             }
         }, 500);
         return () => clearTimeout(timer);
-    }, [localUniversity, filters, onFilterChange]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [localUniversity]);
+
+    // Filter suggestions based on input
+    useEffect(() => {
+        if (localUniversity.trim() && universitySuggestions.length > 0) {
+            const query = localUniversity.toLowerCase();
+            const matches = universitySuggestions
+                .filter(uni => uni.toLowerCase().includes(query))
+                .slice(0, 8); // Limit to 8 suggestions
+            setFilteredSuggestions(matches);
+            setShowSuggestions(matches.length > 0);
+        } else {
+            setFilteredSuggestions([]);
+            setShowSuggestions(false);
+        }
+    }, [localUniversity, universitySuggestions]);
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (
+                suggestionBoxRef.current &&
+                !suggestionBoxRef.current.contains(event.target as Node) &&
+                inputRef.current &&
+                !inputRef.current.contains(event.target as Node)
+            ) {
+                setShowSuggestions(false);
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const updateFilter = (key: keyof CandidateFilters, value: any) => {
         onFilterChange({ ...filters, [key]: value });
@@ -107,12 +149,41 @@ export default function CandidateFilterBar({ filters, onFilterChange }: Candidat
                     {/* University Input */}
                     <div className="relative">
                         <input
+                            ref={inputRef}
                             type="text"
                             placeholder="University..."
                             value={localUniversity}
-                            onChange={(e) => setLocalUniversity(e.target.value)}
+                            onChange={(e) => {
+                                setLocalUniversity(e.target.value);
+                                setShowSuggestions(true);
+                            }}
+                            onFocus={() => {
+                                if (filteredSuggestions.length > 0) {
+                                    setShowSuggestions(true);
+                                }
+                            }}
                             className="text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 py-1.5 pl-3 pr-8 w-40 text-black placeholder:text-gray-500"
                         />
+                        {showSuggestions && filteredSuggestions.length > 0 && (
+                            <div
+                                ref={suggestionBoxRef}
+                                className="absolute z-50 mt-1 w-64 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto"
+                            >
+                                {filteredSuggestions.map((suggestion, index) => (
+                                    <button
+                                        key={index}
+                                        type="button"
+                                        onClick={() => {
+                                            setLocalUniversity(suggestion);
+                                            setShowSuggestions(false);
+                                        }}
+                                        className="w-full text-left px-3 py-2 text-sm text-black hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors"
+                                    >
+                                        {suggestion}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Verified Toggle */}
