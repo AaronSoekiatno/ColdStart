@@ -22,7 +22,7 @@
       ]
     },
     "types": [],
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "plugins": [
       {

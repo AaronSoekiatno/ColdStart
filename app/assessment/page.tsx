@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/layout/Header';
@@ -17,7 +17,7 @@ interface AssessmentStatus {
   createdAt: string | null;
 }
 
-export default function AssessmentPage() {
+function AssessmentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isCompleted = searchParams?.get('completed') === 'true';
@@ -443,6 +443,21 @@ export default function AssessmentPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function AssessmentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#F8FAFC' }}>
+        <Header initialUser={null} />
+        <section className="flex-1 flex items-center justify-center px-4">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-300" />
+        </section>
+      </div>
+    }>
+      <AssessmentContent />
+    </Suspense>
   );
 }
 

@@ -509,11 +509,11 @@ export function NewLandingPage() {
               src="/images/hermes2bg.png"
               alt="Sky Background"
               fill
-              className="object-cover object-top scale-110 blur-[2px]"
+              className="object-cover object-top scale-110"
               priority
               style={{
-                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+                maskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)'
               }}
             />
           </div>

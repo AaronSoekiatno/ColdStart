@@ -8,7 +8,9 @@ const nextConfig: NextConfig = {
     'lightningcss',
     'lightningcss-win32-x64-msvc',
   ],
-  // Webpack is used instead of Turbopack (via --webpack flag in dev script)
+  // Enable Turbopack with empty config to silence webpack migration warning
+  turbopack: {},
+  // Webpack is used in dev (via --webpack flag in server.js)
   // This avoids Windows symlink permission issues
   webpack: (config, { isServer }) => {
     // Handle @vapi-ai/web for client-side
@@ -90,10 +92,6 @@ const nextConfig: NextConfig = {
     };
     
     return config;
-  },
-  eslint: {
-    // Disable ESLint during production builds
-    ignoreDuringBuilds: true,
   },
   images: {
     remotePatterns: [

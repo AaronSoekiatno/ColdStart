@@ -172,7 +172,32 @@ export function CompanyLandingPage() {
       </motion.header>
 
       <main>
-        <CompanyHero onGetStarted={handleGetStarted} />
+        {/* Sky Background Section */}
+        <div className="relative min-h-screen pt-16 overflow-hidden bg-white">
+          {/* Sky Background Image with Bottom Fade */}
+          <div className="absolute top-0 left-0 right-0 h-[120vh] z-0 select-none pointer-events-none">
+            <Image
+              src="/images/hermes2bg.png"
+              alt="Sky Background"
+              fill
+              className="object-cover object-top scale-110 blur-[2px]"
+              priority
+              style={{
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+              }}
+            />
+          </div>
+
+          {/* White Fade Overlay for smooth transition */}
+          <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-white to-transparent pointer-events-none z-0" />
+
+          {/* Content */}
+          <div className="relative z-10">
+            <CompanyHero onGetStarted={handleGetStarted} />
+          </div>
+        </div>
+
         <CompanyAIVettingSection />
       </main>
 
