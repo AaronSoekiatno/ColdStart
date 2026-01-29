@@ -68,9 +68,8 @@ export function CompanyLandingPage() {
       setShowSignUp(true);
       return;
     }
-    // If already logged in, maybe redirect to a dashboard or portal
-    // For now, let's just keep it simple or redirect to /dashboard if it exists
-    router.push('/matches');
+    // If already logged in, redirect to company form
+    router.push('/company-form');
   };
 
   const handleSignOut = async () => {
@@ -111,6 +110,16 @@ export function CompanyLandingPage() {
           <div className="flex items-center gap-3 pr-1 relative z-10">
             {!user ? (
               <>
+                <Link
+                  href="#pricing"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="hidden md:inline-block text-sm font-medium text-white/70 hover:text-white transition-colors mr-4"
+                >
+                  Pricing
+                </Link>
                 <Link
                   href="#faq"
                   onClick={(e) => {
@@ -217,12 +226,15 @@ export function CompanyLandingPage() {
           {/* Content */}
           <div className="relative z-10">
             <CompanyHero onGetStarted={handleGetStarted} />
-            <UniversityCarousel title="HIRE FROM" />
+            <UniversityCarousel title="Hire from top talent" />
           </div>
         </div>
 
         <CompanyHowItWorks />
+
+
         <CompanyPricing onGetStarted={handleGetStarted} />
+
         <div id="faq" className="scroll-mt-32">
           <CompaniesFAQ />
         </div>
