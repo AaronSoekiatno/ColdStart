@@ -21,29 +21,23 @@ import {
 
 describe('interview-phases', () => {
     describe('PHASES constant', () => {
-        it('should have all 5 phases defined', () => {
-            expect(Object.keys(PHASES)).toHaveLength(5);
+        it('should have all 3 phases defined', () => {
+            expect(Object.keys(PHASES)).toHaveLength(3);
             expect(PHASES.KICK_OFF).toBeDefined();
             expect(PHASES.BUILD).toBeDefined();
-            expect(PHASES.BUG_INJECTION).toBeDefined();
-            expect(PHASES.FIX).toBeDefined();
-            expect(PHASES.POST_MORTEM).toBeDefined();
+            expect(PHASES.REFLECTION).toBeDefined();
         });
 
         it('should have correct order values', () => {
             expect(PHASES.KICK_OFF.order).toBe(1);
             expect(PHASES.BUILD.order).toBe(2);
-            expect(PHASES.BUG_INJECTION.order).toBe(3);
-            expect(PHASES.FIX.order).toBe(4);
-            expect(PHASES.POST_MORTEM.order).toBe(5);
+            expect(PHASES.REFLECTION.order).toBe(3);
         });
 
         it('should have correct nextPhase chain', () => {
             expect(PHASES.KICK_OFF.nextPhase).toBe('BUILD');
-            expect(PHASES.BUILD.nextPhase).toBe('BUG_INJECTION');
-            expect(PHASES.BUG_INJECTION.nextPhase).toBe('FIX');
-            expect(PHASES.FIX.nextPhase).toBe('POST_MORTEM');
-            expect(PHASES.POST_MORTEM.nextPhase).toBeNull();
+            expect(PHASES.BUILD.nextPhase).toBe('REFLECTION');
+            expect(PHASES.REFLECTION.nextPhase).toBeNull();
         });
     });
 
@@ -52,9 +46,7 @@ describe('interview-phases', () => {
             expect(PHASE_ORDER).toEqual([
                 'KICK_OFF',
                 'BUILD',
-                'BUG_INJECTION',
-                'FIX',
-                'POST_MORTEM'
+                'REFLECTION'
             ]);
         });
     });
@@ -95,8 +87,8 @@ describe('interview-phases', () => {
         it('should return correct phase properties', () => {
             const build = getPhase('BUILD');
             expect(build.vapiActive).toBe(false);
-            expect(build.duration).toBeNull();
-            expect(build.transitionTrigger).toBe(TRANSITION_TRIGGER.PASS);
+            expect(build.duration).toBe(60);
+            expect(build.transitionTrigger).toContain(TRANSITION_TRIGGER.PASS);
         });
     });
 
@@ -106,11 +98,11 @@ describe('interview-phases', () => {
             expect(nextAfterKickoff.id).toBe('BUILD');
 
             const nextAfterBuild = getNextPhase('BUILD');
-            expect(nextAfterBuild.id).toBe('BUG_INJECTION');
+            expect(nextAfterBuild.id).toBe('REFLECTION');
         });
 
         it('should return null for final phase', () => {
-            expect(getNextPhase('POST_MORTEM')).toBeNull();
+            expect(getNextPhase('REFLECTION')).toBeNull();
         });
 
         it('should return null for invalid phase', () => {
@@ -121,13 +113,11 @@ describe('interview-phases', () => {
     describe('isVapiActiveForPhase()', () => {
         it('should return true for Vapi-active phases', () => {
             expect(isVapiActiveForPhase('KICK_OFF')).toBe(true);
-            expect(isVapiActiveForPhase('BUG_INJECTION')).toBe(true);
-            expect(isVapiActiveForPhase('POST_MORTEM')).toBe(true);
+            expect(isVapiActiveForPhase('REFLECTION')).toBe(true);
         });
 
         it('should return false for silent phases', () => {
             expect(isVapiActiveForPhase('BUILD')).toBe(false);
-            expect(isVapiActiveForPhase('FIX')).toBe(false);
         });
 
         it('should return falsy for invalid phase', () => {
@@ -136,43 +126,36 @@ describe('interview-phases', () => {
     });
 
     describe('getTotalInterviewDuration()', () => {
-        it('should calculate total duration from phases with durations', () => {
-            // KICK_OFF: 2min, BUILD: null, BUG_INJECTION: 2min, FIX: null, POST_MORTEM: 4min
-            // Total: 8 minutes = 480 seconds
+        it('should calculate total duration from all phases', () => {
+            // KICK_OFF: 2min, BUILD: 1min, REFLECTION: 4min
+            // Total: 7 minutes = 420 seconds
             const total = getTotalInterviewDuration();
-            expect(total).toBe(480); // 8 minutes in seconds
-        });
-
-        it('should skip phases with null duration', () => {
-            // BUILD and FIX have null duration
-            const total = getTotalInterviewDuration();
-            const kickoff = PHASES.KICK_OFF.duration;
-            const bugInjection = PHASES.BUG_INJECTION.duration;
-            const postMortem = PHASES.POST_MORTEM.duration;
-            expect(total).toBe(kickoff + bugInjection + postMortem);
+            expect(total).toBe(420); // 7 minutes in seconds
         });
     });
 
     describe('getTotalVapiTime()', () => {
         it('should calculate total Vapi time correctly', () => {
-            // Only Vapi-active phases: KICK_OFF (2min), BUG_INJECTION (2min), POST_MORTEM (4min)
+            // Only Vapi-active phases: KICK_OFF (2min), REFLECTION (4min)
+            // Total: 6 minutes = 360 seconds
             const vapiTime = getTotalVapiTime();
-            expect(vapiTime).toBe(480); // 8 minutes
+            expect(vapiTime).toBe(360);
         });
     });
 
     describe('getCostSavingsPercent()', () => {
         it('should calculate cost savings percentage', () => {
             const savings = getCostSavingsPercent();
-            // Since BUILD and FIX have no duration, total = vapi time = 0% savings
-            expect(savings).toBe(0);
+            // Total = 420s, Vapi = 360s
+            // Savings = (420 - 360) / 420 = 60 / 420 = 14.28% -> 14%
+            expect(savings).toBe(14);
         });
     });
 
     describe('getPhaseSummary()', () => {
         it('should return array of phase summaries', () => {
             const summary = getPhaseSummary();
-            expect(summary).toHaveLength(5);
+            expect(summary).toHaveLength(3);
         });
 
         it('should include correct properties', () => {
@@ -186,10 +169,10 @@ describe('interview-phases', () => {
             expect(kickoff).toHaveProperty('trigger', TRANSITION_TRIGGER.VAPI_END);
         });
 
-        it('should handle null duration phases', () => {
+        it('should handle BUILD phase duration', () => {
             const summary = getPhaseSummary();
             const build = summary.find(p => p.id === 'BUILD');
-            expect(build.durationMinutes).toBe(0);
+            expect(build.durationMinutes).toBe(1);
         });
     });
 });

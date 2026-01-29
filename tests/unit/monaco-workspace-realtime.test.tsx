@@ -17,7 +17,7 @@ vi.mock('@/lib/supabase', () => ({
 
 // Mock fetch
 const mockFetch = vi.fn();
-global.fetch = mockFetch as any;
+global.fetch = mockFetch;
 
 // Mock toast
 vi.mock('@/hooks/use-toast', () => ({
@@ -354,7 +354,7 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
       };
 
       (supabase.channel as any).mockReturnValue(mockChannel);
-      (supabase.removeChannel as any).mockImplementation(() => {});
+      (supabase.removeChannel as any).mockImplementation(() => { });
 
       render(<MonacoWorkspace {...defaultProps} />);
 

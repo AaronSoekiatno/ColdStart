@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
 
   try {
     // 1. Authenticate admin
-    const admin = await requireAdmin();
+    await requireAdmin();
 
-    // 2. Get candidate_id from request body
+    // 2. Get candidate_id and skip_ai from request body
     const body = await request.json();
-    const { candidate_id } = body;
+    const { candidate_id, skip_ai = false } = body;
 
     if (!candidate_id) {
       return NextResponse.json(
@@ -43,122 +43,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Fetch candidate data
-    const { data: candidate, error: candidateError } = await supabaseAdmin
-      .from('candidates')
-      .select('id, email, name, github_username, github_access_token, structured_resume_data')
-      .eq('id', candidate_id)
-      .single();
-
-    if (candidateError || !candidate) {
-      return NextResponse.json(
-        { success: false, error: 'Candidate not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!candidate.github_username) {
-      return NextResponse.json(
-        { success: false, error: 'Candidate has not connected GitHub' },
-        { status: 400 }
-      );
-    }
-
-    if (!candidate.structured_resume_data) {
-      return NextResponse.json(
-        { success: false, error: 'No resume data found for candidate' },
-        { status: 400 }
-      );
-    }
-
-    // 4. Fetch GitHub repositories
-    const { data: githubRepos, error: reposError } = await supabaseAdmin
-      .from('github_repositories')
-      .select('*')
-      .eq('candidate_id', candidate_id);
-
-    if (reposError) {
-      return NextResponse.json(
-        { success: false, error: `Failed to fetch GitHub repositories: ${reposError.message}` },
-        { status: 500 }
-      );
-    }
-
-    if (!githubRepos || githubRepos.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No GitHub repositories found for candidate' },
-        { status: 400 }
-      );
-    }
-
-    // 5. For now, we'll skip commit history analysis since we don't have a github_commits table
-    // In the future, you can fetch commits directly from GitHub API using candidate.github_access_token
-    const githubCommits: GitHubCommit[] = [];
-
-    // 6. Extract resume data
-    const resumeData = candidate.structured_resume_data;
-    const projects = resumeData.projects || [];
-    const workExperience = resumeData.experience || [];
-
-    // 7. Run verification algorithms
-    const projectMatches = matchProjects(projects, githubRepos as GitHubRepo[]);
-    const discrepancies = findDiscrepancies(projectMatches);
-    const timelineAnalysis = analyzeTimeline(workExperience, githubCommits);
-
-    // 8. Fetch code quality analyses (if available)
-    const { data: codeAnalyses } = await supabaseAdmin
-      .from('github_code_analyses')
-      .select('overall_score')
-      .eq('candidate_id', candidate_id);
-
-    // 9. Calculate overall score
-    const scoreResult = calculateVerificationScore(
-      projectMatches,
-      timelineAnalysis,
-      codeAnalyses || []
-    );
-
-    // 10. Store verification results (Mock - don't store in missing table)
-    const processingDuration = Date.now() - startTime;
+    // 3. Call the new Verification Service (running on port 3001)
+    // In production, this would be an internal network URL or environment variable
+    const verificationServiceUrl = process.env.VERIFICATION_SERVICE_URL || 'http://localhost:3001/api/verifications';
     
-    // Create the logical verification object
-    const verification = {
-        id: 'virtual-verification-' + Date.now(),
-        candidate_id,
-        verified_by: admin.email,
-        verified_at: new Date().toISOString(),
-        verification_status: 'completed',
-        overall_score: scoreResult.overall_score,
-        project_matches: projectMatches,
-        project_discrepancies: discrepancies,
-        experience_timeline_analysis: timelineAnalysis,
-        resume_snapshot: resumeData
-    };
+    console.log(`[ADMIN] Triggering high-fidelity verification for ${candidate_id} via ${verificationServiceUrl}`);
 
-    // SKIP DB INSERTION to missing table 'github_verifications'
-    // In a real app with migrations, we would insert here.
-    // For now, we rely on the dynamic GET endpoint to re-calculate this data.
+    const response = await fetch(verificationServiceUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        candidate_id,
+        skip_ai,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('[ADMIN] Verification service error:', result);
+      return NextResponse.json(
+        { success: false, error: result.error || 'Verification service failed' },
+        { status: response.status }
+      );
+    }
+
+    const processingDuration = Date.now() - startTime;
     
     return NextResponse.json({
       success: true,
-      verification_id: verification.id,
-      score: scoreResult.overall_score,
-      breakdown: scoreResult.breakdown,
-      verified_projects: projectMatches.filter(m => m.is_verified).length,
-      total_projects: projectMatches.length,
-      discrepancies: discrepancies.length,
-      timeline_gaps: timelineAnalysis.gaps.length,
+      verification_id: result.verification_id,
+      verification: result.verification,
       processing_time_ms: processingDuration,
     });
   } catch (error: any) {
-    console.error('Verification error:', error);
-
-    // Store failed verification logic removed to avoid "table not found" error
-    // In a future update with the table, we would uncomment this.
-    /*
-      await supabaseAdmin.from('github_verifications').insert({ ... });
-    */
-
+    console.error('Admin verification proxy error:', error);
     return NextResponse.json(
       { success: false, error: error.message || 'Internal server error' },
       { status: 500 }

@@ -88,11 +88,12 @@ describe('phase-timer', () => {
             expect(timer.duration).toBe(120); // KICK_OFF is 2 minutes
         });
 
-        it('should return null for commit-driven phases', () => {
+        it('should create timer for BUILD phase', () => {
             const onExpire = vi.fn();
             const timer = startPhaseTimer('test-session', 'BUILD', onExpire);
 
-            expect(timer).toBeNull();
+            expect(timer).not.toBeNull();
+            expect(timer.duration).toBe(60);
         });
 
         it('should throw for invalid phase', () => {
@@ -104,9 +105,9 @@ describe('phase-timer', () => {
         it('should cancel existing timer for same session', () => {
             const onExpire = vi.fn();
             const timer1 = startPhaseTimer('test-session', 'KICK_OFF', onExpire);
-            const timer2 = startPhaseTimer('test-session', 'BUG_INJECTION', onExpire);
+            const timer2 = startPhaseTimer('test-session', 'BUILD', onExpire);
 
-            expect(timer2.phaseId).toBe('BUG_INJECTION');
+            expect(timer2.phaseId).toBe('BUILD');
             expect(activeTimers.size).toBe(1);
         });
 

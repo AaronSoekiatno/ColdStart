@@ -98,53 +98,40 @@ describe('session-manager', () => {
         it('should have all phases defined', () => {
             expect(PHASE_ORDER).toContain('KICK_OFF');
             expect(PHASE_ORDER).toContain('BUILD');
-            expect(PHASE_ORDER).toContain('BUG_INJECTION');
-            expect(PHASE_ORDER).toContain('FIX');
-            expect(PHASE_ORDER).toContain('POST_MORTEM');
+            expect(PHASE_ORDER).toContain('REFLECTION');
         });
     });
 
     describe('Phase Transition Logic', () => {
         it('should have correct nextPhase chain', () => {
             expect(PHASES.KICK_OFF.nextPhase).toBe('BUILD');
-            expect(PHASES.BUILD.nextPhase).toBe('BUG_INJECTION');
-            expect(PHASES.BUG_INJECTION.nextPhase).toBe('FIX');
-            expect(PHASES.FIX.nextPhase).toBe('POST_MORTEM');
-            expect(PHASES.POST_MORTEM.nextPhase).toBeNull();
+            expect(PHASES.BUILD.nextPhase).toBe('REFLECTION');
+            expect(PHASES.REFLECTION.nextPhase).toBeNull();
         });
 
         it('should have correct transition triggers', () => {
             expect(PHASES.KICK_OFF.transitionTrigger).toBe(TRANSITION_TRIGGER.VAPI_END);
-            expect(PHASES.BUILD.transitionTrigger).toBe(TRANSITION_TRIGGER.PASS);
-            expect(PHASES.BUG_INJECTION.transitionTrigger).toBe(TRANSITION_TRIGGER.VAPI_END);
-            expect(PHASES.FIX.transitionTrigger).toBe(TRANSITION_TRIGGER.PASS);
-            expect(PHASES.POST_MORTEM.transitionTrigger).toBe(TRANSITION_TRIGGER.VAPI_END);
+            expect(PHASES.BUILD.transitionTrigger).toContain(TRANSITION_TRIGGER.PASS);
+            expect(PHASES.REFLECTION.transitionTrigger).toBe(TRANSITION_TRIGGER.VAPI_END);
         });
     });
 
     describe('Vapi Activation', () => {
         it('should activate Vapi for voice phases', () => {
             expect(PHASES.KICK_OFF.vapiActive).toBe(true);
-            expect(PHASES.BUG_INJECTION.vapiActive).toBe(true);
-            expect(PHASES.POST_MORTEM.vapiActive).toBe(true);
+            expect(PHASES.REFLECTION.vapiActive).toBe(true);
         });
 
         it('should deactivate Vapi for coding phases', () => {
             expect(PHASES.BUILD.vapiActive).toBe(false);
-            expect(PHASES.FIX.vapiActive).toBe(false);
         });
     });
 
     describe('Duration Configuration', () => {
         it('should have durations for timed phases', () => {
             expect(PHASES.KICK_OFF.duration).toBe(120); // 2 min
-            expect(PHASES.BUG_INJECTION.duration).toBe(120); // 2 min
-            expect(PHASES.POST_MORTEM.duration).toBe(240); // 4 min
-        });
-
-        it('should have null duration for commit-driven phases', () => {
-            expect(PHASES.BUILD.duration).toBeNull();
-            expect(PHASES.FIX.duration).toBeNull();
+            expect(PHASES.BUILD.duration).toBe(60); // 1 min (testing)
+            expect(PHASES.REFLECTION.duration).toBe(240); // 4 min
         });
     });
 
