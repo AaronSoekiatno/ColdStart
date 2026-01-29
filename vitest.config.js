@@ -8,7 +8,7 @@ export default defineConfig({
 
     test: {
         // Test file patterns
-        include: ['tests/unit/**/*.test.js'],
+        include: ['tests/unit/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
 
         // Environment
         environment: 'node',
@@ -40,7 +40,9 @@ export default defineConfig({
         env: {
             NEXT_PUBLIC_SUPABASE_URL: 'https://placeholder.supabase.co',
             NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-anon-key',
-            SUPABASE_SERVICE_ROLE_KEY: 'placeholder-service-role-key'
+            SUPABASE_SERVICE_ROLE_KEY: 'placeholder-service-role-key',
+            GEMINI_API_KEY: 'test-api-key',
+            STRIPE_WEBHOOK_SECRET: 'test-webhook-secret'
         }
     }
 });

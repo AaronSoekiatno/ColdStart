@@ -52,7 +52,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
       if (fetchingRef.current || lastFetchedEmailRef.current === userEmail) {
         return;
       }
-      
+
       fetchingRef.current = true;
       setIsCheckingPremium(true);
       try {
@@ -95,7 +95,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
   const handlePremiumClick = useCallback(async () => {
     // Open modal immediately for better UX
     setShowPremiumModal(true);
-    
+
     // Sync subscription status in background (non-blocking)
     if (userEmail && !isCheckingPremium) {
       setIsCheckingPremium(true);
@@ -104,7 +104,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
           method: 'POST',
           credentials: 'include',
         });
-        
+
         if (syncResponse.ok) {
           // Refresh premium status after sync
           const response = await fetch('/api/candidate-info', {
@@ -132,7 +132,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
           <Image
             src="/images/blacked.svg"
             alt="Hermes logo"
-            width={32} 
+            width={32}
             height={32}
             priority
           />
@@ -161,12 +161,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
               >
                 Resumes
               </Link>
-              <button
-                onClick={handlePremiumClick}
-                className="text-sm font-medium text-gray-800 hover:text-gray-800/80 transition-colors cursor-pointer"
-              >
-                Premium
-              </button>
+
               <button
                 onClick={() => setIsFeedbackOpen(true)}
                 className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-full border border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 transition-colors cursor-pointer"
@@ -291,15 +286,7 @@ export const Header = ({ initialUser }: HeaderProps) => {
                 >
                   Resumes
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
-                  onSelect={() => {
-                    setMobileMenuOpen(false);
-                    handlePremiumClick();
-                  }}
-                >
-                  Premium Plan
-                </DropdownMenuItem>
+
                 <DropdownMenuSeparator className="bg-gray-200 my-0" />
                 {isPremium && (
                   <DropdownMenuItem

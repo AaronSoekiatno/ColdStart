@@ -140,6 +140,37 @@ export function CompanyLandingPage() {
             ) : (
               <>
                 <div className="hidden md:flex items-center gap-4">
+                  <Link
+                    href="#features"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                  >
+                    Features
+                  </Link>
+                  <Link
+                    href="#pricing"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                  >
+                    Pricing
+                  </Link>
+                  <Link
+                    href="#faq"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                  >
+                    FAQ
+                  </Link>
+                  <div className="w-px h-4 bg-white/20 mx-1"></div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -190,6 +221,33 @@ export function CompanyLandingPage() {
               <div className="border-t border-white/10 my-2"></div>
               <button
                 onClick={() => {
+                  setMobileMenuOpen(false);
+                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="block w-full text-left px-4 py-3 text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white rounded-xl transition-colors"
+              >
+                Features
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="block w-full text-left px-4 py-3 text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white rounded-xl transition-colors"
+              >
+                Pricing
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="block w-full text-left px-4 py-3 text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white rounded-xl transition-colors"
+              >
+                FAQ
+              </button>
+              <button
+                onClick={() => {
                   handleSignOut();
                   setMobileMenuOpen(false);
                 }}
@@ -230,7 +288,9 @@ export function CompanyLandingPage() {
           </div>
         </div>
 
-        <CompanyHowItWorks />
+        <div id="features" className="scroll-mt-32">
+          <CompanyHowItWorks />
+        </div>
 
 
         <CompanyPricing onGetStarted={handleGetStarted} />
