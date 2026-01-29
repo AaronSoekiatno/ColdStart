@@ -147,7 +147,16 @@ export async function GET(request: NextRequest) {
       result = result.filter(c => (c.latest_score || 0) >= minScore);
     }
 
-    return NextResponse.json({ candidates: result });
+    return NextResponse.json(
+      { candidates: result },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+          'CDN-Cache-Control': 'no-store',
+          'Vercel-CDN-Cache-Control': 'no-store',
+        },
+      }
+    );
   } catch (error: any) {
     console.error('Get candidates error:', error);
     return NextResponse.json(

@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { createBrowserClient } from '@supabase/ssr';
-import { normalizeName, normalizeEducationLevel, normalizeUniversityName, normalizeJobType } from './normalize-candidate-data';
+import { normalizeName, normalizeEducationLevel, normalizeUniversityName, normalizeJobType, normalizeMajor } from './normalize-candidate-data';
 
 // Supabase configuration
 // These environment variables should be set in .env.local
@@ -160,7 +160,10 @@ function extractMajorsFromStructuredData(structuredResumeData: any): string[] {
   const majors: string[] = [];
   for (const edu of structuredResumeData.education) {
     if (edu.major && typeof edu.major === 'string' && edu.major.trim()) {
-      majors.push(edu.major.trim());
+      const normalized = normalizeMajor(edu.major.trim());
+      if (normalized) {
+        majors.push(normalized);
+      }
     }
   }
 
@@ -232,7 +235,13 @@ export async function saveCandidate(candidate: Partial<CandidateRow> & { email: 
 
   // Only include major if we have a value to set (extracted, provided, or existing)
   // This prevents overwriting existing major with null when updating other fields
-  const majorToSet = extractedMajor || candidate.major || existingMajor;
+  let majorToSet = extractedMajor || candidate.major || existingMajor;
+  
+  // Normalize each major in the array
+  if (majorToSet && Array.isArray(majorToSet)) {
+    majorToSet = majorToSet.map(m => normalizeMajor(m)).filter((m): m is string => !!m);
+  }
+
   if (majorToSet !== undefined) {
     upsertData.major = majorToSet;
   }

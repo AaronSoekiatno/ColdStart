@@ -14,6 +14,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { convertResumeToLaTeX } from '@/lib/pdf-to-latex';
 import { parseResumeToStructured } from '@/lib/parse-resume';
+import { normalizeUniversityName } from '@/lib/normalize-candidate-data';
 
 export const runtime = 'nodejs';
 
@@ -371,7 +372,7 @@ export async function POST(request: NextRequest) {
                 skills: skillsArr.filter((s: string) => !!s && s.trim().length > 0),
                 location: getLocationWithFallbacks(),
                 education_level: (primaryEducation.degree as string) || '',
-                university: (primaryEducation.school as string) || '',
+                university: primaryEducation.standardizedSchool || normalizeUniversityName(primaryEducation.school) || '',
                 experience: experienceArr.map((exp: any) => {
                     const title = exp.title || '';
                     const company = exp.company || '';
@@ -592,7 +593,7 @@ export async function POST(request: NextRequest) {
         skills: skillsArr.filter((s: string) => !!s && s.trim().length > 0),
         location: getLocationWithFallbacks(),
         education_level: (primaryEducation.degree as string) || '',
-        university: (primaryEducation.school as string) || '',
+        university: primaryEducation.standardizedSchool || normalizeUniversityName(primaryEducation.school) || '',
         experience: experienceArr.map((exp: any) => {
           const title = exp.title || '';
           const company = exp.company || '';

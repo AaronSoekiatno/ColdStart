@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Loader2, Search, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Loader2, Search, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 import CandidateFilterBar, { CandidateFilters } from './candidate-filter-bar';
 
 interface Candidate {
@@ -37,6 +37,8 @@ export default function AdminCandidatesPage() {
     verified: false,
     min_score: null,
   });
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     async function checkAuth() {
@@ -85,6 +87,19 @@ export default function AdminCandidatesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, JSON.stringify(filters)]);
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    if (!user || !autoRefresh) return;
+
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing candidates...');
+      fetchCandidates();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, autoRefresh, JSON.stringify(filters)]);
+
   useEffect(() => {
     // Filter candidates based on search query (client-side)
     if (!searchQuery.trim()) {
@@ -115,7 +130,15 @@ export default function AdminCandidatesPage() {
       if (filters.verified) params.append('verified', 'true');
       if (filters.min_score) params.append('min_score', filters.min_score.toString());
 
-      const response = await fetch(`/api/admin/github/candidates?${params.toString()}`);
+      // Add cache-busting timestamp to ensure fresh data
+      params.append('_t', Date.now().toString());
+
+      const response = await fetch(`/api/admin/github/candidates?${params.toString()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch candidates');
@@ -123,6 +146,7 @@ export default function AdminCandidatesPage() {
 
       const data = await response.json();
       setCandidates(data.candidates || []);
+      setLastRefreshTime(new Date());
       // filteredCandidates will be updated by the separate useEffect dependent on 'candidates'
     } catch (err: any) {
       console.error('Error fetching candidates:', err);
@@ -201,17 +225,46 @@ export default function AdminCandidatesPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Bar */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search by name, email, or GitHub username..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
-            />
+        {/* Search and Refresh Controls */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Search Bar */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search by name, email, or GitHub username..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
+              />
+            </div>
+
+            {/* Refresh Button */}
+            <button
+              onClick={() => fetchCandidates()}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="whitespace-nowrap">Refresh</span>
+            </button>
+          </div>
+
+          {/* Auto-refresh Toggle and Last Updated */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-gray-700">Auto-refresh every 30s</span>
+            </label>
+            <span className="text-gray-500">
+              Last updated: {lastRefreshTime.toLocaleTimeString()}
+            </span>
           </div>
         </div>
 

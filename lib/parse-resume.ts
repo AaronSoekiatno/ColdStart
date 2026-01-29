@@ -75,6 +75,7 @@ Return a JSON object with this exact structure:
       "major": "Major field of study if specified (e.g., 'Computer Science', 'Mechanical Engineering')",
       "minor": "Minor field of study if specified (e.g., 'Mathematics', 'Business')",
       "school": "School Name (exact as written)",
+      "standardizedSchool": "Standardized canonical name of the school (e.g., 'University of California, Berkeley' instead of 'UCB')",
       "location": "City, State if available (exact as written)",
       "graduationDate": "Month Year if available (exact as written)",
       "gpa": "GPA if available (exact as written)",

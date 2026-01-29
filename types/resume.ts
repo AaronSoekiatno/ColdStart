@@ -26,6 +26,7 @@ export interface EducationItem {
   id: string;
   degree: string;
   school: string;
+  standardizedSchool?: string;
   location?: string;
   graduationDate?: string;
   gpa?: string;
