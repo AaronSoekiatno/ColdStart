@@ -17,9 +17,10 @@ import { ResetPasswordModal } from "./ResetPasswordModal";
 interface SignInModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  redirectTo?: string;
 }
 
-export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
+export const SignInModal = ({ open, onOpenChange, redirectTo }: SignInModalProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -98,7 +99,8 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
 
       // Store redirect intent for client-side redirect
       if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('postAuthRedirect', '/matches');
+        const redirect = redirectTo || '/matches';
+        window.sessionStorage.setItem('postAuthRedirect', redirect);
       }
 
       onOpenChange(false);
@@ -150,7 +152,8 @@ export const SignInModal = ({ open, onOpenChange }: SignInModalProps) => {
 
       // Store redirect intent for client-side redirect
       if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem('postAuthRedirect', '/matches');
+        const redirect = redirectTo || '/matches';
+        window.sessionStorage.setItem('postAuthRedirect', redirect);
       }
 
       // Opt user into marketing emails (consent given by continuing - non-blocking)

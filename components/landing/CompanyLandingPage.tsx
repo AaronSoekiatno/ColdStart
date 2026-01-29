@@ -245,10 +245,12 @@ export function CompanyLandingPage() {
       <SignInModal
         open={showSignIn}
         onOpenChange={setShowSignIn}
+        redirectTo="/company-form"
       />
       <SignUpModal
         open={showSignUp}
         onOpenChange={setShowSignUp}
+        redirectTo="/company-form"
         onSwitchToSignIn={() => {
           setShowSignUp(false);
           setShowSignIn(true);
