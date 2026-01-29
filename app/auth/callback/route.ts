@@ -122,10 +122,10 @@ export async function GET(request: NextRequest) {
       }
 
       // Redirect back to the original page with success parameter
-      // Since Supabase doesn't preserve query params through OAuth, we default to /onboarding
+      // Since Supabase doesn't preserve query params through OAuth, we default to /matches
       // but try to extract from the callback URL if available (though it likely won't be)
-      // Default to /onboarding for GitHub OAuth
-      const redirectPath = '/onboarding';
+      // Default to /matches for GitHub OAuth
+      const redirectPath = '/matches';
       const redirectUrl = new URL(redirectPath, origin);
       redirectUrl.searchParams.set('github_connected', 'true');
       redirectUrl.searchParams.set('step', '7');
@@ -191,8 +191,8 @@ export async function GET(request: NextRequest) {
     if (redirectTo) {
       redirectPath = redirectTo;
     } else if (isNewSignUp) {
-      // New sign-up - redirect to home with uploadResume flag
-      redirectPath = '/?uploadResume=true';
+      // New sign-up - redirect to matches (they will be prompted to onboarding there if needed)
+      redirectPath = '/matches';
     } else {
       // Existing user - redirect to matches
       redirectPath = '/matches';

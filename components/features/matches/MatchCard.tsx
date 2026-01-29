@@ -102,9 +102,23 @@ interface MatchCardProps {
     total_count: number;
     has_results: boolean;
   } | null;
+  onboardingCompleted?: boolean;
+  onOnboardingNeeded?: () => void;
 }
 
-const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialIsSaved = false, initialFounderError = null, onFounderError, onSaveToggle, currentIndex = 0, githubAnalysis = null }: MatchCardProps) => {
+const MatchCardComponent = ({
+  match,
+  isPremium = false,
+  userEmail = '',
+  initialIsSaved = false,
+  initialFounderError = null,
+  onFounderError,
+  onSaveToggle,
+  currentIndex = 0,
+  githubAnalysis = null,
+  onboardingCompleted = true,
+  onOnboardingNeeded
+}: MatchCardProps) => {
   const router = useRouter();
   const companySectionRef = useRef<HTMLDivElement>(null);
   const applicationSectionRef = useRef<HTMLDivElement>(null);
@@ -338,7 +352,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
     const newSavedState = !isSaved;
     setIsSaved(newSavedState);
     setIsSaving(true);
-    
+
     // Immediately notify parent to update savedMatchIds (optimistic update)
     onSaveToggle?.(match.id, newSavedState);
 
@@ -382,7 +396,7 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
             'Content-Type': 'application/json',
           },
           credentials: 'include',
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             matchId: match.id,
             startupId: match.startup?.id, // Include startup_id as fallback
           }),
@@ -524,8 +538,8 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
               <button
                 type="button"
                 className={`flex items-center justify-center gap-1.5 rounded-md md:rounded-lg border px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition shadow-sm cursor-pointer ${isSaved
-                    ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
-                    : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+                  ? 'bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100'
+                  : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
                   }`}
                 onClick={handleSaveToggle}
                 disabled={isSaving}
@@ -579,6 +593,12 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                       allFounderEmails: founderEmails,
                       startupId: match.startup.id,
                     });
+
+                    // Check if onboarding is completed
+                    if (!onboardingCompleted) {
+                      onOnboardingNeeded?.();
+                      return;
+                    }
 
                     // Clear any error and proceed
                     setFounderSelectionError(null);
@@ -1208,15 +1228,20 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                             {recency}
                           </span>
                         )}
-                        <a
-                          href={job.job_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (!onboardingCompleted) {
+                              onOnboardingNeeded?.();
+                              return;
+                            }
+                            window.open(job.job_url, '_blank', 'noopener,noreferrer');
+                          }}
                           className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span>Apply Now</span>
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1268,22 +1293,29 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                             {recency}
                           </span>
                         )}
-                        <a
-                          href={match.job.job_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (!onboardingCompleted) {
+                              onOnboardingNeeded?.();
+                              return;
+                            }
+                            if (match.job?.job_url) {
+                              window.open(match.job.job_url, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
                           className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
                         >
                           <ExternalLink className="w-4 h-4" />
                           <span>Apply Now</span>
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
                 );
               })()
             ) : null}
-            
+
             {/* View More dropdown */}
             {match.alsoConsider && match.alsoConsider.length > 0 && (
               <div className="mt-4 sm:mt-5">
@@ -1292,11 +1324,11 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                   className="flex items-center justify-between w-full text-left text-sm sm:text-base font-semibold text-gray-700 hover:text-gray-900 transition mb-3 sm:mb-4"
                 >
                   <span>View More ({match.alsoConsider.length})</span>
-                  <ChevronDown 
+                  <ChevronDown
                     className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${showAlsoConsider ? 'rotate-180' : ''}`}
                   />
                 </button>
-                
+
                 {showAlsoConsider && (
                   <div className="space-y-3 sm:space-y-4">
                     {match.alsoConsider.map((job, index) => {
@@ -1343,15 +1375,20 @@ const MatchCardComponent = ({ match, isPremium = false, userEmail = '', initialI
                                   {recency}
                                 </span>
                               )}
-                              <a
-                                href={job.job_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (!onboardingCompleted) {
+                                    onOnboardingNeeded?.();
+                                    return;
+                                  }
+                                  window.open(job.job_url, '_blank', 'noopener,noreferrer');
+                                }}
                                 className="flex items-center justify-center gap-1.5 rounded-md md:rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium hover:from-blue-400 hover:to-indigo-400 transition shadow-sm cursor-pointer min-w-[120px] sm:min-w-[140px]"
                               >
                                 <ExternalLink className="w-4 h-4" />
                                 <span>Apply Now</span>
-                              </a>
+                              </button>
                             </div>
                           </div>
                         </div>

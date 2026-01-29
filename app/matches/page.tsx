@@ -6,6 +6,7 @@ import { supabase, isSubscribed } from '@/lib/supabase';
 import { MatchCard } from '@/components/features/matches/MatchCard';
 import { Header } from '@/components/layout/Header';
 import { UpgradeModal } from '@/components/modals/UpgradeModal';
+import { OnboardingModal } from '@/components/modals/OnboardingModal';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Play } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
@@ -77,6 +78,8 @@ export default function MatchesPage() {
   const [savedStartupIds, setSavedStartupIds] = useState<string[]>([]); // Store all saved startup IDs (to handle match ID changes)
   const [assessmentStatus, setAssessmentStatus] = useState<'not_started' | 'in_progress' | 'completed' | null>(null);
   const [githubAnalysis, setGithubAnalysis] = useState<Record<string, any>>({});
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -172,6 +175,7 @@ export default function MatchesPage() {
           const candidateInfo = await candidateResponse.json();
           setIsPremium(isSubscribed(candidateInfo));
           candidateId = candidateInfo.id;
+          setOnboardingCompleted(candidateInfo.onboarding_completed);
         }
 
         // Get first 20 matches for immediate display
@@ -181,11 +185,10 @@ export default function MatchesPage() {
 
         if (!response.ok) {
           if (response.status === 404) {
-            // No resume - redirect to home with uploadResume flag
-            router.push('/?uploadResume=true');
-            return;
-          }
-          if (response.status === 429) {
+            // No resume - just stay on matches page with empty state
+            setMatches([]);
+            setPagination(null);
+          } else if (response.status === 429) {
             // Rate limit exceeded
             const errorData = await response.json().catch(() => ({}));
             setHasError(true);
@@ -480,6 +483,8 @@ export default function MatchesPage() {
                     initialIsSaved={currentMatchIsSaved}
                     currentIndex={currentMatchIndex}
                     githubAnalysis={Object.values(githubAnalysis)[0] || null}
+                    onboardingCompleted={onboardingCompleted === true}
+                    onOnboardingNeeded={() => setShowOnboarding(true)}
                     onSaveToggle={(matchId, isSaved) => {
                       // Optimistically update parent state for immediate UI feedback
                       // The actual state will be synced from Supabase on next refetch
@@ -499,11 +504,32 @@ export default function MatchesPage() {
             </div>
           ) : (
             <div className="rounded-2xl md:rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 md:p-12 text-center text-gray-900">
-              <p className="text-sm sm:text-base md:text-lg text-gray-900">No matches yet. Upload your resume to get started.</p>
+              <h2 className="text-xl font-bold mb-4">Find your next startup role</h2>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                Hermes uses AI to match your background with open roles at top YC and VC-backed startups.
+              </p>
+              <Button
+                onClick={() => setShowOnboarding(true)}
+                className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-8 py-6 text-lg font-semibold shadow-lg transform transition hover:scale-105"
+              >
+                Get Started
+              </Button>
             </div>
           )}
         </div>
       </section>
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        open={showOnboarding}
+        onOpenChange={setShowOnboarding}
+        onComplete={() => {
+          setShowOnboarding(false);
+          setOnboardingCompleted(true);
+          // Reload data without full page reload to prevent infinite loop
+          window.location.href = '/matches';
+        }}
+      />
 
       {/* Upgrade Modal */}
       {user?.email && (

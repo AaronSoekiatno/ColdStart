@@ -31,10 +31,10 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
   const { toast } = useToast();
   const googleButtonRef = useRef<HTMLDivElement>(null);
 
-  // Preload onboarding page when sign-up modal opens for faster navigation
+  // Preload matches page when sign-up modal opens for faster navigation
   useEffect(() => {
     if (open) {
-      router.prefetch('/onboarding');
+      router.prefetch('/matches');
     }
   }, [open, router]);
 
@@ -115,7 +115,7 @@ export const SignUpModal = ({ open, onOpenChange, fromReview = false, onSwitchTo
 
       // Store redirect intent for client-side redirect
       if (typeof window !== 'undefined') {
-        const redirect = redirectTo || '/onboarding';
+        const redirect = redirectTo || '/matches';
         window.sessionStorage.setItem('postAuthRedirect', redirect);
       }
 

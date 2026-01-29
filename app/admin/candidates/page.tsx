@@ -23,7 +23,8 @@ export default function AdminCandidatesPage() {
   const router = useRouter();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [filteredCandidates, setFilteredCandidates] = useState<Candidate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [user, setUser] = useState<any>(null);
@@ -93,9 +94,9 @@ export default function AdminCandidatesPage() {
       setFilteredCandidates(
         candidates.filter(
           (c) =>
-            c.name.toLowerCase().includes(query) ||
-            c.email.toLowerCase().includes(query) ||
-            c.github_username.toLowerCase().includes(query)
+            c.name?.toLowerCase()?.includes(query) ||
+            c.email?.toLowerCase()?.includes(query) ||
+            c.github_username?.toLowerCase()?.includes(query)
         )
       );
     }
@@ -128,6 +129,7 @@ export default function AdminCandidatesPage() {
       setError(err.message || 'Failed to load candidates');
     } finally {
       setIsLoading(false);
+      setIsInitialLoading(false);
     }
   }
 
@@ -155,7 +157,7 @@ export default function AdminCandidatesPage() {
     });
   }
 
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -256,7 +258,15 @@ export default function AdminCandidatesPage() {
         </div>
 
         {/* Candidates Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden relative">
+          {isLoading && (
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center">
+              <div className="flex flex-col items-center">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-600 mb-2" />
+                <span className="text-sm text-gray-500">Updating...</span>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -309,15 +319,19 @@ export default function AdminCandidatesPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <a
-                          href={`https://github.com/${candidate.github_username}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-blue-600 hover:text-blue-800"
-                        >
-                          @{candidate.github_username}
-                        </a>
+                        {candidate.github_username ? (
+                          <a
+                            href={`https://github.com/${candidate.github_username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                          >
+                            @{candidate.github_username}
+                          </a>
+                        ) : (
+                          <span className="text-sm text-gray-400">No GitHub</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {candidate.has_verification ? (

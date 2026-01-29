@@ -685,13 +685,20 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
       if (!response.ok) {
         console.error('Failed to mark onboarding complete:', await response.text());
+        // Don't proceed if marking complete failed
+        return;
       }
+
+      // Ensure the response completes before redirecting
+      await response.json();
     } catch (error) {
       console.error('Error marking onboarding complete:', error);
+      // Don't redirect on error
+      return;
     }
 
-    // Small delay to ensure database propagates
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Longer delay to ensure database propagates and prevent race condition
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     // Directly redirect to matches page
     window.location.href = "/matches";

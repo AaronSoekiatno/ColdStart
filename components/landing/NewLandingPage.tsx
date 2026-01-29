@@ -59,51 +59,6 @@ export function NewLandingPage() {
   const userEmail = useMemo(() => user?.email, [user?.email]);
 
   useEffect(() => {
-    // Helper to check if user needs onboarding and open appropriate modal
-    const checkOnboardingStatus = async (session: { user: User | null } | null, isNewSignIn: boolean = false) => {
-      if (!session?.user) return;
-      if (typeof window === "undefined") return;
-
-      // Check if this is a GitHub connection flow - if so, don't interfere
-      const urlParams = new URLSearchParams(window.location.search);
-      const isGitHubConnection = urlParams.get('github_connected') === 'true';
-
-      if (isGitHubConnection) {
-        // Let the GitHub redirect handler (separate useEffect) handle this
-        return;
-      }
-
-      // On onboarding route, always show onboarding modal (don't check status)
-      if (isOnboardingRoute) {
-        setShowSignIn(false);
-        setShowOnboarding(true);
-        return;
-      }
-
-      // Check if user has completed onboarding
-      try {
-        const response = await fetch('/api/candidate/check-onboarding', {
-          credentials: 'include',
-        });
-        const data = await response.json();
-
-        if (data.needsOnboarding) {
-          // User needs to complete onboarding first
-          setShowSignIn(false);
-          setShowOnboarding(true);
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
-      }
-
-      // If user just signed in and onboarding is complete, redirect to matches
-      // (but not if on onboarding route)
-      if (isNewSignIn && !isOnboardingRoute) {
-        setShowSignIn(false);
-        window.location.href = "/matches";
-      }
-    };
 
     let previousUser: User | null = null;
     let initialLoadComplete = false;
@@ -138,8 +93,6 @@ export function NewLandingPage() {
           return; // Exit early to prevent other redirects
         }
       }
-
-      checkOnboardingStatus(session, isNewSignIn);
 
       previousUser = currentUser;
     });
@@ -229,14 +182,30 @@ export function NewLandingPage() {
     }
   }, [isOnboardingRoute, user]);
 
-  const handleGetStarted = () => {
-    // If not authenticated, prompt sign-up (onboarding will happen after sign-up)
+  const handleGetStarted = async () => {
+    // If not authenticated, prompt sign-up
     if (!user) {
       setShowSignUp(true);
       return;
     }
 
-    // Already authenticated – redirect to matches page
+    // Check if user has completed onboarding
+    try {
+      const response = await fetch('/api/candidate/check-onboarding', {
+        credentials: 'include',
+      });
+      const data = await response.json();
+
+      if (data.needsOnboarding) {
+        // User needs to complete onboarding first
+        setShowOnboarding(true);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+    }
+
+    // Already authenticated and onboarded – redirect to matches page
     router.push('/matches');
   };
 

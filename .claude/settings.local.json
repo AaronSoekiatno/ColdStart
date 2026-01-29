@@ -39,7 +39,8 @@
       "Bash(fly machine update:*)",
       "Bash(flyctl status:*)",
       "Bash(flyctl logs:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(vercel logs:*)"
     ],
     "deny": [],
     "ask": []
