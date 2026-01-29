@@ -12,16 +12,14 @@
  * 4. Opt-out checking
  */
 
-// Load .env.local file FIRST using require to ensure it's synchronous
-// This is critical because lib/supabase.ts initializes clients at module load time
-const { resolve } = require('path');
-const { config } = require('dotenv');
+import { resolve } from 'path';
+import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 // Now import other modules after env vars are loaded
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
-import sgMail from '@sendgrid/mail';
+import { Resend } from 'resend';
 
 interface SendEmailResult {
   success: boolean;
@@ -29,16 +27,17 @@ interface SendEmailResult {
   error?: string;
 }
 
-let sgMailInitialized = false;
+let resendInstance: Resend | null = null;
 
-function initSendGrid() {
-  if (sgMailInitialized) return;
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) {
-    throw new Error('SENDGRID_API_KEY environment variable is not set');
+function getResendClient(): Resend {
+  if (!resendInstance) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set');
+    }
+    resendInstance = new Resend(apiKey);
   }
-  sgMail.setApiKey(apiKey);
-  sgMailInitialized = true;
+  return resendInstance;
 }
 
 function extractFirstName(
@@ -157,16 +156,16 @@ async function getOrCreateEmailPreferences(supabaseClient: SupabaseClient, email
   return preferences;
 }
 
-async function sendWelcomeEmail(
+async function sendOnboardingEmail(
   supabaseClient: SupabaseClient,
   email: string,
   firstName?: string,
   userMetadata?: { full_name?: string; name?: string }
 ): Promise<SendEmailResult> {
-  if (!process.env.SENDGRID_API_KEY) {
+  if (!process.env.RESEND_API_KEY) {
     return {
       success: false,
-      error: 'SENDGRID_API_KEY environment variable is not set',
+      error: 'RESEND_API_KEY environment variable is not set',
     };
   }
 
@@ -174,7 +173,7 @@ async function sendWelcomeEmail(
     // Check if we can send welcome email (respects opt-out preferences)
     const canSend = await checkCanSendWelcomeEmail(supabaseClient, email);
     if (!canSend) {
-      console.log(`[SendGrid] Skipping welcome email to ${email} - user has opted out`);
+      console.log(`[Resend] Skipping welcome email to ${email} - user has opted out`);
       return {
         success: false,
         error: 'User has opted out of welcome emails',
@@ -186,7 +185,7 @@ async function sendWelcomeEmail(
     const unsubscribeToken = preferences.unsubscribe_token;
 
     if (!unsubscribeToken) {
-      console.error(`[SendGrid] No unsubscribe token found for ${email}`);
+      console.error(`[Resend] No unsubscribe token found for ${email}`);
       return {
         success: false,
         error: 'Failed to generate unsubscribe token',
@@ -209,7 +208,7 @@ async function sendWelcomeEmail(
         }
       } catch (error) {
         // If candidate lookup fails, fall back to extractFirstName
-        console.warn(`[SendGrid] Could not fetch candidate for ${email}, using fallback name extraction`);
+        console.warn(`[Resend] Could not fetch candidate for ${email}, using fallback name extraction`);
       }
     }
     
@@ -219,15 +218,12 @@ async function sendWelcomeEmail(
     }
 
     // Get app URL for unsubscribe link (normalize to remove trailing slash)
-    // Use localhost in development, otherwise use NEXT_PUBLIC_APP_URL or production URL
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL 
       ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/+$/, '')
       : process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3000'
         : 'https://joinhermes.co';
     const unsubscribeLink = `${APP_URL}/unsubscribe?email=${encodeURIComponent(email)}&token=${encodeURIComponent(unsubscribeToken)}`;
-    const privacyLink = `${APP_URL}/privacy`;
-    const termsLink = `${APP_URL}/terms`;
 
     // Build email subject
     const subject = `Hey ${userFirstName} - welcome to Hermes`;
@@ -261,79 +257,46 @@ Unsubscribe: ${unsubscribeLink}
 
 Hermes: ${APP_URL}`;
 
+    // Send email using Resend
+    const resend = getResendClient();
+    const from = process.env.RESEND_FROM_EMAIL || 'Robert from Hermes <robert@joinhermes.co>';
 
-    // Send email directly using SendGrid
-    initSendGrid();
-
-    // Debug: Log subject to verify new content
     console.log(`[DEBUG] Subject: ${subject}`);
-    console.log(`[DEBUG] Email body preview: ${emailBodyText.substring(0, 100)}...`);
+    console.log(`[DEBUG] From: ${from}`);
 
-    const from =
-      process.env.SENDGRID_FROM_EMAIL ||
-      'robert@joinhermes.co';
-
-    const msg = {
+    const { data, error } = await resend.emails.send({
+      from,
       to: email,
-      from: {
-        email: from,
-        name: process.env.SENDGRID_FROM_NAME || 'Robert Flores',
-      },
       subject,
       html: emailBodyHTML,
       text: emailBodyText,
-      categories: ['welcome'],
-      customArgs: {
-        category: 'welcome',
-      },
-      // Add List-Unsubscribe header for better inbox placement (RFC compliance)
-      headers: {
-        'List-Unsubscribe': `<${unsubscribeLink}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        'X-Auto-Response-Suppress': 'All', // Suppress auto-responses for transactional emails
-      },
-      trackingSettings: {
-        clickTracking: {
-          enable: false,
-          enableText: false,
-        },
-        openTracking: {
-          enable: false,
-        },
-      },
-    } as sgMail.MailDataRequired;
+      tags: [
+        { name: 'category', value: 'welcome' },
+        { name: 'type', value: 'transactional' }
+      ]
+    });
 
-    const [response] = await sgMail.send(msg);
-
-    const headers = response.headers as Record<string, string>;
-    const messageId =
-      headers['x-message-id'] ||
-      headers['X-Message-Id'] ||
-      headers['x-message-id'.toLowerCase()];
+    if (error) {
+      console.error('[Resend] Error details:', error);
+      return {
+        success: false,
+        error: error.message || 'Unknown Resend error',
+      };
+    }
 
     console.log(
-      `[SendGrid] Successfully sent welcome email to ${email}${
-        messageId ? `, message ID: ${messageId}` : ''
+      `[Resend] Successfully sent welcome email to ${email}${
+        data?.id ? `, message ID: ${data.id}` : ''
       }`
     );
 
     return {
       success: true,
-      messageId,
+      messageId: data?.id,
     };
   } catch (error: any) {
-    const sgErrorBody = error?.response?.body;
-    if (sgErrorBody?.errors) {
-      console.error('[SendGrid] Error details:', sgErrorBody.errors);
-    } else {
-      console.error('[SendGrid] Error sending welcome email:', error);
-    }
-
-    const errorMessage =
-      sgErrorBody?.errors?.map((e: any) => e.message).join(', ') ||
-      error?.message ||
-      'Unknown SendGrid error';
-
+    const errorMessage = error?.message || 'Unknown error';
+    console.error('[Resend] Error sending welcome email:', error);
     return {
       success: false,
       error: errorMessage,
@@ -467,7 +430,7 @@ async function main() {
       console.log(`     Will extract from email or metadata`);
     }
     
-    const result = await sendWelcomeEmail(supabaseAdmin, TEST_EMAIL, firstName);
+    const result = await sendOnboardingEmail(supabaseAdmin, TEST_EMAIL, firstName);
     
     if (result.success) {
       console.log(`  ✅ Welcome email sent successfully!`);

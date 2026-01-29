@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, getCandidate } from '@/lib/supabase';
+import { sendOnboardingEmail, extractFirstName, SendEmailResult } from '@/lib/resend';
+import { deleteCache } from '@/lib/redis-cache';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,40 +59,39 @@ export async function POST(request: NextRequest) {
       .eq('email', user.email.toLowerCase().trim())
       .eq('user_type', 'lead'); // Only update if currently 'lead' (idempotent)
 
-    // Send welcome email after onboarding completion (non-blocking)
-    const { sendWelcomeEmail, extractFirstName } = await import('@/lib/sendgrid');
-    const { getCandidate } = await import('@/lib/supabase');
+    // Send welcome/onboarding email after completion (non-blocking)
     try {
       const candidate = await getCandidate(user.email);
       if (candidate) {
-        const firstName = candidate.name?.split(' ')[0]?.trim() || 
+        // Prefer name from candidate record, fall back to metadata/email extraction
+        const firstName = candidate.name?.trim()?.split(' ')[0] || 
                          extractFirstName(user.user_metadata, user.email);
         
-        sendWelcomeEmail(user.email, firstName, user.user_metadata)
-          .then((result) => {
+        // sendOnboardingEmail handles preference checks internally
+        sendOnboardingEmail(user.email, firstName, user.user_metadata)
+          .then((result: SendEmailResult) => {
             if (result.success) {
-              console.log(`[Mark Onboarding Complete] Welcome email sent to ${user.email}`);
+              console.log(`[Mark Onboarding Complete] Onboarding email sent to ${user.email}`);
             } else {
-              console.warn(`[Mark Onboarding Complete] Failed to send welcome email to ${user.email}:`, result.error);
+              console.warn(`[Mark Onboarding Complete] Failed to send onboarding email:`, result.error);
             }
           })
-          .catch((error) => {
-            console.error(`[Mark Onboarding Complete] Error sending welcome email to ${user.email}:`, error);
+          .catch((error: any) => {
+            console.error(`[Mark Onboarding Complete] Error sending onboarding email:`, error);
           });
       }
     } catch (error) {
-      // Log error but don't block onboarding completion
-      console.error('[Mark Onboarding Complete] Error setting up welcome email:', error);
+      // Log error but don't block response
+      console.error('[Mark Onboarding Complete] Error setting up onboarding email:', error);
     }
 
     // Invalidate matches cache since job_type and years_of_experience affect filtering
-    const { deleteCache } = await import('@/lib/redis-cache');
     try {
       const matchesCacheKey = `matches:${user.email}:ALL`;
       await deleteCache(matchesCacheKey);
       console.log('[Mark Onboarding Complete] Invalidated matches cache:', matchesCacheKey);
     } catch (error) {
-      // Log error but don't block onboarding completion
+      // Log error but don't block response
       console.error('[Mark Onboarding Complete] Error invalidating cache:', error);
     }
 

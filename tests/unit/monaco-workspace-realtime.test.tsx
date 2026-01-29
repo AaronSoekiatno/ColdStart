@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { MonacoWorkspace } from '@/components/editor/MonacoWorkspace';
 import { supabase } from '@/lib/supabase';
 
@@ -41,7 +41,7 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
 
     // Mock file list API
     mockFetch.mockImplementation((url: string) => {
@@ -120,7 +120,9 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
       });
 
       // Fast-forward to polling interval (5 seconds)
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
 
       await waitFor(() => {
         // Should have called file list API again (polling)
@@ -148,7 +150,9 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
       });
 
       // Polling should activate
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -175,7 +179,9 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
       });
 
       // Should NOT start polling (realtime is working)
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
 
       // File list should only be called once (initial load)
       await waitFor(() => {
@@ -209,17 +215,23 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
       mockFetch.mockClear();
 
       // Should poll at 5s, 10s, 15s
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledTimes(1);
       });
 
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledTimes(2);
       });
 
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledTimes(3);
       });
@@ -244,7 +256,9 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
 
       mockFetch.mockClear();
 
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
 
       await waitFor(() => {
         // Should call list API
@@ -282,7 +296,9 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
       // Unmount before polling
       unmount();
 
-      vi.advanceTimersByTime(10000);
+      await act(async () => {
+        vi.advanceTimersByTime(10000);
+      });
 
       // Should not have polled after unmount
       expect(mockFetch).not.toHaveBeenCalled();
@@ -301,7 +317,7 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
 
       (supabase.channel as any).mockReturnValue(mockChannel);
 
-      const { rerender } = render(<MonacoWorkspace {...defaultProps} />);
+      render(<MonacoWorkspace {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockChannel.subscribe).toHaveBeenCalled();
@@ -364,7 +380,9 @@ describe('MonacoWorkspace - Realtime Fallback Tests', () => {
       });
 
       // First error triggers first reconnect attempt
-      vi.advanceTimersByTime(5000);
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
 
       await waitFor(() => {
         expect(supabase.removeChannel).toHaveBeenCalled();

@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import { supabase, isSubscribed } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -144,8 +145,8 @@ export const Header = ({ initialUser }: HeaderProps) => {
   }, [userEmail, isCheckingPremium]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white transition-all duration-300 mb-4 border border-gray-200">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <header className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none">
+      <div className="pointer-events-auto w-full max-w-7xl bg-white/80 backdrop-blur-2xl border border-gray-200 rounded-full px-6 py-2.5 flex items-center justify-between shadow-lg transition-all duration-300 relative">
         {/* Logo and Title */}
         <Link href="/" className="flex items-center gap-3 flex-shrink-0">
           <Image
@@ -285,118 +286,118 @@ export const Header = ({ initialUser }: HeaderProps) => {
 
         {/* Mobile Navigation - Hamburger Menu */}
         <div className="lg:hidden flex items-center gap-2">
-          {user && (
-            <DropdownMenu modal={false} open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="rounded-full h-9 px-4 text-gray-600 hover:text-gray-700"
-                >
-                  {mobileMenuOpen ? (
-                    <X className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="rounded-full h-9 w-9 p-0 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+          >
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </Button>
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="pointer-events-auto absolute top-[70px] w-[90%] max-w-md bg-white border border-gray-200 rounded-2xl shadow-2xl p-4 lg:hidden z-50 overflow-hidden"
+              >
+                <div className="space-y-1">
+                  {user ? (
+                    <>
+                      <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100 mb-2 truncate">
+                        {user.email}
+                      </div>
+                      <Link
+                        href="/matches"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                      >
+                        All Matches
+                      </Link>
+                      <Link
+                        href="/matches/saved"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                      >
+                        Saved Matches
+                      </Link>
+                      <Link
+                        href="/tracker"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                      >
+                        Email Tracker
+                      </Link>
+                      <Link
+                        href="/resumes"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                      >
+                        Resumes
+                      </Link>
+                      <div className="border-t border-gray-100 my-2"></div>
+                      {isPremium && (
+                        <button
+                          onClick={async () => {
+                            setMobileMenuOpen(false);
+                            try {
+                              const response = await fetch('/api/stripe/create-portal-session', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ email: user.email ?? '' }),
+                              });
+                              const data = await response.json();
+                              if (data.url) window.location.href = data.url;
+                            } catch (error) {
+                              console.error('Error opening portal:', error);
+                            }
+                          }}
+                          className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                        >
+                          Manage Subscription
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setIsFeedbackOpen(true);
+                          setMobileMenuOpen(false);
+                        }}
+                        className="block w-full text-left px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-xl transition-colors"
+                      >
+                        Send Feedback
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setMobileMenuOpen(false);
+                          await supabase.auth.signOut();
+                          setUser(null);
+                          router.push("/");
+                        }}
+                        className="block w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                      >
+                        Sign Out
+                      </button>
+                    </>
                   ) : (
-                    <Menu className="h-5 w-5" />
+                    <Link
+                      href="/"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-xl transition-colors text-center"
+                    >
+                      Home
+                    </Link>
                   )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="border-gray-200 bg-white text-gray-900 px-0 py-0 rounded-2xl overflow-hidden min-w-[220px] mr-4 shadow-lg">
-                <div className="px-4 py-3 text-xs text-gray-500 border-b border-gray-200 rounded-t-2xl truncate">
-                  {user.email}
                 </div>
-                <DropdownMenuItem
-                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
-                  onSelect={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/matches');
-                  }}
-                >
-                  All Matches
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
-                  onSelect={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/matches/saved');
-                  }}
-                >
-                  Saved Matches
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
-                  onSelect={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/tracker');
-                  }}
-                >
-                  Email Tracker
-                </DropdownMenuItem>
-
-                <DropdownMenuItem
-                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
-                  onSelect={() => {
-                    setMobileMenuOpen(false);
-                    router.push('/resumes');
-                  }}
-                >
-                  Resumes
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator className="bg-gray-200 my-0" />
-                {isPremium && (
-                  <DropdownMenuItem
-                    className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer border-b border-gray-100"
-                    onSelect={async () => {
-                      setMobileMenuOpen(false);
-                      try {
-                        const response = await fetch('/api/stripe/create-portal-session', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                          },
-                          body: JSON.stringify({ email: user.email ?? '' }),
-                        });
-
-                        const data = await response.json();
-
-                        if (!response.ok) {
-                          throw new Error(data.error || 'Failed to create portal session');
-                        }
-
-                        if (data.url) {
-                          window.location.href = data.url;
-                        }
-                      } catch (error: any) {
-                        console.error('Error opening portal:', error);
-                        toast({
-                          title: "Error",
-                          description: error.message || 'Failed to open subscription management',
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                  >
-                    Manage Subscription
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  className="w-full px-4 py-3 text-sm font-medium text-gray-900 hover:text-gray-900 hover:bg-gray-50 focus:bg-gray-50 focus:text-gray-900 cursor-pointer rounded-b-2xl"
-                  onSelect={async () => {
-                    setMobileMenuOpen(false);
-                    await supabase.auth.signOut();
-                    setUser(null);
-                    toast({
-                      title: "Signed out",
-                      description: "You have been signed out successfully.",
-                    });
-                    // Redirect to landing page after sign out
-                    router.push("/");
-                  }}
-                >
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 

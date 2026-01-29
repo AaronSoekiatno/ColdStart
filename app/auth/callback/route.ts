@@ -1,7 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
-import { sendWelcomeEmail, extractFirstName } from '@/lib/sendgrid';
-import { getOrCreateEmailPreferences } from '@/lib/supabase';
+import { sendOnboardingEmail, extractFirstName, SendEmailResult } from '@/lib/resend';
+import { getOrCreateEmailPreferences, supabaseAdmin } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -27,8 +28,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(errorUrl);
   }
 
-  // Import cookies dynamically
-  const { cookies } = await import('next/headers');
   const cookieStore = await cookies();
 
   const supabase = createServerClient(
@@ -70,8 +69,6 @@ export async function GET(request: NextRequest) {
     // GitHub OAuth sessions will have a provider_token after exchange
     if (sessionData?.session?.provider_token && user?.email) {
       // This is GitHub OAuth - handle it directly here since we've already exchanged the code
-      // Import supabaseAdmin for database operations
-      const { supabaseAdmin } = await import('@/lib/supabase');
       
       const providerToken = sessionData.session.provider_token;
       const providerRefreshToken = sessionData.session.provider_refresh_token;
@@ -164,17 +161,17 @@ export async function GET(request: NextRequest) {
           // Extract first name from user metadata
           const firstName = extractFirstName(user.user_metadata, user.email);
           
-          // Send welcome email (don't block redirect on failure)
-          sendWelcomeEmail(user.email, firstName, user.user_metadata)
-            .then((result) => {
+          // Send onboarding email (don't block redirect on failure)
+          sendOnboardingEmail(user.email, firstName, user.user_metadata)
+            .then((result: SendEmailResult) => {
               if (result.success) {
-                console.log(`[Auth Callback] Welcome email sent to ${user.email}`);
+                console.log(`[Auth Callback] Onboarding email sent to ${user.email}`);
               } else {
-                console.warn(`[Auth Callback] Failed to send welcome email to ${user.email}:`, result.error);
+                console.warn(`[Auth Callback] Failed to send onboarding email to ${user.email}:`, result.error);
               }
             })
-            .catch((error) => {
-              console.error(`[Auth Callback] Error sending welcome email to ${user.email}:`, error);
+            .catch((error: any) => {
+              console.error(`[Auth Callback] Error sending onboarding email to ${user.email}:`, error);
             });
         } catch (error) {
           // Log error but don't block signup flow
@@ -293,17 +290,17 @@ export async function GET(request: NextRequest) {
           // Extract first name from user metadata
           const firstName = extractFirstName(magicLinkUser.user_metadata, magicLinkUser.email);
           
-          // Send welcome email (don't block redirect on failure)
-          sendWelcomeEmail(magicLinkUser.email, firstName, magicLinkUser.user_metadata)
-            .then((result) => {
+          // Send onboarding email (don't block redirect on failure)
+          sendOnboardingEmail(magicLinkUser.email, firstName, magicLinkUser.user_metadata)
+            .then((result: SendEmailResult) => {
               if (result.success) {
-                console.log(`[Auth Callback] Welcome email sent to ${magicLinkUser.email}`);
+                console.log(`[Auth Callback] Onboarding email sent to ${magicLinkUser.email}`);
               } else {
-                console.warn(`[Auth Callback] Failed to send welcome email to ${magicLinkUser.email}:`, result.error);
+                console.warn(`[Auth Callback] Failed to send onboarding email to ${magicLinkUser.email}:`, result.error);
               }
             })
-            .catch((error) => {
-              console.error(`[Auth Callback] Error sending welcome email to ${magicLinkUser.email}:`, error);
+            .catch((error: any) => {
+              console.error(`[Auth Callback] Error sending onboarding email to ${magicLinkUser.email}:`, error);
             });
         } catch (error) {
           // Log error but don't block signup flow

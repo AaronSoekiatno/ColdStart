@@ -12,10 +12,8 @@
  *   npm run backfill-email-preferences -- --limit=100      # Limit to first 100 users
  */
 
-// Load .env.local file FIRST using require to ensure it's synchronous
-// This is critical because lib/supabase.ts initializes clients at module load time
-const { resolve } = require('path');
-const { config } = require('dotenv');
+import { resolve } from 'path';
+import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 // Now import other modules after env vars are loaded

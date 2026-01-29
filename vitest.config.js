@@ -13,6 +13,9 @@ export default defineConfig({
         // Environment
         environment: 'node',
 
+        // Setup files (runs before each test file)
+        setupFiles: ['./tests/setup.ts'],
+
         // Globals (describe, it, expect available without imports)
         globals: true,
 

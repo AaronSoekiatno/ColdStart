@@ -94,10 +94,10 @@ supabase migration up 034_sync_waitlist_to_email_preferences.sql
 
 ### 2. Update Waitlist Email Scripts
 
-The waitlist email sending scripts now use `sendNewsletterEmail()` instead of `sendWaitlistEmail()`:
+The waitlist email sending scripts now use `sendNewsletterEmail()` from the Resend library:
 
-- ✅ `scripts/email/sendgrid/sendgrid-send-waitlist-emails.ts` - Updated
-- ⚠️ `scripts/email/send-waitlist-emails.ts` - May need update if using Resend
+- ✅ `lib/resend.ts` - Updated with `sendWelcomeEmail` and `sendNewsletterEmail`
+- ✅ `scripts/email/send-waitlist-emails.ts` - Uses Resend
 
 ### 3. Update Existing Waitlist Users
 
@@ -118,7 +118,7 @@ LEFT JOIN email_preferences ep ON w.email = ep.email;
 ### Sending Welcome Email
 
 ```typescript
-import { sendWelcomeEmail } from '@/lib/sendgrid';
+import { sendWelcomeEmail } from '@/lib/resend';
 
 // Automatically checks welcome_emails_enabled
 await sendWelcomeEmail(
@@ -131,7 +131,7 @@ await sendWelcomeEmail(
 ### Sending Newsletter Email
 
 ```typescript
-import { sendNewsletterEmail } from '@/lib/sendgrid';
+import { sendNewsletterEmail } from '@/lib/resend';
 
 // Automatically checks marketing_emails_enabled
 await sendNewsletterEmail(

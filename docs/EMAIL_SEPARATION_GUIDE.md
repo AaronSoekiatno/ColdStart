@@ -1,203 +1,66 @@
-# Email Separation Guide: Welcome vs Newsletter
+# Email Separation Guide
 
-## Overview
+This guide explains how Hermes handles different types of emails to ensure compliance with anti-spam regulations (CAN-SPAM, GDPR) and provide a great user experience.
 
-The email system is now separated into two distinct types with different opt-in/opt-out mechanisms:
+## Email Types
 
-1. **Welcome Emails (Transactional)**
-   - Sent automatically on user signup
-   - Controlled by `welcome_emails_enabled`
-   - Default: `true` (opt-in by default)
+### 1. Onboarding Emails (Transactional)
+- **Purpose**: Welcome the user, provide next steps, and confirm account creation.
+- **Trigger**: Sent immediately after successful signup or onboarding completion.
+- **Function**: `sendOnboardingEmail(email, firstName, userMetadata)` in `lib/resend.ts`.
+- **Consent**: Implied by the user signing up for the service. Users can still opt out via the unsubscribe link.
+- **Preferences**: Controlled by `welcome_emails_enabled` in the `email_preferences` table.
 
-2. **Newsletter Emails (Marketing)**
-   - Sent to waitlist subscribers and opted-in users
-   - Controlled by `marketing_emails_enabled`
-   - Default: `false` (opt-in required)
-   - Waitlist signups: `true` (auto-opted in)
+### 2. Newsletter/Marketing Emails (Commercial)
+- **Purpose**: Share product updates, job market insights, and promotional content.
+- **Trigger**: Sent manually or via automated campaigns.
+- **Function**: `sendNewsletterEmail(email, subject, htmlContent)` in `lib/resend.ts`.
+- **Consent**: Requires explicit opt-in (e.g., checking a box during signup or joining the waitlist).
+- **Preferences**: Controlled by `marketing_emails_enabled` in the `email_preferences` table.
 
-## Key Differences
+## Technical Implementation
 
-| Feature | Welcome Email | Newsletter Email |
-|---------|--------------|------------------|
-| **Type** | Transactional | Marketing |
-| **Trigger** | Automatic on signup | Manual send to subscribers |
-| **Preference Flag** | `welcome_emails_enabled` | `marketing_emails_enabled` |
-| **Default** | `true` | `false` |
-| **Waitlist Users** | N/A (they haven't signed up) | `true` (auto-opted in) |
-| **Function** | `sendWelcomeEmail()` | `sendNewsletterEmail()` |
-| **Check Function** | `checkCanSendWelcomeEmail()` | `checkCanSendNewsletterEmail()` |
-| **Category** | `welcome` | `newsletter` |
-
-## Implementation Details
-
-### Welcome Email Flow
-
-```typescript
-// In app/auth/callback/route.ts
-if (isNewSignUp && user.email) {
-  // Create preferences (welcome_emails_enabled = true, marketing_emails_enabled = false)
-  await getOrCreateEmailPreferences(user.email);
-  
-  // Check and send welcome email
-  const canSend = await checkCanSendWelcomeEmail(user.email);
-  if (canSend) {
-    await sendWelcomeEmail(user.email, firstName, user.user_metadata);
-  }
-}
-```
-
-### Newsletter Email Flow
-
-```typescript
-// When sending to waitlist or newsletter subscribers
-const canSend = await checkCanSendNewsletterEmail(email);
-if (canSend) {
-  await sendNewsletterEmail(email, subject, htmlContent, textContent);
-}
-```
-
-### Waitlist Integration
-
-When someone joins the waitlist:
-
-```typescript
-// In app/api/waitlist/route.ts
-// 1. Add to waitlist table
-await supabaseAdmin.from("waitlist").insert({ email });
-
-// 2. Create/update email preferences with marketing opt-in
-const preferences = await getOrCreateEmailPreferences(email, { 
-  marketingOptIn: true  // Waitlist = newsletter subscription
-});
-
-// Or update existing preferences
-await supabaseAdmin
-  .from("email_preferences")
-  .update({ marketing_emails_enabled: true })
-  .eq("email", email);
-```
-
-## Migration Steps
-
-### 1. Run Database Migrations
-
-```bash
-# Create email_preferences table
-supabase migration up 032_create_email_preferences.sql
-
-# Backfill existing users
-supabase migration up 033_backfill_email_preferences.sql
-
-# Sync waitlist to email_preferences
-supabase migration up 034_sync_waitlist_to_email_preferences.sql
-```
-
-### 2. Update Waitlist Email Scripts
-
-The waitlist email sending scripts now use `sendNewsletterEmail()` instead of `sendWaitlistEmail()`:
-
-- ✅ `scripts/email/sendgrid/sendgrid-send-waitlist-emails.ts` - Updated
-- ⚠️ `scripts/email/send-waitlist-emails.ts` - May need update if using Resend
-
-### 3. Update Existing Waitlist Users
-
-Run the sync migration (034) to ensure all waitlist users are opted into newsletter:
+### Database Schema (`email_preferences`)
+We maintain a centralized table to track user preferences across both SendGrid (legacy) and Resend (current).
 
 ```sql
--- This is done automatically by migration 034
--- But you can verify:
-SELECT 
-  w.email,
-  ep.marketing_emails_enabled as newsletter_opted_in
-FROM waitlist w
-LEFT JOIN email_preferences ep ON w.email = ep.email;
-```
-
-## Usage Examples
-
-### Sending Welcome Email
-
-```typescript
-import { sendWelcomeEmail } from '@/lib/sendgrid';
-
-// Automatically checks welcome_emails_enabled
-await sendWelcomeEmail(
-  'user@example.com',
-  'John',  // Optional: first name
-  { full_name: 'John Doe' }  // Optional: user metadata
+CREATE TABLE email_preferences (
+    email TEXT PRIMARY KEY,
+    welcome_emails_enabled BOOLEAN DEFAULT true,
+    marketing_emails_enabled BOOLEAN DEFAULT false,
+    unsubscribe_token TEXT,
+    unsubscribed_at TIMESTAMP WITH TIME ZONE,
+    -- ... other fields
 );
 ```
 
-### Sending Newsletter Email
+### Preference Checks
+Before sending any email, we check the user's preferences:
 
 ```typescript
-import { sendNewsletterEmail } from '@/lib/sendgrid';
+// For onboarding emails
+const canSend = await checkCanSendWelcomeEmail(email);
 
-// Automatically checks marketing_emails_enabled
-await sendNewsletterEmail(
-  'user@example.com',
-  'Product Update: New Features!',
-  '<html>...</html>',  // HTML content
-  'Plain text version'  // Optional: text content
-);
+// For newsletters
+const canSend = await checkCanSendNewsletterEmail(email);
 ```
 
-### Checking Preferences
-
-```typescript
-import { 
-  checkCanSendWelcomeEmail, 
-  checkCanSendNewsletterEmail 
-} from '@/lib/supabase';
-
-// Check if can send welcome email
-const canSendWelcome = await checkCanSendWelcomeEmail('user@example.com');
-
-// Check if can send newsletter
-const canSendNewsletter = await checkCanSendNewsletterEmail('user@example.com');
-```
-
-## Unsubscribe Behavior
-
-### Global Unsubscribe
-- Sets `unsubscribed_at` timestamp
-- Disables both `welcome_emails_enabled` and `marketing_emails_enabled`
-- Complete opt-out from all emails
-
-### Newsletter-Only Unsubscribe
-- Sets `marketing_emails_enabled = false`
-- Keeps `welcome_emails_enabled = true`
-- Still receives transactional emails
-
-### Welcome-Only Unsubscribe
-- Sets `welcome_emails_enabled = false`
-- Keeps `marketing_emails_enabled` as-is
-- Still receives newsletter if opted in
+### Unsubscribe Logic
+All emails (both transactional and marketing) MUST include an unsubscribe link. When a user unsubscribes:
+1. They are directed to `/unsubscribe`.
+2. Their `unsubscribed_at` timestamp is set.
+3. Both `welcome_emails_enabled` and `marketing_emails_enabled` are set to `false`.
 
 ## Best Practices
 
-1. **Always Check Preferences**: Use the check functions before sending
-2. **Respect Opt-outs**: Never send if preference is disabled
-3. **Waitlist = Newsletter**: Waitlist signups should auto-opt-in to marketing
-4. **Clear Separation**: Use the correct function for each email type
-5. **Compliance**: Both types include unsubscribe links and comply with regulations
-
-## Testing
-
-```bash
-# Test welcome email
-npm run test-welcome-email your.email@example.com
-
-# Test newsletter sending (create a test script)
-# Should check marketing_emails_enabled before sending
-```
+1. **Always use the wrapper functions**: Never call the Resend client directly. Use `sendOnboardingEmail()` or `sendNewsletterEmail()` to ensure preference checks are performed.
+2. **Provide a plain text fallback**: Always include a text version of your email for better deliverability and accessibility.
+3. **Include a physical address**: CAN-SPAM requires a physical mailing address in commercial emails. This is typically included in the email footer.
+4. **Honor unsubscribes immediately**: Our system updates the database in real-time to prevent further emails from being sent to unsubscribed users.
 
 ## Summary
 
-- ✅ Welcome emails: Transactional, opt-in by default, sent on signup
+- ✅ Onboarding emails: Transactional, opt-in by default, sent on signup/onboarding complete
 - ✅ Newsletter emails: Marketing, opt-in required, sent to waitlist/subscribers
-- ✅ Waitlist users: Auto-opted into newsletter (`marketing_emails_enabled = true`)
-- ✅ Regular signups: Not auto-opted into newsletter (`marketing_emails_enabled = false`)
-- ✅ Separate functions: `sendWelcomeEmail()` vs `sendNewsletterEmail()`
+- ✅ Separate functions: `sendOnboardingEmail()` vs `sendNewsletterEmail()`
 - ✅ Separate checks: `checkCanSendWelcomeEmail()` vs `checkCanSendNewsletterEmail()`
-

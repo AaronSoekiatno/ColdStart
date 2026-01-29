@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import { parse } from 'csv-parse/sync';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -211,8 +211,7 @@ async function ingestCSV() {
   console.log(`Reading CSV from: ${csvPath}`);
   
   // Check if file exists
-  const fs = require('fs');
-  if (!fs.existsSync(csvPath)) {
+  if (!existsSync(csvPath)) {
     throw new Error(
       `CSV file not found at: ${csvPath}\n` +
       `Please make sure the file exists in the yc_companies directory.`
@@ -448,7 +447,7 @@ async function ingestCSV() {
 }
 
 // Run the ingestion
-if (require.main === module) {
+if (process.argv[1] === import.meta.filename) {
   ingestCSV()
     .then(() => {
       console.log('\nIngestion completed successfully!');

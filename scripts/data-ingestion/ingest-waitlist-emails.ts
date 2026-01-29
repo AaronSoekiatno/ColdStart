@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 config({ path: resolve(process.cwd(), '.env.local') });
 
 import { parse } from 'csv-parse/sync';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
@@ -174,8 +174,7 @@ async function ingestWaitlistEmails() {
   const csvPath = join(process.cwd(), 'waitlist_users_cleaned_emails.csv');
   console.log(`Reading emails from: ${csvPath}\n`);
 
-  const fs = require('fs');
-  if (!fs.existsSync(csvPath)) {
+  if (!existsSync(csvPath)) {
     throw new Error(
       `CSV file not found at: ${csvPath}\n` +
       `Please make sure the cleaned emails file exists.`
@@ -212,7 +211,7 @@ async function ingestWaitlistEmails() {
 }
 
 // Run the ingestion
-if (require.main === module) {
+if (process.argv[1] === import.meta.filename) {
   ingestWaitlistEmails()
     .then(() => {
       console.log('\nWaitlist email ingestion completed successfully!');

@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, useScroll, useTransform, AnimatePresence } from "framer-motion";
 
 export function NewLandingPage() {
   const router = useRouter();
@@ -306,32 +306,50 @@ export function NewLandingPage() {
           <div className="flex items-center gap-3 pr-1 relative z-10">
             {!user ? (
               <>
-                <Link
-                  href="#how-it-works"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors mr-4"
-                >
-                  How it Works
-                </Link>
-                <Link
-                  href="#faq"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="text-sm font-medium text-white/70 hover:text-white transition-colors mr-4"
-                >
-                  FAQ
-                </Link>
+                {/* Desktop secondary links - hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-6 mr-2">
+                  <Link
+                    href="#how-it-works"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                  >
+                    How it Works
+                  </Link>
+                  <Link
+                    href="#faq"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="text-sm font-medium text-white/70 hover:text-white transition-colors"
+                  >
+                    FAQ
+                  </Link>
+                </div>
                 <Button
                   onClick={handleGetStarted}
-                  className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
+                  className="rounded-full px-5 sm:px-6 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
                 >
                   Apply
                 </Button>
+
+                {/* Mobile Menu Toggle for logged out */}
+                <button
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  className="md:hidden p-2 text-white hover:bg-white/10 rounded-full transition-colors relative z-10"
+                  aria-label="Toggle menu"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {mobileMenuOpen ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
+                  </svg>
+                </button>
               </>
             ) : (
               <>
@@ -408,52 +426,100 @@ export function NewLandingPage() {
           </div>
         </motion.div>
 
-        {/* Mobile Menu Dropdown */}
-        {user && mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="pointer-events-auto absolute top-[80px] w-[90%] max-w-md bg-[#121212]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl p-4 md:hidden"
-          >
-            <div className="space-y-1">
-              <Link
-                href="/matches"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
-              >
-                Your Matches
-              </Link>
-              <Link
-                href="/tracker"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
-              >
-                Email Tracker
-              </Link>
-              <Link
-                href="/resumes"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
-              >
-                Resumes
-              </Link>
+        <AnimatePresence>
+          {mobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="pointer-events-auto absolute top-[80px] w-[90%] max-w-md bg-[#000000]/90 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl p-4 md:hidden z-50 overflow-hidden"
+              style={{
+                boxShadow: "0 20px 50px rgba(0, 0, 0, 0.5)"
+              }}
+            >
+              {/* Decorative gradient inside menu */}
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/5 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="border-t border-white/10 my-2"></div>
-              <div className="px-4 py-2 text-xs text-white/50 truncate">{user.email}</div>
-              <button
-                onClick={() => {
-                  handleSignOut();
-                  setMobileMenuOpen(false);
-                }}
-                className="block w-full text-left px-4 py-3 text-sm font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 rounded-xl transition-colors"
-              >
-                Sign Out
-              </button>
-            </div>
-          </motion.div>
-        )}
+              <div className="space-y-1 relative z-10">
+                {user ? (
+                  <>
+                    <Link
+                      href="/matches"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
+                    >
+                      Your Matches
+                    </Link>
+                    <Link
+                      href="/tracker"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
+                    >
+                      Email Tracker
+                    </Link>
+                    <Link
+                      href="/resumes"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
+                    >
+                      Resumes
+                    </Link>
+                    <div className="border-t border-white/10 my-3"></div>
+                    <div className="px-4 py-2 text-xs text-white/40 uppercase tracking-widest font-semibold flex items-center justify-between">
+                      <span className="truncate">{user.email}</span>
+                      {isPremium && <span className="bg-white/10 px-2 py-0.5 rounded-full text-[10px] text-white/80">PREMIUM</span>}
+                    </div>
+                    <button
+                      onClick={() => {
+                        handleSignOut();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 text-base font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 rounded-xl transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="#how-it-works"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setMobileMenuOpen(false);
+                        document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
+                    >
+                      How it Works
+                    </Link>
+                    <Link
+                      href="#faq"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setMobileMenuOpen(false);
+                        document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors"
+                    >
+                      FAQ
+                    </Link>
+                    <div className="border-t border-white/10 my-3"></div>
+                    <button
+                      onClick={() => {
+                        handleGetStarted();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full px-4 py-4 mt-2 text-base font-bold text-black bg-white hover:bg-gray-100 rounded-xl transition-all shadow-lg active:scale-[0.98]"
+                    >
+                      Get Started
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.header>
 
       {/* Main Content */}

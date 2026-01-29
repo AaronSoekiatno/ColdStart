@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate, saveCandidate } from '@/lib/supabase';
-import { sendWelcomeEmail, extractFirstName } from '@/lib/sendgrid';
 import { deleteCache } from '@/lib/redis-cache';
 
 export async function POST(request: NextRequest) {

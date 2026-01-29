@@ -26,8 +26,8 @@ npm run test-welcome-email your.email@example.com
 # Test welcome email functionality
 npm run test-welcome-email your.email@example.com
 
-# Test SendGrid connection (general)
-npm run test-email:sendgrid your.email@example.com
+# Test Resend connection (general)
+# npm run test-email:resend your.email@example.com
 
 # Check database (via Supabase SQL editor)
 SELECT * FROM email_preferences WHERE email = 'your.email@example.com';
@@ -44,8 +44,8 @@ SELECT * FROM email_preferences WHERE email = 'your.email@example.com';
 ## Troubleshooting
 
 **No email received?**
-- Check `SENDGRID_API_KEY` in `.env.local`
-- Check SendGrid dashboard for delivery status
+- Check `RESEND_API_KEY` in `.env.local`
+- Check Resend dashboard for delivery status
 - Check server logs for errors
 
 **Unsubscribe not working?**
