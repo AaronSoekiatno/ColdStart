@@ -5,12 +5,16 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
 import { CompanyHero } from "@/components/landing/CompanyHero";
-import { CompanyAIVettingSection } from "@/components/landing/CompanyAIVettingSection";
+import { CompanyHowItWorks } from "@/components/landing/CompanyHowItWorks";
+import { CompanyPricing } from "@/components/landing/CompanyPricing";
+import { CompaniesFAQ } from "@/components/landing/CompaniesFAQ";
 import { Footer } from "@/components/layout/Footer";
 import { SignInModal } from "@/components/modals/SignInModal";
+import { SignUpModal } from "@/components/modals/SignUpModal";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { UniversityCarousel } from "@/components/landing/StartupsCarousel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +30,7 @@ export function CompanyLandingPage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignUp, setShowSignUp] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { scrollY } = useScroll();
@@ -59,8 +64,13 @@ export function CompanyLandingPage() {
   }, []);
 
   const handleGetStarted = () => {
-    // For companies, open contact form or email
-    window.location.href = 'mailto:aidan.nt76@gmail.com?subject=Company%20Partnership%20Inquiry';
+    if (!user) {
+      setShowSignUp(true);
+      return;
+    }
+    // If already logged in, maybe redirect to a dashboard or portal
+    // For now, let's just keep it simple or redirect to /dashboard if it exists
+    router.push('/matches');
   };
 
   const handleSignOut = async () => {
@@ -100,12 +110,24 @@ export function CompanyLandingPage() {
           {/* Right side */}
           <div className="flex items-center gap-3 pr-1 relative z-10">
             {!user ? (
-              <Button
-                onClick={() => setShowSignIn(true)}
-                className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
-              >
-                Sign In
-              </Button>
+              <>
+                <Link
+                  href="#faq"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="hidden md:inline-block text-sm font-medium text-white/70 hover:text-white transition-colors mr-4"
+                >
+                  FAQ
+                </Link>
+                <Button
+                  onClick={() => setShowSignIn(true)}
+                  className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
+                >
+                  Sign In
+                </Button>
+              </>
             ) : (
               <>
                 <div className="hidden md:flex items-center gap-4">
@@ -195,10 +217,15 @@ export function CompanyLandingPage() {
           {/* Content */}
           <div className="relative z-10">
             <CompanyHero onGetStarted={handleGetStarted} />
+            <UniversityCarousel title="HIRE FROM" />
           </div>
         </div>
 
-        <CompanyAIVettingSection />
+        <CompanyHowItWorks />
+        <CompanyPricing onGetStarted={handleGetStarted} />
+        <div id="faq" className="scroll-mt-32">
+          <CompaniesFAQ />
+        </div>
       </main>
 
       <Footer />
@@ -207,7 +234,14 @@ export function CompanyLandingPage() {
         open={showSignIn}
         onOpenChange={setShowSignIn}
       />
+      <SignUpModal
+        open={showSignUp}
+        onOpenChange={setShowSignUp}
+        onSwitchToSignIn={() => {
+          setShowSignUp(false);
+          setShowSignIn(true);
+        }}
+      />
     </div>
   );
 }
-

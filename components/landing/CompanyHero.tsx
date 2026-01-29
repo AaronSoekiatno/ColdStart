@@ -15,7 +15,7 @@ export function CompanyHero({ onGetStarted }: CompanyHeroProps) {
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-ivy tracking-tight mb-4 leading-tight text-white drop-shadow-lg">
           Hire Your Next
           <br />
-          Founding Engineer
+          11x Engineer
         </h1>
 
         {/* Subtitle */}

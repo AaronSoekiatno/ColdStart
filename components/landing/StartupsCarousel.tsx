@@ -8,7 +8,11 @@ interface University {
   logoUrl: string;
 }
 
-export const UniversityCarousel = () => {
+interface UniversityCarouselProps {
+  title?: string;
+}
+
+export const UniversityCarousel = ({ title = "TRUSTED BY STUDENTS AT" }: UniversityCarouselProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const universities: University[] = [
     { name: "UC Berkeley", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/b/b4/Berkeley_College_of_Letters_%26_Science_logo.svg" },
@@ -30,7 +34,7 @@ export const UniversityCarousel = () => {
 
     let scrollPosition = 0;
     let isPaused = false;
-    const scrollSpeed = 0.5; // pixels per frame
+    const scrollSpeed = 2.5; // pixels per frame
     let animationFrameId: number;
 
     const scroll = () => {
@@ -72,7 +76,7 @@ export const UniversityCarousel = () => {
     <section className="mt-40 pt-0 pb-10 sm:pb-12 md:pb-16 overflow-hidden w-full relative">
       <div className="w-full">
         <h3 className="text-center text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8 px-4 sm:px-6 md:px-8 uppercase tracking-wider">
-          TRUSTED BY STUDENTS AT
+          {title}
         </h3>
 
         <div className="relative w-full overflow-hidden">
@@ -85,7 +89,7 @@ export const UniversityCarousel = () => {
             {universities.map((university, index) => (
               <div
                 key={`first-${index}`}
-                className="flex-shrink-0 mx-2 sm:mx-4 md:mx-6 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm flex items-center justify-center"
+                className="flex-shrink-0 mx-2 sm:mx-4 md:mx-6 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 flex items-center justify-center"
               >
                 <Image
                   src={university.logoUrl}
@@ -103,7 +107,7 @@ export const UniversityCarousel = () => {
             {universities.map((university, index) => (
               <div
                 key={`second-${index}`}
-                className="flex-shrink-0 mx-2 sm:mx-4 md:mx-6 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm flex items-center justify-center"
+                className="flex-shrink-0 mx-2 sm:mx-4 md:mx-6 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 flex items-center justify-center"
               >
                 <Image
                   src={university.logoUrl}

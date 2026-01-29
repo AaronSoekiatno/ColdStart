@@ -11,7 +11,8 @@ import { StartupLogoDeck } from "@/components/landing/StartupLogoDeck";
 import { DemoMatchCard } from "@/components/features/matches/DemoMatchCard";
 import { AIAgentSection } from "@/components/landing/AIAgentSection";
 import { NewHowItWorks } from "@/components/landing/NewHowItWorks";
-import { PricingSection } from "@/components/landing/PricingSection";
+
+import { FAQSection } from "@/components/landing/FAQSection";
 import { Footer } from "@/components/layout/Footer";
 import { SignInModal } from "@/components/modals/SignInModal";
 import { SignUpModal } from "@/components/modals/SignUpModal";
@@ -336,11 +337,31 @@ export function NewLandingPage() {
           <div className="flex items-center gap-3 pr-1 relative z-10">
             {!user ? (
               <>
+                <Link
+                  href="#how-it-works"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors mr-4"
+                >
+                  How it Works
+                </Link>
+                <Link
+                  href="#faq"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('faq')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="text-sm font-medium text-white/70 hover:text-white transition-colors mr-4"
+                >
+                  FAQ
+                </Link>
                 <Button
                   onClick={handleGetStarted}
                   className="rounded-full px-6 py-2 text-sm font-semibold text-black bg-white hover:bg-gray-100 transition-all duration-300 transform hover:scale-105"
                 >
-                  Sign In / Apply
+                  Apply
                 </Button>
               </>
             ) : (
@@ -505,8 +526,8 @@ export function NewLandingPage() {
             <StartupLogoDeck />
           </div>
 
-          <div id="pricing" className="scroll-mt-32">
-            <PricingSection userEmail={user?.email} onGetStarted={handleGetStarted} />
+          <div id="faq" className="scroll-mt-32">
+            <FAQSection />
           </div>
         </div>
       </main>
