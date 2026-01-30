@@ -43,11 +43,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Call the new Verification Service (running on port 3001)
-    // In production, this would be an internal network URL or environment variable
-    const verificationServiceUrl = process.env.VERIFICATION_SERVICE_URL || 'http://localhost:3001/api/verifications';
+
+
+    // 3. Call the integrated Verification API route (now part of the main Next.js app)
+    // Use the request origin to ensure we call the same server (localhost in dev, production in prod)
+    const requestUrl = new URL(request.url);
+    const origin = requestUrl.origin; // e.g., http://localhost:3000 or https://joinhermes.co
+    const verificationServiceUrl = `${origin}/api/verifications`;
     
     console.log(`[ADMIN] Triggering high-fidelity verification for ${candidate_id} via ${verificationServiceUrl}`);
+
 
     const response = await fetch(verificationServiceUrl, {
       method: 'POST',
@@ -60,7 +65,25 @@ export async function POST(request: NextRequest) {
       }),
     });
 
-    const result = await response.json();
+    // Read response as text first to avoid body consumption issues
+    const responseText = await response.text();
+    
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('[ADMIN] Failed to parse verification response:', parseError);
+      console.error('[ADMIN] Response text:', responseText);
+      console.error('[ADMIN] Response status:', response.status);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid response from verification service',
+          details: responseText.substring(0, 200) // First 200 chars for debugging
+        },
+        { status: 500 }
+      );
+    }
 
     if (!response.ok) {
       console.error('[ADMIN] Verification service error:', result);
