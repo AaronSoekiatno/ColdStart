@@ -92,9 +92,8 @@ export function NewLandingPage() {
       const postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect');
       if (postAuthRedirect) {
         window.sessionStorage.removeItem('postAuthRedirect');
-        setTimeout(() => {
-          window.location.href = postAuthRedirect;
-        }, 100);
+        // Use router.push for client-side navigation (prevents full page reload/Edge Request)
+        router.push(postAuthRedirect);
         return;
       }
 
@@ -658,9 +657,8 @@ export function NewLandingPage() {
         onOpenChange={setShowOnboarding}
         onComplete={() => {
           setShowOnboarding(false);
-          // Redirect to matches if the modal itself doesn't handle it
-          // (Though for enhanced flow the modal usually redirects)
-          window.location.href = '/matches';
+          // Use router.push for client-side navigation (prevents full page reload/Edge Request)
+          router.push('/matches');
         }}
         skipResumeUpload={false}
       />

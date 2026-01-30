@@ -972,15 +972,6 @@ const MatchCardComponent = ({
         </div>
       )}
 
-      {githubAnalysis && !githubAnalysis.has_results && (
-        <div className="mt-4 sm:mt-6 md:mt-8">
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 text-center">
-            <p className="text-xs sm:text-sm text-gray-600">
-              GitHub code analysis is being processed...
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Founders Section */}
       {founderNames.length > 0 && (

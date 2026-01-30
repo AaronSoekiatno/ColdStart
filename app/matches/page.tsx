@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, isSubscribed } from '@/lib/supabase';
 import { MatchCard } from '@/components/features/matches/MatchCard';
@@ -80,6 +80,8 @@ export default function MatchesPage() {
   const [githubAnalysis, setGithubAnalysis] = useState<Record<string, any>>({});
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const lastSavedMatchesFetchRef = useRef<number>(0);
+  const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes cooldown for visibility refetch
 
   // Memoized values - must be declared before useEffect hooks
   const hasMatches = useMemo(() => matches.length > 0, [matches.length]);
@@ -275,11 +277,19 @@ export default function MatchesPage() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && user) {
+        const now = Date.now();
+        // Only refetch if it's been more than 5 minutes since last fetch
+        if (now - lastSavedMatchesFetchRef.current < COOLDOWN_MS) {
+          console.log('[Matches] Skipping visibility refetch - too soon');
+          return;
+        }
+
         // Debounce: Wait 500ms before refetching to ensure any pending saves complete
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => {
           // Always refetch from Supabase - this is the source of truth
           fetchSavedMatchIds();
+          lastSavedMatchesFetchRef.current = Date.now();
         }, 500);
       }
     };
@@ -539,8 +549,8 @@ export default function MatchesPage() {
         onComplete={() => {
           setShowOnboarding(false);
           setOnboardingCompleted(true);
-          // Reload data without full page reload to prevent infinite loop
-          window.location.href = '/matches';
+          // Reload matches via client-side routing to avoid full page reload (Edge Request)
+          router.push('/matches');
         }}
       />
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { NewLandingPage } from "@/components/landing/NewLandingPage";
 import { supabase } from "@/lib/supabase";
 import { Loader2 } from "lucide-react";
@@ -18,6 +19,7 @@ function LandingPageWithSuspense() {
 }
 
 function HomeContent() {
+  const router = useRouter();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ function HomeContent() {
         if (session?.user) {
           // User is authenticated, redirect to matches immediately
           console.log('[Auth Check] User authenticated, redirecting to matches');
-          window.location.href = '/matches';
+          router.push('/matches');
           return; // Exit early to prevent showing loading state
         } else {
           // User is not authenticated, show landing page

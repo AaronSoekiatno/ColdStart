@@ -31,41 +31,24 @@ export async function GET(req: NextRequest) {
     }
 
     // Try cache first
-    const cacheKey = `saved_matches:${user.email}:ALL`;
-    const cachedIds = await getCache<string[]>(cacheKey);
+    const cacheKey = `saved_matches:${user.email}:ALL_V2`;
+    const cachedData = await getCache<{ matchIds: string[]; startupIds: string[] }>(cacheKey);
 
-    if (cachedIds) {
+    if (cachedData) {
       console.log('[Saved Matches Cache] HIT:', {
         user: user.email,
-        count: cachedIds.length,
+        matchCount: cachedData.matchIds?.length,
+        startupCount: cachedData.startupIds?.length,
         cacheKey,
       });
 
-      // For cached data, we still need to fetch startup_ids
-      // (cache only stores match_ids, not startup_ids)
-      let cachedStartupIds: string[] = [];
-      if (cachedIds.length > 0) {
-        const { data: matches, error: matchesError } = await supabase
-          .from('matches')
-          .select('id, startup_id')
-          .in('id', cachedIds);
-        
-        if (!matchesError && matches) {
-          cachedStartupIds = matches
-            .map(m => m.startup_id)
-            .filter((id): id is string => !!id);
-        }
-      }
-
       return NextResponse.json({
-        matchIds: cachedIds,
-        startupIds: cachedStartupIds,
+        matchIds: cachedData.matchIds || [],
+        startupIds: cachedData.startupIds || [],
         cached: true,
       }, {
         headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate, private',
-          'Pragma': 'no-cache',
-          'Expires': '0',
+          'Cache-Control': 'private, max-age=60',
           'X-Cache-Status': 'HIT',
         },
       });
@@ -114,23 +97,22 @@ export async function GET(req: NextRequest) {
     }
 
     // Cache for 1 hour (will be invalidated on save/unsave)
-    await setCache(cacheKey, matchIds, 3600);
+    await setCache(cacheKey, { matchIds, startupIds }, 3600);
 
     console.log('[Saved Matches Cache] Stored:', {
       user: user.email,
-      count: matchIds.length,
+      matchCount: matchIds.length,
+      startupCount: startupIds.length,
       cacheKey,
     });
 
     return NextResponse.json({
       matchIds,
-      startupIds, // Also return startup_ids so frontend can check by startup
+      startupIds,
       cached: false,
     }, {
       headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate, private',
-        'Pragma': 'no-cache',
-        'Expires': '0',
+        'Cache-Control': 'private, max-age=60',
         'X-Cache-Status': 'MISS',
       },
     });
