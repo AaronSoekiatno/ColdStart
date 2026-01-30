@@ -474,191 +474,149 @@ export async function GET(request: NextRequest) {
       }
     > = {};
 
+    // Load startup data from both startups3 and startups tables
     if (startupIds.length > 0) {
-      // OPTIMIZATION: Single query for startups (no batching)
-      const startupRows: any[] = [];
-      let startupsError: any = null;
+      // Fetch from both tables in parallel
+      const [s3Result, s1Result] = await Promise.all([
+        withTimeoutAndRetry<any[]>(
+          async () => {
+            return await supabaseAdmin!
+              .from('startups3')
+              .select(`
+                id, name, industry, location, yc_description, team_size,
+                funding_amount, website, founder_emails,
+                founder_names, founder_linkedin, founder_twitter_urls,
+                founder_backgrounds, founders_pfp, batch, description,
+                company_logo, yc_link, company_twitter_url, keywords
+              `)
+              .in('id', startupIds);
+          },
+          15000,
+          2
+        ),
+        withTimeoutAndRetry<any[]>(
+          async () => {
+            return await supabaseAdmin!
+              .from('startups')
+              .select(`
+                id, name, industry, location, yc_description, team_size,
+                funding_amount, website, founder_emails,
+                founder_names, founder_linkedin, founder_twitter_urls,
+                founder_backgrounds, founders_pfp, batch, description,
+                company_logo, yc_link, company_twitter_url, keywords
+              `)
+              .in('id', startupIds);
+          },
+          15000,
+          2
+        )
+      ]);
 
-      const startupsResult = await withTimeoutAndRetry<Array<{
-        id: string;
-        name: string;
-        industry: string;
-        location: string;
-        yc_description?: string;
-        team_size?: string;
-        funding_amount?: string;
-        website: string;
-        founder_emails?: string;
-        founder_names?: string;
-        founder_linkedin?: string;
-        founder_twitter_urls?: string;
-        founder_backgrounds?: string;
-        founders_pfp?: string;
-        batch?: string;
-        description?: string;
-        company_logo?: string;
-        yc_link?: string;
-        company_twitter_url?: string;
-        keywords?: string;
-      }>>(
-        async () => {
-          const result = await supabaseAdmin!
-            .from('startups3')
-            .select(`
-              id, name, industry, location, yc_description, team_size,
-              funding_amount, website, founder_emails,
-              founder_names, founder_linkedin, founder_twitter_urls,
-              founder_backgrounds, founders_pfp, batch, description,
-              company_logo, yc_link, company_twitter_url, keywords
-            `)
-            .in('id', startupIds)
-            .not('name', 'is', null)
-            .not('industry', 'is', null)
-            .not('location', 'is', null)
-            .not('batch', 'is', null)
-            .not('founder_emails', 'is', null);
-          return result;
-        },
-        15000,
-        2
-      );
-      const { data: batchStartups, error: batchError } = startupsResult;
-      startupsError = batchError;
+      const s3Rows = s3Result.data || [];
+      const s1Rows = s1Result.data || [];
 
-      if (batchError) {
-        const errorMessage = batchError.message || '';
-        const isRateLimit = errorMessage.includes('rate limit') ||
-                           errorMessage.includes('quota') ||
-                           errorMessage.includes('429') ||
-                           errorMessage.includes('too many requests') ||
-                           batchError.code === 'PGRST301' ||
-                           batchError.code === 'PGRST116';
+      if (s3Result.error) console.error('[Matches API] Error fetching startups3:', s3Result.error);
+      if (s1Result.error) console.error('[Matches API] Error fetching startups:', s1Result.error);
 
-        const isTimeout = errorMessage.includes('timeout') ||
-                         errorMessage.includes('ConnectTimeoutError') ||
-                         errorMessage.includes('ECONNRESET');
+      // Merge and prioritize data
+      const mergedStartups: Record<string, any> = {};
+      const allRows = [...s3Rows, ...s1Rows];
 
-        if (isRateLimit) {
-          console.error('[Matches API] Supabase rate limit on startups:', batchError);
-        } else if (isTimeout) {
-          console.warn('[Matches API] Timeout fetching startups');
+      for (const s of allRows) {
+        if (!s.id) continue;
+        const existing = mergedStartups[s.id];
+
+        if (!existing) {
+          mergedStartups[s.id] = { ...s };
         } else {
-          console.error('[Matches API] Error fetching startups:', batchError.message);
-        }
-      } else if (batchStartups) {
-        startupRows.push(...batchStartups);
-      }
-
-      if (startupsError) {
-        const errorMessage = startupsError.message || '';
-        const isRateLimit = errorMessage.includes('rate limit') || 
-                           errorMessage.includes('quota') || 
-                           errorMessage.includes('429') ||
-                           errorMessage.includes('too many requests') ||
-                           startupsError.code === 'PGRST301' ||
-                           startupsError.code === 'PGRST116';
-        
-        if (isRateLimit) {
-          console.error('[Matches API] Supabase rate limit/quota exceeded on startups query:', startupsError);
-          // Return rate limit error instead of continuing with empty startups
-          return NextResponse.json(
-            { 
-              error: 'Database rate limit exceeded. Please try again in a few moments.',
-              rateLimit: true 
-            },
-            { status: 429 }
-          );
-        }
-        console.error('[Matches API] Error fetching startups (non-rate-limit):', startupsError);
-      }
-      
-      if (!startupsError && startupRows) {
-        // Founders data is stored in startups3 columns, not a separate table
-        // Parse founder data from comma-separated columns in startups3
-        for (const s of startupRows) {
-          // Parse founder names (comma-separated)
-          const founderNames = s.founder_names 
-            ? s.founder_names.split(',').map((n: string) => n.trim()).filter((n: string) => n)
-            : [];
-          
-          // Parse founder emails (comma-separated)
-          const founderEmails = s.founder_emails
-            ? s.founder_emails.split(',').map((e: string) => e.trim()).filter((e: string) => e)
-            : [];
-          
-          // Parse founder backgrounds (comma-separated)
-          const founderBackgrounds = s.founder_backgrounds
-            ? s.founder_backgrounds.split(',').map((b: string) => b.trim()).filter((b: string) => b)
-            : [];
-          
-          // Parse founder LinkedIn URLs (comma-separated)
-          const founderLinkedIn = s.founder_linkedin
-            ? s.founder_linkedin.split(',').map((l: string) => l.trim()).filter((l: string) => l)
-            : [];
-          
-          // Parse founder Twitter URLs (comma-separated)
-          const founderTwitter = s.founder_twitter_urls
-            ? (Array.isArray(s.founder_twitter_urls) 
-                ? s.founder_twitter_urls.map((t: any) => String(t).trim()).filter((t: string) => t)
-                : String(s.founder_twitter_urls).split(',').map((t: string) => t.trim()).filter((t: string) => t))
-            : [];
-          
-          // Parse founders_pfp array (could be array or comma-separated string)
-          const foundersPfpArray: string[] = s.founders_pfp
-            ? Array.isArray(s.founders_pfp)
-              ? s.founders_pfp.map((url: any) => String(url).trim()).filter((url: string) => url && url !== '')
-              : String(s.founders_pfp).split(',').map((url: string) => url.trim()).filter((url: string) => url && url !== '')
-            : [];
-
-          // Build founders array from parsed data
-          // Match by index across all arrays
-          const maxFounders = Math.max(
-            founderNames.length,
-            founderEmails.length,
-            founderBackgrounds.length,
-            founderLinkedIn.length,
-            founderTwitter.length
-          );
-          
-          const founders = [];
-          for (let i = 0; i < maxFounders; i++) {
-            if (founderNames[i]) {
-              founders.push({
-                id: `${s.id}-founder-${i}`, // Generate a unique ID
-                name: founderNames[i],
-                email: founderEmails[i] || undefined,
-                background: founderBackgrounds[i] || undefined,
-                linkedin_url: founderLinkedIn[i] || undefined,
-                twitter_url: founderTwitter[i] || undefined,
-                profile_picture: foundersPfpArray[i] || undefined,
-              });
-            }
-          }
-
-          startupsById[s.id] = {
-            id: s.id,
-            name: s.name,
-            industry: s.industry || '',
-            location: s.location || '',
-            yc_description: s.yc_description ?? undefined,
-            team_size: s.team_size ?? undefined,
-            funding_amount: s.funding_amount ?? undefined,
-            website: s.website || '',
-            founder_emails: s.founder_emails ?? undefined,
-            founder_names: s.founder_names ?? undefined,
-            founder_linkedin: s.founder_linkedin ?? undefined,
-            founder_twitter_urls: s.founder_twitter_urls ?? undefined,
-            founder_backgrounds: s.founder_backgrounds ?? undefined,
-            founders_pfp: s.founders_pfp ?? undefined,
-            batch: s.batch ?? undefined,
-            description: s.description ?? undefined,
-            company_logo: s.company_logo ?? undefined,
-            yc_link: s.yc_link ?? undefined,
-            company_twitter_url: s.company_twitter_url ?? undefined,
-            keywords: s.keywords ?? undefined,
-            founders: founders,
+          // Score-based merge logic
+          const getScore = (row: any) => {
+            let score = 0;
+            if (row.founder_emails && row.founder_emails.length > 5) score += 10;
+            if (row.batch && row.batch.length > 2) score += 5;
+            if (row.yc_description && row.yc_description.length > 20) score += 2;
+            if (row.company_logo) score += 1;
+            return score;
           };
+
+          const sScore = getScore(s);
+          const eScore = getScore(existing);
+
+          if (sScore > eScore) {
+            // New row is better, take its fields but preserve any existing hidden fields
+            Object.keys(s).forEach(key => {
+              if (s[key]) existing[key] = s[key];
+            });
+          } else {
+            // Existing row is better or equal, only fill in missing fields from s
+            Object.keys(s).forEach(key => {
+              if (s[key] && !existing[key]) existing[key] = s[key];
+            });
+          }
         }
+      }
+
+      // Final processing: parse founders and build startupsById
+      for (const s of Object.values(mergedStartups)) {
+        const parseField = (field: any) => {
+          if (!field) return [];
+          if (Array.isArray(field)) return field.map((v: any) => String(v).trim()).filter((v: string) => v);
+          return String(field).split(',').map((v: string) => v.trim()).filter((v: string) => v);
+        };
+
+        const founderNames = parseField(s.founder_names);
+        const founderEmails = parseField(s.founder_emails);
+        const founderBackgrounds = parseField(s.founder_backgrounds);
+        const founderLinkedIn = parseField(s.founder_linkedin);
+        const founderTwitter = parseField(s.founder_twitter_urls);
+        const foundersPfpArray = parseField(s.founders_pfp);
+
+        const maxFounders = Math.max(
+          founderNames.length,
+          founderEmails.length,
+          founderBackgrounds.length,
+          founderLinkedIn.length,
+          founderTwitter.length
+        );
+        
+        const founders = [];
+        for (let i = 0; i < maxFounders; i++) {
+          if (founderNames[i]) {
+            founders.push({
+              id: `${s.id}-founder-${i}`,
+              name: founderNames[i],
+              email: founderEmails[i] || undefined,
+              background: founderBackgrounds[i] || undefined,
+              linkedin_url: founderLinkedIn[i] || undefined,
+              twitter_url: founderTwitter[i] || undefined,
+              profile_picture: foundersPfpArray[i] || undefined,
+            });
+          }
+        }
+
+        startupsById[s.id] = {
+          id: s.id,
+          name: s.name || 'Unknown',
+          industry: s.industry || 'Unknown',
+          location: s.location || 'Unknown',
+          yc_description: s.yc_description || undefined,
+          team_size: s.team_size || undefined,
+          funding_amount: s.funding_amount || undefined,
+          website: s.website || '',
+          founder_emails: s.founder_emails || undefined,
+          founder_names: s.founder_names || undefined,
+          founder_linkedin: s.founder_linkedin || undefined,
+          founder_twitter_urls: s.founder_twitter_urls || undefined,
+          founder_backgrounds: s.founder_backgrounds || undefined,
+          founders_pfp: s.founders_pfp || undefined,
+          batch: s.batch || undefined,
+          description: s.description || undefined,
+          company_logo: s.company_logo || undefined,
+          yc_link: s.yc_link || undefined,
+          company_twitter_url: s.company_twitter_url || undefined,
+          keywords: s.keywords || undefined,
+          founders: founders,
+        };
       }
     }
 
