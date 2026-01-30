@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
+import { syncCandidateRepositories } from '@/lib/github-sync';
 
 export async function GET(request: NextRequest) {
   try {
@@ -136,38 +137,33 @@ export async function GET(request: NextRequest) {
           // Note: GitHub OAuth tokens don't expire unless revoked by the user
           // We don't set an expiry - the token remains valid until the user disconnects
 
-          const { error: updateError } = await supabaseAdmin
-            .from('candidates')
-            .update(updateData)
-            .eq('email', session.user.email);
+          if (candidateData?.id) {
+            const { error: updateError } = await supabaseAdmin
+              .from('candidates')
+              .update(updateData)
+              .eq('id', candidateData.id);
 
-          if (updateError) {
-            console.error('Error updating candidate with GitHub info:', updateError);
-          } else {
-            console.log(`GitHub connected for user: ${session.user.email}`);
-            
-            // Optionally trigger repository fetch in the background (non-blocking)
-            // This can also be called manually via /api/candidate/github/repositories if needed
-            if (candidateData?.id) {
-              // Trigger async fetch (don't await - let it run in background)
-              // Note: This requires the user's session cookie, which should be available
-              fetch(`${requestUrl.origin}/api/candidate/github/repositories`, {
-                method: 'GET',
-                headers: {
-                  'Cookie': request.headers.get('Cookie') || '',
-                },
-              })
-                .then((response) => {
-                  if (response.ok) {
-                    console.log(`[GitHub] Repository fetch triggered for ${session.user.email}`);
+            if (updateError) {
+              console.error('Error updating candidate with GitHub info:', updateError);
+            } else {
+              console.log(`GitHub connected for user: ${session.user.email}`);
+              
+              // Trigger background sync
+              console.log(`[GitHub Callback] Triggering background repository sync for ${session.user.email}`);
+              syncCandidateRepositories(candidateData.id, accessToken, true)
+                .then((result) => {
+                  if (result.success) {
+                    console.log(`[GitHub] Repository sync success for ${session.user.email}: ${result.count} repos`);
                   } else {
-                    console.warn(`[GitHub] Repository fetch failed: ${response.status}`);
+                    console.warn(`[GitHub] Repository sync failed for ${session.user.email}`, result.error);
                   }
                 })
                 .catch((error) => {
                   console.error('[GitHub] Error triggering repository fetch:', error);
                 });
             }
+          } else {
+            console.error('Could not find candidate record for email:', session.user.email);
           }
         } catch (error) {
           console.error('Error storing GitHub tokens:', error);

@@ -171,11 +171,13 @@ export default function MatchesPage() {
           cache: 'no-store',
         });
         let candidateId: string | null = null;
+        let candidateOnboardingCompleted = false;
         if (candidateResponse.ok) {
           const candidateInfo = await candidateResponse.json();
           setIsPremium(isSubscribed(candidateInfo));
           candidateId = candidateInfo.id;
-          setOnboardingCompleted(candidateInfo.onboarding_completed);
+          candidateOnboardingCompleted = candidateInfo.onboarding_completed === true;
+          setOnboardingCompleted(candidateOnboardingCompleted);
         }
 
         // Get first 20 matches for immediate display
@@ -202,6 +204,26 @@ export default function MatchesPage() {
         const data = await response.json();
         setMatches(data.items || data.matches || []);
         setPagination(data.pagination);
+
+        // Mark onboarding as complete on first load of matches page
+        // This ensures onboarding is only marked complete when user successfully reaches matches
+        if (!candidateOnboardingCompleted) {
+          try {
+            const markCompleteResponse = await fetch('/api/candidate/mark-onboarding-complete', {
+              method: 'POST',
+              credentials: 'include',
+            });
+
+            if (markCompleteResponse.ok) {
+              setOnboardingCompleted(true);
+              console.log('[Matches] Onboarding marked as complete on first matches page load');
+            } else {
+              console.error('[Matches] Failed to mark onboarding complete:', await markCompleteResponse.text());
+            }
+          } catch (error) {
+            console.error('[Matches] Error marking onboarding complete:', error);
+          }
+        }
 
         // Fetch saved match IDs in batch (replaces 40+ individual calls)
         await fetchSavedMatchIds();

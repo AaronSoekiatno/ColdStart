@@ -54,6 +54,10 @@ interface GitHubRepo {
   forks_count: number;
   is_selected: boolean;
   category_tags: RoleType[];
+  updated_at?: string;
+  created_at?: string;
+  pushed_at?: string;
+  default_branch?: string;
 }
 
 interface RepoSelection {
@@ -116,8 +120,8 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
-  // Valid steps: 1 (Objectives), 2 (Job Type), 3 (Roles), 4 (YOE), 6 (Resume), 7 (GitHub), 11 (Completion)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 6 | 7 | 11>(1);
+  // Valid steps: 1 (Objectives), 2 (Job Type), 3 (Roles), 4 (YOE), 6 (Resume), 7 (GitHub), 8 (Repo Selection), 11 (Completion)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 6 | 7 | 8 | 11>(1);
 
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
@@ -227,9 +231,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
           // After GitHub connection, check if there's a specific step to return to
           if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            const validSteps = [1, 2, 3, 4, 6, 7, 11];
+            const validSteps = [1, 2, 3, 4, 6, 7, 8, 11];
             if (validSteps.includes(stepNum)) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 6 | 7 | 11);
+              setStep(stepNum as 1 | 2 | 3 | 4 | 6 | 7 | 8 | 11);
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
               return;
@@ -246,9 +250,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         } else if (githubError) {
           if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            const validSteps = [1, 2, 3, 4, 6, 7, 11];
+            const validSteps = [1, 2, 3, 4, 6, 7, 8, 11];
             if (validSteps.includes(stepNum)) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 6 | 7 | 11);
+              setStep(stepNum as 1 | 2 | 3 | 4 | 6 | 7 | 8 | 11);
             }
           } else {
             setStep(7);
@@ -268,7 +272,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   // Fetch GitHub repos when entering step 8
   useEffect(() => {
-    if (false && githubConnected && githubRepos.length === 0 && !isLoadingRepos) {
+    // Only fetch if we are on step 8, connected, have no repos, and aren't already loading
+    if (step === 8 && githubConnected && githubRepos.length === 0 && !isLoadingRepos) {
       const fetchRepos = async () => {
         setIsLoadingRepos(true);
         try {
@@ -297,11 +302,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       };
       fetchRepos();
     }
-  }, [step, githubConnected, githubRepos.length, isLoadingRepos]);
+  }, [step, githubConnected, githubRepos.length]);
 
   // Fetch suggested matches from resume after repos are loaded
   useEffect(() => {
-    if (false && githubRepos.length > 0 && suggestedMatches.length === 0 && !isLoadingMatches) {
+    if (githubRepos.length > 0 && suggestedMatches.length === 0 && !isLoadingMatches) {
       const fetchMatches = async () => {
         setIsLoadingMatches(true);
         try {
@@ -313,19 +318,22 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             if (data.success && data.matches) {
               setSuggestedMatches(data.matches);
 
-              const updatedSelections = new Map(repoSelections);
-              for (const match of data.matches) {
-                if (match.confidence >= 0.7) {
-                  const existing = updatedSelections.get(match.github_repo_id);
-                  if (existing) {
-                    updatedSelections.set(match.github_repo_id, {
-                      ...existing,
-                      is_selected: true,
-                    });
+              // Auto-select high confidence matches on initial load only
+              setRepoSelections(prev => {
+                const updatedSelections = new Map(prev);
+                for (const match of data.matches) {
+                  if (match.confidence >= 0.7) {
+                    const existing = updatedSelections.get(match.github_repo_id);
+                    if (existing) {
+                      updatedSelections.set(match.github_repo_id, {
+                        ...existing,
+                        is_selected: true,
+                      });
+                    }
                   }
                 }
-              }
-              setRepoSelections(updatedSelections);
+                return updatedSelections;
+              });
             }
           }
         } catch (error) {
@@ -336,10 +344,12 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       };
       fetchMatches();
     }
-  }, [step, githubRepos.length, suggestedMatches.length, isLoadingMatches, repoSelections]);
+  }, [githubRepos.length, suggestedMatches.length, isLoadingMatches]);
 
   const handleGithubConnect = () => {
     const redirectPath = window.location.pathname || '/';
+    // Redirect back to step 7, which will then show the continue button
+    // Or we could redirect to step 8 if we want to jump straight to selection
     const connectUrl = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectPath)}&step=7`;
     window.location.href = connectUrl;
   };
@@ -353,23 +363,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   }, []);
 
   const handleGithubContinue = useCallback(async () => {
-    // Mark onboarding as complete before showing completion screen
-    try {
-      const response = await fetch('/api/candidate/mark-onboarding-complete', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        console.error('Failed to mark onboarding complete:', await response.text());
-      }
-    } catch (error) {
-      console.error('Error marking onboarding complete:', error);
-    }
-
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(11); // Go to completion step
+      setStep(8); // Go to repo selection step
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -586,20 +582,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleViewMatches = async () => {
     try {
       await saveSelectedRepos();
-
-      const response = await fetch('/api/candidate/mark-onboarding-complete', {
-        method: 'POST',
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        console.error('Failed to mark onboarding complete:', await response.text());
-        return;
-      }
-
-      await response.json();
     } catch (error) {
-      console.error('Error marking onboarding complete:', error);
+      console.error('Error saving repos:', error);
       return;
     }
 
@@ -633,6 +617,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   else if (step === 4) setStep(3);
                   else if (step === 6) setStep(4);
                   else if (step === 7) setStep(skipResumeUpload ? 4 : 6);
+                  else if (step === 8) setStep(7);
                   setIsTransitioning(false);
                 }, 200);
               } else {
@@ -650,8 +635,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
           <div className="flex gap-2">
             {(() => {
               const steps = skipResumeUpload
-                ? [1, 2, 3, 4, 7, 11]
-                : [1, 2, 3, 4, 6, 7, 11];
+                ? [1, 2, 3, 4, 7, 8, 11]
+                : [1, 2, 3, 4, 6, 7, 8, 11];
               return steps.map((s) => (
                 <div
                   key={s}
@@ -874,7 +859,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       {githubConnected
                         ? 'Your GitHub account has been connected successfully!'
-                        : 'Connect your GitHub to help us find better matches based on your projects and contributions.'}
+                        : 'Connect your GitHub account to let us analyze your coding velocity and impact.'}
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-2">
+                      We need access to private repositories to verify your work history, but we only process metadata - your code stays private.
                     </p>
                   </div>
 
@@ -916,6 +904,102 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       </span>
                     </motion.button>
                   )}
+                </div>
+              )}
+
+              {/* Step 8: Repo Selection */}
+              {step === 8 && (
+                <div className="space-y-4 h-[70vh] flex flex-col">
+                  <div className="mb-4 flex-shrink-0">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                      Select <span className="text-blue-500">repositories</span>
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
+                      Choose the repositories (including private ones) you want us to analyze for your skills profile.
+                    </p>
+
+                    {/* Search Bar */}
+                    <div className="mt-4 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        value={repoSearchQuery}
+                        onChange={(e) => setRepoSearchQuery(e.target.value)}
+                        placeholder="Search repositories..."
+                        className="pl-9 bg-gray-50 border-gray-200 focus:bg-white transition-all rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex-grow overflow-y-auto pr-2 space-y-3 min-h-0">
+                    {isLoadingRepos ? (
+                      <div className="flex items-center justify-center h-40">
+                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                      </div>
+                    ) : filteredRepos.length === 0 ? (
+                      <div className="text-center py-10 text-gray-500">
+                        No repositories found matching your search.
+                      </div>
+                    ) : (
+                      filteredRepos.map((repo) => {
+                        const selection = repoSelections.get(repo.github_repo_id);
+                        const isSelected = selection?.is_selected || false;
+                        return (
+                          <div
+                            key={repo.github_repo_id}
+                            className={`p-4 rounded-xl border-2 transition-all ${isSelected ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
+                                className="mt-1"
+                              />
+                              <div className="flex-grow min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-sm truncate text-black" title={repo.full_name}>
+                                    {repo.name}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider ${repo.is_private ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+                                    }`}>
+                                    {repo.is_private ? 'Private' : 'Public'}
+                                  </span>
+                                </div>
+
+                                {repo.description && (
+                                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                    {repo.description}
+                                  </p>
+                                )}
+
+                                <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-gray-500">
+                                  {repo.language && (
+                                    <span className="flex items-center gap-1">
+                                      <span className="w-2 h-2 rounded-full bg-blue-400" />
+                                      {repo.language}
+                                    </span>
+                                  )}
+                                  <span>★ {repo.stargazers_count}</span>
+                                  <span>Last updated: {new Date(repo.updated_at || Date.now()).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <motion.button
+                    onClick={handleReposContinue}
+                    disabled={isLoadingRepos}
+                    className="group relative w-full py-3 bg-black text-white font-bold rounded-2xl hover:bg-gray-900 transition-all duration-300 overflow-hidden shadow-xl mt-4 flex-shrink-0"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      Analyze Selected Repos
+                      <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </motion.button>
                 </div>
               )}
 
@@ -961,12 +1045,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         onClick={async () => {
                           try {
                             await saveSelectedRepos();
-                            await fetch('/api/candidate/mark-onboarding-complete', {
-                              method: 'POST',
-                              credentials: 'include',
-                            });
                           } catch (error) {
-                            console.error('Error marking onboarding complete:', error);
+                            console.error('Error saving repos:', error);
                           }
                           window.location.href = "/resumes";
                         }}

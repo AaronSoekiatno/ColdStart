@@ -87,7 +87,7 @@ export async function sendWaitlistEmail(
   try {
     // Use default from email if not provided
     // Resend requires verified domain - use joinhermes.co for DMARC compliance
-    const from = fromEmail || process.env.RESEND_FROM_EMAIL || 'Robert from Hermes <robert@joinhermes.co>';
+    const from = fromEmail || process.env.RESEND_FROM_EMAIL || 'Aidan from Hermes <aidan@joinhermes.co>';
 
     const resend = getResendClient();
 
@@ -230,7 +230,7 @@ export async function sendOnboardingEmail(
     // HTML version
     const emailBodyHTML = `Hi ${userFirstName},<br><br>
 
-My name is Robert and I am a cofounder of Hermes. We built Hermes because we realized the job market is broken.<br><br>
+My name is Aidan and I am a cofounder of Hermes. We built Hermes because we realized the job market is broken.<br><br>
 
 <strong>Heres 3 things to do to 10x ur chances of getting a job:</strong><br>
 &nbsp;&nbsp;&nbsp;&nbsp;• <strong>Upload your resume:</strong> Our agent matches you with the right teams to maximize your chances.<br>
@@ -238,7 +238,7 @@ My name is Robert and I am a cofounder of Hermes. We built Hermes because we rea
 &nbsp;&nbsp;&nbsp;&nbsp;• <strong>Send Emails:</strong> Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.<br><br>
 
 Best,<br>
-Robert<br><br>
+Aidan<br><br>
 
 <a href="${unsubscribeLink}">Unsubscribe</a><br>
 
@@ -247,7 +247,7 @@ Robert<br><br>
     // Plain text version (fallback)
     const emailBodyText = `Hi ${userFirstName},
 
-My name is Robert and I am a cofounder of Hermes. We built Hermes because we realized the job market is broken.
+My name is Aidan and I am a cofounder of Hermes. We built Hermes because we realized the job market is broken.
 
 Heres 3 things to do to 10x ur chances of getting a job:
     • Upload your resume: Our agent matches you with the right teams to maximize your chances.
@@ -255,13 +255,13 @@ Heres 3 things to do to 10x ur chances of getting a job:
     • Send Emails: Use our auto-drafted notes to land in the founder's personal inbox instead of the application black hole.
 
 Best,
-Robert
+Aidan
 
 Unsubscribe: ${unsubscribeLink}`;
 
     // Send email using Resend
     const resend = getResendClient();
-    const from = process.env.RESEND_FROM_EMAIL || 'Robert from Hermes <robert@joinhermes.co>';
+    const from = process.env.RESEND_FROM_EMAIL || 'Aidan from Hermes <aidan@joinhermes.co>';
 
     const { data, error } = await resend.emails.send({
       from,

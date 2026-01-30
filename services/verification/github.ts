@@ -164,6 +164,87 @@ export class GitHubService {
 
     return details;
   }
+  /**
+   * Fetch all repositories for the authenticated user
+   */
+  async getUserRepositories(includePrivate: boolean = true): Promise<any[]> {
+    try {
+      const repos: any[] = [];
+      let page = 1;
+      const perPage = 100;
+
+      while (true) {
+        const response = await this.octokit.repos.listForAuthenticatedUser({
+          visibility: includePrivate ? 'all' : 'public',
+          affiliation: 'owner,collaborator,organization_member',
+          sort: 'updated',
+          direction: 'desc',
+          per_page: perPage,
+          page,
+        });
+
+        if (response.data.length === 0) {
+          break;
+        }
+
+        repos.push(...response.data);
+        
+        if (response.data.length < perPage) {
+          break;
+        }
+        page++;
+      }
+
+      // Fetch languages for each repository
+      // We limit concurrency to avoid hitting rate limits too hard
+      const chunkedRepos = [];
+      const chunkSize = 10;
+      for (let i = 0; i < repos.length; i += chunkSize) {
+        chunkedRepos.push(repos.slice(i, i + chunkSize));
+      }
+
+      const reposWithLanguages = [];
+      
+      for (const chunk of chunkedRepos) {
+        const chunkResults = await Promise.all(
+          chunk.map(async (repo) => {
+            try {
+              // Parse owner and repo name from full_name
+              const [owner, repoName] = repo.full_name.split('/');
+              
+              const { data: languages } = await this.octokit.repos.listLanguages({
+                owner,
+                repo: repoName,
+              });
+              
+              return {
+                ...repo,
+                languages,
+              };
+            } catch (error) {
+              console.warn(`Failed to fetch languages for ${repo.full_name}:`, error);
+              return {
+                ...repo,
+                languages: null,
+              };
+            }
+          })
+        );
+        reposWithLanguages.push(...chunkResults);
+      }
+
+      return reposWithLanguages;
+
+    } catch (error: any) {
+      if (error.status) {
+        throw new GitHubAPIError(
+          `Failed to fetch repositories: ${error.message}`,
+          error.status
+        );
+      }
+      throw new GitHubAPIError(`Failed to fetch repositories: ${error.message}`);
+    }
+  }
 }
 
 
