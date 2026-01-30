@@ -188,8 +188,8 @@ export async function GET(request: NextRequest) {
     if (redirectTo) {
       redirectPath = redirectTo;
     } else if (isNewSignUp) {
-      // New sign-up - redirect to matches (they will be prompted to onboarding there if needed)
-      redirectPath = '/matches';
+      // New sign-up - redirect to onboarding to ensure flow starts correctly
+      redirectPath = '/onboarding';
     } else {
       // Existing user - redirect to matches
       redirectPath = '/matches';

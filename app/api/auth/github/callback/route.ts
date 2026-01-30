@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const code = requestUrl.searchParams.get('code');
     const error = requestUrl.searchParams.get('error');
     const redirectTo = requestUrl.searchParams.get('redirect') || '/onboarding';
-    const step = requestUrl.searchParams.get('step') || '6';
+    const step = requestUrl.searchParams.get('step') || '1';
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
