@@ -620,6 +620,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // OPTIMIZATION: Disabled unlinked job matching to improve performance (3-4x faster)
+    // This O(n²) string matching was taking 1+ second per request
+    // Only jobs with startup_id set will be shown (most jobs have this)
+    // TODO: Move this to a background job that sets startup_id on unlinked jobs
+
+    /* DISABLED FOR PERFORMANCE - uncomment to re-enable
     // Link jobs without startup_id by matching company_name to startup name
     // We'll fetch unlinked jobs and match them in code for case-insensitive matching
     if (startupIds.length > 0 && Object.keys(startupsById).length > 0) {
@@ -662,11 +668,11 @@ export async function GET(request: NextRequest) {
           if (!jobCompanyNameLower) continue;
 
           const matchingStartupId = startupNameToId.get(jobCompanyNameLower);
-          
+
           // Also try partial matches (e.g., "Company Inc" matches "Company")
           if (!matchingStartupId) {
             for (const [startupNameLower, startupId] of startupNameToId.entries()) {
-              if (jobCompanyNameLower === startupNameLower || 
+              if (jobCompanyNameLower === startupNameLower ||
                   jobCompanyNameLower.includes(startupNameLower) ||
                   startupNameLower.includes(jobCompanyNameLower)) {
                 const partialMatchStartupId = startupId;
@@ -712,6 +718,7 @@ export async function GET(request: NextRequest) {
         }
       }
     }
+    */
 
     // Don't paginate yet - we need to load job data for all matches first,
     // then sort with job prioritization, then paginate

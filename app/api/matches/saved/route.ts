@@ -205,6 +205,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // OPTIMIZATION: Disabled unlinked job matching (same as /api/matches)
+    // Only jobs with startup_id set will be shown
+
+    /* DISABLED FOR PERFORMANCE
     // Also link jobs without startup_id by matching company_name to startup name
     // This matches the logic in /api/matches to ensure consistency
     if (startupIds.length > 0 && supabaseAdmin && Object.keys(startupsById).length > 0) {
@@ -229,11 +233,11 @@ export async function GET(req: NextRequest) {
           if (!jobCompanyNameLower) continue;
 
           const matchingStartupId = startupNameToId.get(jobCompanyNameLower);
-          
+
           // Also try partial matches (e.g., "Company Inc" matches "Company")
           if (!matchingStartupId) {
             for (const [startupNameLower, startupId] of startupNameToId.entries()) {
-              if (jobCompanyNameLower === startupNameLower || 
+              if (jobCompanyNameLower === startupNameLower ||
                   jobCompanyNameLower.includes(startupNameLower) ||
                   startupNameLower.includes(jobCompanyNameLower)) {
                 if (!jobsByStartupId[startupId]) {
@@ -267,6 +271,7 @@ export async function GET(req: NextRequest) {
         }
       }
     }
+    */
 
     // Helper functions for job filtering (same as in /api/matches)
     const parseCandidateYearsOfExperience = (yearsStr: string | null | undefined): number | null => {
