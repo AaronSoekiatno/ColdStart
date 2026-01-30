@@ -193,15 +193,42 @@ export function NewLandingPage() {
       const githubError = urlParams.get('github_error');
 
       if (githubConnected === 'true') {
-        // Open onboarding modal when GitHub connection is successful
-        setShowOnboarding(true);
-        // The OnboardingModal will handle the step navigation internally
+        // Check if user has already completed onboarding
+        const checkOnboardingAndRedirect = async () => {
+          try {
+            const response = await fetch('/api/candidate/check-onboarding', {
+              credentials: 'include',
+            });
+            if (response.ok) {
+              const data = await response.json();
+              if (data.needsOnboarding) {
+                // User needs onboarding - show the modal
+                setShowOnboarding(true);
+              } else {
+                // User already completed onboarding - redirect to matches
+                // Clean up URL params first
+                const cleanUrl = window.location.pathname;
+                window.history.replaceState({}, '', cleanUrl);
+                // Redirect to matches
+                router.push('/matches');
+              }
+            } else {
+              // If check fails, show onboarding to be safe
+              setShowOnboarding(true);
+            }
+          } catch (error) {
+            console.error('Error checking onboarding status:', error);
+            // If check fails, show onboarding to be safe
+            setShowOnboarding(true);
+          }
+        };
+        checkOnboardingAndRedirect();
       } else if (githubError) {
         // Still open modal to show error state
         setShowOnboarding(true);
       }
     }
-  }, []);
+  }, [router]);
 
   // Force show onboarding/sign-up modal on onboarding route
   useEffect(() => {

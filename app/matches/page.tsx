@@ -8,7 +8,7 @@ import { Header } from '@/components/layout/Header';
 import { UpgradeModal } from '@/components/modals/UpgradeModal';
 import { OnboardingModal } from '@/components/modals/OnboardingModal';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Play, Search } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
 interface MatchRecord {
@@ -467,24 +467,51 @@ export default function MatchesPage() {
               )}
             </div>
           ) : (
+
             <div className="rounded-2xl md:rounded-3xl border border-gray-200 bg-white p-6 sm:p-8 md:p-12 text-center text-gray-900">
-              <h2 className="text-xl font-bold mb-4">Find your next startup role</h2>
-              <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                Hermes uses AI to match your background with open roles at top YC and VC-backed startups.
-              </p>
-              <Button
-                onClick={() => setShowOnboarding(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-8 py-6 text-lg font-semibold shadow-lg transform transition hover:scale-105"
-              >
-                Get Started
-              </Button>
+              {
+                onboardingCompleted ? (
+                  // Onboarded but no matches yet - show processing/waiting state
+                  <>
+                    <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                      <Search className="w-8 h-8 text-blue-500" />
+                    </div>
+                    <h2 className="text-xl font-bold mb-4">Finding your best matches...</h2>
+                    <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                      We're currently analyzing your profile against thousands of YC startups. This usually takes a few minutes.
+                    </p>
+                    <Button
+                      onClick={() => window.location.reload()}
+                      variant="outline"
+                      className="gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Check Again
+                    </Button>
+                  </>
+                ) : (
+                  // Not onboarded - show "Get Started" state
+                  <>
+                    <h2 className="text-xl font-bold mb-4">Find your next startup role</h2>
+                    <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                      Hermes uses AI to match your background with open roles at top YC and VC-backed startups.
+                    </p>
+                    <Button
+                      onClick={() => setShowOnboarding(true)}
+                      className="bg-blue-500 hover:bg-blue-600 text-white rounded-full px-8 py-6 text-lg font-semibold shadow-lg transform transition hover:scale-105"
+                    >
+                      Get Started
+                    </Button>
+                  </>
+                )}
             </div>
-          )}
-        </div>
-      </section>
+          )
+          }
+        </div >
+      </section >
 
       {/* Onboarding Modal */}
-      <OnboardingModal
+      < OnboardingModal
         open={showOnboarding}
         onOpenChange={setShowOnboarding}
         onComplete={() => {
@@ -496,16 +523,18 @@ export default function MatchesPage() {
       />
 
       {/* Upgrade Modal */}
-      {user?.email && (
-        <UpgradeModal
-          open={showUpgradeModal}
-          onOpenChange={setShowUpgradeModal}
-          hiddenMatchCount={hiddenMatchCount}
-          email={user.email}
-          isPremium={isPremium}
-          customTitle={hiddenMatchCount > 0 ? `🔒 ${hiddenMatchCount} More Match${hiddenMatchCount === 1 ? '' : 'es'} Available` : 'Upgrade to Premium'}
-        />
-      )}
-    </div>
+      {
+        user?.email && (
+          <UpgradeModal
+            open={showUpgradeModal}
+            onOpenChange={setShowUpgradeModal}
+            hiddenMatchCount={hiddenMatchCount}
+            email={user.email}
+            isPremium={isPremium}
+            customTitle={hiddenMatchCount > 0 ? `🔒 ${hiddenMatchCount} More Match${hiddenMatchCount === 1 ? '' : 'es'} Available` : 'Upgrade to Premium'}
+          />
+        )
+      }
+    </div >
   );
 }

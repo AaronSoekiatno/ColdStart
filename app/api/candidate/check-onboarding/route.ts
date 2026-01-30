@@ -66,10 +66,15 @@ export async function GET() {
     
     const onboardingCompleted = candidate.onboarding_completed === true;
 
-    // If any required field is missing OR onboarding_completed is not true, they need onboarding
+    // User needs onboarding if:
+    // 1. Any required field is missing, OR
+    // 2. onboarding_completed is not true
+    // This ensures GitHub OAuth users still go through onboarding even if the flag is set
+    const needsOnboarding = !hasJobType || !hasRoleType || !hasObjectives || 
+                           !hasYearsOfExperience || !onboardingCompleted;
+    
     return NextResponse.json({
-      needsOnboarding: !hasJobType || !hasRoleType || !hasObjectives || 
-                       !hasYearsOfExperience || !onboardingCompleted,
+      needsOnboarding,
     });
   } catch (error) {
     console.error('Exception checking onboarding status:', error);
