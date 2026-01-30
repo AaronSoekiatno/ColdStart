@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if onboard is already complete to prevent duplicate emails
+    const existingCandidate = await getCandidate(user.email);
+    if (existingCandidate?.onboarding_completed) {
+      console.log(`[Mark Onboarding Complete] Candidate ${user.email} already completed onboarding. Skipping email.`);
+      return NextResponse.json({ success: true, message: 'Already completed' });
+    }
+
     // Update candidate record - mark onboarding complete
     const { error: updateError } = await supabaseAdmin
       .from('candidates')
@@ -90,6 +97,11 @@ export async function POST(request: NextRequest) {
       const matchesCacheKey = `matches:${user.email}:ALL`;
       await deleteCache(matchesCacheKey);
       console.log('[Mark Onboarding Complete] Invalidated matches cache:', matchesCacheKey);
+      
+      // Also invalidate candidate info cache so the frontend sees the update immediately
+      const candidateInfoKey = `candidate_info:${user.email}`;
+      await deleteCache(candidateInfoKey);
+      console.log('[Mark Onboarding Complete] Invalidated candidate info cache:', candidateInfoKey);
     } catch (error) {
       // Log error but don't block response
       console.error('[Mark Onboarding Complete] Error invalidating cache:', error);

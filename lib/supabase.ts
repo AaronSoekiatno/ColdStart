@@ -705,7 +705,8 @@ export async function saveMatches(
     .eq('candidate_id', candidateId);
 
   if (deleteError) {
-    throw new Error(`Failed to clear old matches: ${deleteError.message}`);
+    console.error('[saveMatches] Failed to clear old matches:', deleteError);
+    // Don't throw - continue with upsert which will handle duplicates
   }
 
   // Filter out duplicate startup_ids to prevent constraint violations
@@ -717,7 +718,7 @@ export async function saveMatches(
     return acc;
   }, [] as Array<{ startup_id: string; score: number }>);
 
-  // Now insert the new matches
+  // Now upsert the matches (insert or update if exists)
   const matchRows = uniqueMatches.map((match) => ({
     candidate_id: candidateId,
     startup_id: match.startup_id,
@@ -727,7 +728,10 @@ export async function saveMatches(
 
   const { data, error } = await client
     .from('matches')
-    .insert(matchRows)
+    .upsert(matchRows, {
+      onConflict: 'candidate_id,startup_id',
+      ignoreDuplicates: false, // Update existing rows instead of ignoring
+    })
     .select();
 
   if (error) {
