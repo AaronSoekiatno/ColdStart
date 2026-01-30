@@ -98,23 +98,34 @@ export function NewLandingPage() {
           return;
         }
 
-        // If no redirect but user clicked "Apply" before signing in
+        // For all new sign-ins (email, Google, GitHub), check if onboarding is needed
+        // This ensures GitHub sign-ups go through the same onboarding flow
         if (pendingOnboarding === 'true') {
           window.sessionStorage.removeItem('pendingOnboarding');
-          // Check onboarding status and show modal
-          try {
-            const response = await fetch('/api/candidate/check-onboarding');
-            if (response.ok) {
-              const data = await response.json();
-              if (data.needsOnboarding) {
-                setShowOnboarding(true);
-              } else {
-                router.push('/matches');
-              }
+        }
+
+        // Check onboarding status for all new users
+        try {
+          const response = await fetch('/api/candidate/check-onboarding', {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.needsOnboarding) {
+              // New user needs onboarding - show the modal
+              setShowOnboarding(true);
+            } else {
+              // Existing user who completed onboarding - go to matches
+              router.push('/matches');
             }
-          } catch (e) {
-            console.error('Error auto-triggering onboarding:', e);
+          } else {
+            // If check fails, assume they need onboarding to be safe
+            setShowOnboarding(true);
           }
+        } catch (e) {
+          console.error('Error checking onboarding status:', e);
+          // If check fails, assume they need onboarding to be safe
+          setShowOnboarding(true);
         }
       }
 

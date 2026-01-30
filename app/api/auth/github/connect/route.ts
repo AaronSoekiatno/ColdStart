@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       provider: 'github',
       options: {
         redirectTo: `${requestUrl.origin}/api/auth/github/callback?redirect=${encodeURIComponent(redirectTo)}&step=${onboardingStep}`,
-        scopes: 'repo,rad:user',
+        scopes: 'repo,read:user',
       },
     });
 

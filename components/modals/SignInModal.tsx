@@ -215,8 +215,9 @@ export const SignInModal = ({ open, onOpenChange, redirectTo }: SignInModalProps
             <Button
               variant="outline"
               onClick={() => {
-                // Use the same auth flow as connect but for sign-in
-                window.location.href = '/api/auth/github/signin';
+                // Redirect to homepage after GitHub sign-in so onAuthStateChange can check onboarding
+                const homeRedirect = '/';
+                window.location.href = `/api/auth/github/signin?redirect=${encodeURIComponent(homeRedirect)}`;
               }}
               className="w-full flex items-center justify-center gap-2 h-[44px] bg-white text-black hover:bg-gray-100 border-white/20 font-medium rounded text-sm relative px-3"
             >
