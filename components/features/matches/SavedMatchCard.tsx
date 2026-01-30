@@ -136,7 +136,7 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
     setShowFounderDropdown(false);
     // Clear error when a founder is selected
     setFounderSelectionError(null);
-    
+
     if (!founderEmail) {
       // If no email, expand card to show full details
       setIsExpanded(true);
@@ -195,7 +195,7 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
             {match.startup?.name || 'Unknown Startup'}
           </h3>
           <p className="text-sm text-gray-500 truncate">
-          {match.startup?.location}
+            {match.startup?.location}
           </p>
         </div>
 
@@ -212,7 +212,7 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
 
         {/* Contact Founder Button - Hidden when expanded */}
         {!isExpanded && (
-          <div 
+          <div
             className="flex-shrink-0 relative"
             data-contact-founder
             onClick={(e) => {
@@ -277,11 +277,10 @@ export function SavedMatchCard({ match, isPremium, userEmail, onToggleSave, isSa
                           e.preventDefault();
                         }}
                         disabled={!hasEmail}
-                        className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
-                          hasEmail
+                        className={`w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${hasEmail
                             ? 'text-gray-900 cursor-pointer'
                             : 'text-gray-400 cursor-not-allowed opacity-60'
-                        }`}
+                          }`}
                       >
                         <div className="font-medium">{name}</div>
                         {!hasEmail && (

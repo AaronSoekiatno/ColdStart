@@ -120,6 +120,28 @@ await deleteCache(savedMatchesCacheKey); // Only deletes saved matches
 **Lines Changed:** 705-708, 776-779
 
 ---
+ 
+ ### 5. API Consolidation (`/api/matches/init/route.ts`)
+ 
+ **Before:**
+ - Browser made 5 parallel requests on page load:
+   1. `/api/candidate-info`
+   2. `/api/matches?page=1`
+   3. `/api/matches/saved/all`
+   4. `/api/github/analyze/results/...`
+   5. `/api/topcandidates/assessment-status` 
+ - **Impact**: High Vercel Invocation count, high Edge Request overhead, browser connection bottleneck.
+ 
+ **After:**
+ - Browser makes 1 consolidated request to `/api/matches/init`.
+ - Server handles sub-requests in parallel using `Promise.all()`.
+ - **Impact**: 80% reduction in Vercel Function Invocations on matches page load.
+ 
+ **Files Changed:**
+ - `/app/api/matches/init/route.ts`: New consolidated endpoint.
+ - `/app/matches/page.tsx`: Updated to use the new endpoint.
+ 
+ ---
 
 ## Expected Impact
 
@@ -127,11 +149,12 @@ await deleteCache(savedMatchesCacheKey); // Only deletes saved matches
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
+| Invocations per Page Load | 5 | 1 | 80% ↓ |
 | DB Queries per Match Request | 15-20 | 2-4 | 75-85% ↓ |
 | Data Transfer per Request | ~2-5 MB | ~50-200 KB | 90-95% ↓ |
 | GitHub API Calls (repos) | 50-100/request | 0-5/request | 95-100% ↓ |
-| Edge Requests per User Session | High | Medium-Low | 60-80% ↓ |
-| Function CPU Time | High (O(n²) ops) | Low | 70-90% ↓ |
+| Edge Requests per Session | High | Low | 70-90% ↓ |
+| Function CPU Time | High | Low | 70-90% ↓ |
 
 ### Cost Savings
 - **Edge Requests**: Reduced from 15-20 per page → 2-4 per page

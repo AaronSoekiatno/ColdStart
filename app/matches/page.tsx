@@ -167,98 +167,67 @@ export default function MatchesPage() {
 
         setUser(currentUser);
 
-        // Get candidate info and premium status
-        const candidateResponse = await fetch('/api/candidate-info', {
-          credentials: 'include',
-          cache: 'no-store',
-        });
-        let candidateId: string | null = null;
-        let candidateOnboardingCompleted = false;
-        if (candidateResponse.ok) {
-          const candidateInfo = await candidateResponse.json();
-          setIsPremium(isSubscribed(candidateInfo));
-          candidateId = candidateInfo.id;
-          candidateOnboardingCompleted = candidateInfo.onboarding_completed === true;
-          setOnboardingCompleted(candidateOnboardingCompleted);
-        }
-
-        // Get first 20 matches for immediate display
-        const response = await fetch('/api/matches?page=1&limit=20', {
+        // Fetch everything in ONE consolidated request
+        // Replaces: /api/candidate-info, /api/matches, /api/matches/saved/all, /api/github/analyze/results, /api/topcandidates/assessment-status
+        console.log('[Matches] Initializing with consolidated endpoint...');
+        const response = await fetch('/api/matches/init', {
           credentials: 'include',
         });
 
         if (!response.ok) {
           if (response.status === 404) {
-            // No resume - just stay on matches page with empty state
-            setMatches([]);
-            setPagination(null);
-          } else if (response.status === 429) {
-            // Rate limit exceeded
+            // Likely candidate not found/needs onboarding
             const errorData = await response.json().catch(() => ({}));
-            setHasError(true);
-            console.error('Rate limit exceeded:', errorData);
-            // Don't throw - show error message to user
-            return;
+            if (errorData.needsOnboarding) {
+              setShowOnboarding(true);
+              setIsLoading(false);
+              return;
+            }
           }
-          throw new Error('Failed to load matches');
+          throw new Error('Failed to initialize matches');
         }
 
         const data = await response.json();
-        setMatches(data.items || data.matches || []);
+
+        // 1. Sync Candidate & Subscription State
+        const candidate = data.candidate;
+        const candidateId = candidate?.id;
+        const candidateOnboardingCompleted = candidate?.onboarding_completed === true;
+
+        setIsPremium(data.isPremium);
+        setOnboardingCompleted(candidateOnboardingCompleted);
+
+        // 2. Sync Matches & Pagination State
+        setMatches(data.matches || []);
         setPagination(data.pagination);
 
-        // Mark onboarding as complete on first load of matches page
-        // This ensures onboarding is only marked complete when user successfully reaches matches
+        // 3. Sync Saved Matches State
+        setSavedMatchIds(data.savedMatches?.matchIds || []);
+        setSavedStartupIds(data.savedMatches?.startupIds || []);
+
+        // 4. Sync GitHub & Assessment State
+        if (candidateId && data.githubAnalysis) {
+          setGithubAnalysis({ [candidateId]: data.githubAnalysis });
+        }
+        setAssessmentStatus(data.assessment?.status || 'not_started');
+
+        // 5. Post-Initialization: Mark onboarding complete if this is their first success
         if (!candidateOnboardingCompleted) {
           try {
             const markCompleteResponse = await fetch('/api/candidate/mark-onboarding-complete', {
               method: 'POST',
               credentials: 'include',
             });
-
             if (markCompleteResponse.ok) {
               setOnboardingCompleted(true);
-              console.log('[Matches] Onboarding marked as complete on first matches page load');
-            } else {
-              console.error('[Matches] Failed to mark onboarding complete:', await markCompleteResponse.text());
+              console.log('[Matches] Onboarding marked as complete');
             }
-          } catch (error) {
-            console.error('[Matches] Error marking onboarding complete:', error);
+          } catch (e) {
+            console.error('[Matches] Error marking onboarding complete:', e);
           }
         }
 
-        // Fetch saved match IDs in batch (replaces 40+ individual calls)
-        await fetchSavedMatchIds();
-
-        // Fetch GitHub analysis for current candidate
-        if (candidateId) {
-          try {
-            const response = await fetch(`/api/github/analyze/results/${candidateId}`, {
-              credentials: 'include',
-            });
-            if (response.ok) {
-              const analysisData = await response.json();
-              setGithubAnalysis({ [candidateId]: analysisData });
-            }
-          } catch (error) {
-            console.error('[Matches] Failed to fetch GitHub analysis:', error);
-            // Not critical - continue without analysis data
-          }
-        }
-
-        // Fetch assessment status to update button text
-        try {
-          const assessmentResponse = await fetch('/api/topcandidates/assessment-status', {
-            credentials: 'include',
-          });
-          if (assessmentResponse.ok) {
-            const assessmentData = await assessmentResponse.json();
-            setAssessmentStatus(assessmentData.status || 'not_started');
-          }
-        } catch (error) {
-          console.error('Error fetching assessment status:', error);
-          // Not critical - default to showing "Start Assessment"
-        }
+        lastSavedMatchesFetchRef.current = Date.now();
       } catch (error) {
         console.error('Error initializing matches page:', error);
         setHasError(true);
