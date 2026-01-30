@@ -135,10 +135,12 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   // GitHub repos state
   const [githubRepos, setGithubRepos] = useState<GitHubRepo[]>([]);
+  const [hasFetchedRepos, setHasFetchedRepos] = useState(false);
   const [repoSelections, setRepoSelections] = useState<Map<number, RepoSelection>>(new Map());
   const [isLoadingRepos, setIsLoadingRepos] = useState(false);
   const [repoSearchQuery, setRepoSearchQuery] = useState('');
   const [suggestedMatches, setSuggestedMatches] = useState<RepoMatch[]>([]);
+  const [hasFetchedMatches, setHasFetchedMatches] = useState(false);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [showSuggestedOnly, setShowSuggestedOnly] = useState(false);
   const { toast } = useToast();
@@ -275,8 +277,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   // Fetch GitHub repos when entering step 8
   useEffect(() => {
-    // Only fetch if we are on step 8, connected, have no repos, and aren't already loading
-    if (step === 8 && githubConnected && githubRepos.length === 0 && !isLoadingRepos) {
+    // Only fetch if we are on step 8, connected, haven't fetched yet, and aren't already loading
+    if (step === 8 && githubConnected && !hasFetchedRepos && !isLoadingRepos) {
       const fetchRepos = async () => {
         setIsLoadingRepos(true);
         try {
@@ -296,6 +298,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               });
             });
             setRepoSelections(initialSelections);
+            setHasFetchedRepos(true);
           }
         } catch (error) {
           console.error('Error fetching GitHub repos:', error);
@@ -305,11 +308,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       };
       fetchRepos();
     }
-  }, [step, githubConnected, githubRepos.length]);
+  }, [step, githubConnected, hasFetchedRepos]);
 
   // Fetch suggested matches from resume after repos are loaded
   useEffect(() => {
-    if (githubRepos.length > 0 && suggestedMatches.length === 0 && !isLoadingMatches) {
+    if (githubRepos.length > 0 && !hasFetchedMatches && !isLoadingMatches) {
       const fetchMatches = async () => {
         setIsLoadingMatches(true);
         try {
@@ -338,6 +341,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 return updatedSelections;
               });
             }
+            setHasFetchedMatches(true);
           }
         } catch (error) {
           console.error('Error fetching suggested matches:', error);
@@ -347,7 +351,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       };
       fetchMatches();
     }
-  }, [githubRepos.length, suggestedMatches.length, isLoadingMatches]);
+  }, [githubRepos.length, hasFetchedMatches, isLoadingMatches]);
 
   const handleGithubConnect = () => {
     const redirectPath = window.location.pathname || '/';
