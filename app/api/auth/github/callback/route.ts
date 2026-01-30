@@ -91,8 +91,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(errorUrl);
       }
 
-      // Fetch GitHub user info to get username
-      let githubUsername = null;
+      // Fetch GitHub user info to get username and profile data
+      let githubUserData = null;
       try {
         const githubResponse = await fetch('https://api.github.com/user', {
           headers: {
@@ -102,8 +102,13 @@ export async function GET(request: NextRequest) {
         });
 
         if (githubResponse.ok) {
-          const githubUser = await githubResponse.json();
-          githubUsername = githubUser.login;
+          githubUserData = await githubResponse.json();
+          console.log('✅ GitHub user data fetched:', {
+            id: githubUserData.id,
+            login: githubUserData.login,
+            name: githubUserData.name,
+            email: githubUserData.email,
+          });
         } else {
           console.error('GitHub API error:', await githubResponse.text());
         }
@@ -114,56 +119,84 @@ export async function GET(request: NextRequest) {
       // Store GitHub tokens and info in candidates table
       if (supabaseAdmin && session.user.email) {
         try {
-          // Get candidate ID first
-          const { data: candidateData } = await supabaseAdmin
-            .from('candidates')
-            .select('id')
-            .eq('email', session.user.email)
-            .single();
-
-          const updateData: any = {
+          // Build GitHub data to save
+          const githubData: any = {
             github_access_token: accessToken,
             github_connected_at: new Date().toISOString(),
           };
 
           if (providerRefreshToken) {
-            updateData.github_refresh_token = providerRefreshToken;
+            githubData.github_refresh_token = providerRefreshToken;
           }
 
-          if (githubUsername) {
-            updateData.github_username = githubUsername;
+          // Store all GitHub profile data
+          if (githubUserData) {
+            if (githubUserData.login) {
+              githubData.github_username = githubUserData.login;
+            }
+            if (githubUserData.id) {
+              githubData.github_user_id = githubUserData.id;
+            }
+            if (githubUserData.name) {
+              githubData.github_name = githubUserData.name;
+            }
+            if (githubUserData.avatar_url) {
+              githubData.github_avatar_url = githubUserData.avatar_url;
+            }
+            if (githubUserData.html_url) {
+              githubData.github_profile_url = githubUserData.html_url;
+            }
+            if (githubUserData.email) {
+              githubData.github_email = githubUserData.email;
+            }
           }
+
+          console.log(`[GitHub Callback] Saving GitHub data for ${session.user.email}`, {
+            hasToken: !!accessToken,
+            hasUsername: !!githubUserData?.login,
+            hasUserId: !!githubUserData?.id,
+          });
 
           // Note: GitHub OAuth tokens don't expire unless revoked by the user
           // We don't set an expiry - the token remains valid until the user disconnects
 
-          if (candidateData?.id) {
-            const { error: updateError } = await supabaseAdmin
-              .from('candidates')
-              .update(updateData)
-              .eq('id', candidateData.id);
+          // Use upsert to create candidate if doesn't exist, or update if exists
+          // This ensures GitHub sign-in users get their GitHub data saved even on first sign-in
+          const upsertData = {
+            email: session.user.email,
+            name: githubUserData?.name || session.user.user_metadata?.name || session.user.email.split('@')[0],
+            ...githubData,
+          };
 
-            if (updateError) {
-              console.error('Error updating candidate with GitHub info:', updateError);
-            } else {
-              console.log(`GitHub connected for user: ${session.user.email}`);
-              
-              // Trigger background sync
-              console.log(`[GitHub Callback] Triggering background repository sync for ${session.user.email}`);
-              syncCandidateRepositories(candidateData.id, accessToken, true)
-                .then((result) => {
-                  if (result.success) {
-                    console.log(`[GitHub] Repository sync success for ${session.user.email}: ${result.count} repos`);
-                  } else {
-                    console.warn(`[GitHub] Repository sync failed for ${session.user.email}`, result.error);
-                  }
-                })
-                .catch((error) => {
-                  console.error('[GitHub] Error triggering repository fetch:', error);
-                });
-            }
+          const { data: candidateData, error: upsertError } = await supabaseAdmin
+            .from('candidates')
+            .upsert(upsertData, {
+              onConflict: 'email',
+              ignoreDuplicates: false,
+            })
+            .select('id')
+            .single();
+
+          if (upsertError) {
+            console.error('❌ Error upserting candidate with GitHub info:', upsertError);
+          } else if (candidateData?.id) {
+            console.log(`✅ GitHub connected for user: ${session.user.email} (candidate ID: ${candidateData.id})`);
+
+            // Trigger background sync
+            console.log(`[GitHub Callback] Triggering background repository sync for ${session.user.email}`);
+            syncCandidateRepositories(candidateData.id, accessToken, true)
+              .then((result) => {
+                if (result.success) {
+                  console.log(`[GitHub] Repository sync success for ${session.user.email}: ${result.count} repos`);
+                } else {
+                  console.warn(`[GitHub] Repository sync failed for ${session.user.email}`, result.error);
+                }
+              })
+              .catch((error) => {
+                console.error('[GitHub] Error triggering repository fetch:', error);
+              });
           } else {
-            console.error('Could not find candidate record for email:', session.user.email);
+            console.error('❌ Upsert succeeded but no candidate ID returned for:', session.user.email);
           }
         } catch (error) {
           console.error('Error storing GitHub tokens:', error);
