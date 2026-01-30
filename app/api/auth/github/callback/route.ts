@@ -40,18 +40,26 @@ export async function GET(request: NextRequest) {
 
     // Exchange code for session
     if (code) {
+      console.log('🔄 Exchanging GitHub code for session...');
       const { data: { session }, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
       if (exchangeError) {
-        console.error('GitHub OAuth exchange error:', exchangeError);
+        console.error('❌ GitHub OAuth exchange error:', exchangeError);
         const errorUrl = new URL(redirectTo, requestUrl.origin);
         errorUrl.searchParams.set('github_error', 'exchange_failed');
         errorUrl.searchParams.set('step', step); // Preserve the step parameter
         return NextResponse.redirect(errorUrl);
       }
 
+      console.log('✅ Session created:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userEmail: session?.user?.email,
+        accessToken: session?.access_token ? 'present' : 'missing'
+      });
+
       if (!session?.user?.email) {
-        console.error('No user email in session');
+        console.error('❌ No user email in session');
         const errorUrl = new URL(redirectTo, requestUrl.origin);
         errorUrl.searchParams.set('github_error', 'no_email');
         errorUrl.searchParams.set('step', step); // Preserve the step parameter

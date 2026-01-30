@@ -116,14 +116,8 @@ interface OnboardingModalProps {
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11>(1);
-
-  // Safeguard: Redirect from removed step 5
-  useEffect(() => {
-    if (step === 5) {
-      setStep(skipResumeUpload ? 7 : 6);
-    }
-  }, [step, skipResumeUpload]);
+  // Valid steps: 1 (Objectives), 2 (Job Type), 3 (Roles), 4 (YOE), 6 (Resume), 7 (GitHub), 11 (Completion)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 6 | 7 | 11>(1);
 
   const [selectedObjectives, setSelectedObjectives] = useState<ObjectiveType[]>([]);
   const [selectedJobType, setSelectedJobType] = useState<JobType | null>(null);
@@ -230,24 +224,20 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         if (githubConnected === 'true') {
           setGithubConnected(true);
 
-          let targetStep: 8 | 9;
-          if (stepParam === '7') {
-            targetStep = 8;
-          } else if (stepParam) {
+          // After GitHub connection, check if there's a specific step to return to
+          if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            if (stepNum >= 1 && stepNum <= 11 && stepNum !== 10) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11);
+            const validSteps = [1, 2, 3, 4, 6, 7, 11];
+            if (validSteps.includes(stepNum)) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 6 | 7 | 11);
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
               return;
-            } else {
-              targetStep = 8;
             }
-          } else {
-            targetStep = 8;
           }
 
-          setStep(targetStep);
+          // Default: go to step 7 (GitHub connection step) to show success
+          setStep(7);
 
           setTimeout(() => {
             const newUrl = window.location.pathname;
@@ -256,8 +246,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         } else if (githubError) {
           if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
-            if (stepNum >= 1 && stepNum <= 11 && stepNum !== 10) {
-              setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11);
+            const validSteps = [1, 2, 3, 4, 6, 7, 11];
+            if (validSteps.includes(stepNum)) {
+              setStep(stepNum as 1 | 2 | 3 | 4 | 6 | 7 | 11);
             }
           } else {
             setStep(7);
@@ -277,7 +268,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   // Fetch GitHub repos when entering step 8
   useEffect(() => {
-    if (step === 8 && githubConnected && githubRepos.length === 0 && !isLoadingRepos) {
+    if (false && githubConnected && githubRepos.length === 0 && !isLoadingRepos) {
       const fetchRepos = async () => {
         setIsLoadingRepos(true);
         try {
@@ -310,7 +301,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   // Fetch suggested matches from resume after repos are loaded
   useEffect(() => {
-    if (step === 8 && githubRepos.length > 0 && suggestedMatches.length === 0 && !isLoadingMatches) {
+    if (false && githubRepos.length > 0 && suggestedMatches.length === 0 && !isLoadingMatches) {
       const fetchMatches = async () => {
         setIsLoadingMatches(true);
         try {
@@ -361,10 +352,24 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }, 200);
   }, []);
 
-  const handleGithubContinue = useCallback(() => {
+  const handleGithubContinue = useCallback(async () => {
+    // Mark onboarding as complete before showing completion screen
+    try {
+      const response = await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.error('Failed to mark onboarding complete:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error marking onboarding complete:', error);
+    }
+
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(8);
+      setStep(11); // Go to completion step
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -628,7 +633,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   else if (step === 4) setStep(3);
                   else if (step === 6) setStep(4);
                   else if (step === 7) setStep(skipResumeUpload ? 4 : 6);
-                  else if (step === 8) setStep(7);
                   setIsTransitioning(false);
                 }, 200);
               } else {
@@ -646,8 +650,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
           <div className="flex gap-2">
             {(() => {
               const steps = skipResumeUpload
-                ? [1, 2, 3, 4, 7, 8, 11]
-                : [1, 2, 3, 4, 6, 7, 8, 11];
+                ? [1, 2, 3, 4, 7, 11]
+                : [1, 2, 3, 4, 6, 7, 11];
               return steps.map((s) => (
                 <div
                   key={s}
