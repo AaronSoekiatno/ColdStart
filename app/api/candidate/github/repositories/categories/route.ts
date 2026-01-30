@@ -101,89 +101,84 @@ export async function POST(request: NextRequest) {
     // If full_save is true, we're saving complete repo data (first time save during onboarding completion)
     if (full_save) {
       const fullRepos = repositories as FullRepoData[];
-
-      for (const repo of fullRepos) {
-        // Validate category tags
+      const upsertData = fullRepos.map(repo => {
+        // Validate category tags (still do this for logging/sanity)
         const invalidTags = repo.category_tags.filter(tag => !validCategories.includes(tag));
         if (invalidTags.length > 0) {
-          errors.push(`Invalid category tags for repo ${repo.github_repo_id}: ${invalidTags.join(', ')}`);
-          continue;
+          console.warn(`Invalid category tags for repo ${repo.github_repo_id}: ${invalidTags.join(', ')}`);
         }
 
-        // Use upsert to insert or update
-        const { error: upsertError } = await supabaseAdmin
-          .from('github_repositories')
-          .upsert({
-            candidate_id: candidate.id,
-            github_repo_id: repo.github_repo_id,
-            name: repo.name,
-            full_name: repo.full_name,
-            html_url: repo.html_url,
-            description: repo.description,
-            language: repo.language,
-            languages: repo.languages,
-            topics: repo.topics || [],
-            is_private: repo.is_private,
-            is_fork: repo.is_fork || false,
-            is_archived: repo.is_archived || false,
-            stargazers_count: repo.stargazers_count,
-            forks_count: repo.forks_count,
-            watchers_count: repo.watchers_count || 0,
-            is_selected: repo.is_selected,
-            category_tags: repo.category_tags,
-            synced_at: new Date().toISOString(),
-          }, {
-            onConflict: 'candidate_id,github_repo_id',
-            ignoreDuplicates: false,
-          });
+        return {
+          candidate_id: candidate.id,
+          github_repo_id: repo.github_repo_id,
+          name: repo.name,
+          full_name: repo.full_name,
+          html_url: repo.html_url,
+          description: repo.description,
+          language: repo.language,
+          languages: repo.languages,
+          topics: repo.topics || [],
+          is_private: repo.is_private,
+          is_fork: repo.is_fork || false,
+          is_archived: repo.is_archived || false,
+          stargazers_count: repo.stargazers_count,
+          forks_count: repo.forks_count,
+          watchers_count: repo.watchers_count || 0,
+          is_selected: repo.is_selected,
+          category_tags: repo.category_tags,
+          synced_at: new Date().toISOString(),
+        };
+      });
 
-        if (upsertError) {
-          console.error(`Error upserting repository ${repo.github_repo_id}:`, upsertError);
-          errors.push(`Failed to save repo ${repo.github_repo_id}`);
-        } else {
-          inserted++;
-        }
+      // Perform batch upsert
+      const { error: upsertError } = await supabaseAdmin
+        .from('github_repositories')
+        .upsert(upsertData, {
+          onConflict: 'candidate_id,github_repo_id',
+          ignoreDuplicates: false,
+        });
+
+      if (upsertError) {
+        console.error(`Error batch upserting repositories:`, upsertError);
+        return NextResponse.json({ error: 'Failed to save repositories' }, { status: 500 });
       }
 
       return NextResponse.json({
         success: true,
-        inserted,
-        errors: errors.length > 0 ? errors : undefined,
+        inserted: upsertData.length,
       });
     }
 
     // Normal update mode - just update is_selected and category_tags
+    // Since each repo has potentially different category_tags, we can't do a single simple UPDATE
+    // BUT we can use batch UPSERT even for partial updates if we are careful, 
+    // or just keep the loop but use Promise.all to parallelize if the count is small.
+    // However, the best way in Supabase is batch upsert with only the changed columns 
+    // (though you must include required columns for onConflict).
+    
     const simpleRepos = repositories as RepoCategory[];
+    const updateData = simpleRepos.map(repo => ({
+      candidate_id: candidate.id,
+      github_repo_id: repo.github_repo_id,
+      is_selected: repo.is_selected,
+      category_tags: repo.category_tags,
+    }));
 
-    for (const repo of simpleRepos) {
-      // Validate category tags
-      const invalidTags = repo.category_tags.filter(tag => !validCategories.includes(tag));
-      if (invalidTags.length > 0) {
-        errors.push(`Invalid category tags for repo ${repo.github_repo_id}: ${invalidTags.join(', ')}`);
-        continue;
-      }
+    // Batch upsert will update existing rows because of onConflict
+    const { error: updateError } = await supabaseAdmin
+      .from('github_repositories')
+      .upsert(updateData, {
+        onConflict: 'candidate_id,github_repo_id',
+      });
 
-      const { error: updateError } = await supabaseAdmin
-        .from('github_repositories')
-        .update({
-          is_selected: repo.is_selected,
-          category_tags: repo.category_tags,
-        })
-        .eq('candidate_id', candidate.id)
-        .eq('github_repo_id', repo.github_repo_id);
-
-      if (updateError) {
-        console.error(`Error updating repository ${repo.github_repo_id}:`, updateError);
-        errors.push(`Failed to update repo ${repo.github_repo_id}`);
-      } else {
-        updated++;
-      }
+    if (updateError) {
+      console.error(`Error batch updating repository categories:`, updateError);
+      return NextResponse.json({ error: 'Failed to update repository categories' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      updated,
-      errors: errors.length > 0 ? errors : undefined,
+      updated: simpleRepos.length,
     });
   } catch (error) {
     console.error('Error updating repository categories:', error);

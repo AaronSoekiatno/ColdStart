@@ -60,80 +60,67 @@ export function NewLandingPage() {
   // Memoize user email to prevent unnecessary re-fetches
   const userEmail = useMemo(() => user?.email, [user?.email]);
 
+  // Track auth state across renders to detect genuine sign-ins
+  const previousUserRef = useRef<User | null>(null);
+  const initialLoadCompleteRef = useRef(false);
+
   useEffect(() => {
-
-    let previousUser: User | null = null;
-    let initialLoadComplete = false;
-
-    // Check initial session (handles returning from OAuth redirect)
+    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      previousUser = session?.user ?? null;
-      setUser(previousUser);
-      initialLoadComplete = true;
-      setIsAuthLoading(false); // Auth check complete
+      const currentUser = session?.user ?? null;
+      previousUserRef.current = currentUser;
+      setUser(currentUser);
+      initialLoadCompleteRef.current = true;
+      setIsAuthLoading(false);
     });
 
-    // Listen for auth changes (handles in-app email/password sign-in)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
+      const prevUser = previousUserRef.current;
 
-      // Only treat as new sign-in if initial load is complete and user changed from null to non-null
-      const isNewSignIn = initialLoadComplete && !previousUser && currentUser !== null;
+      // Determine if this is a new sign-in (from null to user)
+      const isNewSignIn = initialLoadCompleteRef.current && prevUser === null && currentUser !== null;
 
       setUser(currentUser);
+      previousUserRef.current = currentUser;
 
-      // Check for post-auth redirect (for email sign-in or OAuth)
-      if (isNewSignIn && typeof window !== 'undefined') {
-        const postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect');
-        const pendingOnboarding = window.sessionStorage.getItem('pendingOnboarding');
+      if (!isNewSignIn || typeof window === 'undefined') return;
 
-        if (postAuthRedirect) {
-          window.sessionStorage.removeItem('postAuthRedirect');
-          // Actually perform the redirect using window.location for reliability
-          setTimeout(() => {
-            window.location.href = postAuthRedirect;
-          }, 100);
-          return;
-        }
-
-        // For all new sign-ins (email, Google, GitHub), check if onboarding is needed
-        // This ensures GitHub sign-ups go through the same onboarding flow
-        if (pendingOnboarding === 'true') {
-          window.sessionStorage.removeItem('pendingOnboarding');
-        }
-
-        // Check onboarding status for all new users
-        try {
-          const response = await fetch('/api/candidate/check-onboarding', {
-            credentials: 'include',
-          });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.needsOnboarding) {
-              // New user needs onboarding - show the modal
-              setShowOnboarding(true);
-            } else {
-              // Existing user who completed onboarding - go to matches
-              router.push('/matches');
-            }
-          } else {
-            // If check fails, assume they need onboarding to be safe
-            setShowOnboarding(true);
-          }
-        } catch (e) {
-          console.error('Error checking onboarding status:', e);
-          // If check fails, assume they need onboarding to be safe
-          setShowOnboarding(true);
-        }
+      // Only handle automatic redirects/onboarding checks for genuine new sign-ins
+      const postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect');
+      if (postAuthRedirect) {
+        window.sessionStorage.removeItem('postAuthRedirect');
+        setTimeout(() => {
+          window.location.href = postAuthRedirect;
+        }, 100);
+        return;
       }
 
-      previousUser = currentUser;
+      // If we're already on the onboarding route, the isOnboardingRoute useEffect will handle it
+      if (isOnboardingRoute) return;
+
+      // For non-onboarding routes, check if they need onboarding
+      try {
+        const response = await fetch('/api/candidate/check-onboarding', {
+          credentials: 'include',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.needsOnboarding) {
+            setShowOnboarding(true);
+          } else {
+            router.push('/matches');
+          }
+        }
+      } catch (e) {
+        console.error('Error in onAuthStateChange onboarding check:', e);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [router]);
+  }, [router, isOnboardingRoute]);
 
   // Fetch candidate info to check premium status and assessment status - only when email changes
   useEffect(() => {
@@ -230,60 +217,49 @@ export function NewLandingPage() {
     }
   }, [router]);
 
-  // Force show onboarding/sign-up modal on onboarding route
+  // Specialized effect for the /onboarding route
   useEffect(() => {
-    // Don't do anything until auth has loaded
-    if (isAuthLoading) {
+    if (isAuthLoading || !isOnboardingRoute) return;
+
+    if (!user) {
+      setShowSignUp(true);
       return;
     }
 
-    if (isOnboardingRoute) {
-      if (user) {
-        // Check if this is a GitHub connection flow - if so, don't interfere
-        const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-        const isGitHubConnection = urlParams.get('github_connected') === 'true';
+    // Check if this is a GitHub connection flow
+    const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const isGitHubConnection = urlParams.get('github_connected') === 'true';
 
-        if (!isGitHubConnection) {
-          // Prevent multiple simultaneous checks
-          if (checkingOnboardingRef.current) {
-            return;
-          }
-
-          // Check if user has already completed onboarding before showing modal
-          const checkOnboardingStatus = async () => {
-            checkingOnboardingRef.current = true;
-            try {
-              const response = await fetch('/api/candidate/check-onboarding', {
-                credentials: 'include',
-              });
-              if (response.ok) {
-                const data = await response.json();
-                if (data.needsOnboarding) {
-                  setShowOnboarding(true);
-                } else {
-                  // Already completed onboarding - redirect to matches
-                  router.push('/matches');
-                }
-              } else {
-                // If check fails, show onboarding to be safe
-                setShowOnboarding(true);
-              }
-            } catch (error) {
-              console.error('Error checking onboarding status:', error);
-              // If check fails, show onboarding to be safe
+    // If GitHub just connected, let the OnboardingModal handle it based on its own Step state
+    // We only trigger the automatic modal show if we're freshly landing on /onboarding
+    if (!isGitHubConnection && !showOnboarding && !checkingOnboardingRef.current) {
+      const runCheck = async () => {
+        checkingOnboardingRef.current = true;
+        try {
+          const response = await fetch('/api/candidate/check-onboarding', {
+            credentials: 'include',
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (data.needsOnboarding) {
               setShowOnboarding(true);
-            } finally {
-              checkingOnboardingRef.current = false;
+            } else {
+              // If they're on /onboarding but already finished, send to matches
+              router.push('/matches');
             }
-          };
-          checkOnboardingStatus();
+          } else {
+            setShowOnboarding(true);
+          }
+        } catch (error) {
+          console.error('Onboarding route check failed:', error);
+          setShowOnboarding(true);
+        } finally {
+          checkingOnboardingRef.current = false;
         }
-      } else {
-        // User is not authenticated - show sign up modal
-        setShowSignUp(true);
-      }
+      };
+      runCheck();
     }
-  }, [isOnboardingRoute, user, router, isAuthLoading]);
+  }, [isOnboardingRoute, user, router, isAuthLoading, showOnboarding]);
 
   const handleGetStarted = async () => {
     // If not authenticated, prompt sign-up and mark that we want to go into onboarding after auth

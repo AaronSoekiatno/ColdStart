@@ -79,7 +79,7 @@ export async function GET() {
   } catch (error) {
     console.error('Exception checking onboarding status:', error);
     return NextResponse.json(
-      { needsOnboarding: false },
+      { needsOnboarding: true },
       { status: 200 }
     );
   }

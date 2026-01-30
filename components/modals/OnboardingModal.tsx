@@ -150,7 +150,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     if (open) {
       const checkBetaAccess = async () => {
         try {
-          const response = await fetch('/api/candidate-info', {
+          // Force fresh data - bypass cache to avoid stale github_username
+          const response = await fetch('/api/candidate-info?nocache=' + Date.now(), {
             credentials: 'include',
           });
           if (response.ok) {
@@ -158,6 +159,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             setHasBetaAccess(data.beta_access === true);
             if (data.github_username) {
               setGithubConnected(true);
+            } else {
+              setGithubConnected(false);
             }
           }
         } catch (error) {

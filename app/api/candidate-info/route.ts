@@ -76,16 +76,21 @@ export async function GET(request: NextRequest) {
     }
 
     // Try Redis cache first (event-driven caching with 24-hour TTL)
+    // Allow cache bypass for onboarding/testing scenarios
     const cacheKey = `candidate_info:${user.email}`;
-    const cachedCandidate = await getCache<any>(cacheKey);
+    const bypassCache = request.nextUrl.searchParams.has('nocache');
 
-    if (cachedCandidate) {
-      return NextResponse.json(cachedCandidate, {
-        headers: {
-          'Cache-Control': 'private, max-age=300',
-          'X-Cache-Status': 'HIT',
-        },
-      });
+    if (!bypassCache) {
+      const cachedCandidate = await getCache<any>(cacheKey);
+
+      if (cachedCandidate) {
+        return NextResponse.json(cachedCandidate, {
+          headers: {
+            'Cache-Control': 'private, max-age=300',
+            'X-Cache-Status': 'HIT',
+          },
+        });
+      }
     }
 
     // Cache miss - fetch from database
