@@ -4,6 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate } from '@/lib/supabase';
 import { sendOnboardingEmail, extractFirstName, SendEmailResult } from '@/lib/resend';
 import { deleteCache } from '@/lib/redis-cache';
+import { syncCandidateRepositories } from '@/lib/github-sync';
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,6 +87,21 @@ export async function POST(request: NextRequest) {
           .catch((error: any) => {
             console.error(`[Mark Onboarding Complete] Error sending onboarding email:`, error);
           });
+
+        // SAFETY NET: Trigger a repository sync if GitHub is connected but repos might be missing
+        // This ensures the user has data for matches even if they skipped the manual selection step
+        if (candidate.id && candidate.github_access_token) {
+          console.log(`[Mark Onboarding Complete] Triggering safety net repository sync for ${user.email}`);
+          syncCandidateRepositories(candidate.id, candidate.github_access_token, true)
+            .then(result => {
+              if (result.success) {
+                console.log(`[Mark Onboarding Complete] Safety net sync success for ${user.email}: ${result.count} repos`);
+              }
+            })
+            .catch(error => {
+              console.error(`[Mark Onboarding Complete] Safety net sync failed for ${user.email}:`, error);
+            });
+        }
       }
     } catch (error) {
       // Log error but don't block response

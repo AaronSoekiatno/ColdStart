@@ -154,6 +154,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
           if (response.ok) {
             const data = await response.json();
             setHasBetaAccess(data.beta_access === true);
+            if (data.github_username) {
+              setGithubConnected(true);
+            }
           }
         } catch (error) {
           console.error('Error checking beta access:', error);
@@ -277,7 +280,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       const fetchRepos = async () => {
         setIsLoadingRepos(true);
         try {
-          const response = await fetch('/api/candidate/github/repositories?skip_save=true', {
+          const response = await fetch('/api/candidate/github/repositories', {
             credentials: 'include',
           });
           if (response.ok) {
@@ -470,11 +473,19 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);
+
+    // Proactive trigger: if GitHub is connected but we haven't fetched/saved repos yet,
+    // trigger the sync in the background so data is ready when they land on /matches
+    if (githubConnected && githubRepos.length === 0) {
+      fetch('/api/candidate/github/repositories', { credentials: 'include' })
+        .catch(err => console.error('[Onboarding] Failed to trigger proactive repo sync:', err));
+    }
+
     setTimeout(() => {
       setStep(11);
       setIsTransitioning(false);
     }, 200);
-  }, []);
+  }, [githubConnected, githubRepos.length]);
 
   const handleObjectiveContinue = useCallback(() => {
     if (selectedObjectives.length === 0) return;
@@ -581,10 +592,19 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   const handleViewMatches = async () => {
     try {
-      await saveSelectedRepos();
+      // If we have repositories in state, save the selections
+      if (githubRepos.length > 0) {
+        await saveSelectedRepos();
+      }
+      // If GitHub is connected but we never loaded repos (e.g. user was very fast), 
+      // trigger the sync now so it's happening while they transition to /matches
+      else if (githubConnected) {
+        fetch('/api/candidate/github/repositories', { credentials: 'include' })
+          .catch(err => console.error('[Onboarding] Failed to trigger late repo sync:', err));
+      }
     } catch (error) {
       console.error('Error saving repos:', error);
-      return;
+      // Continue anyway, we don't want to block the user from seeing matches
     }
 
     await new Promise(resolve => setTimeout(resolve, 500));
