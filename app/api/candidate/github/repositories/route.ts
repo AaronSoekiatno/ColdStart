@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAdmin, getCandidate } from '@/lib/supabase';
+import { getCache, setCache } from '@/lib/redis-cache';
 
 interface GitHubRepository {
   id: number;
@@ -99,11 +100,23 @@ async function fetchGitHubRepositories(
     }
   }
 
-  // Fetch language data for each repository
-  // We'll do this in parallel but limit concurrency
+  // OPTIMIZATION: Fetch language data with Redis caching (24-hour TTL)
+  // This prevents hitting GitHub API limits and reduces external requests
   const reposWithLanguages = await Promise.all(
     allRepos.map(async (repo) => {
       try {
+        // Check cache first
+        const langCacheKey = `github:lang:${repo.id}`;
+        const cachedLanguages = await getCache<Record<string, number>>(langCacheKey);
+
+        if (cachedLanguages) {
+          return {
+            ...repo,
+            languages: cachedLanguages,
+          };
+        }
+
+        // Cache miss - fetch from GitHub
         const langResponse = await fetch(repo.languages_url, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -113,6 +126,10 @@ async function fetchGitHubRepositories(
 
         if (langResponse.ok) {
           const languages = await langResponse.json();
+
+          // Cache for 24 hours (86400 seconds)
+          await setCache(langCacheKey, languages, 86400);
+
           return {
             ...repo,
             languages,

@@ -110,61 +110,8 @@ export async function GET(request: NextRequest) {
     // Track request timing for egress monitoring
     const requestStart = Date.now();
 
-    // SMART CACHING: Use a single cache key per user for ALL matches
-    // This allows server-side pagination from cached data, reducing Redis commands dramatically
-    const fullCacheKey = `matches:${user.email}:ALL`;
-    
-    // Check Redis cache for full match list
-    const cachedMatches = await getCache<any[]>(fullCacheKey);
-    
-    if (cachedMatches && Array.isArray(cachedMatches)) {
-      // Validate cache - check if jobs have created_at field (indicates cache was created after filtering was added)
-      const sampleMatch = cachedMatches.find((m: any) => m.jobs && m.jobs.length > 0);
-      const cacheHasProperStructure = sampleMatch?.jobs?.some((job: any) => 
-        job.created_at !== undefined
-      ) ?? false;
-      
-      // Check if cache has jobs but they don't have created_at, it's definitely stale
-      const hasJobsWithoutCreatedAt = sampleMatch?.jobs?.some((job: any) => 
-        !job.created_at
-      ) ?? false;
-      
-      if (hasJobsWithoutCreatedAt || (!cacheHasProperStructure && cachedMatches.length > 0)) {
-        // Cache is stale - invalidate it immediately
-        const { deleteCache } = await import('@/lib/redis-cache');
-        await deleteCache(fullCacheKey);
-        // Continue to fetch fresh data below
-      } else {
-        // Cache looks good, use it
-        const elapsed = Date.now() - requestStart;
-        
-        // Server-side pagination from cached array
-        const { paginateArray } = await import('@/lib/pagination-helper');
-        const paginatedResult = paginateArray(cachedMatches, page, limit);
-        
-        console.log('[Redis Cache] HIT - Serving from cache:', {
-          user: user.email,
-          page,
-          total: cachedMatches.length,
-          elapsed: `${elapsed}ms`,
-          cacheKey: fullCacheKey,
-        });
-        
-        return NextResponse.json(paginatedResult, {
-          headers: {
-            'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-            'X-Cache-Status': 'HIT-REDIS',
-            'X-Cache-Key': fullCacheKey,
-            'X-Response-Time': `${elapsed}ms`,
-          },
-        });
-      }
-    }
-    
-    console.log('[Redis Cache] MISS - Fetching from database:', { 
-      user: user.email, 
-      cacheKey: fullCacheKey 
-    });
+    // OPTIMIZATION: No full-page caching - we now use lightweight pagination
+    // This reduces memory usage and allows faster page loads
 
     // Get candidate preferences for filtering (id, job_type, years_of_experience, role_type)
     const candidatePrefsResult = await withTimeoutAndRetry<{ 
@@ -270,9 +217,8 @@ export async function GET(request: NextRequest) {
       // Continue with totalCount as undefined if it's not a rate limit
     }
 
-    // Get ALL matches for this candidate (no limit)
-    // With smart caching, we fetch all matches once and cache them for 1 hour
-    // This enables full pagination without repeated database queries
+    // OPTIMIZED: Fetch ALL match IDs (lightweight) for sorting,
+    // then only fetch full data for current page
     const matchesResult = await withTimeoutAndRetry<Array<{ id: string; score: number; matched_at: string; startup_id: string }>>(
       async () => {
         const result = await supabaseAdmin!
@@ -280,7 +226,7 @@ export async function GET(request: NextRequest) {
           .select('id, score, matched_at, startup_id')
           .eq('candidate_id', candidate.id)
           .order('score', { ascending: false });
-          // No .limit() - fetch ALL matches
+          // Fetch all IDs - this is lightweight (no joins, just 4 columns)
         return result;
       },
       15000, // 15 second timeout
@@ -349,10 +295,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (!allMatches || allMatches.length === 0) {
-      // Cache empty results too to avoid repeated database queries
-      // Store empty array in Redis with same key structure
-      await setCache(fullCacheKey, [], 43200); // 12 hours TTL
-      
       const emptyResponse = {
         items: [],
         pagination: {
@@ -363,31 +305,57 @@ export async function GET(request: NextRequest) {
           hasMore: false,
         },
       };
-      
+
       return NextResponse.json(emptyResponse, {
         headers: {
           'Cache-Control': 's-maxage=300, stale-while-revalidate=3600',
-          'X-Cache-Status': 'MISS',
-          'X-Cache-Key': fullCacheKey,
         },
       });
     }
 
-    // Get startup IDs
+    // OPTIMIZATION: Paginate match IDs BEFORE fetching expensive startup/job data
+    // This reduces data transfer by only fetching what we need for this page
+    const filteredMatches = allMatches.filter(m => !overEmailLimitStartupIds.has(m.startup_id));
+
+    // Sort by score to determine page boundaries
+    const sortedMatchIds = filteredMatches
+      .sort((a, b) => b.score - a.score)
+      .map(m => ({ id: m.id, score: m.score, matched_at: m.matched_at, startup_id: m.startup_id }));
+
+    // Paginate the IDs (not the full data)
+    const startIndex = offset;
+    const endIndex = offset + limit;
+    const pageMatchIds = sortedMatchIds.slice(startIndex, endIndex);
+
+    if (pageMatchIds.length === 0) {
+      const emptyResponse = {
+        items: [],
+        pagination: {
+          page,
+          limit,
+          total: sortedMatchIds.length,
+          totalPages: Math.ceil(sortedMatchIds.length / limit),
+          hasMore: false,
+        },
+      };
+      return NextResponse.json(emptyResponse);
+    }
+
+    // Get startup IDs ONLY for current page
     const startupIds = Array.from(
       new Set(
-        allMatches
+        pageMatchIds
           .map((m) => m.startup_id)
           .filter((id): id is string => !!id)
       )
     );
-    
-    if (startupIds.length === 0 && allMatches.length > 0) {
+
+    if (startupIds.length === 0 && pageMatchIds.length > 0) {
       console.warn('[Matches API] Warning: Matches exist but no valid startup_ids found');
     }
 
-    // Fetch all jobs for startups in one query
-    // First, get jobs that have startup_id set
+    // Fetch jobs for current page startups ONLY
+    // OPTIMIZATION: Single query instead of batching (Postgres handles large IN clauses well)
     const jobsByStartupId: Record<string, Array<{
       job_title: string;
       job_url: string;
@@ -397,74 +365,56 @@ export async function GET(request: NextRequest) {
       created_at?: string;
     }>> = {};
     const startupsWithJobs = new Set<string>();
-    // Track which startups have jobs with startup_id set (vs linked by company name)
     const startupsWithDirectJobLinks = new Set<string>();
-    
-    if (startupIds.length > 0) {
-      // Fetch jobs with startup_id - batch queries to avoid Supabase limits
-      // Supabase has limits on .in() queries (typically ~100-200 items)
-      const BATCH_SIZE = 100;
-      const allJobs: any[] = [];
-      
-      for (let i = 0; i < startupIds.length; i += BATCH_SIZE) {
-        const batch = startupIds.slice(i, i + BATCH_SIZE);
-        const jobsResult = await withTimeoutAndRetry<Array<{
-          startup_id: string;
-          company_name: string;
-          job_title: string;
-          job_url: string;
-          job_type: string | null;
-          salary_range: string | null;
-          experience_level: string | null;
-          created_at: string | null;
-        }>>(
-          async () => {
-            const result = await supabaseAdmin!
-              .from('jobs')
-              .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level, created_at')
-              .in('startup_id', batch)
-              .not('job_url', 'is', null);
-            return result;
-          },
-          15000, // 15 second timeout
-          2 // 2 retries
-        );
-        const { data: batchJobs, error: jobsError } = jobsResult;
-        
-        if (jobsError) {
-          const errorMessage = jobsError.message || '';
-          const isRateLimit = errorMessage.includes('rate limit') || 
-                             errorMessage.includes('quota') || 
-                             errorMessage.includes('429') ||
-                             errorMessage.includes('too many requests') ||
-                             jobsError.code === 'PGRST301' ||
-                             jobsError.code === 'PGRST116';
-          
-          const isTimeout = errorMessage.includes('timeout') || 
-                           errorMessage.includes('ConnectTimeoutError') ||
-                           errorMessage.includes('ECONNRESET');
-          
-          if (isRateLimit) {
-            console.error('[Matches API] Supabase rate limit/quota exceeded on jobs query:', jobsError);
-            // Continue without jobs rather than failing completely
-          } else if (isTimeout) {
-            console.warn(`[Matches API] Timeout fetching jobs batch ${i / BATCH_SIZE + 1}, skipping batch`);
-            // Continue without this batch
-          } else {
-            console.warn(`[Matches API] Error fetching jobs batch ${i / BATCH_SIZE + 1}:`, jobsError.message);
-          }
-        } else if (batchJobs) {
-          allJobs.push(...batchJobs);
-        }
-        
-        // Small delay between batches to avoid overwhelming Supabase
-        if (i + BATCH_SIZE < startupIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
 
-      // Process all fetched jobs
-      if (allJobs.length > 0) {
+    if (startupIds.length > 0) {
+      // SINGLE QUERY - no batching needed for reasonable page sizes
+      const jobsResult = await withTimeoutAndRetry<Array<{
+        startup_id: string;
+        company_name: string;
+        job_title: string;
+        job_url: string;
+        job_type: string | null;
+        salary_range: string | null;
+        experience_level: string | null;
+        created_at: string | null;
+      }>>(
+        async () => {
+          const result = await supabaseAdmin!
+            .from('jobs')
+            .select('startup_id, company_name, job_title, job_url, job_type, salary_range, experience_level, created_at')
+            .in('startup_id', startupIds)
+            .not('job_url', 'is', null);
+          return result;
+        },
+        15000,
+        2
+      );
+      const { data: allJobs, error: jobsError } = jobsResult;
+
+      if (jobsError) {
+        const errorMessage = jobsError.message || '';
+        const isRateLimit = errorMessage.includes('rate limit') ||
+                           errorMessage.includes('quota') ||
+                           errorMessage.includes('429') ||
+                           errorMessage.includes('too many requests') ||
+                           jobsError.code === 'PGRST301' ||
+                           jobsError.code === 'PGRST116';
+
+        const isTimeout = errorMessage.includes('timeout') ||
+                         errorMessage.includes('ConnectTimeoutError') ||
+                         errorMessage.includes('ECONNRESET');
+
+        if (isRateLimit) {
+          console.error('[Matches API] Supabase rate limit/quota exceeded on jobs query:', jobsError);
+        } else if (isTimeout) {
+          console.warn('[Matches API] Timeout fetching jobs, skipping');
+        } else {
+          console.warn('[Matches API] Error fetching jobs:', jobsError.message);
+        }
+      } else if (allJobs && allJobs.length > 0) {
+        // No batching loop needed
+
         console.log('[Matches API] Processing', allJobs.length, 'jobs with startup_id');
         for (const job of allJobs) {
           if (job.startup_id) {
@@ -479,20 +429,12 @@ export async function GET(request: NextRequest) {
               experience_level: job.experience_level || undefined,
               created_at: job.created_at || undefined,
             };
-            console.log('[Matches API] Job data:', {
-              title: jobData.job_title,
-              created_at: jobData.created_at,
-              has_created_at: !!jobData.created_at
-            });
             jobsByStartupId[job.startup_id].push(jobData);
             startupsWithJobs.add(job.startup_id);
-            startupsWithDirectJobLinks.add(job.startup_id); // Track direct links
+            startupsWithDirectJobLinks.add(job.startup_id);
           }
         }
       }
-
-      // Also fetch jobs without startup_id and link them by company_name
-      // We'll need startup names for this, so we'll do it after loading startup data
     }
 
     // Load startup data
@@ -533,93 +475,78 @@ export async function GET(request: NextRequest) {
     > = {};
 
     if (startupIds.length > 0) {
-      // Batch queries to avoid Supabase limits on .in() queries
-      // Supabase typically limits .in() to ~100-200 items
-      const BATCH_SIZE = 100;
+      // OPTIMIZATION: Single query for startups (no batching)
       const startupRows: any[] = [];
       let startupsError: any = null;
-      
-        for (let i = 0; i < startupIds.length; i += BATCH_SIZE) {
-          const batch = startupIds.slice(i, i + BATCH_SIZE);
-          const startupsResult = await withTimeoutAndRetry<Array<{
-            id: string;
-            name: string;
-            industry: string;
-            location: string;
-            yc_description?: string;
-            team_size?: string;
-            funding_amount?: string;
-            website: string;
-            founder_emails?: string;
-            founder_names?: string;
-            founder_linkedin?: string;
-            founder_twitter_urls?: string;
-            founder_backgrounds?: string;
-            founders_pfp?: string;
-            batch?: string;
-            description?: string;
-            company_logo?: string;
-            yc_link?: string;
-            company_twitter_url?: string;
-            keywords?: string;
-          }>>(
-            async () => {
-              const result = await supabaseAdmin!
-                .from('startups3')
-                .select(`
-                  id, name, industry, location, yc_description, team_size,
-                  funding_amount, website, founder_emails,
-                  founder_names, founder_linkedin, founder_twitter_urls,
-                  founder_backgrounds, founders_pfp, batch, description,
-                  company_logo, yc_link, company_twitter_url, keywords
-                `)
-                .in('id', batch)
-                // Filter out startups with null values in critical fields at database level
-                .not('name', 'is', null)
-                .not('industry', 'is', null)
-                .not('location', 'is', null)
-                .not('batch', 'is', null)
-                .not('founder_emails', 'is', null);
-              return result;
-            },
-            15000, // 15 second timeout
-            2 // 2 retries
-          );
-          const { data: batchStartups, error: batchError } = startupsResult;
-            // Note: We'll filter description and founder fields in code since they need OR logic
-        
-        if (batchError) {
-          const errorMessage = batchError.message || '';
-          const isRateLimit = errorMessage.includes('rate limit') || 
-                             errorMessage.includes('quota') || 
-                             errorMessage.includes('429') ||
-                             errorMessage.includes('too many requests') ||
-                             batchError.code === 'PGRST301' ||
-                             batchError.code === 'PGRST116';
-          
-          const isTimeout = errorMessage.includes('timeout') || 
-                           errorMessage.includes('ConnectTimeoutError') ||
-                           errorMessage.includes('ECONNRESET');
-          
-          if (isRateLimit) {
-            console.error(`[Matches API] Supabase rate limit on startups batch ${i / BATCH_SIZE + 1}:`, batchError);
-            startupsError = batchError;
-            break; // Stop processing batches on rate limit
-          } else if (isTimeout) {
-            console.warn(`[Matches API] Timeout fetching startups batch ${i / BATCH_SIZE + 1}, skipping batch`);
-            // Continue without this batch rather than failing completely
-          } else {
-            console.error(`[Matches API] Error fetching startups batch ${i / BATCH_SIZE + 1}:`, batchError.message);
-            startupsError = batchError;
-          }
-        } else if (batchStartups) {
-          startupRows.push(...batchStartups);
+
+      const startupsResult = await withTimeoutAndRetry<Array<{
+        id: string;
+        name: string;
+        industry: string;
+        location: string;
+        yc_description?: string;
+        team_size?: string;
+        funding_amount?: string;
+        website: string;
+        founder_emails?: string;
+        founder_names?: string;
+        founder_linkedin?: string;
+        founder_twitter_urls?: string;
+        founder_backgrounds?: string;
+        founders_pfp?: string;
+        batch?: string;
+        description?: string;
+        company_logo?: string;
+        yc_link?: string;
+        company_twitter_url?: string;
+        keywords?: string;
+      }>>(
+        async () => {
+          const result = await supabaseAdmin!
+            .from('startups3')
+            .select(`
+              id, name, industry, location, yc_description, team_size,
+              funding_amount, website, founder_emails,
+              founder_names, founder_linkedin, founder_twitter_urls,
+              founder_backgrounds, founders_pfp, batch, description,
+              company_logo, yc_link, company_twitter_url, keywords
+            `)
+            .in('id', startupIds)
+            .not('name', 'is', null)
+            .not('industry', 'is', null)
+            .not('location', 'is', null)
+            .not('batch', 'is', null)
+            .not('founder_emails', 'is', null);
+          return result;
+        },
+        15000,
+        2
+      );
+      const { data: batchStartups, error: batchError } = startupsResult;
+      startupsError = batchError;
+
+      if (batchError) {
+        const errorMessage = batchError.message || '';
+        const isRateLimit = errorMessage.includes('rate limit') ||
+                           errorMessage.includes('quota') ||
+                           errorMessage.includes('429') ||
+                           errorMessage.includes('too many requests') ||
+                           batchError.code === 'PGRST301' ||
+                           batchError.code === 'PGRST116';
+
+        const isTimeout = errorMessage.includes('timeout') ||
+                         errorMessage.includes('ConnectTimeoutError') ||
+                         errorMessage.includes('ECONNRESET');
+
+        if (isRateLimit) {
+          console.error('[Matches API] Supabase rate limit on startups:', batchError);
+        } else if (isTimeout) {
+          console.warn('[Matches API] Timeout fetching startups');
+        } else {
+          console.error('[Matches API] Error fetching startups:', batchError.message);
         }
-        
-        // Small delay between batches to avoid overwhelming Supabase
-        if (i + BATCH_SIZE < startupIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
+      } else if (batchStartups) {
+        startupRows.push(...batchStartups);
       }
 
       if (startupsError) {
@@ -1117,9 +1044,8 @@ export async function GET(request: NextRequest) {
     };
 
     // Join matches with startup data and add job data
-    // Use allMatches (not rawMatches) so we can sort by jobs before paginating
-    // Filter out matches where startup data is missing (these won't display properly)
-    const matchesWithStartups = allMatches.map((m) => {
+    // OPTIMIZATION: Only process current page matches (pageMatchIds)
+    const matchesWithStartups = pageMatchIds.map((m) => {
       const startup = startupsById[m.startup_id] ?? null;
       let allJobs = startup?.id ? jobsByStartupId[startup.id] || [] : [];
       
@@ -1254,45 +1180,33 @@ export async function GET(request: NextRequest) {
       return true;
     });
     
-    // NOW sort: prioritize startups with jobs, then by score
-    // This ensures users see job opportunities first, while still respecting match quality
+    // Sort current page: prioritize startups with jobs, then by score
     const sortedMatches = [...completeMatches].sort((a, b) => {
-      // First, prioritize startups with jobs
       const aHasJobs = a.has_job_listings && a.jobs && a.jobs.length > 0;
       const bHasJobs = b.has_job_listings && b.jobs && b.jobs.length > 0;
-      
-      if (aHasJobs && !bHasJobs) {
-        return -1; // a comes first (has jobs)
-      }
-      if (!aHasJobs && bHasJobs) {
-        return 1; // b comes first (has jobs)
-      }
-      
-      // If both have jobs or both don't have jobs, sort by score
+
+      if (aHasJobs && !bHasJobs) return -1;
+      if (!aHasJobs && bHasJobs) return 1;
       return b.score - a.score;
     });
 
-    // SMART CACHING: Cache the FULL sorted match list in Redis (12-hour TTL)
-    // This allows infinite pagination with only 1 Redis SETEX per user per 12 hours
-    // Matches are updated daily, so 12-hour cache ensures fresh data twice per day
-    console.log('[Redis Cache] Storing full match list:', {
-      user: user.email,
-      totalMatches: sortedMatches.length,
-      cacheKey: fullCacheKey,
-    });
-    await setCache(fullCacheKey, sortedMatches, 43200); // 12 hours TTL
-
-    // Server-side pagination from the full list
-    const { paginateArray } = await import('@/lib/pagination-helper');
-    const paginatedResult = paginateArray(sortedMatches, page, limit);
+    // Build paginated response
+    const paginatedResult = {
+      items: sortedMatches,
+      pagination: {
+        page,
+        limit,
+        total: sortedMatchIds.length,
+        totalPages: Math.ceil(sortedMatchIds.length / limit),
+        hasMore: endIndex < sortedMatchIds.length,
+      },
+    };
 
     return NextResponse.json(paginatedResult, {
       headers: {
-        // Cache for 1 hour on CDN, serve stale for 1 day while revalidating
-        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
-        'X-Cache-Status': 'MISS',
-        'X-Cache-Key': fullCacheKey,
-        'X-Total-Matches': sortedMatches.length.toString(),
+        // Cache for 5 minutes on CDN (short TTL since we're now fast)
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
+        'X-Total-Matches': sortedMatchIds.length.toString(),
       },
     });
   } catch (error) {

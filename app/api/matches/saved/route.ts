@@ -178,37 +178,29 @@ export async function GET(req: NextRequest) {
     }>> = {};
 
     if (startupIds.length > 0 && supabaseAdmin) {
-      // Batch queries to avoid Supabase limits
-      const BATCH_SIZE = 100;
-      const allJobs: any[] = [];
-      
-      for (let i = 0; i < startupIds.length; i += BATCH_SIZE) {
-        const batch = startupIds.slice(i, i + BATCH_SIZE);
-        const { data: batchJobs, error: jobsError } = await supabaseAdmin
-          .from('jobs')
-          .select('startup_id, job_title, job_url, job_type, salary_range, experience_level, created_at')
-          .in('startup_id', batch)
-          .not('job_url', 'is', null);
-        
-        if (!jobsError && batchJobs) {
-          allJobs.push(...batchJobs);
-        }
-      }
+      // OPTIMIZATION: Single query instead of batching
+      const { data: allJobs, error: jobsError } = await supabaseAdmin
+        .from('jobs')
+        .select('startup_id, job_title, job_url, job_type, salary_range, experience_level, created_at')
+        .in('startup_id', startupIds)
+        .not('job_url', 'is', null);
 
-      // Group jobs by startup_id
-      for (const job of allJobs) {
-        if (job.startup_id) {
-          if (!jobsByStartupId[job.startup_id]) {
-            jobsByStartupId[job.startup_id] = [];
+      if (!jobsError && allJobs) {
+        // Group jobs by startup_id
+        for (const job of allJobs) {
+          if (job.startup_id) {
+            if (!jobsByStartupId[job.startup_id]) {
+              jobsByStartupId[job.startup_id] = [];
+            }
+            jobsByStartupId[job.startup_id].push({
+              job_title: job.job_title,
+              job_url: job.job_url,
+              job_type: job.job_type || undefined,
+              salary_range: job.salary_range || undefined,
+              experience_level: job.experience_level || undefined,
+              created_at: job.created_at || undefined,
+            });
           }
-          jobsByStartupId[job.startup_id].push({
-            job_title: job.job_title,
-            job_url: job.job_url,
-            job_type: job.job_type || undefined,
-            salary_range: job.salary_range || undefined,
-            experience_level: job.experience_level || undefined,
-            created_at: job.created_at || undefined,
-          });
         }
       }
     }
@@ -702,10 +694,11 @@ export async function POST(req: NextRequest) {
       note: actualMatchId !== matchId ? 'Used current match ID instead of original' : 'Used original match ID',
     });
     
-    // Invalidate cache so next fetch gets fresh data
-    const cacheKey = `saved_matches:${user.email}:ALL`;
-    await deleteCache(cacheKey);
-    console.log('[Save Match POST] Invalidated cache:', cacheKey);
+    // OPTIMIZATION: Granular cache invalidation - only invalidate saved matches cache
+    // Don't invalidate the main matches cache since saving doesn't affect it
+    const savedMatchesCacheKey = `saved_matches:${user.email}:ALL`;
+    await deleteCache(savedMatchesCacheKey);
+    console.log('[Save Match POST] Invalidated saved matches cache:', savedMatchesCacheKey);
     
     return NextResponse.json({
       success: true,
@@ -773,10 +766,10 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Invalidate cache so next fetch gets fresh data
-    const cacheKey = `saved_matches:${user.email}:ALL`;
-    await deleteCache(cacheKey);
-    console.log('[Unsave Match DELETE] Invalidated cache:', cacheKey);
+    // OPTIMIZATION: Granular cache invalidation
+    const savedMatchesCacheKey = `saved_matches:${user.email}:ALL`;
+    await deleteCache(savedMatchesCacheKey);
+    console.log('[Unsave Match DELETE] Invalidated saved matches cache:', savedMatchesCacheKey);
 
     return NextResponse.json({
       success: true,

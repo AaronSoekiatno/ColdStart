@@ -1,14 +1,22 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load .env.local as it's the standard for Next.js and where the keys are stored
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+// Use NEXT_PUBLIC_SUPABASE_ANON_KEY as requested, fallback to SERVICE_ROLE_KEY if that's what's available
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase credentials');
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Error: Missing Supabase credentials.');
+  console.log('Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your .env file.');
   process.exit(1);
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface MatchStats {
   totalMatches: number;
@@ -80,37 +88,52 @@ async function archiveMatches(daysOld: number): Promise<void> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
-  // Fetch old matches
-  const { data: oldMatches, error } = await supabase
-    .from('matches')
-    .select('*')
-    .lt('matched_at', cutoffDate.toISOString());
+  let totalArchived = 0;
+  const BATCH_SIZE = 100;
 
-  if (error) {
-    console.error('Error fetching matches for archive:', error);
-    return;
+  while (true) {
+    // Fetch a batch of old matches
+    const { data: oldMatches, error } = await supabase
+      .from('matches')
+      .select('*')
+      .lt('matched_at', cutoffDate.toISOString())
+      .limit(BATCH_SIZE);
+
+    if (error) {
+      console.error('Error fetching matches for archive:', JSON.stringify(error, null, 2));
+      return;
+    }
+
+    if (!oldMatches || oldMatches.length === 0) {
+      break;
+    }
+
+    // Save batch to archive table
+    const { error: archiveError } = await supabase
+      .from('matches_archive')
+      .insert(oldMatches.map(match => ({
+        ...match,
+        archived_at: new Date().toISOString()
+      })));
+
+    if (archiveError) {
+      console.error('Error archiving matches batch:', JSON.stringify(archiveError, null, 2));
+      console.log('💡 You may need to create the matches_archive table first');
+      return;
+    }
+
+    totalArchived += oldMatches.length;
+    console.log(`   Progress: Archived ${totalArchived} matches...`);
+    
+    // Safety break if we haven't made progress
+    if (oldMatches.length < BATCH_SIZE) break;
   }
 
-  if (!oldMatches || oldMatches.length === 0) {
+  if (totalArchived === 0) {
     console.log('✅ No matches to archive');
-    return;
+  } else {
+    console.log(`✅ Total Archived: ${totalArchived} matches`);
   }
-
-  // Save to archive table (you'll need to create this table)
-  const { error: archiveError } = await supabase
-    .from('matches_archive')
-    .insert(oldMatches.map(match => ({
-      ...match,
-      archived_at: new Date().toISOString()
-    })));
-
-  if (archiveError) {
-    console.error('Error archiving matches:', archiveError);
-    console.log('💡 You may need to create the matches_archive table first');
-    return;
-  }
-
-  console.log(`✅ Archived ${oldMatches.length} matches`);
 }
 
 async function deleteOldMatches(daysOld: number, skipArchive: boolean = false): Promise<number> {
@@ -124,22 +147,45 @@ async function deleteOldMatches(daysOld: number, skipArchive: boolean = false): 
     await archiveMatches(daysOld);
   }
 
-  // Delete old matches
-  const { data, error } = await supabase
-    .from('matches')
-    .delete()
-    .lt('matched_at', cutoffDate.toISOString())
-    .select();
+  let totalDeleted = 0;
+  const BATCH_SIZE = 100;
 
-  if (error) {
-    console.error('Error deleting matches:', error);
-    return 0;
+  while (true) {
+    // Fetch IDs for the next batch
+    const { data: batch, error: fetchError } = await supabase
+      .from('matches')
+      .select('id')
+      .lt('matched_at', cutoffDate.toISOString())
+      .limit(BATCH_SIZE);
+
+    if (fetchError) {
+      console.error('Error fetching matches for deletion:', JSON.stringify(fetchError, null, 2));
+      break;
+    }
+
+    if (!batch || batch.length === 0) {
+      break;
+    }
+
+    const ids = batch.map(r => r.id);
+    const { error: deleteError } = await supabase
+      .from('matches')
+      .delete()
+      .in('id', ids);
+
+    if (deleteError) {
+      console.error('Error deleting matches batch:', JSON.stringify(deleteError, null, 2));
+      break;
+    }
+
+    totalDeleted += ids.length;
+    process.stdout.write(`\r   Progress: Deleted ${totalDeleted.toLocaleString()} matches...`);
+
+    if (ids.length < BATCH_SIZE) break;
   }
 
-  const deletedCount = data?.length || 0;
-  console.log(`✅ Deleted ${deletedCount} matches`);
-
-  return deletedCount;
+  console.log(`\n✅ Finished: Deleted ${totalDeleted.toLocaleString()} matches`);
+  return totalDeleted;
 }
 
 async function main() {
