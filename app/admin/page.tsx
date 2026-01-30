@@ -39,6 +39,13 @@ export default function AdminDashboardPage() {
             color: 'bg-blue-100 text-blue-600',
             href: '/admin/candidates'
         },
+        {
+            title: 'Segmentation',
+            description: 'Analyze candidate distribution across 5 key segments.',
+            icon: Activity,
+            color: 'bg-purple-100 text-purple-600',
+            href: '/admin/segments'
+        },
         // Future modules placeholders
         /*
         {

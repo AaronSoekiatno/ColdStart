@@ -432,43 +432,7 @@ export default function MatchesPage() {
           </>
         )}
 
-        {/* Quick Access to Assessment */}
-        <div className="container mx-auto px-4 mb-4 max-w-4xl">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 mb-1">
-                  {assessmentStatus === 'completed'
-                    ? '✅ Assessment Complete'
-                    : assessmentStatus === 'in_progress'
-                      ? '📝 Continue Your Assessment'
-                      : '🎯 Boost Your Profile'}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {assessmentStatus === 'completed'
-                    ? 'Great job! You can review your assessment anytime.'
-                    : assessmentStatus === 'in_progress'
-                      ? 'You started your assessment. Complete it to improve your match quality.'
-                      : 'Complete a 20-minute technical assessment to stand out to employers.'}
-                </p>
-              </div>
-              <Button
-                onClick={() => router.push('/assessment')}
-                variant={assessmentStatus === 'not_started' ? 'default' : 'outline'}
-                className={assessmentStatus === 'not_started'
-                  ? 'bg-[#498EDC] hover:bg-[#3a7bc4] text-white border-0 whitespace-nowrap'
-                  : 'bg-white border-blue-300 text-blue-600 hover:bg-blue-50 hover:border-blue-400 whitespace-nowrap'}
-              >
-                <Play className="mr-2 h-4 w-4" />
-                {assessmentStatus === 'completed'
-                  ? 'View Assessment'
-                  : assessmentStatus === 'in_progress'
-                    ? 'Continue'
-                    : 'Start Assessment'}
-              </Button>
-            </div>
-          </div>
-        </div>
+
 
         <div className="container mx-auto px-2 sm:px-4">
           {hasMatches ? (

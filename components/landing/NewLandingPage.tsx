@@ -48,8 +48,10 @@ export function NewLandingPage() {
   const [isCheckingPremium, setIsCheckingPremium] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const fetchingRef = useRef(false);
   const lastFetchedEmailRef = useRef<string | null>(null);
+  const checkingOnboardingRef = useRef(false);
   const { scrollY } = useScroll();
   const headerOpacity = useTransform(scrollY, [0, 200], [1, 0.8]);
   const headerScale = useTransform(scrollY, [0, 200], [1, 0.95]);
@@ -68,12 +70,13 @@ export function NewLandingPage() {
       previousUser = session?.user ?? null;
       setUser(previousUser);
       initialLoadComplete = true;
+      setIsAuthLoading(false); // Auth check complete
     });
 
     // Listen for auth changes (handles in-app email/password sign-in)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const currentUser = session?.user ?? null;
 
       // Only treat as new sign-in if initial load is complete and user changed from null to non-null
@@ -81,16 +84,37 @@ export function NewLandingPage() {
 
       setUser(currentUser);
 
-      // Check for post-auth redirect (for email sign-in)
+      // Check for post-auth redirect (for email sign-in or OAuth)
       if (isNewSignIn && typeof window !== 'undefined') {
         const postAuthRedirect = window.sessionStorage.getItem('postAuthRedirect');
+        const pendingOnboarding = window.sessionStorage.getItem('pendingOnboarding');
+
         if (postAuthRedirect) {
           window.sessionStorage.removeItem('postAuthRedirect');
           // Actually perform the redirect using window.location for reliability
           setTimeout(() => {
             window.location.href = postAuthRedirect;
           }, 100);
-          return; // Exit early to prevent other redirects
+          return;
+        }
+
+        // If no redirect but user clicked "Apply" before signing in
+        if (pendingOnboarding === 'true') {
+          window.sessionStorage.removeItem('pendingOnboarding');
+          // Check onboarding status and show modal
+          try {
+            const response = await fetch('/api/candidate/check-onboarding');
+            if (response.ok) {
+              const data = await response.json();
+              if (data.needsOnboarding) {
+                setShowOnboarding(true);
+              } else {
+                router.push('/matches');
+              }
+            }
+          } catch (e) {
+            console.error('Error auto-triggering onboarding:', e);
+          }
         }
       }
 
@@ -168,23 +192,67 @@ export function NewLandingPage() {
     }
   }, []);
 
-  // Force show onboarding modal on onboarding route for authenticated users
+  // Force show onboarding/sign-up modal on onboarding route
   useEffect(() => {
-    if (isOnboardingRoute && user) {
-      // Check if this is a GitHub connection flow - if so, don't interfere
-      const urlParams = new URLSearchParams(window.location.search);
-      const isGitHubConnection = urlParams.get('github_connected') === 'true';
+    // Don't do anything until auth has loaded
+    if (isAuthLoading) {
+      return;
+    }
 
-      if (!isGitHubConnection) {
-        // Force show onboarding modal on onboarding route
-        setShowOnboarding(true);
+    if (isOnboardingRoute) {
+      if (user) {
+        // Check if this is a GitHub connection flow - if so, don't interfere
+        const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+        const isGitHubConnection = urlParams.get('github_connected') === 'true';
+
+        if (!isGitHubConnection) {
+          // Prevent multiple simultaneous checks
+          if (checkingOnboardingRef.current) {
+            return;
+          }
+
+          // Check if user has already completed onboarding before showing modal
+          const checkOnboardingStatus = async () => {
+            checkingOnboardingRef.current = true;
+            try {
+              const response = await fetch('/api/candidate/check-onboarding', {
+                credentials: 'include',
+              });
+              if (response.ok) {
+                const data = await response.json();
+                if (data.needsOnboarding) {
+                  setShowOnboarding(true);
+                } else {
+                  // Already completed onboarding - redirect to matches
+                  router.push('/matches');
+                }
+              } else {
+                // If check fails, show onboarding to be safe
+                setShowOnboarding(true);
+              }
+            } catch (error) {
+              console.error('Error checking onboarding status:', error);
+              // If check fails, show onboarding to be safe
+              setShowOnboarding(true);
+            } finally {
+              checkingOnboardingRef.current = false;
+            }
+          };
+          checkOnboardingStatus();
+        }
+      } else {
+        // User is not authenticated - show sign up modal
+        setShowSignUp(true);
       }
     }
-  }, [isOnboardingRoute, user]);
+  }, [isOnboardingRoute, user, router, isAuthLoading]);
 
   const handleGetStarted = async () => {
-    // If not authenticated, prompt sign-up
+    // If not authenticated, prompt sign-up and mark that we want to go into onboarding after auth
     if (!user) {
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem('pendingOnboarding', 'true');
+      }
       setShowSignUp(true);
       return;
     }
@@ -585,10 +653,12 @@ export function NewLandingPage() {
       <SignInModal
         open={showSignIn}
         onOpenChange={setShowSignIn}
+        redirectTo={isOnboardingRoute ? '/onboarding' : undefined}
       />
       <SignUpModal
         open={showSignUp}
         onOpenChange={setShowSignUp}
+        redirectTo={isOnboardingRoute ? '/onboarding' : undefined}
         onSwitchToSignIn={() => {
           setShowSignUp(false);
           setShowSignIn(true);

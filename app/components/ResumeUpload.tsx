@@ -253,22 +253,22 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
               transition-all duration-300
               ${isDragging
                 ? 'bg-blue-500/10 scale-110'
-                : 'bg-foreground/5 group-hover:bg-foreground/10 group-hover:scale-110'
+                : 'bg-black/5 group-hover:bg-black/10 group-hover:scale-110'
               }
             `}>
               <Upload className={`
                 h-8 w-8 transition-all duration-300
                 ${isDragging
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-foreground/60 group-hover:text-foreground'
+                  ? 'text-blue-600'
+                  : 'text-black/60 group-hover:text-black'
                 }
               `} />
             </div>
             <div>
-              <p className="text-xl md:text-2xl font-semibold text-foreground mb-2">
+              <p className="text-xl md:text-2xl font-semibold text-black mb-2">
                 {isDragging ? 'Drop your file here' : 'Send Resume'}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-black">
                 PDF or DOCX format (max 10MB)
               </p>
             </div>

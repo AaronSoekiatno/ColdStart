@@ -2,18 +2,27 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ArrowLeft,
+  CheckCircle2,
+  Briefcase,
+  Target,
+  Code,
+  TrendingUp,
+  Loader2,
+  Plus,
+  Search,
+  Github,
+  Upload,
+  FileText,
+  X
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, Search, Copy, Check, ExternalLink } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import dynamic from "next/dynamic";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Lazy load ResumeUpload only when needed (step 6)
 const ResumeUpload = dynamic(() => import("@/app/components/ResumeUpload"), {
@@ -24,7 +33,6 @@ const ResumeUpload = dynamic(() => import("@/app/components/ResumeUpload"), {
     </div>
   ),
 });
-// import { ResumeUploadModal } from \"@/components/modals/ResumeUploadModal\";
 
 type ObjectiveType = 'internship' | 'startup' | 'network' | 'improve-application' | 'sf-scene';
 type JobType = 'full-time' | 'part-time' | 'internship';
@@ -104,11 +112,10 @@ interface OnboardingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete?: () => void;
-  skipResumeUpload?: boolean; // If true, skip step 6 (resume upload)
+  skipResumeUpload?: boolean;
 }
 
 export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUpload = false }: OnboardingModalProps) {
-  // Unified onboarding flow: Steps 1-4 (basic info), Step 6 (resume, optional), Step 7 (GitHub), Step 8 (repo selection), Step 11 (completion)
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11>(1);
 
   // Safeguard: Redirect from removed step 5
@@ -138,7 +145,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const [showSuggestedOnly, setShowSuggestedOnly] = useState(false);
   const { toast } = useToast();
 
-
   // Check if user has beta access
   useEffect(() => {
     if (open) {
@@ -163,13 +169,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const filteredRepos = useMemo(() => {
     let repos = githubRepos;
 
-    // Filter by suggested matches if toggle is on
     if (showSuggestedOnly && suggestedMatches.length > 0) {
       const suggestedRepoIds = new Set(suggestedMatches.map(m => m.github_repo_id));
       repos = repos.filter(repo => suggestedRepoIds.has(repo.github_repo_id));
     }
 
-    // Filter by search query
     if (repoSearchQuery.trim()) {
       const query = repoSearchQuery.toLowerCase();
       repos = repos.filter(repo =>
@@ -183,17 +187,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     return repos;
   }, [githubRepos, repoSearchQuery, showSuggestedOnly, suggestedMatches]);
 
-  // Role options for repo tagging (excluding "Other")
   const REPO_TAG_OPTIONS = useMemo(() =>
     ROLE_OPTIONS.filter(option => option.value !== 'Other'),
     []);
 
-  // Helper to get match info for a repo
   const getRepoMatch = useCallback((githubRepoId: number): RepoMatch | undefined => {
     return suggestedMatches.find(m => m.github_repo_id === githubRepoId);
   }, [suggestedMatches]);
 
-  // Helper to get confidence badge styling
   const getConfidenceBadge = (confidenceLevel: 'high' | 'good' | 'moderate' | 'low') => {
     switch (confidenceLevel) {
       case 'high':
@@ -217,12 +218,9 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-
-
   // Check for GitHub connection status from URL params
   useEffect(() => {
     if (typeof window !== 'undefined' && open) {
-      // Use a small delay to ensure URL params are available after page load
       const checkParams = () => {
         const urlParams = new URLSearchParams(window.location.search);
         const stepParam = urlParams.get('step');
@@ -232,46 +230,38 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         if (githubConnected === 'true') {
           setGithubConnected(true);
 
-          // Determine target step - always go to step 8 (repo selection) after GitHub connection
           let targetStep: 8 | 9;
           if (stepParam === '7') {
-            targetStep = 8; // Always go to repo selection after GitHub connection
+            targetStep = 8;
           } else if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
             if (stepNum >= 1 && stepNum <= 11 && stepNum !== 10) {
               setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11);
-              // Clean up URL params after processing
               const newUrl = window.location.pathname;
               window.history.replaceState({}, '', newUrl);
-              return; // Early return since we set a specific step
+              return;
             } else {
-              targetStep = 8; // Default to repo selection
+              targetStep = 8;
             }
           } else {
-            // No step param but GitHub connected - default to repo selection
             targetStep = 8;
           }
 
-          // Set the target step
           setStep(targetStep);
 
-          // Clean up URL params after processing
           setTimeout(() => {
             const newUrl = window.location.pathname;
             window.history.replaceState({}, '', newUrl);
           }, 100);
         } else if (githubError) {
-          // User cancelled or error occurred - navigate to step 7 (GitHub connection step)
           if (stepParam) {
             const stepNum = parseInt(stepParam, 10);
             if (stepNum >= 1 && stepNum <= 11 && stepNum !== 10) {
               setStep(stepNum as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11);
             }
           } else {
-            // Default to step 7 if no step specified
             setStep(7);
           }
-          // Clean up URL params
           setTimeout(() => {
             const newUrl = window.location.pathname;
             window.history.replaceState({}, '', newUrl);
@@ -279,24 +269,18 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         }
       };
 
-      // Check immediately
       checkParams();
-
-      // Also check after a small delay to catch any timing issues
       const timeoutId = setTimeout(checkParams, 100);
       return () => clearTimeout(timeoutId);
     }
   }, [open]);
 
-
-
-  // Fetch GitHub repos when entering step 8 (without saving to database)
+  // Fetch GitHub repos when entering step 8
   useEffect(() => {
     if (step === 8 && githubConnected && githubRepos.length === 0 && !isLoadingRepos) {
       const fetchRepos = async () => {
         setIsLoadingRepos(true);
         try {
-          // Use skip_save=true to fetch from GitHub without saving to database
           const response = await fetch('/api/candidate/github/repositories?skip_save=true', {
             credentials: 'include',
           });
@@ -304,7 +288,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             const data = await response.json();
             const repos = data.repositories || [];
             setGithubRepos(repos);
-            // Initialize selections (all repos start as not selected during onboarding)
             const initialSelections = new Map<number, RepoSelection>();
             repos.forEach((repo: GitHubRepo) => {
               initialSelections.set(repo.github_repo_id, {
@@ -339,7 +322,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             if (data.success && data.matches) {
               setSuggestedMatches(data.matches);
 
-              // Auto-select high-confidence matches (>= 0.7)
               const updatedSelections = new Map(repoSelections);
               for (const match of data.matches) {
                 if (match.confidence >= 0.7) {
@@ -366,8 +348,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   }, [step, githubRepos.length, suggestedMatches.length, isLoadingMatches, repoSelections]);
 
   const handleGithubConnect = () => {
-    // Redirect to GitHub OAuth connection
-    // Use pathname to preserve the current page (e.g., /onboarding)
     const redirectPath = window.location.pathname || '/';
     const connectUrl = `/api/auth/github/connect?redirect=${encodeURIComponent(redirectPath)}&step=7`;
     window.location.href = connectUrl;
@@ -376,7 +356,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleGithubSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(11); // Skip to completion
+      setStep(11);
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -384,12 +364,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleGithubContinue = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(8); // Go to repo selection step
+      setStep(8);
       setIsTransitioning(false);
     }, 200);
   }, []);
 
-  // Handle repo selection toggle
   const handleRepoToggle = useCallback((githubRepoId: number) => {
     setRepoSelections(prev => {
       const newSelections = new Map(prev);
@@ -404,7 +383,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  // Handle category tag toggle for a repo
   const handleCategoryToggle = useCallback((githubRepoId: number, category: RoleType) => {
     setRepoSelections(prev => {
       const newSelections = new Map(prev);
@@ -417,7 +395,6 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
         newSelections.set(githubRepoId, {
           ...existing,
           category_tags: newTags,
-          // Auto-select the repo if adding a category
           is_selected: newTags.length > 0 ? true : existing.is_selected,
         });
       }
@@ -425,65 +402,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     });
   }, []);
 
-  // Trigger GitHub analysis in the background (fire-and-forget)
-  const triggerGitHubAnalysis = useCallback(async () => {
-    try {
-      // Get selected repository IDs (database UUIDs, not github_repo_ids)
-      const selectedRepos = githubRepos
-        .filter(repo => {
-          const selection = repoSelections.get(repo.github_repo_id);
-          return selection?.is_selected || (selection?.category_tags && selection.category_tags.length > 0);
-        })
-        .map(repo => repo.id) // Use database UUID
-        .filter(id => id); // Filter out any undefined IDs
-
-      if (selectedRepos.length === 0) {
-        console.log('[OnboardingModal] No repos selected, skipping GitHub analysis');
-        return;
-      }
-
-      // Get candidate info to extract candidate_id
-      const candidateResponse = await fetch('/api/candidate-info', {
-        credentials: 'include',
-      });
-
-      if (!candidateResponse.ok) {
-        console.warn('[OnboardingModal] Failed to get candidate info for GitHub analysis');
-        return;
-      }
-
-      const candidateInfo = await candidateResponse.json();
-      const candidateId = candidateInfo.id;
-
-      if (!candidateId) {
-        console.warn('[OnboardingModal] No candidate_id found, skipping GitHub analysis');
-        return;
-      }
-
-      // Trigger batch analysis (fire-and-forget - don't await)
-      fetch('/api/github/analyze/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          candidate_id: candidateId,
-          repository_ids: selectedRepos,
-        }),
-      }).catch(error => {
-        // Silently log error - don't block user
-        console.error('[OnboardingModal] Failed to trigger GitHub analysis:', error);
-      });
-
-      console.log('[OnboardingModal] GitHub analysis triggered for', selectedRepos.length, 'repositories');
-    } catch (error) {
-      // Silently log error - don't block user
-      console.error('[OnboardingModal] Error triggering GitHub analysis:', error);
-    }
-  }, [githubRepos, repoSelections]);
-
-  // Save selected repos to database (called when onboarding completes)
   const saveSelectedRepos = useCallback(async () => {
-    // Get only repos that have been selected (repos with tags must be selected, enforced by UI)
     const reposToSave = githubRepos
       .filter(repo => {
         const selection = repoSelections.get(repo.github_repo_id);
@@ -528,18 +447,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [githubRepos, repoSelections]);
 
-
-  // Complete onboarding after repo selection
   const handleReposContinue = useCallback(async () => {
     setIsTransitioning(true);
     try {
-      // Save selected repos first
       await saveSelectedRepos();
 
-      // GitHub analysis disabled - now triggered manually by admin
-      // triggerGitHubAnalysis();
-
-      // Go to completion screen
       setTimeout(() => {
         setStep(11);
         setIsTransitioning(false);
@@ -555,12 +467,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [toast, saveSelectedRepos]);
 
-
-
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);
     setTimeout(() => {
-      setStep(11); // Go to completion
+      setStep(11);
       setIsTransitioning(false);
     }, 200);
   }, []);
@@ -571,10 +481,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     setTimeout(() => {
       setStep(2);
       setIsTransitioning(false);
-    }, 200); // Reduced from 300ms to 200ms
+    }, 200);
   }, [selectedObjectives.length]);
-
-
 
   const handleJobTypeSelect = useCallback((jobType: JobType) => {
     setSelectedJobType(jobType);
@@ -582,7 +490,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     setTimeout(() => {
       setStep(3);
       setIsTransitioning(false);
-    }, 200); // Reduced from 300ms to 200ms
+    }, 200);
   }, []);
 
   const handleRoleTypeSelect = useCallback((roleType: RoleType) => {
@@ -601,7 +509,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     setTimeout(() => {
       setStep(4);
       setIsTransitioning(false);
-    }, 200); // Reduced from 300ms to 200ms
+    }, 200);
   }, [selectedRoleTypes.length]);
 
   const handleYOESelect = useCallback((yoe: YearsOfExperience) => {
@@ -641,14 +549,12 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       const data = await response.json();
 
       if (data.success) {
-        // Go to final step instead of completing
-        // Go to next step
         setIsTransitioning(true);
         setTimeout(() => {
           if (skipResumeUpload) {
-            setStep(7); // Skip failure-prone resume upload if requested
+            setStep(7);
           } else {
-            setStep(6); // Resume upload step
+            setStep(6);
           }
           setIsSubmitting(false);
           setIsTransitioning(false);
@@ -674,10 +580,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
   const handleViewMatches = async () => {
     try {
-      // Save selected GitHub repos to database (if any were selected)
       await saveSelectedRepos();
 
-      // Mark onboarding as truly complete and wait for response
       const response = await fetch('/api/candidate/mark-onboarding-complete', {
         method: 'POST',
         credentials: 'include',
@@ -685,855 +589,437 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
 
       if (!response.ok) {
         console.error('Failed to mark onboarding complete:', await response.text());
-        // Don't proceed if marking complete failed
         return;
       }
 
-      // Ensure the response completes before redirecting
       await response.json();
     } catch (error) {
       console.error('Error marking onboarding complete:', error);
-      // Don't redirect on error
       return;
     }
 
-    // Longer delay to ensure database propagates and prevent race condition
     await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Directly redirect to matches page
     window.location.href = "/matches";
   };
 
-  // const handleUploadResume = () => {
-  //   setShowResumeUpload(true);
-  // };
+  const containerVariants = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 }
+  };
+
+  if (!open) return null;
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-white text-gray-900 w-screen h-screen max-w-none max-h-none overflow-y-auto p-0 flex items-center justify-center">
-          <div className={`w-full px-6 sm:px-8 py-8 ${step === 8 ? 'max-w-6xl' : 'max-w-3xl'}`}>
-            <DialogHeader>
-              <div className="mb-8">
-                <div className="flex items-center justify-center gap-2 mb-4">
-                  {(() => {
-                    const steps = skipResumeUpload
-                      ? [1, 2, 3, 4, 7, 8, 11]
-                      : [1, 2, 3, 4, 6, 7, 8, 11];
-                    return steps.map((stepNum) => (
-                      <div
-                        key={stepNum}
-                        className={`h-2 w-8 rounded-full transition-colors duration-300 ${step >= stepNum ? 'bg-[#498EDC]' : 'bg-gray-200'
-                          }`}
-                      />
-                    ));
-                  })()}
-                </div>
-                <p className="text-center text-gray-500 text-sm">
-                  Step {(() => {
-                    // Calculate step display: remove steps 5, 9, 10 (removed), adjust for skipped resume
-                    let currentStepDisplay = step > 5 ? step - 1 : step;
+    <div className="fixed inset-0 z-50 bg-white flex flex-col lg:flex-row overflow-hidden">
+      {/* Left Side: Onboarding Content */}
+      <div className="w-full lg:w-1/2 flex flex-col p-3 sm:p-6 lg:p-8 relative z-10 overflow-y-auto bg-white">
+        {/* Header / Nav */}
+        <div className="flex justify-between items-center mb-3 sm:mb-4">
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            onClick={() => {
+              if (step > 1) {
+                setIsTransitioning(true);
+                setTimeout(() => {
+                  if (step === 2) setStep(1);
+                  else if (step === 3) setStep(2);
+                  else if (step === 4) setStep(3);
+                  else if (step === 6) setStep(4);
+                  else if (step === 7) setStep(skipResumeUpload ? 4 : 6);
+                  else if (step === 8) setStep(7);
+                  setIsTransitioning(false);
+                }, 200);
+              } else {
+                onOpenChange(false);
+              }
+            }}
+            className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors self-start group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm font-medium tracking-tight">
+              {step > 1 ? 'Back' : 'Close'}
+            </span>
+          </motion.button>
 
-                    // Handle skip resume (remove step 6)
-                    if (skipResumeUpload && step >= 7) {
-                      currentStepDisplay -= 1;
-                    }
-
-                    // Steps 9 and 10 are removed
-                    if (step >= 11) {
-                      currentStepDisplay -= 2;
-                    }
-
-                    return currentStepDisplay;
-                  })()} of {skipResumeUpload ? 7 : 8}
-                </p>
-              </div>
-            </DialogHeader>
-
-            <div className="relative min-h-[450px]">
-              {/* Conditionally render only the current step to improve performance */}
-
-
-
-              {/* Step 1: Objectives (Moved from Step 2) */}
-              {step === 1 && (
+          <div className="flex gap-2">
+            {(() => {
+              const steps = skipResumeUpload
+                ? [1, 2, 3, 4, 7, 8, 11]
+                : [1, 2, 3, 4, 6, 7, 8, 11];
+              return steps.map((s) => (
                 <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center">
-                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                      Welcome to Hermes!
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2">
+                  key={s}
+                  className={`h-1 w-4 sm:w-8 rounded-full transition-all duration-500 ${step >= s ? 'bg-blue-500' : 'bg-gray-100'}`}
+                />
+              ));
+            })()}
+          </div>
+        </div>
+
+        {/* Form Container */}
+        <div className="max-w-md w-full mx-auto lg:mx-0 flex-grow flex flex-col justify-center py-2">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              variants={containerVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.4, ease: "easeOut" }}
+            >
+              {/* Step 1: Objectives */}
+              {step === 1 && (
+                <div className="space-y-4">
+                  <div className="mb-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                      Welcome to <span className="text-blue-500">Hermes!</span>
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Which of the following choices best describe your objective with Hermes?
-                    </DialogDescription>
-                    <p className="text-sm text-gray-500 mt-1">Select all that apply</p>
+                    </p>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">Select all that apply</p>
                   </div>
 
-                  <div className="space-y-3 mt-8">
+                  <div className="space-y-2">
                     {OBJECTIVE_OPTIONS.map((option) => (
                       <button
                         key={option.value}
                         onClick={() => handleObjectiveSelect(option.value)}
-                        className={`w-full p-5 rounded-xl border-2 transition-all text-left shadow-sm ${selectedObjectives.includes(option.value)
-                          ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                        className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 transition-all text-left ${selectedObjectives.includes(option.value)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                           }`}
                       >
-                        <div className="font-semibold text-gray-900">{option.label}</div>
+                        <div className="font-medium text-xs sm:text-sm text-black">{option.label}</div>
                       </button>
                     ))}
                   </div>
 
-                  <div className="flex gap-4 mt-6">
-                    <Button
-                      onClick={handleObjectiveContinue}
-                      disabled={selectedObjectives.length === 0}
-                      className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
+                  <motion.button
+                    onClick={handleObjectiveContinue}
+                    disabled={selectedObjectives.length === 0}
+                    className="group relative w-full py-2.5 sm:py-3 bg-black text-white text-sm sm:text-base font-bold rounded-xl hover:bg-gray-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-xl mt-4"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
                       Continue
-                    </Button>
-                  </div>
+                      <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </motion.button>
                 </div>
               )}
 
-              {/* Step 2: Job Type (Moved from Step 3) */}
+              {/* Step 2: Job Type */}
               {step === 2 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center">
-                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                      What type of position are you looking for?
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2">
+                <div className="space-y-4">
+                  <div className="mb-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                      What type of <span className="text-blue-500">position</span> are you looking for?
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Select one option
-                    </DialogDescription>
+                    </p>
                   </div>
 
-                  <div className="space-y-4 mt-8">
-                    <button
-                      onClick={() => handleJobTypeSelect('full-time')}
-                      className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'full-time'
-                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                        }`}
-                    >
-                      <div className="font-semibold text-lg text-gray-900">Full-Time</div>
-                      <div className="text-sm text-gray-600 mt-1">Permanent, full-time positions</div>
-                    </button>
-
-                    <button
-                      onClick={() => handleJobTypeSelect('part-time')}
-                      className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'part-time'
-                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                        }`}
-                    >
-                      <div className="font-semibold text-lg text-gray-900">Part-Time</div>
-                      <div className="text-sm text-gray-600 mt-1">Part-time or contract positions</div>
-                    </button>
-
-                    <button
-                      onClick={() => handleJobTypeSelect('internship')}
-                      className={`w-full p-6 rounded-xl border-2 transition-all text-left shadow-sm ${selectedJobType === 'internship'
-                        ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                        : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
-                        }`}
-                    >
-                      <div className="font-semibold text-lg text-gray-900">Internship</div>
-                      <div className="text-sm text-gray-600 mt-1">Summer, winter, or year-round internships</div>
-                    </button>
-                  </div>
-
-                  <div className="mt-6">
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(1);
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Back
-                    </Button>
+                  <div className="space-y-2">
+                    {[
+                      { value: 'full-time' as JobType, label: 'Full-Time', desc: 'Permanent, full-time positions' },
+                      { value: 'part-time' as JobType, label: 'Part-Time', desc: 'Part-time or contract positions' },
+                      { value: 'internship' as JobType, label: 'Internship', desc: 'Summer, winter, or year-round internships' }
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => handleJobTypeSelect(option.value)}
+                        className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 transition-all text-left ${selectedJobType === option.value
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
+                          }`}
+                      >
+                        <div className="font-semibold text-sm sm:text-base text-black">{option.label}</div>
+                        <div className="text-xs text-gray-600 mt-0.5">{option.desc}</div>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Step 3: Role Type (Moved from Step 4) */}
+              {/* Step 3: Role Type */}
               {step === 3 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center">
-                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                      What roles interest you?
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2">
+                <div className="space-y-4">
+                  <div className="mb-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                      What <span className="text-blue-500">roles</span> interest you?
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Select all that apply
-                    </DialogDescription>
+                    </p>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6 max-h-[45vh] overflow-y-auto px-2 py-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[45vh] overflow-y-auto px-1">
                     {ROLE_OPTIONS.map((role) => (
                       <button
                         key={role.value}
                         onClick={() => handleRoleTypeSelect(role.value)}
-                        className={`p-4 rounded-xl border-2 transition-all text-left shadow-sm ${selectedRoleTypes.includes(role.value)
-                          ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                        className={`p-2.5 sm:p-3 rounded-xl border-2 transition-all text-left ${selectedRoleTypes.includes(role.value)
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                           }`}
                       >
-                        <div className="font-semibold text-gray-900">{role.label}</div>
-                        <div className="text-xs text-gray-600 mt-1">{role.description}</div>
+                        <div className="font-semibold text-xs sm:text-sm text-black">{role.label}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-600 mt-0.5">{role.description}</div>
                       </button>
                     ))}
                   </div>
 
-                  <div className="flex gap-4 mt-6">
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(2);
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      onClick={handleRolesContinue}
-                      disabled={selectedRoleTypes.length === 0}
-                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
+                  <motion.button
+                    onClick={handleRolesContinue}
+                    disabled={selectedRoleTypes.length === 0}
+                    className="group relative w-full py-2.5 sm:py-3 bg-black text-white text-sm sm:text-base font-bold rounded-xl hover:bg-gray-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-xl mt-4"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
                       Continue
-                    </Button>
-                  </div>
+                      <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </motion.button>
                 </div>
               )}
 
-              {/* Step 4: Years of Experience (Moved from Step 5) */}
+              {/* Step 4: Years of Experience */}
               {step === 4 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center">
-                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                      How many Years Of Experience do you have?
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2">
+                <div className="space-y-4">
+                  <div className="mb-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                      How many <span className="text-blue-500">years of experience</span> do you have?
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Select one option
-                    </DialogDescription>
+                    </p>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 mt-8">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
                     {YOE_OPTIONS.map((option) => (
                       <button
                         key={option.value}
                         onClick={() => handleYOESelect(option.value)}
-                        className={`p-6 rounded-xl border-2 transition-all text-center shadow-sm ${selectedYOE === option.value
-                          ? 'border-[#498EDC] bg-blue-50 scale-[1.02] shadow-md shadow-blue-100'
-                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 hover:shadow-md'
+                        className={`p-3 sm:p-4 rounded-xl border-2 transition-all text-center ${selectedYOE === option.value
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                           }`}
                       >
-                        <div className="font-semibold text-lg text-gray-900">{option.label}</div>
+                        <div className="font-semibold text-sm sm:text-base text-black">{option.label}</div>
                       </button>
                     ))}
                   </div>
 
-                  <div className="flex gap-4 mt-6">
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(3);
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      onClick={handleYOEContinue}
-                      disabled={!selectedYOE || isSubmitting}
-                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      {isSubmitting ? 'Saving...' : 'Continue'}
-                    </Button>
-                  </div>
+                  <motion.button
+                    onClick={handleYOEContinue}
+                    disabled={!selectedYOE || isSubmitting}
+                    className="group relative w-full py-2.5 sm:py-3 bg-black text-white text-sm sm:text-base font-bold rounded-xl hover:bg-gray-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-xl mt-4"
+                  >
+                    <span className="relative z-10 flex items-center justify-center gap-2">
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          Continue
+                          <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                        </>
+                      )}
+                    </span>
+                  </motion.button>
                 </div>
               )}
 
-              {/* Step 6: Mandatory Resume Upload */}
+              {/* Step 6: Resume Upload */}
               {step === 6 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center mb-8">
-                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                      Upload your resume
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2 text-lg">
+                <div className="space-y-4">
+                  <div className="mb-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                      Upload your <span className="text-blue-500">resume</span>
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       To generate the best matches for you, we need to analyze your resume.
-                    </DialogDescription>
+                    </p>
                   </div>
 
-                  <div className="max-w-md mx-auto mt-8">
-                    {/* Embedded Resume Upload Component */}
+                  <div className="mt-8">
                     <ResumeUpload
                       onSuccess={() => {
-                        // Advance to Step 7 (GitHub Connection)
                         setIsTransitioning(true);
                         setTimeout(() => {
                           setStep(7);
                           setIsTransitioning(false);
                         }, 200);
                       }}
-                    // Note: onUpgradeRequired handled by ResumeUpload locally or we can add handler if needed
-                    // For onboarding, we typically expect users to be allowed to upload.
                     />
-                  </div>
-
-                  <div className="flex gap-4 mt-6">
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(4); // Back to YOE
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="w-full bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Back
-                    </Button>
                   </div>
                 </div>
               )}
 
-              {/* Step 7: GitHub Connection (Optional) */}
+              {/* Step 7: GitHub Connection */}
               {step === 7 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center mb-8">
-                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                      Connect your GitHub
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2 text-lg">
+                <div className="space-y-4">
+                  <div className="mb-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                      Connect your <span className="text-blue-500">GitHub</span>
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       {githubConnected
                         ? 'Your GitHub account has been connected successfully!'
                         : 'Connect your GitHub to help us find better matches based on your projects and contributions.'}
-                    </DialogDescription>
+                    </p>
                   </div>
 
                   {githubConnected ? (
-                    <div className="max-w-md mx-auto mt-8">
-                      <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 text-center">
-                        <div className="text-green-600 text-4xl mb-4">✓</div>
-                        <p className="text-green-800 font-semibold text-lg mb-2">
-                          GitHub Connected Successfully
-                        </p>
-                        <p className="text-green-700 text-sm">
-                          We'll use your repository data to improve your matches.
-                        </p>
-                      </div>
+                    <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-6 text-center">
+                      <div className="text-green-600 text-4xl mb-4">✓</div>
+                      <p className="text-green-800 font-semibold text-lg mb-2">
+                        GitHub Connected Successfully
+                      </p>
+                      <p className="text-green-700 text-sm">
+                        We'll use your repository data to improve your matches.
+                      </p>
                     </div>
                   ) : (
-                    <div className="max-w-md mx-auto mt-8">
-                      <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl p-8 text-center">
-                        <div className="mb-6">
-                          <svg
-                            className="w-16 h-16 mx-auto text-gray-700"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.737 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </div>
-                        <p className="text-gray-700 mb-6">
-                          Connect your GitHub account to help us understand your coding experience and find better startup matches.
-                        </p>
-                        <Button
-                          onClick={handleGithubConnect}
-                          className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium shadow-md hover:shadow-lg transition-all py-6 text-lg"
-                        >
-                          Connect GitHub
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-4 mt-6">
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          if (skipResumeUpload) {
-                            setStep(4); // Go back to YOE (skipped statistic)
-                          } else {
-                            setStep(6); // Go back to resume upload
-                          }
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Back
-                    </Button>
-
-                    {githubConnected && (
-                      <Button
-                        onClick={handleGithubContinue}
-                        className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                      >
-                        Continue
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Step 8: GitHub Repository Selection with Category Tags */}
-              {step === 8 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center">
-                    <DialogTitle className="text-3xl font-bold mb-2 text-gray-900">
-                      Select your project repositories
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2 space-y-2">
-                      <p className="font-medium">Choose repositories that match the projects on your resume.</p>
-                      <p className="text-sm">Repository names may differ slightly from your resume - that's okay! We use smart matching to verify your projects.</p>
-                    </DialogDescription>
-                  </div>
-
-                  {/* Help banner explaining importance */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700">
-                    <div className="flex gap-2">
-                      <div className="text-blue-600 font-semibold flex-shrink-0">💡 Tip:</div>
-                      <div className="space-y-1">
-                        <p>Select repos that demonstrate your work experience and skills from your resume.</p>
-                        <p className="text-xs text-gray-600">This helps us verify your projects and match you with relevant opportunities.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {isLoadingRepos ? (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="text-gray-500">Loading your repositories...</div>
-                    </div>
-                  ) : githubRepos.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-600">No repositories found. You can add them later from your profile.</p>
-                    </div>
-                  ) : hasBetaAccess ? (
-                    <>
-                      {/* Enhanced UI for beta users: Search bar and filters */}
-                      <div className="space-y-3 mb-4">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                          <Input
-                            type="text"
-                            placeholder="Search repositories..."
-                            value={repoSearchQuery}
-                            onChange={(e) => setRepoSearchQuery(e.target.value)}
-                            className="pl-10 bg-white border-gray-200"
-                          />
-                        </div>
-                        {suggestedMatches.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id="show-suggested"
-                              checked={showSuggestedOnly}
-                              onCheckedChange={(checked) => setShowSuggestedOnly(checked as boolean)}
-                            />
-                            <label
-                              htmlFor="show-suggested"
-                              className="text-sm text-gray-700 cursor-pointer"
-                            >
-                              Show suggested matches only ({suggestedMatches.length} repos)
-                            </label>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="max-h-[55vh] overflow-y-auto px-2 py-2">
-                        {filteredRepos.length === 0 ? (
-                          <div className="text-center py-8">
-                            <p className="text-gray-500">No repositories match your search.</p>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {filteredRepos.map((repo) => {
-                              const selection = repoSelections.get(repo.github_repo_id);
-                              const isSelected = selection?.is_selected || false;
-                              const selectedCategories = selection?.category_tags || [];
-                              const matchInfo = getRepoMatch(repo.github_repo_id);
-                              const badge = matchInfo ? getConfidenceBadge(matchInfo.confidence_level) : null;
-
-                              return (
-                                <div
-                                  key={repo.github_repo_id}
-                                  onClick={() => handleRepoToggle(repo.github_repo_id)}
-                                  className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
-                                    ? 'border-[#498EDC] bg-blue-50'
-                                    : matchInfo && matchInfo.confidence >= 0.55
-                                    ? 'border-blue-300 bg-blue-50/30 hover:border-blue-400'
-                                    : 'border-gray-200 bg-white hover:border-gray-300'
-                                    }`}
-                                >
-                                  <div className="flex items-start gap-3">
-                                    <Checkbox
-                                      id={`repo-${repo.github_repo_id}`}
-                                      checked={isSelected}
-                                      onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="mt-1 flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <div className="font-semibold text-gray-900 truncate">
-                                          {repo.name}
-                                        </div>
-                                        {repo.is_private && (
-                                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded flex-shrink-0">
-                                            Private
-                                          </span>
-                                        )}
-                                        {badge && (
-                                          <span className={`text-xs px-2 py-0.5 rounded border ${badge.color} flex-shrink-0`}>
-                                            {badge.label}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {matchInfo && (
-                                        <p className="text-xs text-blue-600 mt-0.5">
-                                          Matches: {matchInfo.project_name}
-                                        </p>
-                                      )}
-                                      {repo.description && (
-                                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                          {repo.description}
-                                        </p>
-                                      )}
-                                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                        {repo.language && (
-                                          <span className="flex items-center gap-1">
-                                            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                            {repo.language}
-                                          </span>
-                                        )}
-                                        {repo.stargazers_count > 0 && (
-                                          <span>{repo.stargazers_count} stars</span>
-                                        )}
-                                      </div>
-
-                                      {/* Category Tags */}
-                                      {isSelected && (
-                                        <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
-                                          <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
-                                          <div className="flex flex-wrap gap-2">
-                                            {REPO_TAG_OPTIONS.map((roleOption) => (
-                                              <button
-                                                key={roleOption.value}
-                                                onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
-                                                className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${selectedCategories.includes(roleOption.value)
-                                                  ? 'bg-[#498EDC] text-white'
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                  }`}
-                                              >
-                                                {!selectedCategories.includes(roleOption.value) && (
-                                                  <Plus className="h-3 w-3" />
-                                                )}
-                                                {roleOption.label}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    // Simple UI for non-beta users - 2-column layout with suggested filter
-                    <>
-                      {suggestedMatches.length > 0 && (
-                        <div className="flex items-center gap-2 mb-4">
-                          <Checkbox
-                            id="show-suggested-simple"
-                            checked={showSuggestedOnly}
-                            onCheckedChange={(checked) => setShowSuggestedOnly(checked as boolean)}
-                          />
-                          <label
-                            htmlFor="show-suggested-simple"
-                            className="text-sm text-gray-700 cursor-pointer"
-                          >
-                            Show suggested matches only ({suggestedMatches.length} repos)
-                          </label>
-                        </div>
-                      )}
-                      <div className="max-h-[60vh] overflow-y-auto px-2 py-2">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {filteredRepos.map((repo) => {
-                            const selection = repoSelections.get(repo.github_repo_id);
-                            const isSelected = selection?.is_selected || false;
-                            const selectedCategories = selection?.category_tags || [];
-                            const matchInfo = getRepoMatch(repo.github_repo_id);
-                            const badge = matchInfo ? getConfidenceBadge(matchInfo.confidence_level) : null;
-
-                            return (
-                              <div
-                                key={repo.github_repo_id}
-                                onClick={() => handleRepoToggle(repo.github_repo_id)}
-                                className={`border-2 rounded-xl p-4 transition-all cursor-pointer flex flex-col ${isSelected
-                                  ? 'border-[#498EDC] bg-blue-50'
-                                  : matchInfo && matchInfo.confidence >= 0.55
-                                  ? 'border-blue-300 bg-blue-50/30 hover:border-blue-400'
-                                  : 'border-gray-200 bg-white hover:border-gray-300'
-                                  }`}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <Checkbox
-                                    id={`repo-${repo.github_repo_id}`}
-                                    checked={isSelected}
-                                    onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="mt-1 flex-shrink-0"
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <div className="font-semibold text-gray-900 truncate">
-                                        {repo.name}
-                                      </div>
-                                      {repo.is_private && (
-                                        <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded flex-shrink-0">
-                                          Private
-                                        </span>
-                                      )}
-                                      {badge && (
-                                        <span className={`text-xs px-2 py-0.5 rounded border ${badge.color} flex-shrink-0`}>
-                                          {badge.label}
-                                        </span>
-                                      )}
-                                    </div>
-                                    {matchInfo && (
-                                      <p className="text-xs text-blue-600 mt-0.5">
-                                        Matches: {matchInfo.project_name}
-                                      </p>
-                                    )}
-                                  {repo.description && (
-                                    <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                      {repo.description}
-                                    </p>
-                                  )}
-                                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                    {repo.language && (
-                                      <span className="flex items-center gap-1">
-                                        <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                        {repo.language}
-                                      </span>
-                                    )}
-                                    {repo.stargazers_count > 0 && (
-                                      <span>{repo.stargazers_count} stars</span>
-                                    )}
-                                  </div>
-
-                                  {/* Category Tags - Use REPO_TAG_OPTIONS (excludes "Other") */}
-                                  {isSelected && (
-                                    <div className="mt-3 pt-3 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
-                                      <p className="text-xs text-gray-500 mb-2">Tag with categories:</p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {REPO_TAG_OPTIONS.map((roleOption) => (
-                                          <button
-                                            key={roleOption.value}
-                                            onClick={() => handleCategoryToggle(repo.github_repo_id, roleOption.value)}
-                                            className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full transition-all ${selectedCategories.includes(roleOption.value)
-                                              ? 'bg-[#498EDC] text-white'
-                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                              }`}
-                                          >
-                                            {!selectedCategories.includes(roleOption.value) && (
-                                              <Plus className="h-3 w-3" />
-                                            )}
-                                            {roleOption.label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="flex gap-4 mt-6">
-                    <Button
-                      onClick={() => {
-                        setIsTransitioning(true);
-                        setTimeout(() => {
-                          setStep(7);
-                          setIsTransitioning(false);
-                        }, 200);
-                      }}
-                      variant="outline"
-                      className="flex-1 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 shadow-sm"
-                    >
-                      Back
-                    </Button>
-
-                    <Button
-                      onClick={handleReposContinue}
-                      className="flex-1 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-
-
-              {/* Step 11: Completion Screen (Matches vs Enhance) */}
-              {step === 11 && (
-                <div
-                  className={`space-y-6 transition-opacity duration-300 ease-in-out ${!isTransitioning
-                    ? 'opacity-100'
-                    : 'opacity-0'
-                    }`}
-                >
-                  <div className="text-center mb-8">
-                    <DialogTitle className="text-3xl md:text-4xl font-bold mb-4 text-gray-900">
-                      You're all set!
-                    </DialogTitle>
-                    <DialogDescription className="text-gray-600 mt-2 text-lg">
-                      {skipResumeUpload
-                        ? "Your profile has been set up successfully."
-                        : "Your resume has been uploaded successfully."}
-                    </DialogDescription>
-                  </div>
-
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    {/* View Matches Option */}
-                    <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
+                    <div className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-8 text-center">
                       <div className="mb-6">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">View your matches</h3>
-                        <p className="text-gray-600 text-sm">
+                        <Github className="w-16 h-16 mx-auto text-gray-700" />
+                      </div>
+                      <p className="text-gray-700 mb-6">
+                        Connect your GitHub account to help us understand your coding experience and find better startup matches.
+                      </p>
+                      <button
+                        onClick={handleGithubConnect}
+                        className="w-full py-3 bg-gray-900 hover:bg-gray-800 text-white font-bold rounded-2xl transition-all shadow-xl"
+                      >
+                        Connect GitHub
+                      </button>
+                    </div>
+                  )}
+
+                  {githubConnected && (
+                    <motion.button
+                      onClick={handleGithubContinue}
+                      className="group relative w-full py-3 bg-black text-white font-bold rounded-2xl hover:bg-gray-900 transition-all duration-300 overflow-hidden shadow-xl mt-6"
+                    >
+                      <span className="relative z-10 flex items-center justify-center gap-2">
+                        Continue
+                        <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </motion.button>
+                  )}
+                </div>
+              )}
+
+              {/* Step 11: Completion */}
+              {step === 11 && (
+                <div className="space-y-4 text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 mb-4">
+                    <CheckCircle2 className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
+                    You're <span className="text-blue-500">all set!</span>
+                  </h1>
+                  <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
+                    {skipResumeUpload
+                      ? "Your profile has been set up successfully."
+                      : "Your resume has been uploaded successfully."}
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-6">
+                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:border-blue-500 hover:shadow-lg transition-all duration-300 bg-white">
+                      <div className="mb-3 sm:mb-4">
+                        <h3 className="text-lg sm:text-xl font-bold text-black mb-1 sm:mb-2">View your matches</h3>
+                        <p className="text-gray-600 text-xs sm:text-sm">
                           See the startups we've matched you with based on your profile.
                         </p>
                       </div>
-                      <Button
+                      <button
                         onClick={handleViewMatches}
-                        className="w-full bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-medium shadow-md hover:shadow-lg transition-all"
+                        className="w-full py-2.5 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-xl text-sm sm:text-base"
                       >
                         View Matches
-                      </Button>
+                      </button>
                     </div>
 
-                    {/* Enhance Resume Option */}
-                    <div className="border-2 border-gray-200 rounded-2xl p-6 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
-                      <div className="mb-6">
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">Enhance Resume</h3>
-                        <p className="text-gray-600 text-sm">
+                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:border-blue-500 hover:shadow-lg transition-all duration-300 bg-white">
+                      <div className="mb-3 sm:mb-4">
+                        <h3 className="text-lg sm:text-xl font-bold text-black mb-1 sm:mb-2">Enhance Resume</h3>
+                        <p className="text-gray-600 text-xs sm:text-sm">
                           Get AI-powered suggestions to improve your resume for better matches.
                         </p>
                       </div>
-                      <Button
+                      <button
                         onClick={async () => {
                           try {
-                            // Save selected GitHub repos to database (if any were selected)
                             await saveSelectedRepos();
-
-                            // Mark onboarding as complete
                             await fetch('/api/candidate/mark-onboarding-complete', {
                               method: 'POST',
                               credentials: 'include',
                             });
                           } catch (error) {
                             console.error('Error marking onboarding complete:', error);
-                            // Continue anyway - don't block user
                           }
-
-                          // For top candidates route, onboarding is already complete (assessment was step 10)
-                          // Just redirect normally
                           window.location.href = "/resumes";
                         }}
-                        variant="outline"
-                        className="w-full border-2 border-[#498EDC] text-[#498EDC] hover:bg-[#498EDC] hover:text-white font-medium shadow-md hover:shadow-lg transition-all"
+                        className="w-full py-2.5 sm:py-3 border-2 border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white font-bold rounded-2xl transition-all shadow-xl text-sm sm:text-base"
                       >
                         Enhance Resume
-                      </Button>
+                      </button>
                     </div>
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </motion.div>
+          </AnimatePresence>
+        </div>
 
-      {/* <ResumeUploadModal
-        open={showResumeUpload}
-        onOpenChange={setShowResumeUpload}
-        onUploadSuccess={() => {
-          setShowResumeUpload(false);
-          // Advance to Step 7 (Choice Screen) instead of completing
-          setIsTransitioning(true);
-          setTimeout(() => {
-            setStep(7);
-            setIsTransitioning(false);
-          }, 300);
-        }}
-      /> */}
-    </>
+        {/* Footer */}
+        <footer className="mt-3 pt-2 border-t border-gray-100 flex justify-between items-center opacity-60">
+          <p className="text-[10px] sm:text-xs text-gray-400">© 2026 Hermes Talent Acquisition</p>
+        </footer>
+      </div>
+
+      {/* Right Side: Visual Image - Sticky/Fixed */}
+      <div className="hidden lg:block w-1/2 relative overflow-hidden bg-black border-l border-white/10">
+        <Image
+          src="/images/hermes2bg.png"
+          alt="Hermes Sky"
+          fill
+          className="object-cover scale-110 blur-[1px] opacity-90"
+          priority
+        />
+
+        {/* Visual Overlays */}
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-tr from-black/80 via-transparent to-black/20" />
+
+        <div className="absolute inset-0 flex flex-col justify-center p-20">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="max-w-md"
+          >
+            <h2 className="text-5xl font-bold text-white mb-6 tracking-tight leading-tight">
+              Land jobs at <span className="text-blue-500">top startups</span>
+            </h2>
+            <p className="text-xl text-white/60 font-light leading-relaxed">
+              We help talented engineers find exceptional startup opportunities by analyzing skills, not just resumes.
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Bottom Right Logo */}
+        <div className="absolute bottom-12 right-12 flex items-center gap-3">
+          <Image src="/images/hermes.png" alt="Logo" width={32} height={32} className="opacity-80" />
+          <span className="text-xl font-bold text-white opacity-80 tracking-tight">Hermes</span>
+        </div>
+      </div>
+    </div>
   );
 }
