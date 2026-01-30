@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { SignInModal } from '@/components/modals/SignInModal';
 import Image from 'next/image';
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [showSignIn, setShowSignIn] = useState(true);
@@ -71,5 +71,31 @@ export default function LoginPage() {
                 />
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                <div className="max-w-md w-full space-y-8 p-8">
+                    <div className="text-center">
+                        <div className="flex justify-center mb-6">
+                            <Image
+                                src="/images/blacked.svg"
+                                alt="Hermes"
+                                width={48}
+                                height={48}
+                                priority
+                            />
+                        </div>
+                        <h2 className="text-3xl font-bold text-gray-900">Sign in to Hermes</h2>
+                        <p className="mt-2 text-sm text-gray-600">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        }>
+            <LoginPageContent />
+        </Suspense>
     );
 }

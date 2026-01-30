@@ -38,7 +38,6 @@ export default function AdminCandidatesPage() {
     min_score: null,
   });
   const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
-  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     async function checkAuth() {
@@ -86,19 +85,6 @@ export default function AdminCandidatesPage() {
     // Use JSON string representation of filters to avoid object reference loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, JSON.stringify(filters)]);
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    if (!user || !autoRefresh) return;
-
-    const interval = setInterval(() => {
-      console.log('Auto-refreshing candidates...');
-      fetchCandidates();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, autoRefresh, JSON.stringify(filters)]);
 
   useEffect(() => {
     // Filter candidates based on search query (client-side)
@@ -251,17 +237,8 @@ export default function AdminCandidatesPage() {
             </button>
           </div>
 
-          {/* Auto-refresh Toggle and Last Updated */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-gray-700">Auto-refresh every 30s</span>
-            </label>
+          {/* Last Updated */}
+          <div className="flex justify-end text-sm">
             <span className="text-gray-500">
               Last updated: {lastRefreshTime.toLocaleTimeString()}
             </span>
