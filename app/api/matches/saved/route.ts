@@ -25,10 +25,34 @@ export async function GET(req: NextRequest) {
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (authError || !user || !user.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
+      );
+    }
+
+    // Check onboarding completion
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const { data: candidate } = await supabaseAdmin
+      .from('candidates')
+      .select('onboarding_completed')
+      .eq('email', user.email)
+      .single();
+
+    if (!candidate?.onboarding_completed) {
+      return NextResponse.json(
+        {
+          error: 'Onboarding not completed',
+          needsOnboarding: true
+        },
+        { status: 403 }
       );
     }
 
@@ -591,14 +615,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get candidate_id from user email
+    // Get candidate_id and check onboarding from user email
     let candidateId: string | null = null;
     if (supabaseAdmin && user.email) {
       const { data: candidate } = await supabaseAdmin
         .from('candidates')
-        .select('id')
+        .select('id, onboarding_completed')
         .eq('email', user.email)
         .maybeSingle();
+
+      if (!candidate?.onboarding_completed) {
+        return NextResponse.json(
+          {
+            error: 'Onboarding not completed',
+            needsOnboarding: true
+          },
+          { status: 403 }
+        );
+      }
+
       candidateId = candidate?.id || null;
     }
 
@@ -739,11 +774,30 @@ export async function DELETE(req: NextRequest) {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (authError || !user) {
+    if (authError || !user || !user.email) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
+    }
+
+    // Check onboarding completion
+    if (supabaseAdmin && user.email) {
+      const { data: candidate } = await supabaseAdmin
+        .from('candidates')
+        .select('onboarding_completed')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (!candidate?.onboarding_completed) {
+        return NextResponse.json(
+          {
+            error: 'Onboarding not completed',
+            needsOnboarding: true
+          },
+          { status: 403 }
+        );
+      }
     }
 
     const { searchParams } = new URL(req.url);

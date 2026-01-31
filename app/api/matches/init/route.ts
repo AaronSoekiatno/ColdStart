@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     if (!candidate) {
       const { data, error } = await supabaseAdmin
         .from('candidates')
-        .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills, beta_access, onboarding_completed, github_username, assessment_repo_url, assessment_started_at, assessment_repo_created_at, years_of_experience')
+        .select('id, subscription_tier, subscription_status, stripe_customer_id, role_type, job_type, skills, beta_access, onboarding_completed, github_username, github_access_token, assessment_repo_url, assessment_started_at, assessment_repo_created_at, years_of_experience')
         .eq('email', user.email)
         .single();
       
@@ -62,10 +62,28 @@ export async function GET(request: NextRequest) {
     }
 
     if (!candidate) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Candidate not found',
-        needsOnboarding: true 
+        needsOnboarding: true
       }, { status: 404 });
+    }
+
+    // Enforce onboarding completion and GitHub connection
+    if (!candidate.onboarding_completed) {
+      return NextResponse.json({
+        error: 'Onboarding not completed',
+        needsOnboarding: true,
+        onboardingCompleted: false
+      }, { status: 403 });
+    }
+
+    // Enforce GitHub connection (required for onboarding)
+    if (!candidate.github_access_token) {
+      return NextResponse.json({
+        error: 'GitHub not connected',
+        needsOnboarding: true,
+        githubRequired: true
+      }, { status: 403 });
     }
 
     // 2. Fetch everything else in parallel now that we have candidate.id

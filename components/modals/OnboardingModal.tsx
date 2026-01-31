@@ -206,7 +206,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       case 'high':
         return { label: 'High Match', color: 'bg-green-100 text-green-700 border-green-300' };
       case 'good':
-        return { label: 'Good Match', color: 'bg-blue-100 text-blue-700 border-blue-300' };
+        return { label: 'Good Match', color: 'bg-[#498EDC]/10 text-[#498EDC] border-[#498EDC]/30' };
       case 'moderate':
         return { label: 'Possible Match', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' };
       case 'low':
@@ -364,13 +364,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     window.location.href = connectUrl;
   };
 
-  const handleGithubSkip = useCallback(() => {
-    setIsTransitioning(true);
-    setTimeout(() => {
-      setStep(11);
-      setIsTransitioning(false);
-    }, 200);
-  }, []);
+  // GitHub connection is now REQUIRED - no skip functionality
+  // If users cancel OAuth, they remain on step 7 and must connect to continue
 
   const handleGithubContinue = useCallback(async () => {
     setIsTransitioning(true);
@@ -603,7 +598,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       if (githubRepos.length > 0) {
         await saveSelectedRepos();
       }
-      // If GitHub is connected but we never loaded repos (e.g. user was very fast), 
+      // If GitHub is connected but we never loaded repos (e.g. user was very fast),
       // trigger the sync now so it's happening while they transition to /matches
       else if (githubConnected) {
         fetch('/api/candidate/github/repositories', { credentials: 'include' })
@@ -614,8 +609,37 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       // Continue anyway, we don't want to block the user from seeing matches
     }
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    window.location.href = "/matches";
+    // Mark onboarding as complete and wait for it to finish
+    try {
+      const response = await fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        console.error('[Onboarding] Failed to mark onboarding complete:', response.status);
+        throw new Error('Failed to mark onboarding complete');
+      }
+
+      // Wait for response to ensure database is updated
+      await response.json();
+      console.log('[Onboarding] Successfully marked onboarding as complete');
+    } catch (error) {
+      console.error('[Onboarding] Error marking onboarding complete:', error);
+      // Still try to navigate - the middleware should catch incomplete onboarding
+    }
+
+    // Give the API and caches time to update
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Use the onComplete callback instead of direct navigation
+    // This lets the parent (matches page) handle the navigation properly
+    if (onComplete) {
+      onComplete();
+    } else {
+      // Fallback if no onComplete callback
+      window.location.href = "/matches";
+    }
   };
 
   const containerVariants = {
@@ -632,11 +656,11 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       <div className="w-full lg:w-1/2 flex flex-col p-3 sm:p-6 lg:p-8 relative z-10 overflow-y-auto bg-white">
         {/* Header / Nav */}
         <div className="flex justify-between items-center mb-3 sm:mb-4">
-          <motion.button
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            onClick={() => {
-              if (step > 1) {
+          {step > 1 && (
+            <motion.button
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={() => {
                 setIsTransitioning(true);
                 setTimeout(() => {
                   if (step === 2) setStep(1);
@@ -647,17 +671,18 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   else if (step === 8) setStep(7);
                   setIsTransitioning(false);
                 }, 200);
-              } else {
-                onOpenChange(false);
-              }
-            }}
-            className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors self-start group"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-medium tracking-tight">
-              {step > 1 ? 'Back' : 'Close'}
-            </span>
-          </motion.button>
+              }}
+              className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors self-start group"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+              <span className="text-sm font-medium tracking-tight">Back</span>
+            </motion.button>
+          )}
+          {step === 1 && (
+            <div className="text-sm font-medium tracking-tight text-gray-400 flex items-center gap-2">
+              <span>Complete onboarding to continue</span>
+            </div>
+          )}
 
           <div className="flex gap-2">
             {(() => {
@@ -667,7 +692,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
               return steps.map((s) => (
                 <div
                   key={s}
-                  className={`h-1 w-4 sm:w-8 rounded-full transition-all duration-500 ${step >= s ? 'bg-blue-500' : 'bg-gray-100'}`}
+                  className={`h-1 w-4 sm:w-8 rounded-full transition-all duration-500 ${step >= s ? 'bg-[#498EDC]' : 'bg-gray-100'}`}
                 />
               ));
             })()}
@@ -690,7 +715,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4">
                   <div className="mb-4">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      Welcome to <span className="text-blue-500">Hermes!</span>
+                      Welcome to <span className="text-[#498EDC]">Hermes!</span>
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Which of the following choices best describe your objective with Hermes?
@@ -704,7 +729,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         key={option.value}
                         onClick={() => handleObjectiveSelect(option.value)}
                         className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 transition-all text-left ${selectedObjectives.includes(option.value)
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-[#498EDC] bg-[#498EDC]/10'
                           : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                           }`}
                       >
@@ -731,7 +756,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4">
                   <div className="mb-4">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      What type of <span className="text-blue-500">position</span> are you looking for?
+                      What type of <span className="text-[#498EDC]">position</span> are you looking for?
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Select one option
@@ -748,7 +773,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         key={option.value}
                         onClick={() => handleJobTypeSelect(option.value)}
                         className={`w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 transition-all text-left ${selectedJobType === option.value
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-[#498EDC] bg-[#498EDC]/10'
                           : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                           }`}
                       >
@@ -765,7 +790,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4">
                   <div className="mb-4">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      What <span className="text-blue-500">roles</span> interest you?
+                      What <span className="text-[#498EDC]">roles</span> interest you?
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Select all that apply
@@ -778,7 +803,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         key={role.value}
                         onClick={() => handleRoleTypeSelect(role.value)}
                         className={`p-2.5 sm:p-3 rounded-xl border-2 transition-all text-left ${selectedRoleTypes.includes(role.value)
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-[#498EDC] bg-[#498EDC]/10'
                           : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                           }`}
                       >
@@ -806,7 +831,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4">
                   <div className="mb-4">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      How many <span className="text-blue-500">years of experience</span> do you have?
+                      How many <span className="text-[#498EDC]">years of experience</span> do you have?
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Select one option
@@ -819,7 +844,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         key={option.value}
                         onClick={() => handleYOESelect(option.value)}
                         className={`p-3 sm:p-4 rounded-xl border-2 transition-all text-center ${selectedYOE === option.value
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-[#498EDC] bg-[#498EDC]/10'
                           : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50'
                           }`}
                       >
@@ -855,7 +880,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4">
                   <div className="mb-4">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      Upload your <span className="text-blue-500">resume</span>
+                      Upload your <span className="text-[#498EDC]">resume</span>
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       To generate the best matches for you, we need to analyze your resume.
@@ -881,7 +906,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4">
                   <div className="mb-4">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      Connect your <span className="text-blue-500">GitHub</span>
+                      Connect your <span className="text-[#498EDC]">GitHub</span>
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       {githubConnected
@@ -889,7 +914,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         : 'Connect your GitHub account to let us analyze your coding velocity and impact.'}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-500 mt-2">
-                      We need access to private repositories to verify your work history, but we only process metadata - your code stays private.
+                      We need access to private repositories to verify your work history. We only read metadata (repo names, languages, descriptions) - your code stays private and is never accessed or modified.
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Note: GitHub requires "repo" permission for private repo access. Our app only performs read operations.
                     </p>
                   </div>
 
@@ -939,7 +967,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4 h-[70vh] flex flex-col">
                   <div className="mb-4 flex-shrink-0">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      Select <span className="text-blue-500">repositories</span>
+                      Select <span className="text-[#498EDC]">repositories</span>
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                       Choose the repositories (including private ones) you want us to analyze for your skills profile.
@@ -960,7 +988,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   <div className="flex-grow overflow-y-auto pr-2 space-y-3 min-h-0">
                     {isLoadingRepos ? (
                       <div className="flex items-center justify-center h-40">
-                        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                        <Loader2 className="w-8 h-8 text-[#498EDC] animate-spin" />
                       </div>
                     ) : filteredRepos.length === 0 ? (
                       <div className="text-center py-10 text-gray-500">
@@ -973,13 +1001,15 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                         return (
                           <div
                             key={repo.github_repo_id}
-                            className={`p-4 rounded-xl border-2 transition-all ${isSelected ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:border-gray-300'
+                            onClick={() => handleRepoToggle(repo.github_repo_id)}
+                            className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'border-[#498EDC] bg-[#498EDC]/10' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                               }`}
                           >
                             <div className="flex items-start gap-3">
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => handleRepoToggle(repo.github_repo_id)}
+                                onClick={(e) => e.stopPropagation()}
                                 className="mt-1"
                               />
                               <div className="flex-grow min-w-0">
@@ -1002,7 +1032,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                                 <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-gray-500">
                                   {repo.language && (
                                     <span className="flex items-center gap-1">
-                                      <span className="w-2 h-2 rounded-full bg-blue-400" />
+                                      <span className="w-2 h-2 rounded-full bg-[#498EDC]/40" />
                                       {repo.language}
                                     </span>
                                   )}
@@ -1037,7 +1067,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                     <CheckCircle2 className="w-8 h-8 text-green-600" />
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                    You're <span className="text-blue-500">all set!</span>
+                    You're <span className="text-[#498EDC]">all set!</span>
                   </h1>
                   <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
                     {skipResumeUpload
@@ -1046,7 +1076,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-6">
-                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:border-blue-500 hover:shadow-lg transition-all duration-300 bg-white">
+                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
                       <div className="mb-3 sm:mb-4">
                         <h3 className="text-lg sm:text-xl font-bold text-black mb-1 sm:mb-2">View your matches</h3>
                         <p className="text-gray-600 text-xs sm:text-sm">
@@ -1055,13 +1085,13 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                       </div>
                       <button
                         onClick={handleViewMatches}
-                        className="w-full py-2.5 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-xl text-sm sm:text-base"
+                        className="w-full py-2.5 sm:py-3 bg-[#498EDC] hover:bg-[#3a7bc4] text-white font-bold rounded-2xl transition-all shadow-xl text-sm sm:text-base"
                       >
                         View Matches
                       </button>
                     </div>
 
-                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:border-blue-500 hover:shadow-lg transition-all duration-300 bg-white">
+                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-5 hover:border-[#498EDC] hover:shadow-lg transition-all duration-300 bg-white">
                       <div className="mb-3 sm:mb-4">
                         <h3 className="text-lg sm:text-xl font-bold text-black mb-1 sm:mb-2">Enhance Resume</h3>
                         <p className="text-gray-600 text-xs sm:text-sm">
@@ -1075,9 +1105,24 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                           } catch (error) {
                             console.error('Error saving repos:', error);
                           }
+
+                          // Mark onboarding as complete
+                          try {
+                            const response = await fetch('/api/candidate/mark-onboarding-complete', {
+                              method: 'POST',
+                              credentials: 'include',
+                            });
+
+                            if (!response.ok) {
+                              console.error('[Onboarding] Failed to mark onboarding complete:', response.status);
+                            }
+                          } catch (error) {
+                            console.error('[Onboarding] Error marking onboarding complete:', error);
+                          }
+
                           window.location.href = "/resumes";
                         }}
-                        className="w-full py-2.5 sm:py-3 border-2 border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white font-bold rounded-2xl transition-all shadow-xl text-sm sm:text-base"
+                        className="w-full py-2.5 sm:py-3 border-2 border-[#498EDC] text-[#498EDC] hover:bg-[#498EDC] hover:text-white font-bold rounded-2xl transition-all shadow-xl text-sm sm:text-base"
                       >
                         Enhance Resume
                       </button>
@@ -1117,7 +1162,7 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
             className="max-w-md"
           >
             <h2 className="text-5xl font-bold text-white mb-6 tracking-tight leading-tight">
-              Land jobs at <span className="text-blue-500">top startups</span>
+              Land jobs at <span className="text-[#498EDC]">top startups</span>
             </h2>
             <p className="text-xl text-white/60 font-light leading-relaxed">
               We help talented engineers find exceptional startup opportunities by analyzing skills, not just resumes.

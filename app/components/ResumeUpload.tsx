@@ -242,7 +242,7 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
             relative border-2 border-dashed rounded-2xl p-12 md:p-16 text-center cursor-pointer
             transition-all duration-300 group
             ${isDragging
-              ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 scale-[1.02]'
+              ? 'border-[#498EDC] bg-[#498EDC]/10 scale-[1.02]'
               : 'border-foreground/20 hover:border-foreground/40 hover:bg-background/20'
             }
           `}
@@ -252,14 +252,14 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
               w-16 h-16 rounded-full flex items-center justify-center
               transition-all duration-300
               ${isDragging
-                ? 'bg-blue-500/10 scale-110'
+                ? 'bg-[#498EDC]/10 scale-110'
                 : 'bg-black/5 group-hover:bg-black/10 group-hover:scale-110'
               }
             `}>
               <Upload className={`
                 h-8 w-8 transition-all duration-300
                 ${isDragging
-                  ? 'text-blue-600'
+                  ? 'text-[#498EDC]'
                   : 'text-black/60 group-hover:text-black'
                 }
               `} />
@@ -279,8 +279,8 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
           <div className="border border-foreground/10 rounded-2xl p-6 bg-background/30 backdrop-blur-sm">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-4 flex-1">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="w-12 h-12 rounded-xl bg-[#498EDC]/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-6 h-6 text-[#498EDC]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-lg font-semibold text-foreground truncate">
@@ -338,7 +338,7 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
               transition-all duration-300 transform
               ${isUploading
                 ? 'bg-foreground/40 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl'
+                : 'bg-[#498EDC] hover:bg-[#3a7bc4] active:bg-[#2d62a3] hover:scale-[1.02] active:scale-[0.98] shadow-lg hover:shadow-xl'
               }
             `}
           >

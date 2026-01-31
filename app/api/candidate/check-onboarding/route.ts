@@ -22,15 +22,17 @@ export async function GET() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user || !user.email) {
+      // If not authenticated, they definitely need onboarding (or to sign in first)
       return NextResponse.json(
-        { needsOnboarding: false },
+        { needsOnboarding: true },
         { status: 200 }
       );
     }
 
     if (!supabaseAdmin) {
+      // If database unavailable, assume they need onboarding to be safe
       return NextResponse.json(
-        { needsOnboarding: false },
+        { needsOnboarding: true },
         { status: 200 }
       );
     }

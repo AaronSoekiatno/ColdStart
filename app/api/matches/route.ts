@@ -113,17 +113,18 @@ export async function GET(request: NextRequest) {
     // OPTIMIZATION: No full-page caching - we now use lightweight pagination
     // This reduces memory usage and allows faster page loads
 
-    // Get candidate preferences for filtering (id, job_type, years_of_experience, role_type)
-    const candidatePrefsResult = await withTimeoutAndRetry<{ 
-      id: string; 
+    // Get candidate preferences for filtering (id, job_type, years_of_experience, role_type, onboarding_completed)
+    const candidatePrefsResult = await withTimeoutAndRetry<{
+      id: string;
       role_type: string[] | null;
       job_type: string | null;
       years_of_experience: string | null;
+      onboarding_completed: boolean | null;
     }>(
       async () => {
         const result = await supabaseAdmin!
           .from('candidates')
-          .select('id, role_type, job_type, years_of_experience')
+          .select('id, role_type, job_type, years_of_experience, onboarding_completed')
           .eq('email', user.email)
           .single();
         return result;
@@ -136,19 +137,31 @@ export async function GET(request: NextRequest) {
 
     if (candidateError || !candidate || !candidate.id) {
       const errorMessage = candidateError?.message || '';
-      const isTimeout = errorMessage.includes('timeout') || 
+      const isTimeout = errorMessage.includes('timeout') ||
                        errorMessage.includes('ConnectTimeoutError');
-      
+
       if (isTimeout) {
         return NextResponse.json(
           { error: 'Database connection timeout. Please try again.' },
           { status: 504 }
         );
       }
-      
+
       return NextResponse.json(
         { error: 'Candidate not found or ID missing' },
         { status: 404 }
+      );
+    }
+
+    // Enforce onboarding completion
+    if (!candidate.onboarding_completed) {
+      return NextResponse.json(
+        {
+          error: 'Onboarding not completed',
+          needsOnboarding: true,
+          onboardingCompleted: false
+        },
+        { status: 403 }
       );
     }
 

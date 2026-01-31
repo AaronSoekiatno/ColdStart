@@ -28,11 +28,18 @@ export async function GET(request: NextRequest) {
 
     // Initiate GitHub OAuth flow
     // We redirect to our callback route, which will then redirect to the final destination
+    //
+    // IMPORTANT: GitHub OAuth Scope Limitation
+    // We request 'repo' scope which grants read/write access to all repositories.
+    // This is required by GitHub's API to access private repository metadata.
+    // There is NO read-only scope for private repositories in GitHub's OAuth system.
+    // Our application only performs READ operations (fetching repo metadata like name,
+    // description, languages, topics, etc.). We never modify code or repository settings.
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
         redirectTo: `${requestUrl.origin}/api/auth/github/callback?redirect=${encodeURIComponent(redirectTo)}`,
-        scopes: 'repo,read:user',
+        scopes: 'repo,read:user', // 'repo' required for private repo access - no read-only alternative exists
       },
     });
 
