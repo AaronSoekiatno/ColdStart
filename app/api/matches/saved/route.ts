@@ -40,13 +40,13 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { data: candidate } = await supabaseAdmin
+    const { data: candidateOnboarding } = await supabaseAdmin
       .from('candidates')
       .select('onboarding_completed')
       .eq('email', user.email)
       .single();
 
-    if (!candidate?.onboarding_completed) {
+    if (!candidateOnboarding?.onboarding_completed) {
       return NextResponse.json(
         {
           error: 'Onboarding not completed',
