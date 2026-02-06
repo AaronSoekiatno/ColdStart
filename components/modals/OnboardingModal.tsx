@@ -20,19 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import dynamic from "next/dynamic";
+import ResumeUpload from "@/app/components/ResumeUpload";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Lazy load ResumeUpload only when needed (step 6)
-const ResumeUpload = dynamic(() => import("@/app/components/ResumeUpload"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center p-8">
-      <div className="text-gray-500">Loading...</div>
-    </div>
-  ),
-});
+// ResumeUpload is now imported normally to avoid type issues with dynamic imports
+// used in the onboarding flow.
 
 type ObjectiveType = 'internship' | 'startup' | 'network' | 'improve-application' | 'sf-scene';
 type JobType = 'full-time' | 'part-time' | 'internship';
@@ -476,18 +470,14 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
   const handleReposSkip = useCallback(() => {
     setIsTransitioning(true);
 
-    // Proactive trigger: if GitHub is connected but we haven't fetched/saved repos yet,
-    // trigger the sync in the background so data is ready when they land on /matches
-    if (githubConnected && githubRepos.length === 0) {
-      fetch('/api/candidate/github/repositories', { credentials: 'include' })
-        .catch(err => console.error('[Onboarding] Failed to trigger proactive repo sync:', err));
-    }
+    // OPTIMIZATION: Removed proactive repo sync to reduce redundant API calls
+    // Repos will be synced on-demand when actually needed
 
     setTimeout(() => {
       setStep(11);
       setIsTransitioning(false);
     }, 200);
-  }, [githubConnected, githubRepos.length]);
+  }, []);
 
   const handleObjectiveContinue = useCallback(() => {
     if (selectedObjectives.length === 0) return;
@@ -598,12 +588,8 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
       if (githubRepos.length > 0) {
         await saveSelectedRepos();
       }
-      // If GitHub is connected but we never loaded repos (e.g. user was very fast),
-      // trigger the sync now so it's happening while they transition to /matches
-      else if (githubConnected) {
-        fetch('/api/candidate/github/repositories', { credentials: 'include' })
-          .catch(err => console.error('[Onboarding] Failed to trigger late repo sync:', err));
-      }
+      // OPTIMIZATION: Removed late repo sync to reduce redundant API calls
+      // Repos will be synced on-demand when actually needed
     } catch (error) {
       console.error('Error saving repos:', error);
       // Continue anyway, we don't want to block the user from seeing matches

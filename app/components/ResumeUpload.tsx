@@ -14,7 +14,7 @@ interface ResumeUploadProps {
   onUpgradeRequired?: () => void;
 }
 
-export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUploadProps = { onSuccess: undefined, onUpgradeRequired: undefined }) {
+export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUploadProps) {
   const [file, setFile] = useState<FilePreview | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -375,4 +375,3 @@ export default function ResumeUpload({ onSuccess, onUpgradeRequired }: ResumeUpl
     </div>
   );
 }
-

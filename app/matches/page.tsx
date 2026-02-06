@@ -211,22 +211,6 @@ export default function MatchesPage() {
         }
         setAssessmentStatus(data.assessment?.status || 'not_started');
 
-        // 5. Post-Initialization: Mark onboarding complete if this is their first success
-        if (!candidateOnboardingCompleted) {
-          try {
-            const markCompleteResponse = await fetch('/api/candidate/mark-onboarding-complete', {
-              method: 'POST',
-              credentials: 'include',
-            });
-            if (markCompleteResponse.ok) {
-              setOnboardingCompleted(true);
-              console.log('[Matches] Onboarding marked as complete');
-            }
-          } catch (e) {
-            console.error('[Matches] Error marking onboarding complete:', e);
-          }
-        }
-
         lastSavedMatchesFetchRef.current = Date.now();
       } catch (error) {
         console.error('Error initializing matches page:', error);

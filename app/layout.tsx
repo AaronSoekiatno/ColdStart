@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Sora } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+// @thecred/posthog:start
+import { CredPostHogProvider, AppRouterTracker } from "@thecred/posthog";
+// @thecred/posthog:end
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -157,8 +161,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased`}
         suppressHydrationWarning
       >
-        {children}
+        {/* @thecred/posthog:start */}
+        <CredPostHogProvider>
+          <AppRouterTracker />
+          {children}
+        </CredPostHogProvider>
+        {/* @thecred/posthog:end */}
         <Toaster />
+        <Sonner />
       </body>
     </html>
   );

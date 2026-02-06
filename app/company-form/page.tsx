@@ -74,13 +74,17 @@ export default function CompanyFormPage() {
                 setError("Please enter your company name");
                 return;
             }
-            setPhase(2);
-        } else if (phase === 2) {
-            if (!formData.hiringFor.trim() && !file) {
-                setError("Please provide a description or upload a job posting");
+            if (!formData.website.trim()) {
+                setError("Please enter your company website");
                 return;
             }
-            if (formData.hiringFor.length > 0 && formData.hiringFor.length < 20) {
+            setPhase(2);
+        } else if (phase === 2) {
+            if (!formData.hiringFor.trim()) {
+                setError("Please provide a job description");
+                return;
+            }
+            if (formData.hiringFor.length < 20) {
                 setError("Description should be at least 20 characters");
                 return;
             }
@@ -91,6 +95,16 @@ export default function CompanyFormPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+
+        if (!formData.location.trim()) {
+            setError("Please enter your company location");
+            return;
+        }
+        if (!formData.teamSize) {
+            setError("Please select your team size");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -133,7 +147,7 @@ export default function CompanyFormPage() {
 
             setIsSuccess(true);
             setTimeout(() => {
-                router.push("/companies");
+                router.push("/company-dashboard");
             }, 3000);
         } catch (err: any) {
             console.error("Error submitting form:", err?.message || err || "Unknown error");
@@ -228,7 +242,8 @@ export default function CompanyFormPage() {
                                                     value={formData.website}
                                                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                                                     className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all outline-none placeholder:text-gray-400"
-                                                    placeholder="https://hermes.build"
+                                                    placeholder="e.g., https://www.joinhermes.co"
+                                                    required
                                                 />
                                             </div>
                                         </div>
@@ -247,6 +262,7 @@ export default function CompanyFormPage() {
                                                     rows={3}
                                                     className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none outline-none placeholder:text-gray-400"
                                                     placeholder="e.g., Founding engineer with React/Go experience..."
+                                                    required
                                                 />
                                             </div>
 
@@ -321,6 +337,7 @@ export default function CompanyFormPage() {
                                                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                                                         className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder:text-gray-400"
                                                         placeholder="SF / Remote"
+                                                        required
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
@@ -330,7 +347,7 @@ export default function CompanyFormPage() {
                                                     <select
                                                         value={formData.teamSize}
                                                         onChange={(e) => setFormData({ ...formData, teamSize: e.target.value })}
-                                                        className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none"
+                                                        required
                                                     >
                                                         <option value="">Select size</option>
                                                         <option value="1-10">1-10</option>
@@ -391,9 +408,9 @@ export default function CompanyFormPage() {
                                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 mb-8">
                                     <CheckCircle2 className="w-10 h-10 text-green-600" />
                                 </div>
-                                <h2 className="text-3xl font-bold text-black mb-4">Check your email</h2>
+                                <h2 className="text-3xl font-bold text-black mb-4">Profile Created!</h2>
                                 <p className="text-gray-600 max-w-sm mx-auto leading-relaxed">
-                                    Our AI is now scanning our talent network. We'll send {formData.companyName}'s matches directly to your inbox within 24 hours.
+                                    Taking you to your dashboard where you can see your top matched candidates...
                                 </p>
                                 <div className="mt-12 flex justify-center">
                                     <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">

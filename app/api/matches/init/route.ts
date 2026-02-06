@@ -254,12 +254,15 @@ async function fetchMatchesFirstPageInternal(candidate: any) {
   try {
     const startTime = Date.now();
     // 1. Fetch matches
-    const { data: rawMatches, error: matchesError } = await supabaseAdmin!
+    let rawMatches: any[] | null = null;
+    const { data: initialMatches, error: matchesError } = await supabaseAdmin!
       .from('matches')
       .select('id, score, matched_at, startup_id')
       .eq('candidate_id', candidate.id)
       .order('score', { ascending: false })
       .limit(20);
+
+    rawMatches = initialMatches;
 
     if (matchesError) {
       console.error('[Matches Init] DB Error fetching matches:', matchesError);
@@ -268,9 +271,34 @@ async function fetchMatchesFirstPageInternal(candidate: any) {
 
     if (!rawMatches || rawMatches.length === 0) {
       console.log('[Matches Init] No matches found for candidate UUID:', candidate.id);
-      return { items: [], pagination: { total: 0, hasMore: false } };
+
+      // Try to generate instant matches for new users
+      console.log('[Matches Init] Attempting instant match generation...');
+      const instantMatches = await findInstantMatches(candidate, 20);
+
+      if (instantMatches && instantMatches.length > 0) {
+        console.log(`[Matches Init] Generated ${instantMatches.length} instant matches, re-fetching...`);
+        // Re-fetch the matches we just created
+        const { data: newMatches } = await supabaseAdmin!
+          .from('matches')
+          .select('id, score, matched_at, startup_id')
+          .eq('candidate_id', candidate.id)
+          .order('score', { ascending: false })
+          .limit(20);
+
+        if (newMatches && newMatches.length > 0) {
+          // Continue with the newly created matches
+          rawMatches = newMatches;
+        } else {
+          return { items: [], pagination: { total: 0, hasMore: false } };
+        }
+      } else {
+        console.log('[Matches Init] No instant matches could be generated');
+        return { items: [], pagination: { total: 0, hasMore: false } };
+      }
     }
 
+    // Calculate startup IDs (after potential instant match generation)
     const startupIds = Array.from(new Set(
       rawMatches.map(m => m.startup_id).filter((id): id is string => !!id && typeof id === 'string')
     ));
@@ -284,7 +312,9 @@ async function fetchMatchesFirstPageInternal(candidate: any) {
     }
 
     // 2. Fetch data in parallel
-    const [startups3Result, startups1Result, jobsResult, unlinkedJobsResult] = await Promise.all([
+    // OPTIMIZATION: Disabled unlinked jobs query to reduce data transfer and improve performance
+    // Fetching 300 unlinked jobs on every init call was causing excessive egress
+    const [startups3Result, startups1Result, jobsResult] = await Promise.all([
       // Startups3
       supabaseAdmin!
         .from('startups3')
@@ -308,15 +338,12 @@ async function fetchMatchesFirstPageInternal(candidate: any) {
         `)
         .in('id', startupIds),
       // Linked Jobs
-      supabaseAdmin!.from('jobs').select('*').in('startup_id', startupIds).not('job_url', 'is', null),
-      // Unlinked Jobs
-      supabaseAdmin!.from('jobs').select('*').is('startup_id', null).not('job_url', 'is', null).limit(300)
+      supabaseAdmin!.from('jobs').select('*').in('startup_id', startupIds).not('job_url', 'is', null)
     ]);
 
     const { data: s3Rows, error: s3Error } = startups3Result;
     const { data: s1Rows, error: s1Error } = startups1Result;
     const { data: allLinkedJobs, error: jError } = jobsResult;
-    const { data: unlinkedJobs } = unlinkedJobsResult;
 
     if (s3Error) console.error('[Matches Init] Error fetching startups3:', s3Error);
     if (s1Error) console.error('[Matches Init] Error fetching startups1:', s1Error);
@@ -427,7 +454,10 @@ async function fetchMatchesFirstPageInternal(candidate: any) {
       if (j.startup_id) addJob(j.startup_id, j);
     });
 
-    // Fuzzy matching for unlinked jobs
+    // OPTIMIZATION: Disabled fuzzy matching for unlinked jobs to improve performance
+    // This O(n²) matching was taking too long and causing excessive resource usage
+    // Jobs should be linked with startup_id in the database instead
+    /* DISABLED FOR PERFORMANCE
     if (unlinkedJobs) {
       const allStartupsList = Object.values(startupsById);
       const nameToId = new Map<string, string>(
@@ -449,6 +479,7 @@ async function fetchMatchesFirstPageInternal(candidate: any) {
         }
       }
     }
+    */
 
     // 5. Build final items list
     const items = rawMatches.map(m => {
@@ -482,6 +513,155 @@ async function fetchMatchesFirstPageInternal(candidate: any) {
   } catch (error) {
     console.error('[Matches Init] Fatal internal error:', error);
     return { items: [], pagination: { total: 0, hasMore: false } };
+  }
+}
+
+/**
+ * Find instant matches for a candidate based on their onboarding preferences
+ * This queries the jobs table directly to find relevant roles
+ */
+async function findInstantMatches(candidate: any, limit: number): Promise<any[]> {
+  try {
+    if (!supabaseAdmin) return [];
+
+    const jobType = candidate.job_type;
+    const roleTypes = candidate.role_type || [];
+    const yearsOfExperience = candidate.years_of_experience;
+
+    if (!roleTypes.length) return [];
+
+    console.log('[Instant Matches] Finding matches for:', { jobType, roleTypes, yearsOfExperience });
+
+    // Build query for jobs
+    let query = supabaseAdmin
+      .from('jobs')
+      .select('startup_id, job_title, job_type')
+      .not('startup_id', 'is', null);
+
+    // Filter by job type if specified
+    if (jobType) {
+      if (jobType === 'full-time') {
+         query = query.ilike('job_type', '%full%time%');
+      } else if (jobType === 'part-time') {
+         query = query.ilike('job_type', '%part%time%');
+      } else if (jobType === 'internship') {
+         query = query.or(`job_type.ilike.%intern%,job_title.ilike.%intern%`);
+      } else {
+         const normalizedJobType = jobType.replace('-', ' ');
+         query = query.ilike('job_type', `%${normalizedJobType}%`);
+      }
+    }
+
+    // Filter by roles (OR condition)
+    if (roleTypes.length > 0) {
+      const roleConditions = roleTypes.map((role: string) => {
+        const term = role === 'SWE' ? 'Software Engineer' :
+                     role === 'SDE' ? 'Software Developer' :
+                     role === 'PM' ? 'Product Manager' :
+                     role;
+        return `job_title.ilike.%${term}%`;
+      }).join(',');
+
+      query = query.or(roleConditions);
+    }
+
+    // Filter by Years of Experience / Seniority
+    if (yearsOfExperience) {
+      if (yearsOfExperience === '5-10' || yearsOfExperience === '10-plus') {
+        query = query.not('job_title', 'ilike', '%Intern%');
+        query = query.not('job_title', 'ilike', '%Junior%');
+      } else if (yearsOfExperience === 'no-experience' || yearsOfExperience === 'less-than-1' || yearsOfExperience === '1-2') {
+        query = query.not('job_title', 'ilike', '%Senior%');
+        query = query.not('job_title', 'ilike', '%Sr.%');
+        query = query.not('job_title', 'ilike', '%Lead%');
+        query = query.not('job_title', 'ilike', '%Staff%');
+        query = query.not('job_title', 'ilike', '%Principal%');
+      }
+    }
+
+    // Get jobs (limit to 50 significant matches)
+    const { data: jobs, error } = await query.limit(50);
+
+    if (error) {
+      console.error('[Instant Matches] Error querying jobs:', error);
+      return [];
+    }
+
+    if (!jobs || jobs.length === 0) {
+      console.log('[Instant Matches] No jobs found matching criteria');
+      return [];
+    }
+
+    // Group by startup and create unique matches
+    const startupIds = new Set<string>();
+    const uniqueStartupIds: string[] = [];
+
+    for (const job of jobs) {
+      if (job.startup_id && !startupIds.has(job.startup_id)) {
+        startupIds.add(job.startup_id);
+        uniqueStartupIds.push(job.startup_id);
+      }
+    }
+
+    if (uniqueStartupIds.length === 0) return [];
+
+    // Validate that these startup IDs actually exist in startups3
+    const { data: validStartups, error: validationError } = await supabaseAdmin
+      .from('startups3')
+      .select('id')
+      .in('id', uniqueStartupIds);
+
+    if (validationError) {
+      console.error('[Instant Matches] Error validating startup IDs:', validationError);
+      return [];
+    }
+
+    // Create a set of valid startup IDs
+    const validStartupIdSet = new Set((validStartups || []).map(s => s.id));
+
+    // Filter out invalid startup IDs and create matches
+    const matchesToInsert: any[] = [];
+
+    for (const startupId of uniqueStartupIds) {
+      if (validStartupIdSet.has(startupId)) {
+        matchesToInsert.push({
+          candidate_id: candidate.id,
+          startup_id: startupId,
+          score: 0.85,
+          matched_at: new Date().toISOString()
+        });
+
+        if (matchesToInsert.length >= limit * 2) break;
+      }
+    }
+
+    if (matchesToInsert.length === 0) {
+      console.log('[Instant Matches] No valid matches to insert after validation');
+      return [];
+    }
+
+    console.log(`[Instant Matches] Persisting ${matchesToInsert.length} matches to DB...`);
+
+    // Persist matches to database
+    if (!candidate.id) {
+       console.error('[Instant Matches] No candidate ID provided');
+       return [];
+    }
+
+    const { data: insertedMatches, error: insertError } = await supabaseAdmin
+      .from('matches')
+      .upsert(matchesToInsert, { onConflict: 'candidate_id,startup_id' })
+      .select();
+
+    if (insertError) {
+      console.error('[Instant Matches] Error persisting matches:', insertError);
+      return [];
+    }
+
+    return insertedMatches || [];
+  } catch (error) {
+    console.error('[Instant Matches] Exception:', error);
+    return [];
   }
 }
 

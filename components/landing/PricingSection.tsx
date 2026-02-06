@@ -102,8 +102,8 @@ export function PricingSection({ userEmail, onGetStarted }: PricingSectionProps)
             </div>
 
             {userEmail ? (
-              <UpgradeButton 
-                email={userEmail} 
+              <UpgradeButton
+                email={userEmail}
                 className="w-full text-base py-6 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium transition-all duration-300 cursor-pointer"
                 showTrialCTA={true}
               />

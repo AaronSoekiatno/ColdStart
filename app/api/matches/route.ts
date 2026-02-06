@@ -296,14 +296,26 @@ export async function GET(request: NextRequest) {
     }
 
     // If no matches found, try to find instant matches based on onboarding data
+    // OPTIMIZATION: Add rate limiting to prevent excessive match generation
     if (!allMatches || allMatches.length === 0) {
-      console.log('No pre-computed matches found. Attempting instant matching...');
-      const instantMatches = await findInstantMatches(candidate, limit);
-      
-      if (instantMatches.length > 0) {
-        // Use instant matches (also filter out rate-limited startups)
-        allMatches = instantMatches.filter(m => !overEmailLimitStartupIds.has(m.startup_id));
-        totalCount = allMatches.length;
+      // Check if we've recently generated instant matches for this candidate
+      const instantMatchCacheKey = `instant_matches_generated:${candidate.id}`;
+      const recentlyGenerated = await getCache<boolean>(instantMatchCacheKey);
+
+      if (recentlyGenerated) {
+        console.log('[Matches] Instant matches recently generated for candidate, skipping regeneration');
+      } else {
+        console.log('No pre-computed matches found. Attempting instant matching...');
+        const instantMatches = await findInstantMatches(candidate, limit);
+
+        if (instantMatches.length > 0) {
+          // Use instant matches (also filter out rate-limited startups)
+          allMatches = instantMatches.filter(m => !overEmailLimitStartupIds.has(m.startup_id));
+          totalCount = allMatches.length;
+
+          // Cache that we've generated matches for this candidate (5 minute TTL)
+          await setCache(instantMatchCacheKey, true, 300);
+        }
       }
     }
 
