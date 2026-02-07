@@ -175,10 +175,10 @@ export default function MatchesPage() {
         });
 
         if (!response.ok) {
-          if (response.status === 404) {
-            // Likely candidate not found/needs onboarding
+          if (response.status === 404 || response.status === 403) {
+            // 404: candidate not found, 403: onboarding incomplete or GitHub not connected
             const errorData = await response.json().catch(() => ({}));
-            if (errorData.needsOnboarding) {
+            if (errorData.needsOnboarding || response.status === 403) {
               setShowOnboarding(true);
               setIsLoading(false);
               return;
@@ -298,7 +298,7 @@ export default function MatchesPage() {
     };
 
     fetchNextPage();
-  }, [currentMatchIndex, matches.length, pagination, isLoading]);
+  }, [currentMatchIndex, matches.length, pagination?.page, pagination?.hasMore, isLoading]);
 
   // Reset current match index when matches change
   useEffect(() => {

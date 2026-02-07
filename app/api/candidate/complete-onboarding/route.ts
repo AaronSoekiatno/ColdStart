@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         job_type: jobType,
         role_type: roleTypes,
         years_of_experience: yearsOfExperience,
-        onboarding_completed: false, // Don't mark complete until all steps are done
+        onboarding_completed: false, // New candidate, definitely false
       });
 
       // Refetch the candidate to get the complete type with required fields
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         job_type: jobType,
         role_type: roleTypes,
         years_of_experience: yearsOfExperience,
-        onboarding_completed: false, // Don't mark complete until all steps are done
+        onboarding_completed: candidate.onboarding_completed ?? false, // Preserve existing status
         // Preserve existing fields
         location: candidate.location,
         education_level: candidate.education_level,

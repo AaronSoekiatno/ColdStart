@@ -165,6 +165,17 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
     }
   }, [open]);
 
+  // Auto-mark onboarding as complete when reaching the final step
+  useEffect(() => {
+    if (open && step === 11) {
+      console.log('[Onboarding] Success step reached - auto-marking completion');
+      fetch('/api/candidate/mark-onboarding-complete', {
+        method: 'POST',
+        credentials: 'include',
+      }).catch(err => console.error('[Onboarding] Auto-mark completion failed:', err));
+    }
+  }, [open, step]);
+
   // Filter repos based on search query and suggested filter
   const filteredRepos = useMemo(() => {
     let repos = githubRepos;
