@@ -1,20 +1,19 @@
 'use client';
 
 import { Suspense } from "react";
-import { NewLandingPage } from "@/components/landing/NewLandingPage";
+import { CompanyLandingPage } from "@/components/landing/CompanyLandingPage";
 
 export const dynamic = 'force-dynamic';
 
-function NewLandingPageWrapper() {
-  return <NewLandingPage />;
+function CompanyLandingPageWrapper() {
+  return <CompanyLandingPage />;
 }
 
 export default function Home() {
-  // Allow both authenticated and unauthenticated users to view the landing page
-  // The landing page component will handle user-specific UI (e.g., showing user menu if logged in)
+  // Main landing page is now the Company Landing Page
   return (
     <Suspense fallback={<div className="min-h-screen" />}>
-      <NewLandingPageWrapper />
+      <CompanyLandingPageWrapper />
     </Suspense>
   );
 }

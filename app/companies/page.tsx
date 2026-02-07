@@ -1,19 +1,14 @@
 'use client';
 
-import { Suspense } from "react";
-import { CompanyLandingPage } from "@/components/landing/CompanyLandingPage";
-
-export const dynamic = 'force-dynamic';
-
-function CompanyLandingPageWrapper() {
-  return <CompanyLandingPage />;
-}
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function CompaniesPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen" />}>
-      <CompanyLandingPageWrapper />
-    </Suspense>
-  );
-}
+  const router = useRouter();
 
+  useEffect(() => {
+    router.replace('/');
+  }, [router]);
+
+  return null;
+}

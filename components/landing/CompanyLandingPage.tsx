@@ -19,6 +19,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 
+import { CompanyHowItWorks } from "@/components/landing/CompanyHowItWorks";
+import { CompanyPricing } from "@/components/landing/CompanyPricing";
+import { CompaniesFAQ } from "@/components/landing/CompaniesFAQ";
+
 export function CompanyLandingPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -92,15 +96,14 @@ export function CompanyLandingPage() {
 
           {/* Logo - Left side */}
           <Link href="/" className="flex items-center gap-3 pl-2 transition-opacity hover:opacity-80 relative z-10">
-            <Image src="/images/hermes.png" alt="Hermes" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-lg font-bold text-white tracking-tight" style={{ fontFamily: 'Ivy Journal, serif' }}>ProofHire</span>
+            <Image src="/images/hermes.png" alt="Agencity" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
+            <span className="text-lg font-bold text-white tracking-tight" style={{ fontFamily: 'Ivy Journal, serif' }}>Agencity</span>
           </Link>
 
           {/* Navigation - Desktop only, Centered */}
           <nav className="hidden md:flex items-center gap-6 relative z-10">
-            <a href="#how" className="text-sm font-medium text-white/70 hover:text-white transition-colors">How it works</a>
-            <a href="#what" className="text-sm font-medium text-white/70 hover:text-white transition-colors">What you get</a>
-            <a href="#security" className="text-sm font-medium text-white/70 hover:text-white transition-colors">Security</a>
+            <a href="#how-it-works" className="text-sm font-medium text-white/70 hover:text-white transition-colors">How it works</a>
+            <a href="#pricing" className="text-sm font-medium text-white/70 hover:text-white transition-colors">Pricing</a>
             <a href="#faq" className="text-sm font-medium text-white/70 hover:text-white transition-colors">FAQ</a>
           </nav>
 
@@ -186,9 +189,8 @@ export function CompanyLandingPage() {
               }}
             >
               <div className="space-y-1 relative z-10">
-                <a href="#how" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">How it works</a>
-                <a href="#what" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">What you get</a>
-                <a href="#security" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">Security</a>
+                <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">How it works</a>
+                <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">Pricing</a>
                 <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">FAQ</a>
                 <div className="border-t border-white/10 my-3"></div>
                 {user ? (
@@ -223,11 +225,11 @@ export function CompanyLandingPage() {
           <div className="grid items-center gap-10 md:grid-cols-2">
             <div>
               <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight md:text-5xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>
-                Hire engineers with <span className="text-indigo-600">proof</span> — not resumes.
+                Hire 11x Engineers for your <span className="text-indigo-600">Startup</span>.
               </h1>
 
               <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-600 md:text-lg">
-                ProofHire runs a company-calibrated work sample and generates a shareable Proof Brief:
+                Agencity runs a company-calibrated work sample and generates a shareable Proof Brief:
                 what's proven, what isn't, and what to ask next—so you can move fast without guessing.
               </p>
 
@@ -238,9 +240,9 @@ export function CompanyLandingPage() {
                   Request early access
                 </button>
                 <button
-                  onClick={() => setShowDemoModal(true)}
+                  onClick={() => router.push('/candidates')}
                   className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white/50 backdrop-blur-sm px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-white hover:border-zinc-300 transition-colors">
-                  See a sample proof brief
+                  Apply as a candidate
                 </button>
               </div>
 
@@ -395,290 +397,47 @@ export function CompanyLandingPage() {
         </div>
       </section>
 
-      {/* Problem */}
-      <section className="mx-auto max-w-6xl px-4 py-14">
-        <div className="grid gap-10 md:grid-cols-2">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>The hiring stack wasn't built for startups.
-            </h2>
-            <p className="mt-3 text-zinc-600 leading-relaxed">
-              When your team is small, one weak hire creates drag everywhere: code quality, velocity, on-call, and
-              morale.
-              ProofHire replaces narrative screening with work evidence you can trust.
-            </p>
-          </div>
-          <div className="grid gap-3">
-            <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-5">
-              <p className="font-medium text-zinc-900">Resumes are narrative</p>
-              <p className="mt-1 text-sm text-zinc-500">They don't show debugging, tradeoffs, or how someone ships.</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-5">
-              <p className="font-medium text-zinc-900">Interviews are noisy</p>
-              <p className="mt-1 text-sm text-zinc-500">Different interviewers, different outcomes. Hard to calibrate.</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm p-5">
-              <p className="font-medium text-zinc-900">Take-homes are hard to compare</p>
-              <p className="mt-1 text-sm text-zinc-500">Review takes forever and decisions still feel subjective.</p>
-            </div>
-          </div>
-        </div>
+      {/* How It Works Header (Formerly Problem Section) */}
+      <section className="mx-auto max-w-4xl px-4 pt-16 pb-0 text-center">
+        <h2 className="text-3xl font-semibold tracking-tight md:text-4xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>
+          The hiring stack wasn't built for startups.
+        </h2>
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 leading-relaxed">
+          When your team is small, one weak hire creates drag everywhere: code quality, velocity, on-call, and
+          morale. Agencity replaces narrative screening with work evidence you can trust.
+        </p>
       </section>
 
-      {/* Solution */}
-      <section id="how" className="mx-auto max-w-6xl px-4 py-14">
-        <div className="rounded-3xl border border-zinc-200 bg-gradient-to-b from-zinc-50 to-white p-8 md:p-10 shadow-sm">
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>ProofHire turns hiring into evidence.</h2>
-          <p className="mt-3 max-w-3xl text-zinc-600 leading-relaxed">
-            Candidates complete a realistic simulation. We capture artifacts (diffs, tests, logs, writeups) and
-            generate a clean Proof Brief:
-            what's proven, what isn't, and what to verify live.
-          </p>
+      {/* How It Works (Company Process) */}
+      <CompanyHowItWorks />
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-zinc-900">Work sample, not trivia</p>
-              <p className="mt-2 text-sm text-zinc-500">Bugfixes, feature slices, refactors—tasks that resemble startup
-                work.</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-zinc-900">Fail-closed evaluation</p>
-              <p className="mt-2 text-sm text-zinc-500">No guessing. Claims are Proved/Unproved with links to evidence.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="text-sm font-semibold text-zinc-900">Founder-calibrated rubric</p>
-              <p className="mt-2 text-sm text-zinc-500">You choose what matters: speed vs rigor, testing bar, autonomy.
-              </p>
-            </div>
-          </div>
+      {/* Pricing */}
+      <CompanyPricing onGetStarted={handleGetStarted} />
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <button
-              onClick={handleGetStarted}
-              className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/10">
-              Request early access
-            </button>
-            <button
-              onClick={() => setShowDemoModal(true)}
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors">
-              View sample brief
-            </button>
-          </div>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="text-xs uppercase tracking-widest text-zinc-400">Step 1</p>
-              <p className="mt-2 font-semibold text-zinc-900">Calibrate (10 minutes)</p>
-              <p className="mt-2 text-sm text-zinc-500">Answer a few questions about pace, quality bar, and what "good"
-                means here.</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="text-xs uppercase tracking-widest text-zinc-400">Step 2</p>
-              <p className="mt-2 font-semibold text-zinc-900">Candidates run the simulation</p>
-              <p className="mt-2 text-sm text-zinc-500">Secure sandbox. Deterministic grading. Artifacts captured
-                automatically.</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="text-xs uppercase tracking-widest text-zinc-400">Step 3</p>
-              <p className="mt-2 font-semibold text-zinc-900">You review the Proof Brief</p>
-              <p className="mt-2 text-sm text-zinc-500">Evidence links + risk flags + interview prompts. Easy to share
-                with co-founders.</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* What you get */}
-      <section id="what" className="mx-auto max-w-6xl px-4 py-14">
-        <div className="grid gap-10 md:grid-cols-2">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight md:text-3xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>Everything you wish you had during
-              interviews.</h2>
-            <p className="mt-3 text-zinc-600 leading-relaxed">
-              ProofHire produces a packet you can actually make decisions with—consistent across candidates, grounded
-              in artifacts.
-            </p>
-            <ul className="mt-6 space-y-3 text-zinc-700">
-              <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">A shareable <span
-                className="font-semibold text-zinc-900">Proof Brief</span> per candidate</li>
-              <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">Evidence: diffs, test runs, logs, coverage,
-                writeups</li>
-              <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">Company-calibrated scoring across
-                dimensions you choose</li>
-              <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"><span className="font-semibold text-zinc-900">Interview
-                prompts</span> generated from what's unproved</li>
-              <li className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">Consistent comparison even with different
-                interviewers</li>
-            </ul>
-          </div>
-
-          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-            <p className="text-xs uppercase tracking-widest text-zinc-400">Founder outcome</p>
-            <h3 className="mt-3 text-xl font-semibold text-zinc-900">Spend less time debating. More time building.</h3>
-            <p className="mt-3 text-zinc-600 leading-relaxed">
-              For early teams, speed matters—but so does correctness. ProofHire helps you move fast with a documented
-              standard and clear evidence.
-            </p>
-
-            <div className="mt-6 grid gap-3">
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-                <p className="font-medium text-zinc-900">Faster shortlist</p>
-                <p className="mt-1 text-sm text-zinc-500">Review a brief in minutes instead of replaying an hour-long
-                  interview.</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-                <p className="font-medium text-zinc-900">Less interviewer variance</p>
-                <p className="mt-1 text-sm text-zinc-500">A consistent rubric and evidence packet across candidates.</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-                <p className="font-medium text-zinc-900">Clear next questions</p>
-                <p className="mt-1 text-sm text-zinc-500">Unproved areas become structured prompts for a focused live
-                  interview.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Two-column: Startups vs Candidates */}
-      <section id="talent" className="mx-auto max-w-6xl px-4 py-14">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-lg shadow-zinc-200/50">
-            <h3 className="text-xl font-semibold text-zinc-900">For Startups</h3>
-            <p className="mt-2 text-zinc-600">Move fast without lowering the bar.</p>
-            <ul className="mt-5 space-y-2 text-sm text-zinc-600">
-              <li className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">Standardize evaluation without acting
-                like BigCo</li>
-              <li className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">Reduce interview load and co-founder
-                debate</li>
-              <li className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">Keep hiring decisions grounded in
-                job-relevant evidence</li>
-            </ul>
-            <button
-              onClick={handleGetStarted}
-              className="mt-6 inline-flex items-center justify-center rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/20">
-              Request early access
-            </button>
-          </div>
-
-          <div className="rounded-3xl border border-zinc-200 bg-white p-8 shadow-sm">
-            <h3 className="text-xl font-semibold text-zinc-900">For Candidates</h3>
-            <p className="mt-2 text-zinc-600">Get hired for what you can do.</p>
-            <ul className="mt-5 space-y-2 text-sm text-zinc-600">
-              <li className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">Show real work, not keyword
-                storytelling</li>
-              <li className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">Reuse your Proof Profile across
-                multiple startups</li>
-              <li className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">Join a network with 6,000+ engineers
-                already waiting</li>
-            </ul>
-            <button
-              onClick={handleGetStarted}
-              className="mt-6 inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors">
-              Join the talent network
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Security */}
-      <section id="security" className="mx-auto max-w-6xl px-4 py-14">
-        <div className="rounded-3xl border border-zinc-200 bg-gradient-to-b from-zinc-50 to-white p-8 md:p-10 shadow-sm">
-          <h2 className="text-2xl font-semibold tracking-tight md:text-3xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>Secure by default. Built to be auditable.</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="font-semibold text-zinc-900">Isolated execution</p>
-              <p className="mt-2 text-sm text-zinc-500">Sandboxed runs with resource limits and controlled environment for
-                consistency.</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="font-semibold text-zinc-900">Evidence trail</p>
-              <p className="mt-2 text-sm text-zinc-500">Every result points back to artifacts (diffs, tests, logs) so
-                reviews are defensible.</p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="font-semibold text-zinc-900">Configurable collection</p>
-              <p className="mt-2 text-sm text-zinc-500">Control what you collect and retain. Start without repo access.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-              <p className="font-semibold text-zinc-900">Job-relevant signals</p>
-              <p className="mt-2 text-sm text-zinc-500">Focus on demonstrated work and artifacts—no reliance on resume
-                credentials.</p>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* FAQ */}
-      <section id="faq" className="mx-auto max-w-6xl px-4 py-14">
-        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>FAQ</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="font-semibold text-zinc-900">Is this a take-home?</p>
-            <p className="mt-2 text-sm text-zinc-500">It's a structured work sample designed to be bounded, comparable,
-              and easy to review.</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="font-semibold text-zinc-900">Can candidates use AI tools?</p>
-            <p className="mt-2 text-sm text-zinc-500">Configurable per company. We're built to evaluate outcomes and
-              engineering judgment.</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="font-semibold text-zinc-900">How long does setup take?</p>
-            <p className="mt-2 text-sm text-zinc-500">Minutes to calibrate. You can invite candidates immediately.</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="font-semibold text-zinc-900">Do we need to share our private repo?</p>
-            <p className="mt-2 text-sm text-zinc-500">Not to start. Early access can run on standardized simulations.</p>
-          </div>
-        </div>
+      <section id="faq">
+        <CompaniesFAQ />
       </section>
 
       {/* Access form */}
-      <section id="access" className="mx-auto max-w-6xl px-4 pb-20">
-        <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-8 md:p-10 shadow-inner">
-          <div className="grid items-center gap-8 md:grid-cols-2">
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight md:text-3xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>Your next hire should come with evidence.
-              </h2>
-              <p className="mt-3 text-zinc-600 leading-relaxed">
-                Request early access for your startup, or join the talent network to get matched with teams that hire
-                based on real work.
-              </p>
-              <p className="mt-4 text-sm text-zinc-500">
-                Tip: If you're hiring now, include your role + timeline—responses are prioritized.
-              </p>
-            </div>
-
-            <form className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl shadow-zinc-200/50"
-              onSubmit={(e) => { e.preventDefault(); alert('Thanks! We will be in touch soon.'); }}>
-              <label className="block text-sm font-medium text-zinc-700">Work email</label>
-              <input
-                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
-                placeholder="you@startup.com" type="email" required />
-
-              <label className="mt-4 block text-sm font-medium text-zinc-700">I'm here as</label>
-              <select
-                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm">
-                <option>Founder / Hiring manager</option>
-                <option>Candidate</option>
-              </select>
-
-              <label className="mt-4 block text-sm font-medium text-zinc-700">Hiring need (optional)</label>
-              <input
-                className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm"
-                placeholder="Backend engineer, hiring this month" />
-
-              <button
-                className="mt-5 w-full rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white hover:bg-zinc-800 transition-colors shadow-lg shadow-zinc-900/10">
-                Join early access
-              </button>
-
-              <p className="mt-3 text-xs text-zinc-400">
-                By submitting, you agree to be contacted about early access. No spam.
-              </p>
-            </form>
+      <section id="access" className="py-24 px-4 text-center">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'Ivy Journal, serif' }}>
+            Your next hire should come with confidence.
+          </h2>
+          <p className="text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed">
+            Request early access for your startup, or join the talent network to get matched with teams that hire based on real work.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button
+              onClick={handleGetStarted}
+              className="rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white hover:bg-zinc-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            >
+              Request Access
+            </button>
           </div>
         </div>
       </section>
@@ -688,16 +447,16 @@ export function CompanyLandingPage() {
         <div className="mx-auto max-w-6xl px-4 py-10">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
             <div>
-              <p className="text-sm font-semibold text-zinc-900">ProofHire</p>
+              <p className="text-sm font-semibold text-zinc-900">Agencity</p>
               <p className="mt-1 text-sm text-zinc-500">Evidence-first hiring for early startups.</p>
             </div>
             <div className="flex gap-5 text-sm text-zinc-500">
-              <a href="#how" className="hover:text-zinc-900 transition-colors">How it works</a>
-              <a href="#security" className="hover:text-zinc-900 transition-colors">Security</a>
+              <a href="#how-it-works" className="hover:text-zinc-900 transition-colors">How it works</a>
+              <a href="#pricing" className="hover:text-zinc-900 transition-colors">Pricing</a>
               <a href="#faq" className="hover:text-zinc-900 transition-colors">FAQ</a>
             </div>
           </div>
-          <p className="mt-8 text-xs text-zinc-400">© <span id="year">{currentYear}</span> ProofHire. All rights reserved.</p>
+          <p className="mt-8 text-xs text-zinc-400">© <span id="year">{currentYear}</span> Agencity. All rights reserved.</p>
         </div>
       </footer>
 

@@ -9,9 +9,9 @@ interface NewHeroProps {
 
 export function NewHero({ onGetStarted, onCompanyClick }: NewHeroProps) {
   const handleCompanyClick = () => {
-    // Navigate to companies page
+    // Navigate to companies page (now the main page)
     if (typeof window !== 'undefined') {
-      window.location.href = '/companies';
+      window.location.href = '/';
     }
   };
 

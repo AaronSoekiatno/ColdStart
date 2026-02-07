@@ -70,7 +70,7 @@ export function CompaniesFAQ() {
                     {/* Left Column - Sticky Header */}
                     <div className="lg:col-span-5 pl-8">
                         <div className="sticky top-24">
-                            <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 mb-6">
+                            <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 mb-6" style={{ fontFamily: 'Ivy Journal, serif' }}>
                                 Frequently Asked Questions
                             </h2>
                             <p className="text-xl text-gray-500 max-w-sm">
