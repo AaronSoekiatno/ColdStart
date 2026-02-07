@@ -29,8 +29,9 @@ export default function CompanyDashboard() {
 
       if (!mounted) return;
 
+      // If no session, just show loading or redirect to login, NOT back to form
       if (!session) {
-        router.push('/company-form');
+        router.push('/login?redirect=/company-dashboard');
         return;
       }
 

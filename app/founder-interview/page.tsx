@@ -479,7 +479,7 @@ export default function FounderInterviewPage() {
                                                 {
                                                     value: 'github' as const,
                                                     label: 'Connect GitHub Repository',
-                                                    desc: 'We'll analyze your codebase patterns, tech stack, and complexity to generate relevant challenges',
+                                                    desc: "We'll analyze your codebase patterns, tech stack, and complexity to generate relevant challenges",
                                                     icon: Github
                                                 },
                                                 {

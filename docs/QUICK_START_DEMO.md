@@ -2,12 +2,12 @@
 
 ## What Was Built
 
-A complete company onboarding workflow that captures "company DNA" and demonstrates ProofHire's unique value proposition:
+A streamlined company onboarding workflow that captures "company DNA" in 5 simple steps:
 
-✅ **5-Step Founder Interview** - Captures pace, quality bar, priorities, culture, and codebase
-✅ **Codebase Integration** - Option to connect GitHub repo for custom assessments
+✅ **5-Phase Onboarding Form** - Company info → Job description → Details → How you work → GitHub (optional)
+✅ **Practical Questions** - No BS buzzwords, just "How often do you ship?" and "What's your quality approach?"
+✅ **Codebase Integration** - Optional GitHub repo for custom assessments
 ✅ **Company Dashboard with 3 Tabs** - Profile, Assessment Preview, Matched Candidates
-✅ **Assessment Preview** - Shows what candidates will experience
 ✅ **Database Schema** - Stores operating model as structured JSONB
 
 ---
@@ -20,20 +20,17 @@ cd /Users/aidannguyen/Downloads/Hermes
 npm run dev
 ```
 
-### 2. Navigate to Company Form
+### 2. Complete Onboarding Form
 - Go to `http://localhost:3000/company-form`
-- Fill in company details (3 phases, takes ~1 minute)
+- **Phase 1:** Company name + website
+- **Phase 2:** Job description (what you're hiring for)
+- **Phase 3:** Location + team size
+- **Phase 4:** How you work
+  - **Q1:** "How often do you ship to production?" (Daily/Weekly/Monthly)
+  - **Q2:** "What's your approach to code quality?" (Ship fast/Balanced/High bar)
+- **Phase 5:** GitHub repo (optional, or skip)
 
-### 3. Complete Founder Interview
-- You'll be auto-redirected to `/founder-interview`
-- Answer 5 questions about your company DNA:
-  - **Q1:** Pace (Fast/Moderate/Deliberate)
-  - **Q2:** Quality Bar (High/Balanced/Move Fast)
-  - **Q3:** Priorities (select 2-4)
-  - **Q4:** Culture description (50+ chars)
-  - **Q5:** GitHub repo (optional)
-
-### 4. View Company Dashboard
+### 3. View Company Dashboard
 - Auto-redirected to `/company-dashboard`
 - **Profile Tab:** See your DNA displayed
 - **Assessment Tab:** Preview what candidates will do
@@ -82,8 +79,7 @@ Company DNA → Codebase Analysis → Custom Assessment → Evidence Brief
   └── 004_add_operating_model.sql          [NEW] Database schema
 
 📁 /app/
-  ├── founder-interview/page.tsx           [NEW] 5-step DNA capture
-  └── company-form/page.tsx                [MODIFIED] Redirect to interview
+  ├── company-form/page.tsx                [REFACTORED] Now 5-phase with DNA capture
   └── company-dashboard/page.tsx           [MODIFIED] Added tabs
 
 📁 /components/company/
@@ -93,7 +89,7 @@ Company DNA → Codebase Analysis → Custom Assessment → Evidence Brief
   └── mockCompanyData.ts                   [MODIFIED] Added github fields
 
 📁 /docs/
-  ├── DEMO_WORKFLOW.md                     [NEW] Detailed demo guide
+  ├── DEMO_WORKFLOW.md                     [UPDATED] Reflects new flow
   └── QUICK_START_DEMO.md                  [NEW] This file
 ```
 
@@ -164,7 +160,7 @@ To make this production-ready:
 ## Questions or Issues?
 
 **Q: Dashboard shows "No company profile found"**
-A: Make sure you completed BOTH company-form AND founder-interview. The system looks for a startup where `founder_emails` matches your logged-in email.
+A: Make sure you completed all 5 phases of the company-form. The system creates a startup record with your operating model.
 
 **Q: Assessment tab not rendering**
 A: Check browser console for errors. Ensure `github_repo_url` and `codebase_provided` fields exist in the company data.

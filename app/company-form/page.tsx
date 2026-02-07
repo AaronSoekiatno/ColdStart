@@ -13,7 +13,11 @@ import {
     X,
     Globe,
     MapPin,
-    Users
+    Users,
+    Zap,
+    Target,
+    GithubIcon,
+
 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,7 +34,10 @@ export default function CompanyFormPage() {
         website: "",
         hiringFor: "",
         location: "",
-        teamSize: ""
+        teamSize: "",
+        shippingSpeed: "" as 'daily' | 'weekly' | 'monthly' | '',
+        codeQuality: "" as 'ship-fast' | 'balanced' | 'perfectionist' | '',
+        githubUrl: ""
     });
 
     // File State
@@ -42,16 +49,33 @@ export default function CompanyFormPage() {
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState("");
     const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     useEffect(() => {
+        let mounted = true;
+
         const getSession = async () => {
             const { data: { session } } = await supabase.auth.getSession();
+
+            if (!mounted) return;
+
+            if (!session) {
+                // No session, redirect to login
+                router.push('/login?redirect=/company-form');
+                return;
+            }
+
             if (session?.user?.email) {
                 setUserEmail(session.user.email);
             }
+            setIsCheckingAuth(false);
         };
         getSession();
-    }, []);
+
+        return () => {
+            mounted = false;
+        };
+    }, [router]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -89,6 +113,26 @@ export default function CompanyFormPage() {
                 return;
             }
             setPhase(3);
+        } else if (phase === 3) {
+            if (!formData.location.trim()) {
+                setError("Please enter your company location");
+                return;
+            }
+            if (!formData.teamSize) {
+                setError("Please select your team size");
+                return;
+            }
+            setPhase(4);
+        } else if (phase === 4) {
+            if (!formData.shippingSpeed) {
+                setError("Please select how often you ship");
+                return;
+            }
+            if (!formData.codeQuality) {
+                setError("Please select your code quality approach");
+                return;
+            }
+            setPhase(5);
         }
     };
 
@@ -96,12 +140,8 @@ export default function CompanyFormPage() {
         e.preventDefault();
         setError("");
 
-        if (!formData.location.trim()) {
-            setError("Please enter your company location");
-            return;
-        }
-        if (!formData.teamSize) {
-            setError("Please select your team size");
+        if (formData.githubUrl && !formData.githubUrl.includes('github.com')) {
+            setError("Please enter a valid GitHub URL");
             return;
         }
 
@@ -132,7 +172,17 @@ export default function CompanyFormPage() {
                 hiring_for_text += `Uploaded job posting: ${file.name}`;
             }
 
-            // 3. Save to intro_requests
+            // 3. Build operating model
+            const operatingModel = {
+                pace: formData.shippingSpeed === 'daily' ? 'fast' : formData.shippingSpeed === 'weekly' ? 'moderate' : 'deliberate',
+                quality_bar: formData.codeQuality === 'ship-fast' ? 'move-fast' : formData.codeQuality === 'balanced' ? 'balanced' : 'high',
+                priorities: [], // Removed buzzword priorities
+                culture_description: formData.hiringFor, // Use job description as culture context
+                github_repo_url: formData.githubUrl || null,
+                codebase_provided: !!formData.githubUrl
+            };
+
+            // 4. Save to intro_requests
             const { error: insertError } = await supabase
                 .from('intro_requests')
                 .insert([
@@ -145,9 +195,37 @@ export default function CompanyFormPage() {
 
             if (insertError) throw insertError;
 
+            // 5. Create/update startup with operating model
+            const { data: existingStartup } = await supabase
+                .from('startups')
+                .select('id')
+                .eq('founder_emails', userEmail)
+                .single();
+
+            if (existingStartup) {
+                await supabase
+                    .from('startups')
+                    .update({
+                        operating_model: operatingModel,
+                        website: formData.website,
+                        location: formData.location
+                    })
+                    .eq('id', existingStartup.id);
+            } else {
+                await supabase
+                    .from('startups')
+                    .insert([{
+                        name: formData.companyName,
+                        website: formData.website,
+                        location: formData.location,
+                        founder_emails: userEmail,
+                        operating_model: operatingModel
+                    }]);
+            }
+
             setIsSuccess(true);
             setTimeout(() => {
-                router.push("/founder-interview");
+                router.push("/company-dashboard");
             }, 2000);
         } catch (err: any) {
             console.error("Error submitting form:", err?.message || err || "Unknown error");
@@ -161,6 +239,18 @@ export default function CompanyFormPage() {
         animate: { opacity: 1, x: 0 },
         exit: { opacity: 0, x: -20 }
     };
+
+    // Show loading while checking authentication
+    if (isCheckingAuth) {
+        return (
+            <div className="h-screen flex items-center justify-center bg-white">
+                <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-sm text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="h-screen flex flex-col lg:flex-row bg-white overflow-hidden">
@@ -181,7 +271,7 @@ export default function CompanyFormPage() {
                     </motion.button>
 
                     <div className="flex gap-2">
-                        {[1, 2, 3].map((s) => (
+                        {[1, 2, 3, 4, 5].map((s) => (
                             <div
                                 key={s}
                                 className={`h-1 w-8 rounded-full transition-all duration-500 ${phase >= s ? 'bg-blue-500' : 'bg-gray-100'}`}
@@ -207,17 +297,21 @@ export default function CompanyFormPage() {
                                     <h1 className="text-3xl md:text-4xl font-bold text-black mb-3 tracking-tight leading-tight">
                                         {phase === 1 && <>Let's build your <span className="text-blue-500">profile</span></>}
                                         {phase === 2 && <>What are you <span className="text-blue-500">hiring for?</span></>}
-                                        {phase === 3 && <>Final <span className="text-blue-500">details</span></>}
+                                        {phase === 3 && <>Company <span className="text-blue-500">details</span></>}
+                                        {phase === 4 && <>How you <span className="text-blue-500">work</span></>}
+                                        {phase === 5 && <>Optional: <span className="text-blue-500">Your codebase</span></>}
                                     </h1>
                                     <p className="text-base text-gray-600 leading-relaxed font-light">
                                         {phase === 1 && "Tell us about your company so we can find the perfect cultural and technical fit."}
-                                        {phase === 2 && "Upload a job posting or describe the role. We'll find you matches within 24 hours."}
-                                        {phase === 3 && "Just a few more things before we start analyzing our candidate pool for you."}
+                                        {phase === 2 && "Describe the role you're hiring for. We'll use this to understand what you need."}
+                                        {phase === 3 && "Location and team size help us understand your context."}
+                                        {phase === 4 && "Two quick questions to understand your engineering culture."}
+                                        {phase === 5 && "Connect your GitHub to generate custom assessments that match your actual work."}
                                     </p>
                                 </div>
 
                                 {/* Phase Forms */}
-                                <form onSubmit={phase < 3 ? handleNextPhase : handleSubmit} className="space-y-5">
+                                <form onSubmit={phase < 5 ? handleNextPhase : handleSubmit} className="space-y-5">
                                     {phase === 1 && (
                                         <div className="space-y-4">
                                             <div className="space-y-2">
@@ -347,6 +441,7 @@ export default function CompanyFormPage() {
                                                     <select
                                                         value={formData.teamSize}
                                                         onChange={(e) => setFormData({ ...formData, teamSize: e.target.value })}
+                                                        className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
                                                         required
                                                     >
                                                         <option value="">Select size</option>
@@ -357,10 +452,92 @@ export default function CompanyFormPage() {
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex gap-3">
-                                                <CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" />
-                                                <p className="text-xs text-gray-600 leading-relaxed">
-                                                    By submitting, you agree to allow Agencity to analyze your requirements and reach out to matching candidates.
+                                        </div>
+                                    )}
+
+                                    {phase === 4 && (
+                                        <div className="space-y-5">
+                                            {/* Shipping Speed */}
+                                            <div className="space-y-3">
+                                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
+                                                    <Zap className="w-3.5 h-3.5" /> How often do you ship to production?
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {[
+                                                        { value: 'daily', label: 'Multiple times a day', desc: 'Fast iterations, continuous deployment' },
+                                                        { value: 'weekly', label: 'Weekly sprints', desc: 'Balanced pace, regular releases' },
+                                                        { value: 'monthly', label: 'Monthly or longer', desc: 'Careful releases, thorough testing' }
+                                                    ].map(({ value, label, desc }) => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, shippingSpeed: value as any })}
+                                                            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${formData.shippingSpeed === value
+                                                                ? 'border-blue-500 bg-blue-50'
+                                                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="font-semibold text-black">{label}</span>
+                                                                {formData.shippingSpeed === value && (
+                                                                    <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-gray-600">{desc}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Code Quality */}
+                                            <div className="space-y-3">
+                                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
+                                                    <Target className="w-3.5 h-3.5" /> What's your approach to code quality?
+                                                </label>
+                                                <div className="space-y-2">
+                                                    {[
+                                                        { value: 'ship-fast', label: 'Ship fast, fix bugs later', desc: 'Speed over perfection, iterate based on feedback' },
+                                                        { value: 'balanced', label: 'Balance speed and quality', desc: 'Good tests, pragmatic tradeoffs' },
+                                                        { value: 'perfectionist', label: 'High bar, ship when ready', desc: 'Comprehensive tests, thorough review, clean code' }
+                                                    ].map(({ value, label, desc }) => (
+                                                        <button
+                                                            key={value}
+                                                            type="button"
+                                                            onClick={() => setFormData({ ...formData, codeQuality: value as any })}
+                                                            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${formData.codeQuality === value
+                                                                ? 'border-blue-500 bg-blue-50'
+                                                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="font-semibold text-black">{label}</span>
+                                                                {formData.codeQuality === value && (
+                                                                    <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-gray-600">{desc}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {phase === 5 && (
+                                        <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
+                                                    <GithubIcon className="w-3.5 h-3.5" /> GitHub Repository (Optional)
+                                                </label>
+                                                <input
+                                                    type="url"
+                                                    value={formData.githubUrl}
+                                                    onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
+                                                    className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder:text-gray-400"
+                                                    placeholder="https://github.com/your-company/your-repo"
+                                                />
+                                                <p className="text-xs text-gray-400 ml-1">
+                                                    Leave empty to use standard assessments instead.
                                                 </p>
                                             </div>
                                         </div>
@@ -390,7 +567,7 @@ export default function CompanyFormPage() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    {phase < 3 ? "Continue" : "Find Matches"}
+                                                    {phase < 5 ? "Continue" : "Complete Setup"}
                                                     <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                                                 </>
                                             )}
@@ -408,9 +585,9 @@ export default function CompanyFormPage() {
                                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 mb-8">
                                     <CheckCircle2 className="w-10 h-10 text-green-600" />
                                 </div>
-                                <h2 className="text-3xl font-bold text-black mb-4">Basic Info Saved!</h2>
+                                <h2 className="text-3xl font-bold text-black mb-4">All Set!</h2>
                                 <p className="text-gray-600 max-w-sm mx-auto leading-relaxed">
-                                    Now let's understand your company's DNA to find the perfect engineering matches...
+                                    Taking you to your dashboard to see matched candidates...
                                 </p>
                                 <div className="mt-12 flex justify-center">
                                     <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
