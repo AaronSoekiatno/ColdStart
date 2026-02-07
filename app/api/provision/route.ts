@@ -9,8 +9,8 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   return NextResponse.json(
     {
-      error: 'This endpoint is deprecated. Please complete onboarding at https://joinhermes.co to start the assessment.',
-      redirect: 'https://joinhermes.co',
+      error: 'This endpoint is deprecated. Please complete onboarding at https://agencity.co to start the assessment.',
+      redirect: 'https://agencity.co',
     },
     { status: 410 } // 410 Gone
   );

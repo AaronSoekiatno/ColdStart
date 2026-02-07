@@ -137,7 +137,7 @@ export default function CompanyFormPage() {
                 .from('intro_requests')
                 .insert([
                     {
-                        founder_email: userEmail || "anonymous@hermes.build",
+                        founder_email: userEmail || "anonymous@agencity.ai",
                         hiring_for: hiring_for_text,
                         status: 'pending'
                     }
@@ -176,7 +176,7 @@ export default function CompanyFormPage() {
                     >
                         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                         <span className="text-sm font-medium tracking-tight">
-                            {phase > 1 ? `Back to Step ${phase - 1}` : "Back to Hermes"}
+                            {phase > 1 ? `Back to Step ${phase - 1}` : "Back to Agencity"}
                         </span>
                     </motion.button>
 
@@ -229,7 +229,7 @@ export default function CompanyFormPage() {
                                                     value={formData.companyName}
                                                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                                                     className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder:text-gray-400"
-                                                    placeholder="e.g., Hermes"
+                                                    placeholder="e.g., Agencity"
                                                     required
                                                 />
                                             </div>
@@ -242,7 +242,7 @@ export default function CompanyFormPage() {
                                                     value={formData.website}
                                                     onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                                                     className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 transition-all outline-none placeholder:text-gray-400"
-                                                    placeholder="e.g., https://www.joinhermes.co"
+                                                    placeholder="e.g., https://www.agencity.co"
                                                     required
                                                 />
                                             </div>
@@ -360,7 +360,7 @@ export default function CompanyFormPage() {
                                             <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex gap-3">
                                                 <CheckCircle2 className="w-5 h-5 text-blue-500 shrink-0" />
                                                 <p className="text-xs text-gray-600 leading-relaxed">
-                                                    By submitting, you agree to allow Hermes to analyze your requirements and reach out to matching candidates.
+                                                    By submitting, you agree to allow Agencity to analyze your requirements and reach out to matching candidates.
                                                 </p>
                                             </div>
                                         </div>
@@ -429,7 +429,7 @@ export default function CompanyFormPage() {
 
                 {/* Footer Component */}
                 <footer className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center opacity-60">
-                    <p className="text-xs text-gray-400">© 2026 Hermes Talent Acquisition</p>
+                    <p className="text-xs text-gray-400">© 2026 Agencity Talent Acquisition</p>
                 </footer>
             </div>
 
@@ -437,7 +437,7 @@ export default function CompanyFormPage() {
             <div className="hidden lg:block w-1/2 relative overflow-hidden bg-black border-l border-white/10">
                 <Image
                     src="/images/hermes2bg.png"
-                    alt="Hermes Sky"
+                    alt="Agencity Sky"
                     fill
                     className="object-cover scale-110 blur-[1px] opacity-90"
                     priority
@@ -466,7 +466,7 @@ export default function CompanyFormPage() {
                 {/* Bottom Right Logo */}
                 <div className="absolute bottom-12 right-12 flex items-center gap-3">
                     <Image src="/images/hermes.png" alt="Logo" width={32} height={32} className="opacity-80" />
-                    <span className="text-xl font-bold text-white opacity-80 tracking-tight">Hermes</span>
+                    <span className="text-xl font-bold text-white opacity-80 tracking-tight">Agencity</span>
                 </div>
             </div>
         </div>

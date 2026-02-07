@@ -142,7 +142,7 @@ function UnsubscribePageContent() {
             <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <p className="text-white mb-4">{message}</p>
             <p className="text-white/60 text-sm mb-4">
-              You will no longer receive welcome emails from Hermes.
+              You will no longer receive welcome emails from Agencity.
             </p>
             {canResubscribe && (
               <Button

@@ -248,7 +248,7 @@ export function CompanyHowItWorks() {
                                                         Automated Vetting
                                                     </h3>
                                                     <p className="text-gray-400 text-xs sm:text-sm max-w-sm">
-                                                        Hermes grades their solution on scalability, performance, and best practices.
+                                                        Agencity grades their solution on scalability, performance, and best practices.
                                                     </p>
                                                 </div>
                                                 <div className="w-full max-w-[200px] sm:max-w-xs lg:max-w-md bg-gray-900 rounded-lg sm:rounded-xl border border-gray-700 p-3 sm:p-4 font-mono text-xs">

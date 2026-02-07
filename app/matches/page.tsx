@@ -479,7 +479,7 @@ export default function MatchesPage() {
                   <>
                     <h2 className="text-xl font-bold mb-4">Find your next startup role</h2>
                     <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                      Hermes uses AI to match your background with open roles at top YC and VC-backed startups.
+                      Agencity uses AI to match your background with open roles at top YC and VC-backed startups.
                     </p>
                     <Button
                       onClick={() => setShowOnboarding(true)}

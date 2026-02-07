@@ -353,8 +353,8 @@ export function NewLandingPage() {
 
           {/* Logo - Left side */}
           <Link href="/" className="flex items-center gap-3 pl-2 transition-opacity hover:opacity-80 relative z-10">
-            <Image src="/images/hermes.png" alt="Hermes" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-lg font-bold text-white tracking-tight">Hermes</span>
+            <Image src="/images/hermes.png" alt="Agencity" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
+            <span className="text-lg font-bold text-white tracking-tight">Agencity</span>
           </Link>
 
           {/* Navigation - Desktop only, Centered */}

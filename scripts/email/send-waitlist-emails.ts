@@ -26,7 +26,7 @@ const limit = limitArg ? parseInt(limitArg.split('=')[1], 10) : undefined;
 
 // Email content - customize these for your launch announcement
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://coldstart.ai';
-const EMAIL_SUBJECT = process.env.WAITLIST_EMAIL_SUBJECT || 'Hermes is Now Live';
+const EMAIL_SUBJECT = process.env.WAITLIST_EMAIL_SUBJECT || 'Agencity is Now Live';
 const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
 <!DOCTYPE html>
 <html>
@@ -50,7 +50,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                       <tr>
                         <td align="center" valign="middle" style="width: 80px; height: 80px; background-color: #0f0f1a; border-radius: 16px; padding: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); border: 1px solid #2a2a4a;">
-                          <img src="${APP_URL}/images/hermes.png" alt="Hermes Logo" width="64" height="64" style="display: block; border: 0; outline: none; text-decoration: none; max-width: 64px; height: auto;" />
+                          <img src="${APP_URL}/images/hermes.png" alt="Agencity Logo" width="64" height="64" style="display: block; border: 0; outline: none; text-decoration: none; max-width: 64px; height: auto;" />
                         </td>
                       </tr>
                     </table>
@@ -59,7 +59,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
                 <tr>
                   <td align="center">
                     <h1 style="margin: 0; font-size: 36px; font-weight: 600; color: #f5f5f7; letter-spacing: -0.5px; line-height: 1.2;">
-                      Hermes
+                      Agencity
                     </h1>
                     <p style="margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: 4px; color: #d4a853;">
                       Is Now Live
@@ -75,7 +75,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
       <!-- Main Content -->
       <div style="padding: 40px 32px;">
         <p style="text-align: center; font-size: 18px; line-height: 1.7; color: #f5f5f7; margin: 0 0 40px;">
-          We're thrilled to announce that <span style="font-weight: 600; color: #d4a853;">Hermes</span> has officially launched! Connect directly with YC founders and land your dream startup internship with AI-powered cold emails.
+          We're thrilled to announce that <span style="font-weight: 600; color: #d4a853;">Agencity</span> has officially launched! Connect directly with YC founders and land your dream startup internship with AI-powered cold emails.
         </p>
 
         <!-- Features Section -->
@@ -163,7 +163,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
 
         <!-- CTA Button -->
         <div style="margin-top: 40px; text-align: center;">
-          <a href="https://joinhermes.co" 
+          <a href="https://agencity.co" 
              style="display: inline-block; background: linear-gradient(135deg, #d4a853 0%, #c9a356 100%); color: #0f0f1a; padding: 16px 40px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 16px; box-shadow: 0 10px 25px rgba(212, 168, 83, 0.25);">
             Get Started Now
           </a>
@@ -177,10 +177,10 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
       <div style="border-top: 1px solid #2a2a4a; background-color: rgba(15, 15, 26, 0.6); padding: 32px;">
         <div style="text-align: center;">
           <div style="margin: 0 auto 16px; width: 40px; height: 40px; background-color: #0f0f1a; border-radius: 12px; overflow: hidden;">
-            <img src="${APP_URL}/images/hermes.png" alt="Hermes" style="width: 100%; height: 100%; object-fit: contain;" />
+            <img src="${APP_URL}/images/hermes.png" alt="Agencity" style="width: 100%; height: 100%; object-fit: contain;" />
           </div>
           <p style="margin: 0; font-size: 14px; color: #a1a1aa;">
-            © 2025 Hermes. All rights reserved.
+            © 2025 Agencity. All rights reserved.
           </p>
           <div style="margin-top: 16px;">
             <a href="${APP_URL}/privacy" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Privacy Policy</a>
@@ -188,7 +188,7 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
             <a href="${APP_URL}/unsubscribe?email={{email}}" style="font-size: 12px; color: #a1a1aa; text-decoration: none; margin: 0 12px;">Unsubscribe</a>
           </div>
           <p style="margin: 12px 0 0; font-size: 11px; color: rgba(161, 161, 170, 0.6);">
-            You're receiving this email because you signed up for Hermes updates.
+            You're receiving this email because you signed up for Agencity updates.
           </p>
         </div>
       </div>
@@ -199,10 +199,10 @@ const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
 `;
 
 const EMAIL_TEXT = process.env.WAITLIST_EMAIL_TEXT || `
-HERMES IS NOW LIVE
+AGENCITY IS NOW LIVE
 ==================
 
-We're thrilled to announce that Hermes has officially launched! Connect directly with YC founders and land your dream startup internship with AI-powered cold emails.
+We're thrilled to announce that Agencity has officially launched! Connect directly with YC founders and land your dream startup internship with AI-powered cold emails.
 
 WHAT'S INSIDE
 -------------
@@ -224,15 +224,15 @@ GET STARTED: ${APP_URL}
 Free to start • Premium features available
 
 ---
-© 2025 Hermes. All rights reserved.
+© 2025 Agencity. All rights reserved.
 
-Hermes
+Agencity
 
 Privacy Policy: ${APP_URL}/privacy
 Terms of Service: ${APP_URL}/terms
 Unsubscribe: ${APP_URL}/unsubscribe?email={{email}}
 
-You're receiving this email because you signed up for Hermes updates.
+You're receiving this email because you signed up for Agencity updates.
 `;
 
 interface WaitlistEntry {

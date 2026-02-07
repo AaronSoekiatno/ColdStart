@@ -13,7 +13,7 @@ export function AIAgentSection() {
         </ScrollAnimate>
         <ScrollAnimate direction="up" delay={150} threshold={0.2}>
           <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
-            Hermes works 24/7 to connect you with startup founders.
+            Agencity works 24/7 to connect you with startup founders.
             Personalized. Professional. Proven.
           </p>
         </ScrollAnimate>

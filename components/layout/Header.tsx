@@ -160,12 +160,12 @@ export const Header = ({ initialUser }: HeaderProps) => {
           <Link href="/" className="flex items-center gap-3 flex-shrink-0">
             <Image
               src="/images/blacked.svg"
-              alt="Hermes logo"
+              alt="Agencity logo"
               width={32}
               height={32}
               priority
             />
-            <span className="text-xl font-semibold text-gray-800">Hermes</span>
+            <span className="text-xl font-semibold text-gray-800">Agencity</span>
           </Link>
 
           {/* Desktop Navigation - Hidden on mobile */}
@@ -424,12 +424,12 @@ export const Header = ({ initialUser }: HeaderProps) => {
         <Link href="/" className="flex items-center gap-3 flex-shrink-0">
           <Image
             src="/images/blacked.svg"
-            alt="Hermes logo"
+            alt="Agencity logo"
             width={32}
             height={32}
             priority
           />
-          <span className="text-xl font-semibold text-gray-800">Hermes</span>
+          <span className="text-xl font-semibold text-gray-800">Agencity</span>
         </Link>
 
         {/* Desktop Navigation for Landing Page */}

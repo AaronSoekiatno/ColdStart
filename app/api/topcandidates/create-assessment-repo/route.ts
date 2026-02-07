@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
              'Update assessment environment'
            ).catch(err => console.error('[Create Repo] async env update failed:', err));
 
-           // Inject/update .hermes/config.json with sessionId if provided
+           // Inject/update .agencity/config.json with sessionId if provided
            if (sessionId) {
              const apiBaseUrl = origin.replace('/api/topcandidates/provision', '') + '/api/interview';
              const configContent = JSON.stringify({
@@ -250,10 +250,10 @@ export async function POST(request: NextRequest) {
              uploadFile(
                repoOwner,
                repoName,
-               '.hermes/config.json',
+               '.agencity/config.json',
                configContent,
                candidate.github_access_token,
-               'Update Hermes interview session configuration'
+               'Update Agencity interview session configuration'
              ).catch(err => console.error('[Create Repo] async config update failed:', err));
            }
         }
@@ -314,7 +314,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create repository from template using GitHub API
-    const repoName = `hermes-assessment-${candidate.id.substring(0, 8)}`;
+    const repoName = `agencity-assessment-${candidate.id.substring(0, 8)}`;
     let repoUrl = '';
     let cloneUrl = '';
     let repoOwnerName = '';
@@ -333,7 +333,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             name: repoName,
             private: true,
-            description: 'Hermes 20-minute assessment workspace',
+            description: 'Agencity 20-minute assessment workspace',
           }),
         }
       );
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
             body: JSON.stringify({
               name: repoName,
               private: true,
-              description: 'Hermes 20-minute assessment workspace',
+              description: 'Agencity 20-minute assessment workspace',
             }),
           }
         );
@@ -437,11 +437,11 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Inject HERMES_PROVISIONING_TOKEN
+        // Inject AGENCITY_PROVISIONING_TOKEN
         await uploadSecret(
           repoOwnerName,
           repoName,
-          'HERMES_PROVISIONING_TOKEN',
+          'AGENCITY_PROVISIONING_TOKEN',
           provisioningToken,
           candidate.github_access_token
         );
@@ -532,10 +532,10 @@ export async function POST(request: NextRequest) {
         console.error('[Create Repo] Error injecting script URL:', scriptError);
       }
 
-      // Inject .hermes/config.json with sessionId if provided
+      // Inject .agencity/config.json with sessionId if provided
       if (sessionId) {
         try {
-          console.log(`[Create Repo] Injecting .hermes/config.json into ${repoOwnerName}/${repoName}...`);
+          console.log(`[Create Repo] Injecting .agencity/config.json into ${repoOwnerName}/${repoName}...`);
           
           const apiBaseUrl = origin.replace('/api/topcandidates/provision', '') + '/api/interview';
           const configContent = JSON.stringify({
@@ -546,23 +546,23 @@ export async function POST(request: NextRequest) {
           const configUploaded = await uploadFile(
             repoOwnerName,
             repoName,
-            '.hermes/config.json',
+            '.agencity/config.json',
             configContent,
             candidate.github_access_token,
-            'Add Hermes interview session configuration'
+            'Add Agencity interview session configuration'
           );
 
           if (configUploaded) {
-            console.log('[Create Repo] Successfully injected .hermes/config.json with sessionId');
+            console.log('[Create Repo] Successfully injected .agencity/config.json with sessionId');
           } else {
-            console.warn('[Create Repo] Failed to inject .hermes/config.json');
+            console.warn('[Create Repo] Failed to inject .agencity/config.json');
           }
         } catch (configError) {
-          console.error('[Create Repo] Error injecting .hermes/config.json:', configError);
+          console.error('[Create Repo] Error injecting .agencity/config.json:', configError);
           // Don't fail repo creation if config injection fails
         }
       } else {
-        console.warn('[Create Repo] No sessionId provided - .hermes/config.json will need to be added manually');
+        console.warn('[Create Repo] No sessionId provided - .agencity/config.json will need to be added manually');
       }
 
       // Update candidate record

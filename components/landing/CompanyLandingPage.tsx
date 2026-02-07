@@ -105,6 +105,7 @@ export function CompanyLandingPage() {
             <a href="#how-it-works" className="text-sm font-medium text-white/70 hover:text-white transition-colors">How it works</a>
             <a href="#pricing" className="text-sm font-medium text-white/70 hover:text-white transition-colors">Pricing</a>
             <a href="#faq" className="text-sm font-medium text-white/70 hover:text-white transition-colors">FAQ</a>
+            <Link href="/candidates" className="text-sm font-medium text-white/70 hover:text-white transition-colors">For Candidates</Link>
           </nav>
 
           {/* Right side - always visible */}
@@ -146,7 +147,7 @@ export function CompanyLandingPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 mt-2">
-                      <DropdownMenuItem onClick={() => router.push('/company-form')} className="cursor-pointer">
+                      <DropdownMenuItem onClick={() => router.push('/company-dashboard')} className="cursor-pointer">
                         Dashboard
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
@@ -192,6 +193,7 @@ export function CompanyLandingPage() {
                 <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">How it works</a>
                 <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">Pricing</a>
                 <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">FAQ</a>
+                <Link href="/candidates" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">For Candidates</Link>
                 <div className="border-t border-white/10 my-3"></div>
                 {user ? (
                   <button onClick={() => { handleSignOut(); setMobileMenuOpen(false); }} className="block w-full text-left px-4 py-3 text-base font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 rounded-xl transition-colors">Sign Out</button>
@@ -221,16 +223,18 @@ export function CompanyLandingPage() {
           />
         </div>
 
+        {/* Gradient Overlay for smooth blend */}
+        <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-white via-white/60 to-transparent z-0 pointer-events-none" />
+
         <div className="relative z-10 mx-auto max-w-6xl px-4 md:pt-20 md:pb-16">
           <div className="grid items-center gap-10 md:grid-cols-2">
             <div>
-              <h1 className="mt-5 text-4xl font-semibold leading-tight tracking-tight md:text-5xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>
-                Hire 11x Engineers for your <span className="text-indigo-600">Startup</span>.
+              <h1 className="mt-10 text-8xl font-semibold leading-tight tracking-tight md:text-6xl text-zinc-1600" style={{ fontFamily: 'Ivy Journal, serif' }}>
+                Hire 11x Engineers at 5x the speed
               </h1>
 
               <p className="mt-4 max-w-xl text-base leading-relaxed text-zinc-600 md:text-lg">
-                Agencity runs a company-calibrated work sample and generates a shareable Proof Brief:
-                what's proven, what isn't, and what to ask next—so you can move fast without guessing.
+                Every candidate comes with evidence-backed briefs showing what's <span className="font-semibold text-emerald-700">proven</span> by code and what to <span className="font-semibold text-amber-700">explore</span> in interviews. Make confident hiring decisions in minutes, not weeks.
               </p>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -253,73 +257,79 @@ export function CompanyLandingPage() {
                   <div className="h-8 w-8 rounded-full border border-white bg-zinc-100"></div>
                 </div>
                 <p>
-                  <span className="text-zinc-900 font-medium">6,000+</span> engineers waiting.
-                  Invite candidates when you're ready.
+                  <span className="text-zinc-900 font-medium">6,000+</span> vetted engineers.
+                  Pre-matched to your tech stack & culture.
                 </p>
               </div>
             </div>
 
-            {/* Proof Brief card */}
+            {/* Candidate Brief Card - Updated */}
             <div className="relative">
               <div
-                className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-indigo-500/20 via-sky-400/20 to-fuchsia-500/20 blur-2xl">
+                className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-emerald-500/20 via-sky-400/20 to-amber-500/20 blur-2xl">
               </div>
               <div className="relative rounded-3xl border border-zinc-200 bg-white/80 p-6 backdrop-blur shadow-xl">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-zinc-900">Candidate Proof Brief (example)</h3>
-                    <p className="mt-1 text-xs text-zinc-500">Evidence-backed summary for fast founder review</p>
-                  </div>
-                  <span
-                    className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] text-zinc-500">Shareable
-                    link</span>
-                </div>
-
-                <div className="mt-5 space-y-3">
-                  <div className="flex items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-                    <div>
-                      <p className="text-sm font-medium text-zinc-900">Correctness</p>
-                      <p className="text-xs text-zinc-500">Tests + logs verify required behavior</p>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-zinc-900">Candidate A</h3>
+                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">92% Match</span>
                     </div>
-                    <span
-                      className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Proved</span>
+                    <p className="mt-1 text-xs text-zinc-500">MIT • 4 years experience • Full-stack</p>
                   </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-                    <div>
-                      <p className="text-sm font-medium text-zinc-900">Testing habits</p>
-                      <p className="text-xs text-zinc-500">Coverage + case quality extracted</p>
-                    </div>
-                    <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">Partially
-                      proved</span>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-                    <div>
-                      <p className="text-sm font-medium text-zinc-900">Code quality</p>
-                      <p className="text-xs text-zinc-500">Diff review + complexity signals</p>
-                    </div>
-                    <span
-                      className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">Proved</span>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4">
-                    <div>
-                      <p className="text-sm font-medium text-zinc-900">Communication</p>
-                      <p className="text-xs text-zinc-500">Turn unproved areas into interview prompts</p>
-                    </div>
-                    <span
-                      className="rounded-full bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-500">Unproved</span>
-                  </div>
-                </div>
-
-                <div className="mt-5 flex items-center justify-between">
-                  <p className="text-xs text-zinc-400">Typical founder review time: ~5–8 minutes</p>
                   <button
                     onClick={() => setShowDemoModal(true)}
-                    className="text-sm font-semibold text-indigo-600 underline decoration-indigo-200 underline-offset-4 hover:decoration-indigo-500 transition-colors">
-                    Open full brief
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors flex-shrink-0">
+                    View full brief →
                   </button>
+                </div>
+
+                {/* Proven Claims Section */}
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide mb-2">✓ Proven by Code</p>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Active contributor (18mo)
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Python + React expert
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      High code quality (87/100)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Unproven Claims Section */}
+                <div className="mb-4">
+                  <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-2">? Explore in Interview</p>
+                  <div className="space-y-2">
+                    <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                      <div className="flex items-start gap-2">
+                        <svg className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-amber-900">ML experience (self-reported)</p>
+                          <p className="text-[11px] text-amber-700 mt-0.5 italic">Ask: "Walk me through a recent ML project"</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Match Breakdown */}
+                <div className="pt-3 border-t border-zinc-200">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <span className="text-emerald-600 font-semibold">5 strengths</span>
+                        <span className="text-zinc-400 mx-1">•</span>
+                        <span className="text-amber-600 font-semibold">2 gaps</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -334,7 +344,7 @@ export function CompanyLandingPage() {
         </div>
         <div
           className="relative w-full overflow-hidden grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
-          <div className="flex w-max animate-scroll group-hover:[animation-play-state:paused]">
+          <div className="flex w-max animate-scroll group-hover:[animation-play-state:paused]" style={{ animationDuration: '20s' }}>
             {/* First set of universities */}
             {[...Array(2)].map((_, i) => (
               <div key={i} className="flex">
@@ -400,11 +410,10 @@ export function CompanyLandingPage() {
       {/* How It Works Header (Formerly Problem Section) */}
       <section className="mx-auto max-w-4xl px-4 pt-16 pb-0 text-center">
         <h2 className="text-3xl font-semibold tracking-tight md:text-4xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>
-          The hiring stack wasn't built for startups.
+          Every bad hire costs 6+ months of runway.
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 leading-relaxed">
-          When your team is small, one weak hire creates drag everywhere: code quality, velocity, on-call, and
-          morale. Agencity replaces narrative screening with work evidence you can trust.
+          At seed stage, you can't afford to guess. Agencity shows you exactly what candidates have <span className="font-semibold text-emerald-700">proven through code</span> and what <span className="font-semibold text-amber-700">questions to ask</span> before you commit. No more relying on resumes and gut feelings.
         </p>
       </section>
 
@@ -426,18 +435,30 @@ export function CompanyLandingPage() {
       <section id="access" className="py-24 px-4 text-center">
         <div className="max-w-3xl mx-auto space-y-8">
           <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'Ivy Journal, serif' }}>
-            Your next hire should come with confidence.
+            Stop guessing. Start hiring with proof.
           </h2>
           <p className="text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed">
-            Request early access for your startup, or join the talent network to get matched with teams that hire based on real work.
+            Join early-stage founders who are building teams based on evidence, not interviews alone. See exactly what your next engineer has proven—before the first call.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={handleGetStarted}
               className="rounded-full bg-zinc-900 px-8 py-4 text-base font-semibold text-white hover:bg-zinc-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
             >
-              Request Access
+              Request Early Access
             </button>
+          </div>
+
+          {/* Social Proof for Founders */}
+          <div className="pt-6">
+            <p className="text-sm text-zinc-500 mb-3">Built for early-stage teams at:</p>
+            <div className="flex flex-wrap items-center justify-center gap-6 opacity-60">
+              <span className="text-xs font-medium text-zinc-400">YC-backed startups</span>
+              <span className="text-zinc-300">•</span>
+              <span className="text-xs font-medium text-zinc-400">Seed to Series A</span>
+              <span className="text-zinc-300">•</span>
+              <span className="text-xs font-medium text-zinc-400">Technical founders</span>
+            </div>
           </div>
         </div>
       </section>
@@ -460,54 +481,118 @@ export function CompanyLandingPage() {
         </div>
       </footer>
 
-      {/* Demo Modal */}
+      {/* Demo Modal - Updated */}
       {showDemoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDemoModal(false)}></div>
-          <div className="relative w-full max-w-3xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between gap-6">
+          <div className="relative w-full max-w-4xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-6 mb-6">
               <div>
-                <p className="text-sm font-semibold text-zinc-900">Sample Proof Brief</p>
-                <p className="mt-1 text-sm text-zinc-500">This is what founders receive after a candidate completes a
-                  simulation.</p>
+                <div className="flex items-center gap-3 mb-1">
+                  <p className="text-lg font-semibold text-zinc-900">Candidate A - Full Brief</p>
+                  <span className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">92% Match</span>
+                </div>
+                <p className="text-sm text-zinc-500">MIT • 4 years experience • Python, React, Go</p>
               </div>
               <button
                 onClick={() => setShowDemoModal(false)}
-                className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 transition-colors">
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-100 transition-colors flex-shrink-0">
                 Close
               </button>
             </div>
 
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-                <p className="text-xs uppercase tracking-widest text-zinc-400">Proved</p>
-                <p className="mt-2 font-semibold text-zinc-900">Implemented required behavior</p>
-                <p className="mt-2 text-sm text-zinc-600">Evidence: test logs + diff link + passing suite.</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-                <p className="text-xs uppercase tracking-widest text-zinc-400">Proved</p>
-                <p className="mt-2 font-semibold text-zinc-900">Readable, maintainable changes</p>
-                <p className="mt-2 text-sm text-zinc-600">Evidence: small commits, low complexity delta, clear naming.</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-                <p className="text-xs uppercase tracking-widest text-zinc-400">Unproved</p>
-                <p className="mt-2 font-semibold text-zinc-900">API design under ambiguity</p>
-                <p className="mt-2 text-sm text-zinc-600">Interview prompts: tradeoffs, constraints, edge cases.</p>
-              </div>
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-                <p className="text-xs uppercase tracking-widest text-zinc-400">Unproved</p>
-                <p className="mt-2 font-semibold text-zinc-900">Production readiness habits</p>
-                <p className="mt-2 text-sm text-zinc-600">Interview prompts: monitoring, rollback, failure modes.</p>
+            {/* Proven Claims */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-emerald-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                Proven by Code & Evidence
+              </h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-900 mb-1">Active Python contributor (18+ months)</p>
+                  <p className="text-xs text-emerald-700">GitHub: 124 commits across 6 projects, consistent activity since Jan 2023</p>
+                </div>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-900 mb-1">Strong debugger (15+ bug fixes)</p>
+                  <p className="text-xs text-emerald-700">GitHub: Refactoring commits, iterative development patterns</p>
+                </div>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-900 mb-1">Production-ready code quality</p>
+                  <p className="text-xs text-emerald-700">Assessment: 95% score, excellent code structure</p>
+                </div>
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-900 mb-1">Full-stack experience (React + Python)</p>
+                  <p className="text-xs text-emerald-700">GitHub: 3 full-stack projects with modern patterns</p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-              <p className="text-sm font-semibold text-zinc-900">Suggested next interview (30 minutes)</p>
-              <ol className="mt-2 list-decimal pl-5 text-sm text-zinc-600 space-y-1">
-                <li>Walk through one design decision and alternatives.</li>
-                <li>Ask for edge cases and failure modes they'd monitor.</li>
-                <li>Have them improve one test for better coverage/meaning.</li>
-              </ol>
+            {/* Unproven Claims */}
+            <div className="mb-6">
+              <h3 className="text-sm font-semibold text-amber-700 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                Explore in Interview
+              </h3>
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="font-semibold text-amber-900 mb-1">Machine Learning experience</p>
+                      <p className="text-xs text-amber-700 mb-2">Source: Self-reported on resume</p>
+                      <p className="text-xs text-amber-800 italic">💬 Suggested question: "Can you walk me through a recent ML project and your role in it?"</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className="font-semibold text-amber-900 mb-1">Led a team of 3 engineers</p>
+                      <p className="text-xs text-amber-700 mb-2">Source: Resume claim</p>
+                      <p className="text-xs text-amber-800 italic">💬 Suggested question: "Tell me about your leadership experience. What were the key challenges?"</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Match Analysis */}
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-zinc-500 uppercase mb-2">Strengths (5)</p>
+                  <ul className="space-y-1.5 text-sm text-zinc-700">
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-600 mt-0.5">✓</span>
+                      <span>4+ years Python experience (matches requirement)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-600 mt-0.5">✓</span>
+                      <span>Fast-paced startup background</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-emerald-600 mt-0.5">✓</span>
+                      <span>High code quality standards</span>
+                    </li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-500 uppercase mb-2">Gaps (2)</p>
+                  <ul className="space-y-1.5 text-sm text-zinc-700">
+                    <li className="flex items-start gap-2">
+                      <span className="text-amber-600 mt-0.5">!</span>
+                      <span>No ML production experience verified</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-amber-600 mt-0.5">!</span>
+                      <span>Leadership claims need exploration</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-zinc-200 text-center">
+              <p className="text-xs text-zinc-400">This brief took ~6 minutes to review • Ready to schedule interview</p>
             </div>
           </div>
         </div>

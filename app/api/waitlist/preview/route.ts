@@ -6,8 +6,8 @@ import { NextResponse } from 'next/server';
  */
 export async function GET() {
   // Get email content from environment variables or use defaults
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://coldstart.ai';
-  const EMAIL_SUBJECT = process.env.WAITLIST_EMAIL_SUBJECT || 'ColdStart is Now Live';
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://agencity.co';
+  const EMAIL_SUBJECT = process.env.WAITLIST_EMAIL_SUBJECT || 'Agencity is Now Live';
   
   const EMAIL_HTML = process.env.WAITLIST_EMAIL_HTML || `
 <!DOCTYPE html>

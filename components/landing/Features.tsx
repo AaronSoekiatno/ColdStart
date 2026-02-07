@@ -27,7 +27,7 @@ export const Features = () => {
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-12 md:mb-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 px-2">
-            Why Choose Hermes?
+            Why Choose Agencity?
           </h2>
           <p className="text-sm sm:text-base md:text-lg text-white/80 px-2">
             To effortlessly land the job before everyone else
@@ -36,8 +36,8 @@ export const Features = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 w-full max-w-6xl mx-auto">
           {features.map((feature, index) => (
-            <Card 
-              key={index} 
+            <Card
+              key={index}
               className="border-white/20 bg-white/10 backdrop-blur-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-2"
             >
               <CardHeader className="p-4 sm:p-6">

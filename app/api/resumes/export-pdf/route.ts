@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const filename =
       (candidateName || structuredResumeData.personal.name || "resume")
-        .replace(/\s+/g, "_") + "_Hermes.pdf";
+        .replace(/\s+/g, "_") + "_Agencity.pdf";
 
     return new NextResponse(Buffer.from(pdfBuffer), {
       status: 200,

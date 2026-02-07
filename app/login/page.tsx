@@ -44,13 +44,13 @@ function LoginPageContent() {
                     <div className="flex justify-center mb-6">
                         <Image
                             src="/images/blacked.svg"
-                            alt="Hermes"
+                            alt="Agencity"
                             width={48}
                             height={48}
                             priority
                         />
                     </div>
-                    <h2 className="text-3xl font-bold text-gray-900">Sign in to Hermes</h2>
+                    <h2 className="text-3xl font-bold text-gray-900">Sign in to Agencity</h2>
                     <p className="mt-2 text-sm text-gray-600">
                         {redirect !== '/matches'
                             ? 'You need to be logged in to access this page'
@@ -83,13 +83,13 @@ export default function LoginPage() {
                         <div className="flex justify-center mb-6">
                             <Image
                                 src="/images/blacked.svg"
-                                alt="Hermes"
+                                alt="Agencity"
                                 width={48}
                                 height={48}
                                 priority
                             />
                         </div>
-                        <h2 className="text-3xl font-bold text-gray-900">Sign in to Hermes</h2>
+                        <h2 className="text-3xl font-bold text-gray-900">Sign in to Agencity</h2>
                         <p className="mt-2 text-sm text-gray-600">Loading...</p>
                     </div>
                 </div>

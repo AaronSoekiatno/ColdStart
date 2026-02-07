@@ -24,7 +24,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !email.includes("@")) {
       toast({
         title: "Invalid email",
@@ -79,7 +79,7 @@ export function WaitlistModal({ open, onOpenChange }: WaitlistModalProps) {
             Join the Waitlist
           </DialogTitle>
           <DialogDescription className="text-white/60 text-center">
-            Be the first to know when we launch. Get early access to Hermes.
+            Be the first to know when we launch. Get early access to Agencity.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">

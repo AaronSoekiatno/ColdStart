@@ -8,12 +8,12 @@ export default function PrivacyPolicy() {
 
           <div className="space-y-6 text-gray-700">
             <p>
-              This Privacy Notice for <strong>Hermes</strong> ("<strong>we</strong>," "<strong>us</strong>," or "<strong>our</strong>"), describes how and why we might access, collect, store, use, and/or share ("<strong>process</strong>") your personal information when you use our services ("<strong>Services</strong>"), including when you:
+              This Privacy Notice for <strong>Agencity</strong> ("<strong>we</strong>," "<strong>us</strong>," or "<strong>our</strong>"), describes how and why we might access, collect, store, use, and/or share ("<strong>process</strong>") your personal information when you use our services ("<strong>Services</strong>"), including when you:
             </p>
 
             <ul className="list-disc pl-6 space-y-2">
               <li>Visit our website at <a href="https://cold-start-nu.vercel.app/" className="text-blue-600 hover:underline">https://cold-start-nu.vercel.app/</a> or any website of ours that links to this Privacy Notice</li>
-              <li>Use <strong>Hermes</strong>. <strong>Hermes is a platform that helps students and job seekers find internships and opportunities at startups.</strong></li>
+              <li>Use <strong>Agencity</strong>. <strong>Agencity is a platform that helps students and job seekers find internships and opportunities at startups.</strong></li>
               <li>Engage with us in other related ways, including any marketing or events</li>
             </ul>
 
@@ -212,7 +212,7 @@ export default function PrivacyPolicy() {
             <p className="italic"><strong>In Short:</strong> We keep your information for as long as necessary to fulfill the purposes outlined in this Privacy Notice unless otherwise required by law.</p>
 
             <p>
-              We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, unless a longer retention period is required or permitted by law (such as tax, accounting, or other legal requirements). 
+              We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, unless a longer retention period is required or permitted by law (such as tax, accounting, or other legal requirements).
             </p>
             <p className="mt-2">
               <strong>Subscription and Payment Data:</strong> We retain subscription and payment information for as long as your account is active and for up to 7 years after account termination or subscription cancellation to comply with tax, accounting, and legal requirements. Payment transaction records are maintained in accordance with applicable financial regulations.
@@ -532,7 +532,7 @@ export default function PrivacyPolicy() {
             </p>
 
             <p className="mt-4">
-              <strong>Hermes</strong><br />
+              <strong>Agencity</strong><br />
               __________<br />
               __________<br />
               United States

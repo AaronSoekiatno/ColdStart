@@ -23,12 +23,12 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "Join Hermes - AI Job Search for YC Startups | Land Startup Jobs While You Sleep",
+  title: "Join Agencity - AI Job Search for YC Startups | Land Startup Jobs While You Sleep",
   description:
-    "Join Hermes: Your AI agent networks with 2000+ YC founders automatically. AI-powered job search, personalized outreach, and automated networking for startup jobs. 500+ students landing interviews at top YC startups.",
+    "Join Agencity: Your AI agent networks with 2000+ YC founders automatically. AI-powered job search, personalized outreach, and automated networking for startup jobs. 500+ students landing interviews at top YC startups.",
   keywords: [
-    "Join Hermes",
-    "Hermes AI job search",
+    "Join Agencity",
+    "Agencity AI job search",
     "YC startup jobs",
     "AI job search tool",
     "startup job networking",
@@ -38,15 +38,15 @@ export const metadata: Metadata = {
     "startup interview tool",
     "Y Combinator jobs"
   ],
-  authors: [{ name: "Hermes" }],
-  creator: "Hermes",
-  publisher: "Hermes",
+  authors: [{ name: "Agencity" }],
+  creator: "Agencity",
+  publisher: "Agencity",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://joinhermes.co'),
+  metadataBase: new URL('https://agencity.co'),
   alternates: {
     canonical: '/',
   },
@@ -58,25 +58,25 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://joinhermes.co',
-    siteName: 'Join Hermes',
-    title: 'Join Hermes - AI Job Search for YC Startups',
+    url: 'https://agencity.co',
+    siteName: 'Join Agencity',
+    title: 'Join Agencity - AI Job Search for YC Startups',
     description: 'Your AI agent networks with 2000+ YC founders automatically. Land startup jobs while you sleep with AI-powered networking.',
     images: [
       {
         url: '/images/hermes-og.png',
         width: 1200,
         height: 630,
-        alt: 'Join Hermes - AI Job Search for YC Startups',
+        alt: 'Join Agencity - AI Job Search for YC Startups',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Join Hermes - AI Job Search for YC Startups',
+    title: 'Join Agencity - AI Job Search for YC Startups',
     description: 'Your AI agent networks with 2000+ YC founders automatically. Land startup jobs while you sleep.',
     images: ['/images/hermes-og.png'],
-    creator: '@joinhermes',
+    creator: '@agencity',
   },
   robots: {
     index: true,
@@ -99,9 +99,9 @@ export default function RootLayout({
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
-    name: 'Join Hermes',
-    alternateName: 'Hermes AI Job Search',
-    url: 'https://joinhermes.co',
+    name: 'Join Agencity',
+    alternateName: 'Agencity AI Job Search',
+    url: 'https://agencity.co',
     description: 'AI-powered job search agent that networks with 2000+ YC founders automatically to help you land startup jobs',
     applicationCategory: 'BusinessApplication',
     operatingSystem: 'Web',
@@ -125,7 +125,7 @@ export default function RootLayout({
     },
     brand: {
       '@type': 'Brand',
-      name: 'Hermes',
+      name: 'Agencity',
       slogan: 'Land Jobs at Top Startups While You Sleep'
     },
     keywords: 'AI job search, YC startups, startup jobs, automated networking, job applications, Y Combinator, career agent',

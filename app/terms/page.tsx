@@ -9,7 +9,7 @@ export default function TermsOfService() {
           <div className="space-y-6 text-gray-700">
             <h2 className="text-2xl font-bold mt-8 mb-4">AGREEMENT TO OUR LEGAL TERMS</h2>
             <p>
-              We are <strong>Hermes</strong> ("<strong>Company</strong>," "<strong>we</strong>," "<strong>us</strong>," "<strong>our</strong>").
+              We are <strong>Agencity</strong> ("<strong>Company</strong>," "<strong>we</strong>," "<strong>us</strong>," "<strong>our</strong>").
             </p>
 
             <p>
@@ -21,7 +21,7 @@ export default function TermsOfService() {
             </p>
 
             <p>
-              These Legal Terms constitute a legally binding agreement made between you, whether personally or on behalf of an entity ("<strong>you</strong>"), and <strong>Hermes</strong>, concerning your access to and use of the Services. You agree that by accessing the Services, you have read, understood, and agreed to be bound by all of these Legal Terms. IF YOU DO NOT AGREE WITH ALL OF THESE LEGAL TERMS, THEN YOU ARE EXPRESSLY PROHIBITED FROM USING THE SERVICES AND YOU MUST DISCONTINUE USE IMMEDIATELY.
+              These Legal Terms constitute a legally binding agreement made between you, whether personally or on behalf of an entity ("<strong>you</strong>"), and <strong>Agencity</strong>, concerning your access to and use of the Services. You agree that by accessing the Services, you have read, understood, and agreed to be bound by all of these Legal Terms. IF YOU DO NOT AGREE WITH ALL OF THESE LEGAL TERMS, THEN YOU ARE EXPRESSLY PROHIBITED FROM USING THE SERVICES AND YOU MUST DISCONTINUE USE IMMEDIATELY.
             </p>
 
             <p>
@@ -175,7 +175,7 @@ export default function TermsOfService() {
             </p>
 
             <h2 id="purchases" className="text-2xl font-bold mt-8 mb-4">5. PURCHASES AND PAYMENT</h2>
-            
+
             <h3 className="text-xl font-bold mt-6 mb-3">Payment Methods</h3>
             <p>
               We accept the following forms of payment through our third-party payment processor, <strong>Stripe</strong>:
@@ -417,7 +417,7 @@ export default function TermsOfService() {
             </p>
 
             <p className="mt-4">
-              <strong>Hermes</strong><br />
+              <strong>Agencity</strong><br />
               __________<br />
               __________<br />
               United States<br />

@@ -183,7 +183,7 @@ function AssessmentContent() {
                   Assessment Complete!
                 </h1>
                 <p className="text-gray-600 text-lg">
-                  Thank you for completing your technical assessment with Hermes.
+                  Thank you for completing your technical assessment with Agencity.
                 </p>
               </div>
 

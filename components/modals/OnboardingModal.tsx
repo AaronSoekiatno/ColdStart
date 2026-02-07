@@ -712,10 +712,10 @@ export function OnboardingModal({ open, onOpenChange, onComplete, skipResumeUplo
                 <div className="space-y-4">
                   <div className="mb-4">
                     <h1 className="text-2xl sm:text-3xl font-bold text-black mb-2 tracking-tight leading-tight">
-                      Welcome to <span className="text-[#498EDC]">Hermes!</span>
+                      Welcome to <span className="text-[#498EDC]">Agencity!</span>
                     </h1>
                     <p className="text-sm sm:text-base text-gray-600 leading-snug font-light">
-                      Which of the following choices best describe your objective with Hermes?
+                      Which of the following choices best describe your objective with Agencity?
                     </p>
                     <p className="text-xs sm:text-sm text-gray-500 mt-1">Select all that apply</p>
                   </div>
