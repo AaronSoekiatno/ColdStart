@@ -147,8 +147,8 @@ export default function CompanyFormPage() {
 
             setIsSuccess(true);
             setTimeout(() => {
-                router.push("/company-dashboard");
-            }, 3000);
+                router.push("/founder-interview");
+            }, 2000);
         } catch (err: any) {
             console.error("Error submitting form:", err?.message || err || "Unknown error");
             setError(err?.message || "Failed to submit. Please try again.");
@@ -408,9 +408,9 @@ export default function CompanyFormPage() {
                                 <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 mb-8">
                                     <CheckCircle2 className="w-10 h-10 text-green-600" />
                                 </div>
-                                <h2 className="text-3xl font-bold text-black mb-4">Profile Created!</h2>
+                                <h2 className="text-3xl font-bold text-black mb-4">Basic Info Saved!</h2>
                                 <p className="text-gray-600 max-w-sm mx-auto leading-relaxed">
-                                    Taking you to your dashboard where you can see your top matched candidates...
+                                    Now let's understand your company's DNA to find the perfect engineering matches...
                                 </p>
                                 <div className="mt-12 flex justify-center">
                                     <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">

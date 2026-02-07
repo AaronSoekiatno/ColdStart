@@ -12,6 +12,8 @@ export interface CompanyProfile {
     quality_bar: 'high' | 'balanced' | 'move-fast';
     priorities: string[];
     culture_description: string;
+    github_repo_url?: string | null;
+    codebase_provided?: boolean;
   };
 }
 
@@ -92,7 +94,9 @@ export const mockCompany: CompanyProfile = {
     pace: "deliberate",
     quality_bar: "high",
     priorities: ["ownership", "impact", "quality", "autonomy"],
-    culture_description: "Build software that solves the world's hardest problems. We value deep technical expertise, rigorous problem-solving, and engineers who take extreme ownership of complex systems that matter."
+    culture_description: "Build software that solves the world's hardest problems. We value deep technical expertise, rigorous problem-solving, and engineers who take extreme ownership of complex systems that matter.",
+    github_repo_url: "https://github.com/palantir/osquery",
+    codebase_provided: true
   }
 };
 
