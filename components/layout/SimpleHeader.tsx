@@ -42,13 +42,13 @@ export const SimpleHeader = ({ userEmail }: SimpleHeaderProps) => {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
             <Image
-              src="/images/hermes.png"
+              src="/images/blacked.svg"
               alt="Agencity"
               width={32}
               height={32}
               className="w-8 h-8"
             />
-            <span className="text-xl font-bold text-zinc-900 group-hover:text-blue-600 transition-colors">
+            <span className="text-2xl font-serif text-zinc-900 group-hover:text-blue-600 transition-colors">
               Agencity
             </span>
           </Link>

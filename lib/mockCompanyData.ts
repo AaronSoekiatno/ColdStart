@@ -82,6 +82,13 @@ export interface CandidateBrief {
   match_analysis: MatchAnalysis;
 }
 
+// New Interface for Job Contexts
+export interface JobContext {
+  id: string;
+  title: string; // e.g. "Senior Full Stack Engineer - Palantir"
+  type: 'backend' | 'frontend' | 'fullstack' | 'ml' | 'other';
+}
+
 // Mock company data - Palantir
 export const mockCompany: CompanyProfile = {
   id: "palantir-1",
@@ -99,6 +106,14 @@ export const mockCompany: CompanyProfile = {
     codebase_provided: true
   }
 };
+
+// Mock Job Contexts
+export const mockJobContexts: JobContext[] = [
+  { id: 'job-1', title: 'Senior Full Stack Engineer - Palantir', type: 'fullstack' },
+  { id: 'job-2', title: 'Backend Developer - Palantir', type: 'backend' },
+  { id: 'job-3', title: 'Frontend Specialist - Palantir', type: 'frontend' },
+  { id: 'job-4', title: 'Machine Learning Engineer - Palantir', type: 'ml' },
+];
 
 // Mock candidate briefs
 export const mockCandidates: CandidateBrief[] = [
