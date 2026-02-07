@@ -54,18 +54,33 @@ export default function CandidateBriefCard({ candidate }: CandidateBriefCardProp
         {/* Header: Candidate Info + Match Score */}
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           {/* Candidate Info */}
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              {candidate.anonymized_name}
-            </h3>
-            <div className="flex flex-wrap gap-3 text-sm text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <GraduationCap className="w-4 h-4 text-gray-400" />
-                <span>{candidate.school}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Briefcase className="w-4 h-4 text-gray-400" />
-                <span>{candidate.years_of_experience} years experience</span>
+          <div className="flex-1 flex gap-4">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 overflow-hidden flex-shrink-0 border-2 border-white shadow-sm">
+              {candidate.avatar_url ? (
+                <img
+                  src={candidate.avatar_url}
+                  alt={candidate.anonymized_name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg">
+                  {candidate.anonymized_name[0]}
+                </div>
+              )}
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {candidate.anonymized_name}
+              </h3>
+              <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+                <div className="flex items-center gap-1.5">
+                  <GraduationCap className="w-4 h-4 text-gray-400" />
+                  <span>{candidate.school}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Briefcase className="w-4 h-4 text-gray-400" />
+                  <span>{candidate.years_of_experience} years experience</span>
+                </div>
               </div>
             </div>
           </div>

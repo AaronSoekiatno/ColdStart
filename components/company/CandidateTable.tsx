@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Github, Award, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, Github, Award, ExternalLink, Code, CheckCircle, AlertCircle, GraduationCap, Briefcase, Clock } from 'lucide-react';
 import { CandidateBrief } from '@/lib/mockCompanyData';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -49,11 +49,8 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
       {/* Table Body */}
       <div className="divide-y divide-zinc-100">
         {candidates.map((candidate, index) => (
-          <motion.div
+          <div
             key={candidate.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.3 }}
             className="group"
           >
             {/* Main Row */}
@@ -63,8 +60,16 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
             >
               {/* Candidate Name */}
               <div className="col-span-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                  {getInitials(candidate.anonymized_name)}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 overflow-hidden flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                  {candidate.avatar_url ? (
+                    <img
+                      src={candidate.avatar_url}
+                      alt={candidate.anonymized_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    getInitials(candidate.anonymized_name)
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="font-semibold text-zinc-900 truncate">{candidate.anonymized_name}</p>
@@ -86,7 +91,7 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
               <div className="col-span-2 flex items-center">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm font-semibold ${getMatchColor(candidate.match_score)}`}>
                   <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
                   {candidate.match_score}% Match
                 </span>
@@ -97,7 +102,7 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                 <span className="inline-flex items-center gap-1.5 text-sm">
                   <span className="flex items-center gap-1 text-emerald-600 font-semibold">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     {candidate.proven_claims.length}
                   </span>
@@ -110,7 +115,7 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                 <span className="inline-flex items-center gap-1.5 text-sm">
                   <span className="flex items-center gap-1 text-amber-600 font-semibold">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                     {candidate.unproven_claims.length}
                   </span>
@@ -147,17 +152,14 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                       <div>
                         <h4 className="text-sm font-semibold text-emerald-700 uppercase tracking-wide mb-3 flex items-center gap-2">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                           </svg>
                           Proven by Evidence
                         </h4>
                         <div className="space-y-2">
                           {candidate.proven_claims.map((claim, idx) => (
-                            <motion.div
+                            <div
                               key={idx}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: idx * 0.05 }}
                               className="bg-white rounded-lg border border-emerald-100 p-3 hover:border-emerald-200 transition-colors"
                             >
                               <div className="flex items-start gap-2">
@@ -167,7 +169,7 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                                   <p className="text-xs text-zinc-500 mt-1">{claim.evidence_detail}</p>
                                 </div>
                               </div>
-                            </motion.div>
+                            </div>
                           ))}
                         </div>
 
@@ -210,23 +212,20 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                         <div>
                           <h4 className="text-sm font-semibold text-amber-700 uppercase tracking-wide mb-3 flex items-center gap-2">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd"/>
+                              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                             </svg>
                             Explore in Interview
                           </h4>
                           <div className="space-y-2">
                             {candidate.unproven_claims.map((claim, idx) => (
-                              <motion.div
+                              <div
                                 key={idx}
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.05 }}
                                 className="bg-white rounded-lg border border-amber-100 p-3 hover:border-amber-200 transition-colors"
                               >
                                 <p className="text-sm font-medium text-amber-900 mb-1">{claim.claim}</p>
                                 <p className="text-xs text-amber-700 mb-2">Source: {claim.source === 'self_reported' ? 'Self-reported' : 'Resume'}</p>
                                 <p className="text-xs text-zinc-600 italic">💬 "{claim.interview_question}"</p>
-                              </motion.div>
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -282,6 +281,136 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                       </div>
                     </div>
 
+                    {/* Full-width sections for new data */}
+                    <div className="space-y-4 pt-4 border-t border-zinc-200">
+                      {/* Real-world Experience */}
+                      {candidate.real_world_experience && candidate.real_world_experience.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-zinc-700" />
+                            Real-World Experience
+                          </h4>
+                          <div className="space-y-3">
+                            {candidate.real_world_experience.map((exp, idx) => (
+                              <div key={idx} className="bg-white rounded-lg border border-zinc-200 p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div>
+                                    <p className="text-sm font-semibold text-zinc-900">{exp.role}</p>
+                                    <p className="text-xs text-zinc-600">{exp.company} • {exp.duration}</p>
+                                  </div>
+                                  {exp.verified && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-xs font-medium text-green-700">
+                                      <CheckCircle className="w-3 h-3" />
+                                      Verified
+                                    </span>
+                                  )}
+                                </div>
+                                <ul className="space-y-1 mt-2">
+                                  {exp.key_achievements.map((achievement, i) => (
+                                    <li key={i} className="text-xs text-zinc-700 flex items-start gap-2">
+                                      <span className="text-zinc-400 mt-0.5">→</span>
+                                      <span>{achievement}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Assessment Details */}
+                      {candidate.assessment_details && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <Award className="w-4 h-4 text-zinc-700" />
+                            Assessment Details
+                          </h4>
+                          <div className="bg-indigo-50 rounded-lg border border-indigo-200 p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                              <div>
+                                <p className="text-xs text-indigo-600 font-medium">Time</p>
+                                <p className="text-sm font-semibold text-indigo-900">{candidate.assessment_details.time_to_complete}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-indigo-600 font-medium">Difficulty</p>
+                                <p className="text-sm font-semibold text-indigo-900 capitalize">{candidate.assessment_details.problem_difficulty}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-indigo-600 font-medium">Code Quality</p>
+                                <p className="text-sm font-semibold text-indigo-900">{candidate.assessment_details.code_quality_score}/100</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-indigo-600 font-medium">Test Coverage</p>
+                                <p className="text-sm font-semibold text-indigo-900">{candidate.assessment_details.test_coverage}%</p>
+                              </div>
+                            </div>
+                            <div className="pt-3 border-t border-indigo-200">
+                              <p className="text-xs text-indigo-600 font-medium mb-1">Approach & Notes</p>
+                              <p className="text-xs text-indigo-900">{candidate.assessment_details.approach_notes}</p>
+                            </div>
+                            <div className="mt-2 text-xs text-indigo-700">
+                              <strong>Edge Cases:</strong> {candidate.assessment_details.edge_cases_handled} handled
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* AI Usage */}
+                      {candidate.ai_usage && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                            <svg className="w-4 h-4 text-zinc-700" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M13 7H7v6h6V7z" />
+                              <path fillRule="evenodd" d="M7 2a1 1 0 012 0v1h2V2a1 1 0 112 0v1h2a2 2 0 012 2v2h1a1 1 0 110 2h-1v2h1a1 1 0 110 2h-1v2a2 2 0 01-2 2h-2v1a1 1 0 11-2 0v-1H9v1a1 1 0 11-2 0v-1H5a2 2 0 01-2-2v-2H2a1 1 0 110-2h1V9H2a1 1 0 010-2h1V5a2 2 0 012-2h2V2zM5 5h10v10H5V5z" clipRule="evenodd" />
+                            </svg>
+                            AI Usage & Tooling
+                          </h4>
+                          <div className="bg-purple-50 rounded-lg border border-purple-200 p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                              <div>
+                                <p className="text-xs text-purple-600 font-medium mb-1">Tools Used</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {candidate.ai_usage.tools_used.map((tool, i) => (
+                                    <span key={i} className="inline-flex items-center px-2 py-1 rounded bg-purple-100 border border-purple-300 text-xs font-medium text-purple-900">
+                                      {tool}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-xs text-purple-600 font-medium mb-1">Usage Frequency</p>
+                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold capitalize ${
+                                  candidate.ai_usage.usage_frequency === 'heavy' ? 'bg-purple-600 text-white' :
+                                  candidate.ai_usage.usage_frequency === 'moderate' ? 'bg-purple-200 text-purple-900' :
+                                  'bg-purple-100 text-purple-700'
+                                }`}>
+                                  {candidate.ai_usage.usage_frequency}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="text-xs text-purple-600 font-medium mb-1">Prompt Engineering</p>
+                                <span className="inline-flex items-center px-2 py-1 rounded bg-purple-100 border border-purple-300 text-xs font-semibold text-purple-900 capitalize">
+                                  {candidate.ai_usage.prompt_engineering_skill}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="pt-3 border-t border-purple-200">
+                              <p className="text-xs text-purple-600 font-medium mb-2">Use Cases</p>
+                              <ul className="space-y-1">
+                                {candidate.ai_usage.use_cases.map((useCase, i) => (
+                                  <li key={i} className="text-xs text-purple-900 flex items-start gap-2">
+                                    <span className="text-purple-500 mt-0.5">✦</span>
+                                    <span>{useCase}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     {/* Action Button */}
                     <div className="pt-4 border-t border-zinc-200 flex justify-end">
                       <Button
@@ -296,7 +425,7 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         ))}
       </div>
     </div>

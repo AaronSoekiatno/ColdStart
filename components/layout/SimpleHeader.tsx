@@ -34,11 +34,8 @@ export const SimpleHeader = ({ userEmail }: SimpleHeaderProps) => {
   };
 
   return (
-    <motion.header
+    <header
       className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-zinc-200"
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.3 }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -170,6 +167,6 @@ export const SimpleHeader = ({ userEmail }: SimpleHeaderProps) => {
           </div>
         </motion.div>
       )}
-    </motion.header>
+    </header>
   );
 };

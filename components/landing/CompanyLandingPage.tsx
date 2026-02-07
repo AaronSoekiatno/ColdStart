@@ -252,9 +252,15 @@ export function CompanyLandingPage() {
 
               <div className="mt-6 flex items-center gap-4 text-sm text-zinc-500">
                 <div className="flex -space-x-2">
-                  <div className="h-8 w-8 rounded-full border border-white bg-zinc-100"></div>
-                  <div className="h-8 w-8 rounded-full border border-white bg-zinc-100"></div>
-                  <div className="h-8 w-8 rounded-full border border-white bg-zinc-100"></div>
+                  <div className="h-8 w-8 rounded-full border border-white overflow-hidden bg-zinc-100">
+                    <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=64&h=64&auto=format&fit=crop" alt="User 1" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="h-8 w-8 rounded-full border border-white overflow-hidden bg-zinc-100">
+                    <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=64&h=64&auto=format&fit=crop" alt="User 2" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="h-8 w-8 rounded-full border border-white overflow-hidden bg-zinc-100">
+                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=64&h=64&auto=format&fit=crop" alt="User 3" className="w-full h-full object-cover" />
+                  </div>
                 </div>
                 <p>
                   <span className="text-zinc-900 font-medium">6,000+</span> vetted engineers.
@@ -270,15 +276,20 @@ export function CompanyLandingPage() {
               </div>
               <div className="relative rounded-3xl border border-zinc-200 bg-white/80 p-6 backdrop-blur shadow-xl">
                 <div className="flex items-start justify-between gap-4 mb-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-zinc-900">Candidate A</h3>
-                      <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">92% Match</span>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-emerald-100 shadow-sm flex-shrink-0">
+                      <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=128&h=128&auto=format&fit=crop" alt="Candidate A" className="w-full h-full object-cover" />
                     </div>
-                    <p className="mt-1 text-xs text-zinc-500">MIT • 4 years experience • Full-stack</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-zinc-900">Candidate A</h3>
+                        <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">92% Match</span>
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-500">MIT • 4 years experience • Full-stack</p>
+                    </div>
                   </div>
                   <button
-                    onClick={() => setShowDemoModal(true)}
+                    onClick={handleGetStarted}
                     className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 transition-colors flex-shrink-0">
                     View full brief →
                   </button>
@@ -487,12 +498,17 @@ export function CompanyLandingPage() {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDemoModal(false)}></div>
           <div className="relative w-full max-w-4xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-6 mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <p className="text-lg font-semibold text-zinc-900">Candidate A - Full Brief</p>
-                  <span className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">92% Match</span>
+              <div className="flex items-center gap-6">
+                <div className="w-20 h-20 rounded-full border-4 border-emerald-50 overflow-hidden shadow-lg flex-shrink-0">
+                  <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=256&h=256&auto=format&fit=crop" alt="Candidate A" className="w-full h-full object-cover" />
                 </div>
-                <p className="text-sm text-zinc-500">MIT • 4 years experience • Python, React, Go</p>
+                <div>
+                  <div className="flex items-center gap-3 mb-1">
+                    <p className="text-2xl font-bold text-zinc-900">Candidate A</p>
+                    <span className="rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">92% Match</span>
+                  </div>
+                  <p className="text-sm text-zinc-500">MIT • 4 years experience • Python, React, Go</p>
+                </div>
               </div>
               <button
                 onClick={() => setShowDemoModal(false)}

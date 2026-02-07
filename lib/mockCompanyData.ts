@@ -3,6 +3,7 @@
 export interface CompanyProfile {
   id: string;
   name: string;
+  logo_url?: string;
   website: string;
   location: string;
   team_size: string;
@@ -33,6 +34,30 @@ export interface GitHubAnalysis {
   meaningful_projects: number;
 }
 
+export interface RealWorldExperience {
+  company: string;
+  role: string;
+  duration: string;
+  key_achievements: string[];
+  verified: boolean;
+}
+
+export interface AssessmentDetails {
+  time_to_complete: string;
+  problem_difficulty: 'easy' | 'medium' | 'hard';
+  code_quality_score: number;
+  test_coverage: number;
+  edge_cases_handled: number;
+  approach_notes: string;
+}
+
+export interface AIUsagePattern {
+  tools_used: string[];
+  usage_frequency: 'heavy' | 'moderate' | 'light';
+  use_cases: string[];
+  prompt_engineering_skill: 'advanced' | 'intermediate' | 'beginner';
+}
+
 export interface MatchAnalysis {
   fit_areas: string[];
   gaps: string[];
@@ -41,6 +66,7 @@ export interface MatchAnalysis {
 export interface CandidateBrief {
   id: string;
   anonymized_name: string;
+  avatar_url?: string;
   school: string;
   years_of_experience: number;
   match_score: number;
@@ -48,21 +74,25 @@ export interface CandidateBrief {
   unproven_claims: UnprovenClaim[];
   github_analysis: GitHubAnalysis;
   assessment_highlights?: string[];
+  assessment_details?: AssessmentDetails;
+  real_world_experience?: RealWorldExperience[];
+  ai_usage?: AIUsagePattern;
   match_analysis: MatchAnalysis;
 }
 
-// Mock company data
+// Mock company data - Palantir
 export const mockCompany: CompanyProfile = {
-  id: "demo-company-1",
-  name: "FastShip AI",
-  website: "fastship.ai",
-  location: "San Francisco, CA",
-  team_size: "11-50",
+  id: "palantir-1",
+  name: "Palantir Technologies",
+  logo_url: "https://companieslogo.com/img/orig/PLTR.D-618f91d3.png?t=1720244493",
+  website: "palantir.com",
+  location: "Denver, CO",
+  team_size: "1000-5000",
   operating_model: {
-    pace: "fast",
+    pace: "deliberate",
     quality_bar: "high",
-    priorities: ["speed", "autonomy", "ownership", "impact"],
-    culture_description: "Move fast, ship often, own your domain. We value high-quality code and autonomous problem-solvers who take ownership of their work."
+    priorities: ["ownership", "impact", "quality", "autonomy"],
+    culture_description: "Build software that solves the world's hardest problems. We value deep technical expertise, rigorous problem-solving, and engineers who take extreme ownership of complex systems that matter."
   }
 };
 
@@ -71,6 +101,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-1",
     anonymized_name: "Candidate A",
+    avatar_url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=256&h=256&auto=format&fit=crop",
     school: "MIT",
     years_of_experience: 4,
     match_score: 92,
@@ -124,13 +155,55 @@ export const mockCandidates: CandidateBrief[] = [
       "Caught edge cases during testing phase",
       "Added helpful code comments and documentation"
     ],
+    assessment_details: {
+      time_to_complete: "45 minutes",
+      problem_difficulty: "medium",
+      code_quality_score: 95,
+      test_coverage: 87,
+      edge_cases_handled: 5,
+      approach_notes: "Used a systematic approach with clear separation of concerns. Implemented comprehensive error handling and wrote unit tests before shipping. Demonstrated strong understanding of time complexity and space optimization."
+    },
+    real_world_experience: [
+      {
+        company: "Series A Fintech Startup",
+        role: "Backend Engineer",
+        duration: "2 years",
+        key_achievements: [
+          "Built payment reconciliation system processing $10M+ monthly",
+          "Reduced API latency by 60% through strategic caching",
+          "Implemented fraud detection pipeline catching 95% of fraudulent transactions"
+        ],
+        verified: true
+      },
+      {
+        company: "FAANG Company (Internship)",
+        role: "Software Engineering Intern",
+        duration: "3 months",
+        key_achievements: [
+          "Shipped feature to 100M+ users",
+          "Collaborated with cross-functional team of 8 engineers"
+        ],
+        verified: true
+      }
+    ],
+    ai_usage: {
+      tools_used: ["GitHub Copilot", "Claude", "ChatGPT"],
+      usage_frequency: "heavy",
+      use_cases: [
+        "Code generation for boilerplate and repetitive patterns",
+        "Debugging complex issues with detailed context",
+        "Architecture design brainstorming and tradeoff analysis",
+        "Test case generation and edge case identification"
+      ],
+      prompt_engineering_skill: "advanced"
+    },
     match_analysis: {
       fit_areas: [
-        "4+ years Python experience (matches requirement)",
-        "Fast-paced startup background at Series A company",
-        "High code quality standards demonstrated in GitHub",
-        "Strong problem-solving skills shown in assessment",
-        "Full-stack capabilities match team needs"
+        "4+ years Python experience (matches Palantir stack)",
+        "Deep problem-solving mindset shown in assessment",
+        "High code quality standards align with Palantir values",
+        "Strong ownership demonstrated through fraud detection work",
+        "Full-stack capabilities valuable for product teams"
       ],
       gaps: [
         "No ML production experience verified",
@@ -142,6 +215,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-2",
     anonymized_name: "Candidate B",
+    avatar_url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=256&h=256&auto=format&fit=crop",
     school: "Stanford",
     years_of_experience: 6,
     match_score: 88,
@@ -190,12 +264,35 @@ export const mockCandidates: CandidateBrief[] = [
       "Proactively added error handling",
       "Strong debugging skills demonstrated"
     ],
+    real_world_experience: [
+      {
+        company: "Series B SaaS Company",
+        role: "Senior Frontend Engineer",
+        duration: "3 years",
+        key_achievements: [
+          "Led frontend rewrite serving 500K+ daily users",
+          "Reduced bundle size by 40% improving page load times",
+          "Mentored 2 junior engineers to mid-level"
+        ],
+        verified: true
+      }
+    ],
+    ai_usage: {
+      tools_used: ["GitHub Copilot", "Claude"],
+      usage_frequency: "moderate",
+      use_cases: [
+        "Component scaffolding and TypeScript types",
+        "Code review assistance",
+        "Documentation writing"
+      ],
+      prompt_engineering_skill: "intermediate"
+    },
     match_analysis: {
       fit_areas: [
         "6+ years experience exceeds requirements",
         "Strong frontend expertise matches tech stack",
         "Open source contributions show ownership mindset",
-        "High-quality code standards align with company values",
+        "High-quality code standards align with Palantir values",
         "Testing discipline matches quality bar"
       ],
       gaps: [
@@ -208,6 +305,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-3",
     anonymized_name: "Candidate C",
+    avatar_url: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=256&h=256&auto=format&fit=crop",
     school: "UC Berkeley",
     years_of_experience: 3,
     match_score: 85,
@@ -250,6 +348,15 @@ export const mockCandidates: CandidateBrief[] = [
       "Good problem decomposition skills",
       "Clean code with clear naming conventions"
     ],
+    ai_usage: {
+      tools_used: ["Cursor", "ChatGPT"],
+      usage_frequency: "moderate",
+      use_cases: [
+        "API endpoint scaffolding",
+        "SQL query optimization ideas"
+      ],
+      prompt_engineering_skill: "beginner"
+    },
     match_analysis: {
       fit_areas: [
         "3 years experience matches mid-level requirements",
@@ -268,6 +375,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-4",
     anonymized_name: "Candidate D",
+    avatar_url: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=256&h=256&auto=format&fit=crop",
     school: "Carnegie Mellon",
     years_of_experience: 5,
     match_score: 90,
@@ -320,7 +428,7 @@ export const mockCandidates: CandidateBrief[] = [
       fit_areas: [
         "5 years experience with deep technical expertise",
         "Ownership mindset shown through open source maintenance",
-        "High code quality aligns with company standards",
+        "High code quality aligns with Palantir standards",
         "Strong documentation culture matches team values",
         "Performance-oriented approach fits product needs"
       ],
@@ -333,6 +441,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-5",
     anonymized_name: "Candidate E",
+    avatar_url: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&h=256&auto=format&fit=crop",
     school: "University of Washington",
     years_of_experience: 2,
     match_score: 78,
@@ -394,6 +503,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-6",
     anonymized_name: "Candidate F",
+    avatar_url: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?q=80&w=256&h=256&auto=format&fit=crop",
     school: "Georgia Tech",
     years_of_experience: 7,
     match_score: 86,
@@ -459,6 +569,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-7",
     anonymized_name: "Candidate G",
+    avatar_url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=256&h=256&auto=format&fit=crop",
     school: "UT Austin",
     years_of_experience: 3,
     match_score: 82,
@@ -514,6 +625,7 @@ export const mockCandidates: CandidateBrief[] = [
   {
     id: "candidate-8",
     anonymized_name: "Candidate H",
+    avatar_url: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=256&h=256&auto=format&fit=crop",
     school: "Cornell",
     years_of_experience: 4,
     match_score: 89,
