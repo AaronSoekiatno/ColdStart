@@ -48,26 +48,13 @@ export const SimpleHeader = ({ userEmail }: SimpleHeaderProps) => {
               height={32}
               className="w-8 h-8"
             />
-            <span className="text-2xl font-serif text-zinc-900 group-hover:text-blue-600 transition-colors">
+            <span className="text-2xl font-serif italic text-zinc-900 group-hover:text-blue-600 transition-colors">
               Agencity
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link
-              href="/company-dashboard"
-              className="text-sm font-medium text-zinc-700 hover:text-zinc-900 transition-colors"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/candidates"
-              className="text-sm font-medium text-zinc-700 hover:text-zinc-900 transition-colors"
-            >
-              Browse Candidates
-            </Link>
-          </nav>
+
 
           {/* User Menu */}
           <div className="flex items-center gap-4">
@@ -141,20 +128,7 @@ export const SimpleHeader = ({ userEmail }: SimpleHeaderProps) => {
           className="md:hidden border-t border-zinc-200 bg-white"
         >
           <div className="px-4 py-4 space-y-3">
-            <Link
-              href="/company-dashboard"
-              className="block px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 rounded-lg"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/candidates"
-              className="block px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 rounded-lg"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Browse Candidates
-            </Link>
+
             <button
               onClick={() => {
                 handleSignOut();

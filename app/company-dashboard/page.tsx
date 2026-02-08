@@ -8,6 +8,8 @@ import CompanyProfileCard from '@/components/company/CompanyProfileCard';
 import CandidateBriefCard from '@/components/company/CandidateBriefCard';
 import CandidateTable from '@/components/company/CandidateTable';
 import AssessmentPreview from '@/components/company/AssessmentPreview';
+import AssessmentResultsDashboard from '@/components/company/AssessmentResultsDashboard';
+import CandidateAssessmentView from '@/components/company/CandidateAssessmentView';
 import CandidateFilterBar, { CompanyCandidateFilters } from '@/components/company/CandidateFilterBar';
 import { mockCompany, mockCandidates, mockJobContexts, CandidateBrief } from '@/lib/mockCompanyData';
 import { Loader2, Users, Sparkles, FileCode2, Building2, Search, Settings, HelpCircle, LayoutGrid, Puzzle, Plug, Filter, X, Globe, ChevronDown, LayoutList, Github, Linkedin, Twitter, Terminal, Layers, Server, Monitor, Cpu, List, FileSpreadsheet, CircleDashed, Briefcase, TrendingUp, Clock, MapPin, ChevronRight, Award, Code2, GraduationCap } from 'lucide-react';
@@ -26,6 +28,7 @@ export default function CompanyDashboard() {
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'candidates' | 'assessment' | 'profile' | 'discover' | 'integrations'>('candidates');
+  const [assessmentSubTab, setAssessmentSubTab] = useState<'results' | 'configuration' | 'candidate-view'>('results');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -231,7 +234,7 @@ export default function CompanyDashboard() {
                 <p className="text-sm text-gray-500 mt-1">
                   {activeTab === 'discover' && 'Search and source top engineering talent.'}
                   {activeTab === 'candidates' && 'View and manage your best matched engineers.'}
-                  {activeTab === 'assessment' && 'Configure the technical challenges for candidates.'}
+                  {activeTab === 'assessment' && 'Review completed assessments and configure technical challenges.'}
                   {activeTab === 'profile' && 'Manage your company details and branding.'}
                   {activeTab === 'integrations' && 'Connect your existing tools and workflows.'}
                 </p>
@@ -378,11 +381,56 @@ export default function CompanyDashboard() {
               )}
 
               {activeTab === 'assessment' && (
-                <AssessmentPreview
-                  companyName={mockCompany.name}
-                  githubRepoUrl={mockCompany.operating_model.github_repo_url}
-                  codebaseProvided={mockCompany.operating_model.codebase_provided}
-                />
+                <div className="space-y-6">
+                  {/* Assessment Sub-Tabs */}
+                  <div className="flex gap-2 border-b border-gray-200">
+                    <button
+                      onClick={() => setAssessmentSubTab('results')}
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+                        assessmentSubTab === 'results'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Results Dashboard
+                    </button>
+                    <button
+                      onClick={() => setAssessmentSubTab('configuration')}
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+                        assessmentSubTab === 'configuration'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Configuration
+                    </button>
+                    <button
+                      onClick={() => setAssessmentSubTab('candidate-view')}
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
+                        assessmentSubTab === 'candidate-view'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      Candidate View
+                    </button>
+                  </div>
+
+                  {/* Assessment Sub-Tab Content */}
+                  {assessmentSubTab === 'results' && <AssessmentResultsDashboard />}
+
+                  {assessmentSubTab === 'configuration' && (
+                    <AssessmentPreview
+                      companyName={mockCompany.name}
+                      githubRepoUrl={mockCompany.operating_model.github_repo_url}
+                      codebaseProvided={mockCompany.operating_model.codebase_provided}
+                    />
+                  )}
+
+                  {assessmentSubTab === 'candidate-view' && (
+                    <CandidateAssessmentView companyName={mockCompany.name} />
+                  )}
+                </div>
               )}
 
               {activeTab === 'discover' && (

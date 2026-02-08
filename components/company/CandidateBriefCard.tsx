@@ -12,7 +12,8 @@ import {
   ChevronUp,
   ExternalLink,
   Award,
-  Clock
+  Clock,
+  Sparkles
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -94,6 +95,53 @@ export default function CandidateBriefCard({ candidate }: CandidateBriefCardProp
             />
           </div>
         </div>
+
+        {/* Why Hire Summary */}
+        {candidate.why_hire_summary && (
+          <div className="bg-gray-50 border-l-4 border-blue-400 rounded-r-lg p-4">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+              Why Hire
+            </h4>
+            <p className="text-sm text-gray-700 leading-relaxed">{candidate.why_hire_summary}</p>
+          </div>
+        )}
+
+        {/* Real World Experience */}
+        {candidate.real_world_experience && candidate.real_world_experience.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-gray-600" />
+              Real-World Experience
+            </h4>
+            <div className="space-y-3">
+              {candidate.real_world_experience.map((exp, idx) => (
+                <div key={idx} className="bg-gray-50 rounded-lg border border-gray-200 p-3">
+                  <div className="flex items-start justify-between mb-1">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{exp.role}</p>
+                      <p className="text-xs text-gray-600">{exp.company} · {exp.duration}</p>
+                    </div>
+                    {exp.verified && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 border border-green-200 text-xs font-medium text-green-700">
+                        <CheckCircle className="w-3 h-3" />
+                        Verified
+                      </span>
+                    )}
+                  </div>
+                  <ul className="mt-2 space-y-0.5">
+                    {exp.key_achievements.map((achievement, i) => (
+                      <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                        <span className="text-gray-400 mt-0.5">→</span>
+                        <span>{achievement}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Proven Claims Section */}
         <div>

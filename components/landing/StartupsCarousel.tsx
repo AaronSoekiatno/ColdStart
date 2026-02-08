@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef } from "react";
 
 interface University {
   name: string;
@@ -10,10 +9,10 @@ interface University {
 
 interface UniversityCarouselProps {
   title?: string;
+  className?: string;
 }
 
-export const UniversityCarousel = ({ title = "TRUSTED BY STUDENTS AT" }: UniversityCarouselProps) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+export const UniversityCarousel = ({ title = "TRUSTED BY STUDENTS AT", className = "" }: UniversityCarouselProps) => {
   const universities: University[] = [
     { name: "UC Berkeley", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/b/b4/Berkeley_College_of_Letters_%26_Science_logo.svg" },
     { name: "UCLA", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/6/6c/University_of_California%2C_Los_Angeles_logo.svg" },
@@ -28,100 +27,38 @@ export const UniversityCarousel = ({ title = "TRUSTED BY STUDENTS AT" }: Univers
     { name: "Cal Tech", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Caltech_Logo.svg/330px-Caltech_Logo.svg.png?20190819082906" },
   ];
 
-  useEffect(() => {
-    const scrollContainer = scrollRef.current;
-    if (!scrollContainer) return;
-
-    let scrollPosition = 0;
-    let isPaused = false;
-    const scrollSpeed = 2.5; // pixels per frame
-    let animationFrameId: number;
-
-    const scroll = () => {
-      if (!isPaused) {
-        scrollPosition += scrollSpeed;
-        const firstSetWidth = scrollContainer.scrollWidth / 2;
-
-        // When we've scrolled past the first set, reset to 0 seamlessly
-        if (scrollPosition >= firstSetWidth) {
-          scrollPosition = scrollPosition - firstSetWidth;
-        }
-
-        scrollContainer.style.transform = `translateX(-${scrollPosition}px)`;
-      }
-      animationFrameId = requestAnimationFrame(scroll);
-    };
-
-    const handleMouseEnter = () => {
-      isPaused = true;
-    };
-
-    const handleMouseLeave = () => {
-      isPaused = false;
-    };
-
-    scrollContainer.addEventListener('mouseenter', handleMouseEnter);
-    scrollContainer.addEventListener('mouseleave', handleMouseLeave);
-
-    animationFrameId = requestAnimationFrame(scroll);
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      scrollContainer.removeEventListener('mouseenter', handleMouseEnter);
-      scrollContainer.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, []);
-
   return (
-    <section className="mt-40 pt-0 pb-10 sm:pb-12 md:pb-16 overflow-hidden w-full relative">
-      <div className="w-full">
-        <h3 className="text-center text-xl sm:text-2xl font-bold text-white mb-6 sm:mb-8 px-4 sm:px-6 md:px-8 uppercase tracking-wider">
+    <section className={`pt-8 pb-10 overflow-hidden w-full relative group bg-white ${className}`}>
+      <div className="mx-auto max-w-6xl px-4">
+        <h3 className="text-xs uppercase tracking-widest text-zinc-400 mb-8 text-center sm:text-left">
           {title}
         </h3>
+      </div>
 
-        <div className="relative w-full overflow-hidden">
-          <div
-            ref={scrollRef}
-            className="flex"
-            style={{ willChange: 'transform' }}
-          >
-            {/* First set of universities */}
-            {universities.map((university, index) => (
-              <div
-                key={`first-${index}`}
-                className="flex-shrink-0 mx-2 sm:mx-4 md:mx-6 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 flex items-center justify-center"
-              >
-                <Image
-                  src={university.logoUrl}
-                  alt={university.name}
-                  width={160}
-                  height={160}
-                  className={university.name === "Carnegie Mellon University"
-                    ? "h-12 sm:h-16 md:h-20 w-auto object-contain"
-                    : "h-8 sm:h-10 md:h-12 w-auto object-contain"}
-                  unoptimized
-                />
-              </div>
-            ))}
-            {/* Duplicate set for seamless infinite loop */}
-            {universities.map((university, index) => (
-              <div
-                key={`second-${index}`}
-                className="flex-shrink-0 mx-2 sm:mx-4 md:mx-6 px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 flex items-center justify-center"
-              >
-                <Image
-                  src={university.logoUrl}
-                  alt={university.name}
-                  width={160}
-                  height={160}
-                  className={university.name === "Carnegie Mellon University"
-                    ? "h-12 sm:h-16 md:h-20 w-auto object-contain"
-                    : "h-8 sm:h-10 md:h-12 w-auto object-contain"}
-                  unoptimized
-                />
-              </div>
-            ))}
-          </div>
+      <div className="relative w-full overflow-hidden grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
+        <div
+          className="flex w-max animate-scroll group-hover:[animation-play-state:paused]"
+          style={{ animationDuration: '40s' }}
+        >
+          {/* Three sets of universities for seamless looping with 33% scroll keyframe */}
+          {[...Array(3)].map((_, setIndex) => (
+            <div key={`set-${setIndex}`} className="flex">
+              {universities.map((university, index) => (
+                <div
+                  key={`uni-${setIndex}-${index}`}
+                  className="flex-shrink-0 mx-8 sm:mx-10 md:mx-14 px-2 py-2 flex items-center justify-center"
+                >
+                  <img
+                    src={university.logoUrl}
+                    alt={university.name}
+                    className={university.name === "Carnegie Mellon University"
+                      ? "h-10 md:h-12 w-auto object-contain"
+                      : "h-7 md:h-8 w-auto object-contain"}
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       </div>
     </section>

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, Github, Award, ExternalLink, Code, CheckCircle, AlertCircle, GraduationCap, Briefcase, Clock } from 'lucide-react';
+import { ChevronDown, ChevronUp, Github, Award, ExternalLink, Code, CheckCircle, AlertCircle, GraduationCap, Briefcase, Clock, Sparkles } from 'lucide-react';
 import { CandidateBrief } from '@/lib/mockCompanyData';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -146,6 +146,53 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
                   className="overflow-hidden bg-zinc-50"
                 >
                   <div className="px-6 py-6 space-y-6">
+                    {/* Why Hire Summary */}
+                    {candidate.why_hire_summary && (
+                      <div className="bg-gray-50 border-l-4 border-blue-400 rounded-r-lg p-4">
+                        <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                          Why Hire
+                        </h4>
+                        <p className="text-sm text-zinc-700 leading-relaxed">{candidate.why_hire_summary}</p>
+                      </div>
+                    )}
+
+                    {/* Real-world Experience */}
+                    {candidate.real_world_experience && candidate.real_world_experience.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide mb-3 flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-zinc-700" />
+                          Real-World Experience
+                        </h4>
+                        <div className="space-y-3">
+                          {candidate.real_world_experience.map((exp, idx) => (
+                            <div key={idx} className="bg-white rounded-lg border border-zinc-200 p-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-zinc-900">{exp.role}</p>
+                                  <p className="text-xs text-zinc-600">{exp.company} • {exp.duration}</p>
+                                </div>
+                                {exp.verified && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-xs font-medium text-green-700">
+                                    <CheckCircle className="w-3 h-3" />
+                                    Verified
+                                  </span>
+                                )}
+                              </div>
+                              <ul className="space-y-1 mt-2">
+                                {exp.key_achievements.map((achievement, i) => (
+                                  <li key={i} className="text-xs text-zinc-700 flex items-start gap-2">
+                                    <span className="text-zinc-400 mt-0.5">→</span>
+                                    <span>{achievement}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Two Column Layout */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Left Column: Proven Claims */}
@@ -283,42 +330,6 @@ export default function CandidateTable({ candidates }: CandidateTableProps) {
 
                     {/* Full-width sections for new data */}
                     <div className="space-y-4 pt-4 border-t border-zinc-200">
-                      {/* Real-world Experience */}
-                      {candidate.real_world_experience && candidate.real_world_experience.length > 0 && (
-                        <div>
-                          <h4 className="text-sm font-semibold text-zinc-900 uppercase tracking-wide mb-3 flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-zinc-700" />
-                            Real-World Experience
-                          </h4>
-                          <div className="space-y-3">
-                            {candidate.real_world_experience.map((exp, idx) => (
-                              <div key={idx} className="bg-white rounded-lg border border-zinc-200 p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                  <div>
-                                    <p className="text-sm font-semibold text-zinc-900">{exp.role}</p>
-                                    <p className="text-xs text-zinc-600">{exp.company} • {exp.duration}</p>
-                                  </div>
-                                  {exp.verified && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-50 border border-green-200 text-xs font-medium text-green-700">
-                                      <CheckCircle className="w-3 h-3" />
-                                      Verified
-                                    </span>
-                                  )}
-                                </div>
-                                <ul className="space-y-1 mt-2">
-                                  {exp.key_achievements.map((achievement, i) => (
-                                    <li key={i} className="text-xs text-zinc-700 flex items-start gap-2">
-                                      <span className="text-zinc-400 mt-0.5">→</span>
-                                      <span>{achievement}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
                       {/* Assessment Details */}
                       {candidate.assessment_details && (
                         <div>

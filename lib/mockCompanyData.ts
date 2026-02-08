@@ -72,6 +72,7 @@ export interface CandidateBrief {
   school: string;
   years_of_experience: number;
   match_score: number;
+  why_hire_summary?: string;
   proven_claims: ProvenClaim[];
   unproven_claims: UnprovenClaim[];
   github_analysis: GitHubAnalysis;
@@ -124,6 +125,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "MIT",
     years_of_experience: 4,
     match_score: 92,
+    why_hire_summary: "Former FAANG intern who went on to build payment systems handling $10M+ monthly at a Series A fintech—Candidate A has the production backend credibility to contribute immediately at Palantir. Their 95% assessment score and 18+ months of consistent Python contributions prove they write code that actually ships. Interview them if you want a full-stack engineer who takes ownership of hard problems and has the receipts to back it up.",
     proven_claims: [
       {
         claim: "Active Python contributor (18+ months)",
@@ -238,6 +240,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "Stanford",
     years_of_experience: 6,
     match_score: 88,
+    why_hire_summary: "With 6 years of experience including leading a frontend rewrite serving 500K+ daily users, Candidate B brings both depth and proof of impact. Their published React component library with 500+ downloads and 90%+ test coverage across projects signals a rare combination of craft and discipline. Interview them if you need someone who ships polished, scalable frontend and can mentor others to do the same.",
     proven_claims: [
       {
         claim: "TypeScript expert (3+ years)",
@@ -328,6 +331,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "UC Berkeley",
     years_of_experience: 3,
     match_score: 85,
+    why_hire_summary: "Candidate C is a Go microservices specialist who codes fluently in 5+ languages—a polyglot backend engineer with genuine API design experience backed by OpenAPI specs and comprehensive docs. Their 3 years may be shorter than peers, but their GitHub shows fast growth across diverse stacks. Interview them for a backend role where Go expertise and adaptability matter more than raw tenure.",
     proven_claims: [
       {
         claim: "Go specialist (2+ years)",
@@ -398,6 +402,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "Carnegie Mellon",
     years_of_experience: 5,
     match_score: 90,
+    why_hire_summary: "One of the strongest technical signals in this pool: 200+ merged PRs as a core maintainer of a popular Rust project, paired with a GitHub quality score of 94/100. Candidate D brings deep systems programming expertise and a culture of code review rigor that aligns directly with Palantir's high quality bar. Interview them if you want someone who takes extreme ownership of complex infrastructure.",
     proven_claims: [
       {
         claim: "Systems programming expert",
@@ -464,6 +469,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "University of Washington",
     years_of_experience: 2,
     match_score: 78,
+    why_hire_summary: "Candidate E brings startup DNA and a track record of shipping polished UIs fast—multiple MVPs in under 2-week sprints with accessibility and responsive design built in. At 2 years of experience they're junior, but their founder background and React proficiency show they punch above their level. Interview them if you have a product team that values speed-to-ship and design sensibility alongside technical fundamentals.",
     proven_claims: [
       {
         claim: "React proficiency",
@@ -526,6 +532,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "Georgia Tech",
     years_of_experience: 7,
     match_score: 86,
+    why_hire_summary: "Seven years of building data infrastructure—ETL pipelines, PostgreSQL optimization, Python automation tooling used org-wide—makes Candidate F one of the most experienced candidates in this pool. Their systematic debugging approach and methodical commit history show the kind of reliability that matters in production. Interview them if you need a senior engineer who can own data-critical systems with minimal hand-holding.",
     proven_claims: [
       {
         claim: "Data infrastructure specialist",
@@ -592,6 +599,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "UT Austin",
     years_of_experience: 3,
     match_score: 82,
+    why_hire_summary: "Two published React Native apps with A/B testing and analytics integration show Candidate G ships products that real users actually interact with. Their focus on UX polish and performance-optimized animations is rare at 3 years of experience. Interview them if you want a frontend engineer who thinks like a product person and can bring mobile-quality UX thinking to your web surfaces.",
     proven_claims: [
       {
         claim: "Mobile development (React Native)",
@@ -648,6 +656,7 @@ export const mockCandidates: CandidateBrief[] = [
     school: "Cornell",
     years_of_experience: 4,
     match_score: 89,
+    why_hire_summary: "Candidate H is the rare full-stack engineer who also handles their own CI/CD, Docker configs, and security audits—bringing end-to-end ownership of shipping and operating software. Their 88 GitHub quality score and 19 months of consistent activity across TypeScript, Python, and JavaScript back up the breadth. Interview them if you need an engineer who can operate independently across the full lifecycle, from feature to deployment.",
     proven_claims: [
       {
         claim: "Full-stack generalist",
