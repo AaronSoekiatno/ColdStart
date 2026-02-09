@@ -12,6 +12,10 @@ import AssessmentResultsDashboard from '@/components/company/AssessmentResultsDa
 import CandidateAssessmentView from '@/components/company/CandidateAssessmentView';
 import CandidateFilterBar, { CompanyCandidateFilters } from '@/components/company/CandidateFilterBar';
 import { mockCompany, mockCandidates, mockJobContexts, CandidateBrief } from '@/lib/mockCompanyData';
+import { transformAllCandidates } from '@/lib/candidateTransformers';
+import { CandidateCompactCard } from '@/components/company/candidates/CandidateCompactCard';
+import { CandidateVerdictCard } from '@/components/company/candidates/CandidateVerdictCard';
+import { CandidateFullEvidence } from '@/components/company/candidates/CandidateFullEvidence';
 import { Loader2, Users, Sparkles, FileCode2, Building2, Search, Settings, HelpCircle, LayoutGrid, Puzzle, Plug, Filter, X, Globe, ChevronDown, LayoutList, Github, Linkedin, Twitter, Terminal, Layers, Server, Monitor, Cpu, List, FileSpreadsheet, CircleDashed, Briefcase, TrendingUp, Clock, MapPin, ChevronRight, Award, Code2, GraduationCap } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { motion } from 'framer-motion';
@@ -29,12 +33,14 @@ export default function CompanyDashboard() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'candidates' | 'assessment' | 'profile' | 'discover' | 'integrations'>('candidates');
   const [assessmentSubTab, setAssessmentSubTab] = useState<'results' | 'configuration' | 'candidate-view'>('results');
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards');
   const [hasSearched, setHasSearched] = useState(false);
 
   // Candidates Tab State
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredCandidates, setFilteredCandidates] = useState<CandidateBrief[]>(mockCandidates);
+  const [filteredCandidates, setFilteredCandidates] = useState<CandidateBrief[]>(
+    transformAllCandidates(mockCandidates)
+  );
   const [candidateFilters, setCandidateFilters] = useState<CompanyCandidateFilters>({
     minMatchScore: null,
     minExperience: null,
@@ -43,6 +49,8 @@ export default function CompanyDashboard() {
     primaryLanguage: null,
     minQualityScore: null,
   });
+  const [expandedVerdictId, setExpandedVerdictId] = useState<string | null>(null);
+  const [expandedFullEvidenceId, setExpandedFullEvidenceId] = useState<string | null>(null);
 
   // Discover Tab Filter States
   const [searchModes, setSearchModes] = useState<string[]>(['Smart (AI picks sources)']);
@@ -78,7 +86,7 @@ export default function CompanyDashboard() {
 
   // Filter and search candidates
   useEffect(() => {
-    let filtered = [...mockCandidates];
+    let filtered = transformAllCandidates([...mockCandidates]);
 
     // Apply search query
     if (searchQuery.trim()) {
@@ -742,10 +750,46 @@ export default function CompanyDashboard() {
                     <CandidateTable candidates={filteredCandidates} />
                   ) : (
                     <div className="grid grid-cols-1 gap-4">
-                      {filteredCandidates.map((candidate) => (
-                        <CandidateBriefCard key={candidate.id} candidate={candidate} />
-                      ))}
+                      {filteredCandidates.map((candidate) => {
+                        // Check if this candidate has the verdict expanded
+                        if (expandedVerdictId === candidate.id) {
+                          return (
+                            <CandidateVerdictCard
+                              key={candidate.id}
+                              candidate={candidate}
+                              onCollapse={() => setExpandedVerdictId(null)}
+                              onExpandFull={(id: string) => setExpandedFullEvidenceId(id)}
+                              onMoveToInterview={(id: string) => {
+                                console.log('Move to interview:', id);
+                                // TODO: Implement move to interview logic
+                              }}
+                            />
+                          );
+                        }
+
+                        // Default: show compact card
+                        return (
+                          <CandidateCompactCard
+                            key={candidate.id}
+                            candidate={candidate}
+                            onExpand={(id: string) => setExpandedVerdictId(id)}
+                          />
+                        );
+                      })}
                     </div>
+                  )}
+
+                  {/* Full Evidence Modal (Second Expansion) */}
+                  {expandedFullEvidenceId && (
+                    <CandidateFullEvidence
+                      candidate={filteredCandidates.find((c) => c.id === expandedFullEvidenceId)!}
+                      onClose={() => setExpandedFullEvidenceId(null)}
+                      onMoveToInterview={(id: string) => {
+                        console.log('Move to interview:', id);
+                        setExpandedFullEvidenceId(null);
+                        // TODO: Implement move to interview logic
+                      }}
+                    />
                   )}
                 </div>
               )}

@@ -1,336 +1,296 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Image from "next/image";
-import { Check, UserPlus, Users, Zap, Code } from "lucide-react";
-
-interface Step {
-    number: string;
-    title: string;
-    description: string;
-    icon: React.ReactNode;
-}
+import { motion } from "framer-motion";
+import { MessageSquare, Search, ShieldCheck, UserCheck, Check, Globe, Github, Trophy, Users, GraduationCap, X, Linkedin, Twitter, FileText } from "lucide-react";
 
 export function CompanyHowItWorks() {
-    const [activeStep, setActiveStep] = useState(0);
-    const sectionRef = useRef<HTMLDivElement>(null);
-    const scrollableRef = useRef<HTMLDivElement>(null);
-
-    const steps: Step[] = [
-        {
-            number: "01",
-            title: "Sync Your Roles",
-            description:
-                "Connect your ATS or paste a job description. We automatically generate a tailored engineering mission that tests for the exact skills you need.",
-            icon: <Users className="w-6 h-6 sm:w-8 sm:h-8" />,
-        },
-        {
-            number: "02",
-            title: "GitHub Deep Dive",
-            description:
-                "We analyze every candidate's GitHub. AI reviews actual code (not just resume claims). Evaluates: quality, architecture, tests, documentation.",
-            icon: <Code className="w-6 h-6 sm:w-8 sm:h-8" />,
-        },
-        {
-            number: "03",
-            title: "AI Vetting",
-            description:
-                "Candidates complete a real-world coding task. Our AI reviews usage of tools, debugging patterns, and implementation quality—filtering out the noise for you.",
-            icon: <Zap className="w-6 h-6 sm:w-8 sm:h-8" />,
-        },
-        {
-            number: "04",
-            title: "Interview Top 1%",
-            description:
-                "Get a shortlist of pre-vetted candidates who have already proven they can do the job. Skip straight to the final round interviews.",
-            icon: <UserPlus className="w-6 h-6 sm:w-8 sm:h-8" />,
-        },
-    ];
-
-    useEffect(() => {
-        const handleScroll = () => {
-            if (!sectionRef.current || !scrollableRef.current) return;
-
-            const scrollableRect = scrollableRef.current.getBoundingClientRect();
-            const scrollableTop = scrollableRect.top;
-            const scrollableHeight = scrollableRect.height;
-            const viewportHeight = window.innerHeight;
-
-            // The scrollable distance is the height minus one viewport
-            const scrollableDistance = scrollableHeight - viewportHeight;
-
-            if (scrollableDistance <= 0) {
-                if (activeStep !== 0) setActiveStep(0);
-                return;
-            }
-
-            const rawProgress = (viewportHeight - scrollableTop) / scrollableDistance;
-            const scrollProgress = Math.max(0, Math.min(1, rawProgress));
-
-            let newActiveStep = 0;
-            // Adjust distribution for 4 steps
-            // Step 0: 0.35, remaining 0.65 split among 3 steps
-            if (scrollProgress >= 0.35) {
-                const remainingProgress = (scrollProgress - 0.35) / 0.65;
-                newActiveStep = 1 + Math.floor(remainingProgress * 3);
-            }
-
-            newActiveStep = Math.max(0, Math.min(newActiveStep, steps.length - 1));
-
-            if (newActiveStep !== activeStep) {
-                setActiveStep(newActiveStep);
-            }
-        };
-
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        handleScroll();
-
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, [activeStep, steps.length]);
-
     return (
-        <section ref={sectionRef} className="relative bg-white" id="how-it-works">
-            {/* Scroll-driven Content */}
-            <div ref={scrollableRef} className="relative pt-4 sm:pt-8" style={{ height: `${steps.length * 90}vh` }}>
-                {/* Sticky Container */}
-                <div className="sticky top-0 h-screen flex items-center overflow-hidden">
-                    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6">
-                        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-16 items-start h-full lg:h-auto pt-16 sm:pt-20 lg:pt-0">
-                            {/* Left Side - Step Navigation */}
-                            <div className="w-full lg:w-1/3 space-y-0.5 sm:space-y-1 flex-shrink-0">
-                                {steps.map((step, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => {
-                                            setActiveStep(index);
-                                            if (sectionRef.current) {
-                                                const sectionTop = sectionRef.current.offsetTop;
-                                                const stepHeight = sectionRef.current.offsetHeight / steps.length;
-                                                window.scrollTo({
-                                                    top: sectionTop + stepHeight * index,
-                                                    behavior: "smooth",
-                                                });
-                                            }
-                                        }}
-                                        className={`w-full text-left px-3 sm:px-4 py-2 sm:py-3 lg:py-4 rounded-lg sm:rounded-xl transition-all duration-500 group ${activeStep === index
-                                            ? "bg-white shadow-lg border border-gray-200"
-                                            : "hover:bg-white/50"
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-                                            <span
-                                                className={`text-xs sm:text-sm font-medium transition-colors duration-300 ${activeStep === index ? "text-blue-500" : "text-gray-400"
-                                                    }`}
-                                            >
-                                                {step.number}
-                                            </span>
-                                            <span
-                                                className={`text-sm sm:text-base lg:text-lg font-medium transition-colors duration-300 ${activeStep === index ? "text-gray-900" : "text-gray-500"
-                                                    }`}
-                                            >
-                                                {step.title}
-                                            </span>
-                                        </div>
+        <section className="bg-white py-24 sm:py-32" id="how-it-works">
+            <div className="mx-auto max-w-5xl px-6 lg:px-8">
+                {/* Header */}
+                <div className="mx-auto max-w-2xl text-center mb-16 sm:mb-24">
+                    <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl" style={{ fontFamily: 'Ivy Journal, serif' }}>
+                        Meet Hermes...
+                    </h2>
+                    <p className="mt-4 text-3xl sm:text-4xl font-medium tracking-tight text-gray-900">
+                        The AI Recruiter that lives in Slack.
+                    </p>
+                    <p className="mt-6 text-lg leading-8 text-gray-600">
+                        We replaced the entire top-of-funnel with an agent that acts like your best technical sourcer—except it works 24/7.
+                    </p>
+                </div>
 
-                                        <div
-                                            className={`hidden sm:block overflow-hidden transition-all duration-500 ${activeStep === index
-                                                ? "max-h-32 mt-2 sm:mt-3 opacity-100"
-                                                : "max-h-0 opacity-0"
-                                                }`}
-                                        >
-                                            <p className="text-gray-600 text-xs sm:text-sm leading-relaxed pl-6 sm:pl-8 lg:pl-10">
-                                                {step.description}
-                                            </p>
-                                        </div>
-                                    </button>
-                                ))}
+                <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:gap-12">
+                    {/* Feature 1: Slack Integration */}
+                    <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-3xl bg-gray-50 border border-gray-200 p-8 sm:p-12">
+                        <div className="flex flex-col lg:flex-row items-center gap-12">
+                            <div className="lg:w-1/2 space-y-6">
+                                <div className="inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-3 py-1 text-sm font-medium text-gray-900 shadow-sm">
+                                    <MessageSquare className="h-4 w-4" /> <span>Step 1</span>
+                                </div>
+                                <h3 className="text-3xl font-bold tracking-tight text-gray-900">Tell us what you need</h3>
+                                <p className="text-lg text-gray-600 leading-relaxed">
+                                    Don't switch context. Just describe the role in your engineering Slack channel. We triage the request, draft technical requirements, and sync with your existing hiring workflows automatically.
+                                </p>
+                                <ul className="space-y-3 text-gray-600">
+                                    <li className="flex gap-3">
+                                        <Check className="h-6 w-5 flex-none text-gray-900" />
+                                        <span>Start vague: "I need a prompt engineer."</span>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <Check className="h-6 w-5 flex-none text-gray-900" />
+                                        <span>Hermes asks smart follow-up questions.</span>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <Check className="h-6 w-5 flex-none text-gray-900" />
+                                        <span>Syncs with Ashby/Greenhouse instantly.</span>
+                                    </li>
+                                </ul>
                             </div>
-
-                            {/* Right Side - Visual Preview */}
-                            <div className="w-full lg:w-2/3 relative flex-1 min-h-0">
-                                <div className="relative w-full h-full min-h-[280px] sm:min-h-[350px] lg:min-h-[500px] rounded-xl sm:rounded-2xl bg-[#1a1a1a] border border-gray-800 overflow-hidden shadow-2xl">
-                                    {/* Window Controls */}
-                                    <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-800">
-                                        <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-red-500/80"></div>
-                                        <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-yellow-500/80"></div>
-                                        <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500/80"></div>
+                            <div className="lg:w-1/2 w-full">
+                                {/* Slack Visual */}
+                                <div className="relative w-full rounded-xl bg-white shadow-xl border border-gray-200 overflow-hidden transform rotate-1 transition-transform hover:rotate-0 duration-500">
+                                    <div className="bg-white p-3 border-b border-gray-100 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-gray-400 font-bold">#</span>
+                                            <span className="text-sm font-bold text-gray-900">engineering-hiring</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide hidden sm:inline-block">Connected to</span>
+                                            <div className="flex -space-x-1.5 hover:space-x-0.5 transition-all">
+                                                <div className="w-6 h-6 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm z-20">
+                                                    <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" alt="Slack" className="w-3.5 h-3.5" />
+                                                </div>
+                                                <div className="w-6 h-6 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm z-10">
+                                                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPEEg6Vq00fflRftF5kct7-zu7miuRgUMLA&s" alt="Ashby" className="w-3.5 h-3.5 object-contain" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-
-                                    <div className="relative p-4 sm:p-6 lg:p-8 min-h-[240px] sm:min-h-[300px] lg:min-h-[450px]">
-                                        {/* Step 1: Sync Roles */}
-                                        <div
-                                            className={`absolute inset-4 sm:inset-6 lg:inset-8 transition-all duration-700 ${activeStep === 0
-                                                ? "opacity-100 translate-y-0"
-                                                : "opacity-0 translate-y-8 pointer-events-none"
-                                                }`}
-                                        >
-                                            <div className="flex flex-col items-center justify-center h-full space-y-3 sm:space-y-4 lg:space-y-6">
-                                                <div className="w-14 h-14 sm:w-18 sm:h-18 lg:w-24 lg:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white">
-                                                    <Users className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                                    <div className="p-4 space-y-4 bg-white">
+                                        <div className="flex gap-3 items-start">
+                                            <div className="w-8 h-8 rounded bg-gray-200 flex-shrink-0 mt-1"></div>
+                                            <div className="flex-1">
+                                                <div className="flex items-baseline gap-2 mb-0.5">
+                                                    <span className="font-bold text-sm text-gray-900">CTO</span>
+                                                    <span className="text-[10px] text-gray-400">10:42 AM</span>
                                                 </div>
-                                                <div className="text-center px-2">
-                                                    <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-1 sm:mb-2">
-                                                        Integrate your ATS
-                                                    </h3>
-                                                    <p className="text-gray-400 text-xs sm:text-sm max-w-sm">
-                                                        Connect Greenhouse, Lever, or Ashby with one click.
-                                                    </p>
-                                                </div>
-
-                                                <div className="flex gap-4 items-center justify-center">
-                                                    <div className="w-12 h-12 bg-gray-800 border border-gray-700 rounded-lg flex items-center justify-center text-xs text-gray-400">ATS</div>
-                                                    <div className="w-6 h-[1px] bg-gray-600"></div>
-                                                    <div className="w-12 h-12 bg-blue-600/20 border border-blue-500 rounded-lg flex items-center justify-center text-blue-400">
-                                                        <Check className="w-6 h-6" />
-                                                    </div>
+                                                <div className="text-sm text-gray-800">
+                                                    <span className="text-gray-900 font-medium">@Hermes</span> we need a prompt engineer for the new legal agent sprint.
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Step 2: GitHub Deep Dive */}
-                                        <div
-                                            className={`absolute inset-4 sm:inset-6 lg:inset-8 transition-all duration-700 ${activeStep === 1
-                                                ? "opacity-100 translate-y-0"
-                                                : "opacity-0 translate-y-8 pointer-events-none"
-                                                }`}
-                                        >
-                                            <div className="flex flex-col items-center justify-center h-full space-y-3 sm:space-y-4 lg:space-y-6">
-                                                <div className="w-14 h-14 sm:w-18 sm:h-18 lg:w-24 lg:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white">
-                                                    <Code className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                                        <div className="flex gap-3 items-start">
+                                            <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center flex-shrink-0 mt-1 shadow-sm">
+                                                <span className="text-gray-600 font-bold text-xs">H</span>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-baseline gap-2 mb-0.5">
+                                                    <span className="font-bold text-sm text-gray-900">Hermes</span>
+                                                    <span className="px-1.5 py-0.5 bg-gray-100 text-[9px] font-bold text-gray-500 rounded uppercase tracking-wide">APP</span>
                                                 </div>
-                                                <div className="text-center px-2">
-                                                    <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-1 sm:mb-2">
-                                                        Code Quality Analysis
-                                                    </h3>
-                                                    <p className="text-gray-400 text-xs sm:text-sm max-w-sm">
-                                                        We analyze shipping velocity, code structure, and real engineering impact.
-                                                    </p>
-                                                </div>
-                                                <div className="w-full max-w-[200px] sm:max-w-xs lg:max-w-md bg-gray-900 rounded-lg sm:rounded-xl border border-gray-700 p-3 sm:p-4 font-mono text-xs">
-                                                    {/* Fake Repos */}
-                                                    <div className="flex items-center gap-3 bg-gray-800 p-2 rounded mb-2 border border-gray-700">
-                                                        <div className="w-6 h-6 bg-white/5 rounded flex items-center justify-center">
-                                                            <Code className="text-gray-400 w-3 h-3" />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="text-gray-200 text-xs truncate">ecommerce-v2</div>
-                                                            <div className="text-gray-500 text-[10px]">TypeScript • 120 commits</div>
-                                                        </div>
-                                                        <div className="text-green-400 text-xs font-bold">A+</div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 bg-gray-800 p-2 rounded mb-2 border border-gray-700">
-                                                        <div className="w-6 h-6 bg-white/5 rounded flex items-center justify-center">
-                                                            <Code className="text-gray-400 w-3 h-3" />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="text-gray-200 text-xs truncate">react-native-app</div>
-                                                            <div className="text-gray-500 text-[10px]">Mobile • 85 commits</div>
-                                                        </div>
-                                                        <div className="text-green-400 text-xs font-bold">A</div>
-                                                    </div>
+                                                <div className="text-sm text-gray-800">
+                                                    On it! 🫡 Is this for the core platform or experimental branch? Also, looking for LangChain wizards or closer to raw CUDA optimization?
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                                        {/* Step 3: AI Vetting */}
-                                        <div
-                                            className={`absolute inset-4 sm:inset-6 lg:inset-8 transition-all duration-700 ${activeStep === 2
-                                                ? "opacity-100 translate-y-0"
-                                                : "opacity-0 translate-y-8 pointer-events-none"
-                                                }`}
-                                        >
-                                            <div className="flex flex-col items-center justify-center h-full space-y-3 sm:space-y-4 lg:space-y-6">
-                                                <div className="w-14 h-14 sm:w-18 sm:h-18 lg:w-24 lg:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white">
-                                                    <Zap className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                                                </div>
-                                                <div className="text-center px-2">
-                                                    <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-1 sm:mb-2">
-                                                        Automated Vetting
-                                                    </h3>
-                                                    <p className="text-gray-400 text-xs sm:text-sm max-w-sm">
-                                                        Agencity grades their solution on scalability, performance, and best practices.
-                                                    </p>
-                                                </div>
-                                                <div className="w-full max-w-[200px] sm:max-w-xs lg:max-w-md bg-gray-900 rounded-lg sm:rounded-xl border border-gray-700 p-3 sm:p-4 font-mono text-xs">
-                                                    <div className="flex items-center gap-2 mb-2 border-b border-gray-800 pb-2">
-                                                        <div className="flex-1 text-gray-400">Analysis Report</div>
-                                                        <div className="text-green-400 font-bold">Passed</div>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between text-gray-400"><span>Functionality</span> <span className="text-white">100%</span></div>
-                                                        <div className="flex justify-between text-gray-400"><span>Code Quality</span> <span className="text-white">94%</span></div>
-                                                        <div className="flex justify-between text-gray-400"><span>Performance</span> <span className="text-white">98%</span></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                    {/* Feature 2: Deep Search */}
+                    <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 shadow-sm flex flex-col h-full">
+                        <div className="mb-6">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-3 py-1 text-sm font-medium text-gray-900 shadow-sm mb-4">
+                                <Search className="h-4 w-4" /> <span>Step 2</span>
+                            </div>
+                            <h3 className="text-2xl font-bold tracking-tight text-gray-900 mb-2">We search deep</h3>
+                            <p className="text-gray-600">
+                                We go beyond the resume. We look at GitHub commits, technical research, Twitter signals, and deep university club involvement.
+                            </p>
+                        </div>
 
-                                        {/* Step 4: Interview Top 1% */}
-                                        <div
-                                            className={`absolute inset-4 sm:inset-6 lg:inset-8 transition-all duration-700 ${activeStep === 3
-                                                ? "opacity-100 translate-y-0"
-                                                : "opacity-0 translate-y-8 pointer-events-none"
-                                                }`}
-                                        >
-                                            <div className="flex flex-col items-center justify-center h-full space-y-3 sm:space-y-4 lg:space-y-6">
-                                                <div className="w-14 h-14 sm:w-18 sm:h-18 lg:w-24 lg:h-24 rounded-xl sm:rounded-2xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white">
-                                                    <UserPlus className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-                                                </div>
-                                                <div className="text-center px-2">
-                                                    <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-white mb-1 sm:mb-2">
-                                                        Ready for Interview
-                                                    </h3>
-                                                    <p className="text-gray-400 text-xs sm:text-sm max-w-sm">
-                                                        Focus your time on the candidates who have already proven they can build.
-                                                    </p>
-                                                </div>
+                        <div className="flex-1 relative min-h-[300px] flex items-center justify-center mt-4">
+                            {/* Network Visual */}
+                            <div className="relative w-full h-full flex items-center justify-center">
+                                {/* Lines */}
+                                <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                                    {/* University */}
+                                    <motion.line x1="50%" y1="50%" x2="15%" y2="20%" stroke="#E5E7EB" strokeWidth="1.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }} />
+                                    {/* Code */}
+                                    <motion.line x1="50%" y1="50%" x2="85%" y2="20%" stroke="#E5E7EB" strokeWidth="1.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 0.2, repeat: Infinity, repeatDelay: 2 }} />
+                                    {/* LinkedIn */}
+                                    <motion.line x1="50%" y1="50%" x2="90%" y2="50%" stroke="#E5E7EB" strokeWidth="1.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 0.4, repeat: Infinity, repeatDelay: 2 }} />
+                                    {/* Referrals */}
+                                    <motion.line x1="50%" y1="50%" x2="85%" y2="80%" stroke="#E5E7EB" strokeWidth="1.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 0.6, repeat: Infinity, repeatDelay: 2 }} />
+                                    {/* Hackathons */}
+                                    <motion.line x1="50%" y1="50%" x2="15%" y2="80%" stroke="#E5E7EB" strokeWidth="1.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 0.8, repeat: Infinity, repeatDelay: 2 }} />
+                                    {/* Twitter */}
+                                    <motion.line x1="50%" y1="50%" x2="10%" y2="50%" stroke="#E5E7EB" strokeWidth="1.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 1.0, repeat: Infinity, repeatDelay: 2 }} />
+                                    {/* Research */}
+                                    <motion.line x1="50%" y1="50%" x2="50%" y2="10%" stroke="#E5E7EB" strokeWidth="1.5" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.5, delay: 1.2, repeat: Infinity, repeatDelay: 2 }} />
+                                </svg>
 
-                                                {/* Top Candidate Card */}
-                                                <div className="bg-gray-800 border-l-4 border-green-500 w-full max-w-sm rounded p-4 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-gray-700"></div>
-                                                        <div>
-                                                            <div className="text-white font-medium text-sm">Alex Chen</div>
-                                                            <div className="text-gray-400 text-xs">Senior Full-Stack</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-green-400 font-bold text-sm">98% Match</div>
-                                                </div>
-                                                <div className="bg-gray-800 border-l-4 border-green-500 w-full max-w-sm rounded p-4 flex items-center justify-between opacity-50 scale-95">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-gray-700"></div>
-                                                        <div>
-                                                            <div className="text-white font-medium text-sm">Sarah Jones</div>
-                                                            <div className="text-gray-400 text-xs">Frontend Engineer</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-green-400 font-bold text-sm">95% Match</div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                {/* Center PFP */}
+                                <motion.div
+                                    className="relative z-10 w-20 h-20 rounded-full border-4 border-white shadow-xl overflow-hidden bg-gray-100"
+                                    animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                                >
+                                    <img
+                                        src="/images/Gemini_Generated_Image_ms7tmms7tmms7tmm.png"
+                                        alt="Aidan Nguyen-Tran"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </motion.div>
+
+                                {/* Orbiting Icons */}
+                                <motion.div className="absolute left-[10%] top-[12%] flex flex-col items-center gap-1" animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}>
+                                    <div className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-lg text-gray-900"><GraduationCap className="w-4 h-4" /></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">University</span>
+                                </motion.div>
+
+                                <motion.div className="absolute right-[10%] top-[12%] flex flex-col items-center gap-1" animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, delay: 0.3, repeat: Infinity, ease: "easeInOut" }}>
+                                    <div className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-lg text-gray-900"><Github className="w-4 h-4" /></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Code</span>
+                                </motion.div>
+
+                                <motion.div className="absolute right-[2%] top-[45%] flex flex-col items-center gap-1" animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, delay: 0.6, repeat: Infinity, ease: "easeInOut" }}>
+                                    <div className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-lg text-gray-900"><Linkedin className="w-4 h-4" /></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">LinkedIn</span>
+                                </motion.div>
+
+                                <motion.div className="absolute right-[10%] bottom-[12%] flex flex-col items-center gap-1" animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, delay: 0.9, repeat: Infinity, ease: "easeInOut" }}>
+                                    <div className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-lg text-gray-900"><Users className="w-4 h-4" /></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Referrals</span>
+                                </motion.div>
+
+                                <motion.div className="absolute left-[10%] bottom-[12%] flex flex-col items-center gap-1" animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, delay: 1.2, repeat: Infinity, ease: "easeInOut" }}>
+                                    <div className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-lg text-gray-900"><Trophy className="w-4 h-4" /></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Hackathons</span>
+                                </motion.div>
+
+                                <motion.div className="absolute left-[2%] top-[45%] flex flex-col items-center gap-1" animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, delay: 1.5, repeat: Infinity, ease: "easeInOut" }}>
+                                    <div className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-lg text-gray-900"><Twitter className="w-4 h-4" /></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Twitter</span>
+                                </motion.div>
+
+                                <motion.div className="absolute top-[0%] left-[45%] flex flex-col items-center gap-1" animate={{ y: [0, -5, 0] }} transition={{ duration: 2.5, delay: 1.8, repeat: Infinity, ease: "easeInOut" }}>
+                                    <div className="p-2.5 bg-white border border-gray-100 rounded-xl shadow-lg text-gray-900"><FileText className="w-4 h-4" /></div>
+                                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Research</span>
+                                </motion.div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Feature 3: Truthful Insights */}
+                    <div className="relative overflow-hidden rounded-3xl bg-white border border-gray-200 p-8 shadow-sm">
+                        <div className="mb-8">
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-3 py-1 text-sm font-medium text-gray-900 shadow-sm mb-4">
+                                <ShieldCheck className="h-4 w-4" /> <span>Step 3</span>
+                            </div>
+                            <h3 className="text-2xl font-bold tracking-tight text-gray-900 mb-2">Truthful Insights</h3>
+                            <p className="text-gray-600">
+                                No fake match scores. We show Known Facts (verifiable), Observed Signals, and Unknowns you need to verify.
+                            </p>
+                        </div>
+                        {/* Candidate Card */}
+                        <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden transform transition-all hover:scale-[1.02] duration-300">
+                            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                                <div className="flex items-center gap-3">
+                                    <img
+                                        src="/images/Gemini_Generated_Image_ms7tmms7tmms7tmm.png"
+                                        alt="Aidan Nguyen-Tran"
+                                        className="w-10 h-10 rounded-full object-cover shadow-sm"
+                                    />
+                                    <div>
+                                        <div className="font-semibold text-sm text-gray-900">Aidan Nguyen-Tran</div>
+                                        <div className="text-xs text-gray-500">Candidate #4291</div>
                                     </div>
                                 </div>
+                                <div className="text-[10px] font-bold px-2 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-full uppercase tracking-wide">High Potential</div>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div>
+                                    <h4 className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                                        <Check className="w-3 h-3 text-gray-900" /> Known Facts
+                                    </h4>
+                                    <div className="text-xs text-gray-700 bg-gray-50 p-2 rounded border border-gray-100">
+                                        • CMU CS Class of 2024<br />
+                                        • President of AI Society
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                                        <Search className="w-3 h-3 text-gray-900" /> Observed Signals
+                                    </h4>
+                                    <div className="text-xs text-gray-700 bg-gray-50 p-2 rounded border border-gray-100">
+                                        • Built 'LegalLens' at HackMIT<br />
+                                        • 2 open source PRs to LangChain
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                                {/* Step Progress Indicator */}
-                                <div className="absolute -bottom-6 sm:-bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-1.5 sm:gap-2">
-                                    {steps.map((_, index) => (
-                                        <div
-                                            key={index}
-                                            className={`h-1 sm:h-1.5 rounded-full transition-all duration-500 ${activeStep === index
-                                                ? "w-6 sm:w-8 bg-blue-500"
-                                                : "w-1.5 sm:w-2 bg-gray-300"
-                                                }`}
-                                        />
-                                    ))}
+                    {/* Feature 4: Decision (Span 2) */}
+                    <div className="col-span-1 md:col-span-2 relative overflow-hidden rounded-3xl bg-gray-900 text-white p-8 sm:p-12">
+                        <div className="absolute top-0 right-0 p-32 bg-gray-800/30 blur-3xl rounded-full pointer-events-none"></div>
+                        <div className="flex flex-col lg:flex-row items-center gap-12 relative z-10">
+                            <div className="lg:w-1/2 space-y-6">
+                                <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white ring-1 ring-inset ring-white/20">
+                                    <UserCheck className="h-4 w-4" /> <span>Step 4</span>
+                                </div>
+                                <h3 className="text-3xl font-bold tracking-tight">You decide who to talk to</h3>
+                                <p className="text-lg text-gray-300 leading-relaxed">
+                                    We surface candidates worth a conversation. You make the call. Your feedback improves future results—what you liked, what you passed on, and why.
+                                </p>
+                                <div className="flex flex-wrap gap-4 mt-4">
+                                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">
+                                        <Check className="w-4 h-4 text-white" /> Instant Interview Scheduling
+                                    </div>
+                                    <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm">
+                                        <X className="w-4 h-4 text-white" /> One-click Pass
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="lg:w-1/2 w-full flex justify-center">
+                                {/* Decision Visual */}
+                                <div className="w-full max-w-md bg-white rounded-xl shadow-2xl p-5 text-gray-900 transform rotate-1 hover:rotate-0 transition-all duration-500">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div className="flex gap-3">
+                                            <img
+                                                src="/images/Gemini_Generated_Image_ms7tmms7tmms7tmm.png"
+                                                alt="Aidan Nguyen-Tran"
+                                                className="w-12 h-12 rounded-full object-cover"
+                                            />
+                                            <div>
+                                                <div className="font-bold text-gray-900">Aidan Nguyen-Tran</div>
+                                                <div className="text-xs text-gray-500">The "Builder"</div>
+                                            </div>
+                                        </div>
+                                        <div className="text-2xl">🌱</div>
+                                    </div>
+                                    <div className="text-sm text-gray-600 mb-6 leading-relaxed">
+                                        Has the exact LangChain experience you need. Code quality is top 10% of cohort.
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 text-sm font-medium transition-colors">
+                                            Pass
+                                        </button>
+                                        <button className="flex items-center justify-center gap-2 py-2.5 rounded-lg bg-black text-white hover:bg-gray-800 text-sm font-medium transition-colors shadow-lg">
+                                            <MessageSquare className="w-3.5 h-3.5" />
+                                            Interview
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* Bottom Padding */}
-            <div className="h-16 sm:h-24 bg-white"></div>
         </section>
     );
 }

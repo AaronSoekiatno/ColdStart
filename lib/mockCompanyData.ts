@@ -65,6 +65,19 @@ export interface MatchAnalysis {
   gaps: string[];
 }
 
+export interface Verdict {
+  level: string;
+  confidence: string;
+  reasoning: string;
+}
+
+export interface FitSnapshot {
+  strong_fits: string[];
+  needs_validation: string[];
+}
+
+export type PipelineStage = 'new' | 'reviewing' | 'interview_scheduled' | 'interviewed' | 'rejected' | 'offered';
+
 export interface CandidateBrief {
   id: string;
   anonymized_name: string;
@@ -81,6 +94,16 @@ export interface CandidateBrief {
   real_world_experience?: RealWorldExperience[];
   ai_usage?: AIUsagePattern;
   match_analysis: MatchAnalysis;
+
+  // Condensed fields for verdict card view
+  pipeline_stage?: PipelineStage;
+  pipeline_updated_at?: string;
+  verdict?: Verdict;
+  fit_snapshot?: FitSnapshot;
+  verified_experience_summary?: string[];
+  work_simulation_summary?: string[];
+  ai_tooling_summary?: string;
+  interview_focus?: string[];
 }
 
 // New Interface for Job Contexts
@@ -717,3 +740,7 @@ export const mockCandidates: CandidateBrief[] = [
     }
   }
 ];
+
+// Export transformed candidates with condensed verdict card fields
+// This will be done on-demand in the component to avoid circular dependencies
+export { mockCandidates as mockCandidatesRaw };

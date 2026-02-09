@@ -71,11 +71,11 @@ export function FAQSection() {
 
     return (
         <section className="py-24 px-6 bg-white border-t border-gray-100">
-            <div className="max-w-7xl mx-auto">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-24">
-                    {/* Left Column - Sticky Header */}
-                    <div className="lg:col-span-5 pl-8">
-                        <div className="sticky top-24">
+            <div className="max-w-5xl mx-auto">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16">
+                    {/* Left Column - Header */}
+                    <div className="lg:col-span-5">
+                        <div className="">
                             <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 mb-6">
                                 Frequently Asked Questions
                             </h2>

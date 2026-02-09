@@ -37,16 +37,16 @@ export const UniversityCarousel = ({ title = "TRUSTED BY STUDENTS AT", className
 
       <div className="relative w-full overflow-hidden grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
         <div
-          className="flex w-max animate-scroll group-hover:[animation-play-state:paused] items-center"
+          className="flex w-max animate-scroll group-hover:[animation-play-state:paused] items-center gap-12 sm:gap-24 md:gap-32"
           style={{ animationDuration: '60s' }}
         >
           {/* Three sets of universities for seamless looping with 33% scroll keyframe */}
           {[...Array(3)].map((_, setIndex) => (
-            <div key={`set-${setIndex}`} className="flex items-center">
+            <div key={`set-${setIndex}`} className="flex items-center gap-12 sm:gap-24 md:gap-32">
               {universities.map((university, index) => (
                 <div
                   key={`uni-${setIndex}-${index}`}
-                  className="flex-shrink-0 mr-12 sm:mr-24 md:mr-32 px-2 py-2 flex items-center justify-center relative"
+                  className="flex-shrink-0 px-2 py-2 flex items-center justify-center relative"
                 >
                   <img
                     src={university.logoUrl}

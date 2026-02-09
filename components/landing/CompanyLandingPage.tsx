@@ -364,15 +364,7 @@ export function CompanyLandingPage() {
       {/* Logos Carousel */}
       <UniversityCarousel className="mt-4 border-t border-zinc-100" />
 
-      {/* How It Works Header (Formerly Problem Section) */}
-      <section className="mx-auto max-w-4xl px-4 pt-6 pb-0 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight md:text-4xl text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>
-          Every bad hire costs 6+ months of runway.
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-zinc-600 leading-relaxed">
-          At seed stage, you can't afford to guess. Agencity shows you exactly what candidates have <span className="font-semibold text-emerald-700">proven through code</span> and what <span className="font-semibold text-amber-700">questions to ask</span> before you commit. No more relying on resumes and gut feelings.
-        </p>
-      </section>
+
 
       {/* How It Works (Company Process) */}
       <CompanyHowItWorks />
