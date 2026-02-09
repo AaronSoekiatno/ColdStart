@@ -31,6 +31,10 @@ app.prepare().then(() => {
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
+    } else if (pathname?.startsWith('/_next/webpack-hmr')) {
+      // Allow Next.js HMR WebSocket connections to pass through
+      // Don't destroy the socket - let Next.js handle it
+      return;
     } else {
       socket.destroy();
     }

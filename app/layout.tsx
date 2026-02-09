@@ -4,7 +4,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 // @thecred/posthog:start
-import { CredPostHogProvider, AppRouterTracker } from "@thecred/posthog";
+// Temporarily disabled to debug refresh issue
+// import { CredPostHogProvider, AppRouterTracker } from "@thecred/posthog";
 // @thecred/posthog:end
 
 const geistSans = Geist({
@@ -162,10 +163,12 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {/* @thecred/posthog:start */}
-        <CredPostHogProvider>
+        {/* Temporarily disabled to debug refresh issue */}
+        {/* <CredPostHogProvider>
           <AppRouterTracker />
           {children}
-        </CredPostHogProvider>
+        </CredPostHogProvider> */}
+        {children}
         {/* @thecred/posthog:end */}
         <Toaster />
         <Sonner />

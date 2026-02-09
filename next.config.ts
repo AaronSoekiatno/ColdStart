@@ -21,6 +21,21 @@ const nextConfig: NextConfig = {
         net: false,
         tls: false,
       };
+
+      // Prevent Next.js from watching the services directory to avoid
+      // unnecessary hot reloads when git submodules have changes
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: [
+          '**/node_modules/**',
+          '**/.git/**',
+          '**/.next/**',
+          '**/services/**', // Ignore services directory (contains git submodules)
+          '**/*.log', // Ignore log files
+          '**/build.log',
+          '**/server-debug.log',
+        ],
+      };
     }
     
     // Help webpack resolve lightningcss native modules
