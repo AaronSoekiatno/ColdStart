@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import vapi, { startVoiceCall, stopVoiceCall, setupVapiListeners } from './vapi-client';
+import vapi, { startVoiceCall, stopVoiceCall, initializeVapiListeners } from '../vapi-client';
 
 export default function VoiceAssistant() {
     const [isCallActive, setIsCallActive] = useState(false);
