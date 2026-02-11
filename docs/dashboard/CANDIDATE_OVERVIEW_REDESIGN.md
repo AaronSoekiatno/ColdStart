@@ -466,9 +466,7 @@ interface CandidateBrief {
   // Condensed assessment (from assessment_details)
   work_simulation_summary: string[];  // Max 4 bullets
 
-  // AI tooling summary (from ai_usage)
-  ai_tooling_summary: string;  // 2-3 sentences
-
+s
   // Interview focus (from unproven_claims)
   interview_focus: string[];  // Max 3 items
 }

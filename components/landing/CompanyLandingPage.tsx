@@ -105,7 +105,7 @@ export function CompanyLandingPage() {
           <nav className="hidden md:flex items-center gap-6 relative z-10">
             <a href="#how-it-works" className="text-sm font-medium text-white/70 hover:text-white transition-colors">How it works</a>
 
-            <a href="#faq" className="text-sm font-medium text-white/70 hover:text-white transition-colors">FAQ</a>
+            {/* <a href="#faq" className="text-sm font-medium text-white/70 hover:text-white transition-colors">FAQ</a> */}
             <Link href="/candidates" className="text-sm font-medium text-white/70 hover:text-white transition-colors">For Candidates</Link>
           </nav>
 
@@ -193,7 +193,7 @@ export function CompanyLandingPage() {
               <div className="space-y-1 relative z-10">
                 <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">How it works</a>
 
-                <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">FAQ</a>
+                {/* <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">FAQ</a> */}
                 <Link href="/candidates" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">For Candidates</Link>
                 <div className="border-t border-white/10 my-3"></div>
                 {user ? (
@@ -374,10 +374,10 @@ export function CompanyLandingPage() {
 
 
 
-      {/* FAQ */}
+      {/* FAQ
       <section id="faq">
         <CompaniesFAQ />
-      </section>
+      </section> */}
 
       {/* Access form */}
       <section id="access" className="py-16 px-4 text-center">
@@ -422,7 +422,7 @@ export function CompanyLandingPage() {
             <div className="flex gap-5 text-sm text-zinc-500">
               <a href="#how-it-works" className="hover:text-zinc-900 transition-colors">How it works</a>
 
-              <a href="#faq" className="hover:text-zinc-900 transition-colors">FAQ</a>
+              {/* <a href="#faq" className="hover:text-zinc-900 transition-colors">FAQ</a> */}
             </div>
           </div>
           <p className="mt-8 text-xs text-zinc-400">© <span id="year">{currentYear}</span> Agencity. All rights reserved.</p>
