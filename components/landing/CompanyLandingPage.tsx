@@ -78,7 +78,7 @@ export function CompanyLandingPage() {
         transition={{ duration: 0.8, ease: "easeOut" }}
       >
         <motion.div
-          className="pointer-events-auto w-full max-w-3xl bg-[#121212]/70 backdrop-blur-2xl border border-white/10 rounded-full px-5 py-3 flex items-center justify-between shadow-2xl transition-all duration-300 relative overflow-hidden"
+          className="pointer-events-auto w-full max-w-3xl bg-[#121212]/70 backdrop-blur-2xl border border-white/10 rounded-full px-5 py-3 flex items-center shadow-2xl transition-all duration-300 relative overflow-hidden"
           layout
           style={{
             boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
@@ -96,10 +96,11 @@ export function CompanyLandingPage() {
             <span className="text-lg font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-ivy), serif' }}>Agencity</span>
           </Link>
 
-          {/* Navigation - Desktop only, Centered */}
-          <nav className="hidden md:flex items-center gap-6 relative z-10">
+          {/* Navigation - Desktop only, Right Pushed */}
+          <nav className="hidden md:flex ml-auto items-center gap-6 pr-6 relative z-10">
             {/* <a href="#faq" className="text-sm font-medium text-white/70 hover:text-white transition-colors">FAQ</a> */}
             <Link href="/candidates" className="text-sm font-medium text-white/70 hover:text-white transition-colors">For Candidates</Link>
+            <a href="#how-it-works" className="text-sm font-medium text-white/70 hover:text-white transition-colors">Features</a>
           </nav>
 
           {/* Right side - always visible */}
@@ -186,6 +187,7 @@ export function CompanyLandingPage() {
               <div className="space-y-1 relative z-10">
                 {/* <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">FAQ</a> */}
                 <Link href="/candidates" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">For Candidates</Link>
+                <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">Features</a>
                 <div className="border-t border-white/10 my-3"></div>
                 {user ? (
                   <button onClick={() => { handleSignOut(); setMobileMenuOpen(false); }} className="block w-full text-left px-4 py-3 text-base font-medium text-red-400 hover:bg-red-400/10 hover:text-red-300 rounded-xl transition-colors">Sign Out</button>
