@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
     ArrowLeft,
-    CheckCircle2,
     Building2,
     Briefcase,
     Send,
@@ -14,10 +13,8 @@ import {
     Globe,
     MapPin,
     Users,
-    Zap,
-    Target,
-    GithubIcon,
-
+    CheckCircle,
+    Calendar,
 } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,22 +30,17 @@ export default function CompanyFormPage() {
         companyName: "",
         website: "",
         hiringFor: "",
-        location: "",
-        teamSize: "",
-        shippingSpeed: "" as 'daily' | 'weekly' | 'monthly' | '',
-        codeQuality: "" as 'ship-fast' | 'balanced' | 'perfectionist' | '',
-        githubUrl: ""
     });
 
     // File State
     const [file, setFile] = useState<File | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
 
     // UI State
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
     const [error, setError] = useState("");
     const [userEmail, setUserEmail] = useState<string | null>(null);
+    const [userId, setUserId] = useState<string | null>(null);
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     useEffect(() => {
@@ -67,6 +59,7 @@ export default function CompanyFormPage() {
 
             if (session?.user?.email) {
                 setUserEmail(session.user.email);
+                setUserId(session.user.id);
             }
             setIsCheckingAuth(false);
         };
@@ -103,49 +96,20 @@ export default function CompanyFormPage() {
                 return;
             }
             setPhase(2);
-        } else if (phase === 2) {
-            if (!formData.hiringFor.trim()) {
-                setError("Please provide a job description");
-                return;
-            }
-            if (formData.hiringFor.length < 20) {
-                setError("Description should be at least 20 characters");
-                return;
-            }
-            setPhase(3);
-        } else if (phase === 3) {
-            if (!formData.location.trim()) {
-                setError("Please enter your company location");
-                return;
-            }
-            if (!formData.teamSize) {
-                setError("Please select your team size");
-                return;
-            }
-            setPhase(4);
-        } else if (phase === 4) {
-            if (!formData.shippingSpeed) {
-                setError("Please select how often you ship");
-                return;
-            }
-            if (!formData.codeQuality) {
-                setError("Please select your code quality approach");
-                return;
-            }
-            setPhase(5);
         }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setIsSubmitting(true);
 
-        if (formData.githubUrl && !formData.githubUrl.includes('github.com')) {
-            setError("Please enter a valid GitHub URL");
+        // Validation for phase 2
+        if (!formData.hiringFor.trim() && !file) {
+            setError("Please provide a job description or upload a file");
+            setIsSubmitting(false);
             return;
         }
-
-        setIsSubmitting(true);
 
         try {
             let jobPostingUrl = "";
@@ -156,12 +120,13 @@ export default function CompanyFormPage() {
                 const fileName = `${Math.random()}.${fileExt}`;
                 const filePath = `postings/${fileName}`;
 
-                const { error: uploadError, data } = await supabase.storage
+                const { error: uploadError } = await supabase.storage
                     .from('job-postings')
                     .upload(filePath, file);
 
-                if (uploadError) throw uploadError;
-                jobPostingUrl = filePath;
+                if (!uploadError) {
+                    jobPostingUrl = filePath;
+                }
             }
 
             // 2. Prepare hiring description
@@ -172,18 +137,18 @@ export default function CompanyFormPage() {
                 hiring_for_text += `Uploaded job posting: ${file.name}`;
             }
 
-            // 3. Build operating model
+            // 3. Build operating model (skip location/team size inputs, use defaults)
             const operatingModel = {
-                pace: formData.shippingSpeed === 'daily' ? 'fast' : formData.shippingSpeed === 'weekly' ? 'moderate' : 'deliberate',
-                quality_bar: formData.codeQuality === 'ship-fast' ? 'move-fast' : formData.codeQuality === 'balanced' ? 'balanced' : 'high',
-                priorities: [], // Removed buzzword priorities
-                culture_description: formData.hiringFor, // Use job description as culture context
-                github_repo_url: formData.githubUrl || null,
-                codebase_provided: !!formData.githubUrl
+                pace: 'fast',
+                quality_bar: 'balanced',
+                priorities: [],
+                culture_description: formData.hiringFor, // Fallback to hiring text
+                github_repo_url: null,
+                codebase_provided: false
             };
 
             // 4. Save to intro_requests
-            const { error: insertError } = await supabase
+            await supabase
                 .from('intro_requests')
                 .insert([
                     {
@@ -193,43 +158,59 @@ export default function CompanyFormPage() {
                     }
                 ]);
 
-            if (insertError) throw insertError;
-
-            // 5. Create/update startup with operating model
+            // 5. Create/update startup
             const { data: existingStartup } = await supabase
                 .from('startups')
                 .select('id')
                 .eq('founder_emails', userEmail)
                 .single();
 
+            const startupData = {
+                name: formData.companyName,
+                website: formData.website,
+                location: '', // No longer collecting location
+                founder_emails: userEmail,
+                operating_model: operatingModel
+            };
+
+            let startupId = existingStartup?.id;
+
             if (existingStartup) {
                 await supabase
                     .from('startups')
-                    .update({
-                        operating_model: operatingModel,
-                        website: formData.website,
-                        location: formData.location
-                    })
+                    .update(startupData)
                     .eq('id', existingStartup.id);
             } else {
-                await supabase
+                const { data: newStartup, error: createError } = await supabase
                     .from('startups')
-                    .insert([{
-                        name: formData.companyName,
-                        website: formData.website,
-                        location: formData.location,
-                        founder_emails: userEmail,
-                        operating_model: operatingModel
-                    }]);
+                    .insert([startupData])
+                    .select('id')
+                    .single();
+
+                if (createError) throw createError;
+                startupId = newStartup.id;
             }
 
+            // 6. Create startup_users connection
+            if (userId && startupId) {
+                await supabase
+                    .from('startup_users')
+                    .upsert({
+                        startup_id: startupId,
+                        user_id: userId,
+                        role: 'owner'
+                    }, { onConflict: 'startup_id,user_id' });
+            }
+
+            // Open Calendly in new tab and show success screen
+            window.open("https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran", "_blank");
+            setIsSubmitting(false);
             setIsSuccess(true);
-            setTimeout(() => {
-                router.push("/company-dashboard");
-            }, 2000);
+
         } catch (err: any) {
             console.error("Error submitting form:", err?.message || err || "Unknown error");
-            setError(err?.message || "Failed to submit. Please try again.");
+            // Fallback to Calendly even on error
+            window.open("https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran", "_blank");
             setIsSubmitting(false);
         }
     };
@@ -261,17 +242,23 @@ export default function CompanyFormPage() {
                     <motion.button
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        onClick={() => phase > 1 ? setPhase(p => p - 1) : router.push("/companies")}
+                        onClick={() => {
+                            if (isSuccess) {
+                                router.push("/company-dashboard");
+                            } else {
+                                phase > 1 ? setPhase(p => p - 1) : router.push("/");
+                            }
+                        }}
                         className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors self-start group"
                     >
                         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                         <span className="text-sm font-medium tracking-tight">
-                            {phase > 1 ? `Back to Step ${phase - 1}` : "Back to Agencity"}
+                            {isSuccess ? "Back to Dashboard" : (phase > 1 ? `Back to Step ${phase - 1}` : "Back to Home")}
                         </span>
                     </motion.button>
 
                     <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((s) => (
+                        {!isSuccess && [1, 2].map((s) => (
                             <div
                                 key={s}
                                 className={`h-1 w-8 rounded-full transition-all duration-500 ${phase >= s ? 'bg-blue-500' : 'bg-gray-100'}`}
@@ -281,7 +268,7 @@ export default function CompanyFormPage() {
                 </div>
 
                 {/* Form Container */}
-                <div className="max-w-md w-full mx-auto lg:mx-0 flex-grow flex flex-col justify-center py-4">
+                <div className="max-w-2xl w-full mx-auto lg:mx-0 flex-grow flex flex-col justify-center py-4">
                     <AnimatePresence mode="wait">
                         {!isSuccess ? (
                             <motion.div
@@ -297,21 +284,15 @@ export default function CompanyFormPage() {
                                     <h1 className="text-3xl md:text-4xl font-bold text-black mb-3 tracking-tight leading-tight">
                                         {phase === 1 && <>Let's build your <span className="text-blue-500">profile</span></>}
                                         {phase === 2 && <>What are you <span className="text-blue-500">hiring for?</span></>}
-                                        {phase === 3 && <>Company <span className="text-blue-500">details</span></>}
-                                        {phase === 4 && <>How you <span className="text-blue-500">work</span></>}
-                                        {phase === 5 && <>Optional: <span className="text-blue-500">Your codebase</span></>}
                                     </h1>
                                     <p className="text-base text-gray-600 leading-relaxed font-light">
                                         {phase === 1 && "Tell us about your company so we can find the perfect cultural and technical fit."}
                                         {phase === 2 && "Describe the role you're hiring for. We'll use this to understand what you need."}
-                                        {phase === 3 && "Location and team size help us understand your context."}
-                                        {phase === 4 && "Two quick questions to understand your engineering culture."}
-                                        {phase === 5 && "Connect your GitHub to generate custom assessments that match your actual work."}
                                     </p>
                                 </div>
 
                                 {/* Phase Forms */}
-                                <form onSubmit={phase < 5 ? handleNextPhase : handleSubmit} className="space-y-5">
+                                <form onSubmit={phase < 2 ? handleNextPhase : handleSubmit} className="space-y-5">
                                     {phase === 1 && (
                                         <div className="space-y-4">
                                             <div className="space-y-2">
@@ -375,7 +356,7 @@ export default function CompanyFormPage() {
                                                 <div
                                                     onClick={() => !file && fileInputRef.current?.click()}
                                                     className={`relative border-2 border-dashed rounded-2xl p-6 transition-all flex flex-col items-center justify-center gap-3 cursor-pointer
-                                                        ${file ? 'border-blue-500/50 bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}
+                                                    ${file ? 'border-blue-500/50 bg-blue-50/50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}
                                                 >
                                                     <input
                                                         type="file"
@@ -418,131 +399,6 @@ export default function CompanyFormPage() {
                                         </div>
                                     )}
 
-                                    {phase === 3 && (
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
-                                                        <MapPin className="w-3.5 h-3.5" /> Location
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={formData.location}
-                                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                                        className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder:text-gray-400"
-                                                        placeholder="SF / Remote"
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
-                                                        <Users className="w-3.5 h-3.5" /> Team Size
-                                                    </label>
-                                                    <select
-                                                        value={formData.teamSize}
-                                                        onChange={(e) => setFormData({ ...formData, teamSize: e.target.value })}
-                                                        className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
-                                                        required
-                                                    >
-                                                        <option value="">Select size</option>
-                                                        <option value="1-10">1-10</option>
-                                                        <option value="11-50">11-50</option>
-                                                        <option value="51-200">51-200</option>
-                                                        <option value="200+">200+</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {phase === 4 && (
-                                        <div className="space-y-5">
-                                            {/* Shipping Speed */}
-                                            <div className="space-y-3">
-                                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
-                                                    <Zap className="w-3.5 h-3.5" /> How often do you ship to production?
-                                                </label>
-                                                <div className="space-y-2">
-                                                    {[
-                                                        { value: 'daily', label: 'Multiple times a day', desc: 'Fast iterations, continuous deployment' },
-                                                        { value: 'weekly', label: 'Weekly sprints', desc: 'Balanced pace, regular releases' },
-                                                        { value: 'monthly', label: 'Monthly or longer', desc: 'Careful releases, thorough testing' }
-                                                    ].map(({ value, label, desc }) => (
-                                                        <button
-                                                            key={value}
-                                                            type="button"
-                                                            onClick={() => setFormData({ ...formData, shippingSpeed: value as any })}
-                                                            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${formData.shippingSpeed === value
-                                                                ? 'border-blue-500 bg-blue-50'
-                                                                : 'border-gray-200 hover:border-gray-300 bg-white'
-                                                                }`}
-                                                        >
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <span className="font-semibold text-black">{label}</span>
-                                                                {formData.shippingSpeed === value && (
-                                                                    <CheckCircle2 className="w-5 h-5 text-blue-500" />
-                                                                )}
-                                                            </div>
-                                                            <p className="text-sm text-gray-600">{desc}</p>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Code Quality */}
-                                            <div className="space-y-3">
-                                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
-                                                    <Target className="w-3.5 h-3.5" /> What's your approach to code quality?
-                                                </label>
-                                                <div className="space-y-2">
-                                                    {[
-                                                        { value: 'ship-fast', label: 'Ship fast, fix bugs later', desc: 'Speed over perfection, iterate based on feedback' },
-                                                        { value: 'balanced', label: 'Balance speed and quality', desc: 'Good tests, pragmatic tradeoffs' },
-                                                        { value: 'perfectionist', label: 'High bar, ship when ready', desc: 'Comprehensive tests, thorough review, clean code' }
-                                                    ].map(({ value, label, desc }) => (
-                                                        <button
-                                                            key={value}
-                                                            type="button"
-                                                            onClick={() => setFormData({ ...formData, codeQuality: value as any })}
-                                                            className={`w-full p-4 rounded-xl border-2 transition-all text-left ${formData.codeQuality === value
-                                                                ? 'border-blue-500 bg-blue-50'
-                                                                : 'border-gray-200 hover:border-gray-300 bg-white'
-                                                                }`}
-                                                        >
-                                                            <div className="flex items-center justify-between mb-1">
-                                                                <span className="font-semibold text-black">{label}</span>
-                                                                {formData.codeQuality === value && (
-                                                                    <CheckCircle2 className="w-5 h-5 text-blue-500" />
-                                                                )}
-                                                            </div>
-                                                            <p className="text-sm text-gray-600">{desc}</p>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {phase === 5 && (
-                                        <div className="space-y-4">
-                                            <div className="space-y-2">
-                                                <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-400 ml-1">
-                                                    <GithubIcon className="w-3.5 h-3.5" /> GitHub Repository (Optional)
-                                                </label>
-                                                <input
-                                                    type="url"
-                                                    value={formData.githubUrl}
-                                                    onChange={(e) => setFormData({ ...formData, githubUrl: e.target.value })}
-                                                    className="w-full px-5 py-3 bg-gray-50 border border-gray-200 text-black rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none placeholder:text-gray-400"
-                                                    placeholder="https://github.com/your-company/your-repo"
-                                                />
-                                                <p className="text-xs text-gray-400 ml-1">
-                                                    Leave empty to use standard assessments instead.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {error && (
                                         <motion.div
                                             initial={{ opacity: 0, scale: 0.95 }}
@@ -567,7 +423,7 @@ export default function CompanyFormPage() {
                                                 </>
                                             ) : (
                                                 <>
-                                                    {phase < 5 ? "Continue" : "Complete Setup"}
+                                                    {phase < 2 ? "Continue" : "Book Demo"}
                                                     <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                                                 </>
                                             )}
@@ -578,26 +434,36 @@ export default function CompanyFormPage() {
                         ) : (
                             <motion.div
                                 key="success"
-                                initial={{ opacity: 0, scale: 0.9 }}
+                                initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="text-center py-12"
+                                className="flex flex-col items-center justify-center text-center space-y-6"
                             >
-                                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-50 mb-8">
-                                    <CheckCircle2 className="w-10 h-10 text-green-600" />
+                                <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-2">
+                                    <CheckCircle className="w-10 h-10 text-green-500" />
                                 </div>
-                                <h2 className="text-3xl font-bold text-black mb-4">All Set!</h2>
-                                <p className="text-gray-600 max-w-sm mx-auto leading-relaxed">
-                                    Taking you to your dashboard to see matched candidates...
-                                </p>
-                                <div className="mt-12 flex justify-center">
-                                    <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ x: "-100%" }}
-                                            animate={{ x: "0%" }}
-                                            transition={{ duration: 3 }}
-                                            className="h-full bg-blue-500"
-                                        />
-                                    </div>
+
+                                <div className="space-y-4">
+                                    <h2 className="text-3xl font-bold text-gray-900">We'll be in touch shortly!</h2>
+                                    <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+                                        Thanks for sharing your hiring needs. We've opened a new tab for you to book a demo slot that works for you.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col w-full max-w-sm gap-3 pt-4">
+                                    <button
+                                        onClick={() => window.open("https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran", "_blank")}
+                                        className="flex items-center justify-center gap-2 w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                                    >
+                                        <Calendar className="w-4 h-4" />
+                                        Book Demo (if tab didn't open)
+                                    </button>
+
+                                    <button
+                                        onClick={() => router.push('/company-dashboard')}
+                                        className="w-full py-3 bg-gray-50 text-gray-900 font-semibold rounded-xl hover:bg-gray-100 transition-colors"
+                                    >
+                                        Go to Dashboard
+                                    </button>
                                 </div>
                             </motion.div>
                         )}
@@ -646,6 +512,6 @@ export default function CompanyFormPage() {
                     <span className="text-xl font-bold text-white opacity-80 tracking-tight">Agencity</span>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

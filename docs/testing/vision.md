@@ -74,7 +74,7 @@ Seed to Series B startup founders/CTOs who:
 
 ### 2.2 Why Current Solutions Fail
 
-**Applicant Tracking Systems (Lever, Greenhouse, Ashby)**
+**Applicant Tracking Systems (Lever, Greenhouse)**
 - Passive filing cabinets
 - No sourcing capability
 - No evaluation intelligence

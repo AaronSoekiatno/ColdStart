@@ -36,7 +36,7 @@ export function NewHowItWorks() {
       <div className="mx-auto max-w-5xl px-6 lg:px-8">
         {/* Header */}
         <div className="mx-auto max-w-2xl text-center mb-16 sm:mb-24">
-          <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl" style={{ fontFamily: 'Ivy Journal, serif' }}>
+          <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl" style={{ fontFamily: 'var(--font-ivy), serif' }}>
             Get hired for what you can do.
           </h2>
           <p className="mt-6 text-lg leading-8 text-gray-600">

@@ -604,7 +604,7 @@ export function NewLandingPage() {
           {/* Logo - Left side */}
           <Link href="/" className="flex items-center gap-3 pl-2 transition-opacity hover:opacity-80 relative z-10">
             <Image src="/images/hermes.png" alt="Agencity" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-lg font-bold text-white tracking-tight italic" style={{ fontFamily: 'Ivy Journal, serif' }}>Agencity</span>
+            <span className="text-lg font-bold text-white tracking-tight italic" style={{ fontFamily: 'var(--font-ivy), serif' }}>Agencity</span>
           </Link>
 
           {/* Navigation - Desktop only, Centered */}
@@ -862,7 +862,7 @@ export function NewLandingPage() {
             <div className="mx-auto max-w-6xl px-4 pt-12 md:pt-24 pb-12 md:pb-24">
               <div className="grid items-center gap-12 md:grid-cols-2">
                 <div>
-                  <h1 className="text-5xl md:text-7xl font-semibold leading-tight tracking-tight text-zinc-900" style={{ fontFamily: 'Ivy Journal, serif' }}>
+                  <h1 className="text-5xl md:text-7xl font-semibold leading-tight tracking-tight text-zinc-900" style={{ fontFamily: 'var(--font-ivy), serif' }}>
                     Land jobs at top startups.
                   </h1>
 
@@ -960,7 +960,7 @@ export function NewLandingPage() {
           {/* CTA Section */}
           <section className="py-24 px-4 text-center bg-white border-t border-zinc-100">
             <div className="max-w-3xl mx-auto space-y-8">
-              <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'Ivy Journal, serif' }}>
+              <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'var(--font-ivy), serif' }}>
                 Stop applying. Start getting offers.
               </h2>
               <p className="text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed">

@@ -409,7 +409,7 @@ async function syncCompanyJobs(
       continue;
     }
 
-    if (applicationUrl.includes('workatastartup.com') || applicationUrl.includes('ashbyhq.com')) {
+    if (applicationUrl.includes('workatastartup.com')) {
       console.log(`      ❌ REJECTED: URL is not a Greenhouse URL: ${applicationUrl}`);
       console.log(`      ⚠️  This should never happen - please report this bug!`);
       continue;

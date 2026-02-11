@@ -394,31 +394,28 @@ export default function CompanyDashboard() {
                   <div className="flex gap-2 border-b border-gray-200">
                     <button
                       onClick={() => setAssessmentSubTab('results')}
-                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
-                        assessmentSubTab === 'results'
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${assessmentSubTab === 'results'
                           ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-600 hover:text-gray-900'
-                      }`}
+                        }`}
                     >
                       Results Dashboard
                     </button>
                     <button
                       onClick={() => setAssessmentSubTab('configuration')}
-                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
-                        assessmentSubTab === 'configuration'
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${assessmentSubTab === 'configuration'
                           ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-600 hover:text-gray-900'
-                      }`}
+                        }`}
                     >
                       Configuration
                     </button>
                     <button
                       onClick={() => setAssessmentSubTab('candidate-view')}
-                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${
-                        assessmentSubTab === 'candidate-view'
+                      className={`px-4 py-2 text-sm font-medium transition-all border-b-2 ${assessmentSubTab === 'candidate-view'
                           ? 'border-blue-500 text-blue-600'
                           : 'border-transparent text-gray-600 hover:text-gray-900'
-                      }`}
+                        }`}
                     >
                       Candidate View
                     </button>
@@ -676,7 +673,6 @@ export default function CompanyDashboard() {
               {activeTab === 'integrations' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[
-                    { name: 'Ashby', description: 'Sync candidates and interview notes seamlessly.', status: 'Coming Soon' },
                     { name: 'Greenhouse', description: 'Automate your hiring workflow with deep integration.', status: 'Coming Soon' },
                     { name: 'Lever', description: 'Streamline your recruiting pipeline effortlessly.', status: 'Coming Soon' },
                   ].map((integration) => (

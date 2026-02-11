@@ -1402,3 +1402,260 @@ export async function getCandidateSnapshots(candidateId: string): Promise<Snapsh
 
   return (data || []) as SnapshotRecord[];
 }
+
+// ==================== LINKEDIN IMPORT FUNCTIONS ====================
+
+export interface LinkedInImportRow {
+  id?: string;
+  user_id: string;
+  method: 'csv' | 'api';
+  status: 'processing' | 'complete' | 'failed';
+  total_connections?: number;
+  matched_connections?: number;
+  file_hash?: string;
+  uploaded_at?: string;
+  completed_at?: string;
+  error_message?: string;
+}
+
+export interface FounderConnectionRow {
+  id?: string;
+  import_id?: string;
+  user_id: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  company?: string;
+  position?: string;
+  profile_url?: string;
+  connected_date?: string;
+  matched_candidate_id?: string;
+  match_confidence?: number;
+  match_method?: 'email' | 'name_company' | 'name_school';
+  created_at?: string;
+}
+
+export interface LinkedInScrapeJobRow {
+  id?: string;
+  user_id?: string;
+  phantombuster_container_id?: string;
+  status?: 'queued' | 'running' | 'success' | 'failed';
+  progress?: number;
+  error_message?: string;
+  started_at?: string;
+  completed_at?: string;
+}
+
+/**
+ * Create a new LinkedIn import record
+ */
+export async function createLinkedInImport(data: LinkedInImportRow): Promise<LinkedInImportRow> {
+  const client = supabaseAdmin || supabase;
+
+  const { data: result, error } = await client
+    .from('linkedin_imports')
+    .insert([data])
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create LinkedIn import: ${error.message}`);
+  }
+
+  return result;
+}
+
+/**
+ * Update a LinkedIn import record
+ */
+export async function updateLinkedInImport(
+  importId: string,
+  updates: Partial<LinkedInImportRow>
+): Promise<LinkedInImportRow> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('linkedin_imports')
+    .update(updates)
+    .eq('id', importId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update LinkedIn import: ${error.message}`);
+  }
+
+  return data;
+}
+
+/**
+ * Get LinkedIn imports for a user
+ */
+export async function getLinkedInImports(userId: string): Promise<LinkedInImportRow[]> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('linkedin_imports')
+    .select('*')
+    .eq('user_id', userId)
+    .order('uploaded_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get LinkedIn imports: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Create founder connections in bulk
+ */
+export async function createFounderConnections(
+  connections: FounderConnectionRow[]
+): Promise<FounderConnectionRow[]> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('founder_connections')
+    .insert(connections)
+    .select();
+
+  if (error) {
+    throw new Error(`Failed to create founder connections: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Get founder connections for a user with optional match filter
+ */
+export async function getFounderConnections(
+  userId: string,
+  onlyMatched: boolean = false
+): Promise<FounderConnectionRow[]> {
+  const client = supabaseAdmin || supabase;
+
+  let query = client
+    .from('founder_connections')
+    .select('*')
+    .eq('user_id', userId);
+
+  if (onlyMatched) {
+    query = query.not('matched_candidate_id', 'is', null);
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to get founder connections: ${error.message}`);
+  }
+
+  return data || [];
+}
+
+/**
+ * Match a LinkedIn connection to a candidate in the Hermes database
+ * Returns the best match based on email, name+company, or name+school
+ */
+export async function matchConnectionToCandidate(connection: {
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  company?: string;
+  position?: string;
+}): Promise<{ candidate: CandidateRow | null; confidence: number; method: string }> {
+  const client = supabaseAdmin || supabase;
+
+  // Priority 1: Email match (most reliable)
+  if (connection.email) {
+    const { data: emailMatch } = await client
+      .from('candidates')
+      .select('*')
+      .ilike('email', connection.email)
+      .single();
+
+    if (emailMatch) {
+      return { candidate: emailMatch, confidence: 1.0, method: 'email' };
+    }
+  }
+
+  // Priority 2: Name + Company match
+  if (connection.first_name && connection.last_name && connection.company) {
+    const { data: companyMatches } = await client
+      .from('candidates')
+      .select('*')
+      .ilike('name', `%${connection.first_name}%${connection.last_name}%`)
+      .or(`experience.ilike.%${connection.company}%,technical_projects.ilike.%${connection.company}%`);
+
+    if (companyMatches && companyMatches.length > 0) {
+      return { candidate: companyMatches[0], confidence: 0.8, method: 'name_company' };
+    }
+  }
+
+  // Priority 3: Name + University match (extract from position if it mentions school)
+  if (connection.first_name && connection.last_name && connection.position) {
+    const schoolKeywords = ['University', 'College', 'Institute', 'School'];
+    const hasSchoolInPosition = schoolKeywords.some(keyword =>
+      connection.position?.includes(keyword)
+    );
+
+    if (hasSchoolInPosition) {
+      const { data: schoolMatches } = await client
+        .from('candidates')
+        .select('*')
+        .ilike('name', `%${connection.first_name}%${connection.last_name}%`)
+        .not('university', 'is', null);
+
+      if (schoolMatches && schoolMatches.length > 0) {
+        return { candidate: schoolMatches[0], confidence: 0.7, method: 'name_school' };
+      }
+    }
+  }
+
+  return { candidate: null, confidence: 0, method: 'none' };
+}
+
+/**
+ * Create a LinkedIn scrape job
+ */
+export async function createLinkedInScrapeJob(
+  data: LinkedInScrapeJobRow
+): Promise<LinkedInScrapeJobRow> {
+  const client = supabaseAdmin || supabase;
+
+  const { data: result, error } = await client
+    .from('linkedin_scrape_jobs')
+    .insert([data])
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create LinkedIn scrape job: ${error.message}`);
+  }
+
+  return result;
+}
+
+/**
+ * Update a LinkedIn scrape job
+ */
+export async function updateLinkedInScrapeJob(
+  jobId: string,
+  updates: Partial<LinkedInScrapeJobRow>
+): Promise<LinkedInScrapeJobRow> {
+  const client = supabaseAdmin || supabase;
+
+  const { data, error } = await client
+    .from('linkedin_scrape_jobs')
+    .update(updates)
+    .eq('id', jobId)
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to update LinkedIn scrape job: ${error.message}`);
+  }
+
+  return data;
+}

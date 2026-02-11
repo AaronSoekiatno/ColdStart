@@ -9,7 +9,7 @@ export function CompanyHowItWorks() {
             <div className="mx-auto max-w-5xl px-6 lg:px-8">
                 {/* Header */}
                 <div className="mx-auto max-w-2xl text-center mb-16 sm:mb-24">
-                    <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl" style={{ fontFamily: 'Ivy Journal, serif' }}>
+                    <h2 className="text-4xl font-semibold tracking-tight text-gray-900 sm:text-5xl font-ivy">
                         Meet Hermes...
                     </h2>
                     <p className="mt-4 text-3xl sm:text-4xl font-medium tracking-tight text-gray-900">
@@ -41,10 +41,7 @@ export function CompanyHowItWorks() {
                                         <Check className="h-6 w-5 flex-none text-gray-900" />
                                         <span>Hermes asks smart follow-up questions.</span>
                                     </li>
-                                    <li className="flex gap-3">
-                                        <Check className="h-6 w-5 flex-none text-gray-900" />
-                                        <span>Syncs with Ashby/Greenhouse instantly.</span>
-                                    </li>
+
                                 </ul>
                             </div>
                             <div className="lg:w-1/2 w-full">
@@ -57,12 +54,9 @@ export function CompanyHowItWorks() {
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wide hidden sm:inline-block">Connected to</span>
-                                            <div className="flex -space-x-1.5 hover:space-x-0.5 transition-all">
+                                            <div className="flex">
                                                 <div className="w-6 h-6 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm z-20">
                                                     <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Slack_icon_2019.svg" alt="Slack" className="w-3.5 h-3.5" />
-                                                </div>
-                                                <div className="w-6 h-6 rounded-full bg-white border border-gray-100 flex items-center justify-center shadow-sm z-10">
-                                                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBPEEg6Vq00fflRftF5kct7-zu7miuRgUMLA&s" alt="Ashby" className="w-3.5 h-3.5 object-contain" />
                                                 </div>
                                             </div>
                                         </div>

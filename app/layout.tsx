@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Sora } from "next/font/google";
+import { Geist, Geist_Mono, Sora, Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -21,6 +22,19 @@ const geistMono = Geist_Mono({
 const sora = Sora({
   variable: "--font-sora",
   subsets: ["latin"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const ivyJournal = localFont({
+  src: "../public/fonts/fonnts.com-Ivy-Journal-Light.otf",
+  variable: "--font-ivy",
+  weight: "300",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -159,7 +173,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} ${inter.variable} ${ivyJournal.variable} antialiased`}
         suppressHydrationWarning
       >
         {/* @thecred/posthog:start */}

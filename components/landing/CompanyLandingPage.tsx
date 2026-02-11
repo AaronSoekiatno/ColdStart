@@ -59,11 +59,6 @@ export function CompanyLandingPage() {
   }, []);
 
   const handleGetStarted = () => {
-    if (!user) {
-      setShowSignUp(true);
-      return;
-    }
-    // If already logged in, redirect to company form
     router.push('/company-form');
   };
 
@@ -98,12 +93,12 @@ export function CompanyLandingPage() {
           {/* Logo - Left side */}
           <Link href="/" className="flex items-center gap-3 pl-2 transition-opacity hover:opacity-80 relative z-10">
             <Image src="/images/hermes.png" alt="Agencity" width={28} height={28} className="w-7 h-7 sm:w-8 sm:h-8" />
-            <span className="text-lg font-bold text-white tracking-tight" style={{ fontFamily: 'Ivy Journal, serif' }}>Agencity</span>
+            <span className="text-lg font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-ivy), serif' }}>Agencity</span>
           </Link>
 
           {/* Navigation - Desktop only, Centered */}
           <nav className="hidden md:flex items-center gap-6 relative z-10">
-            <a href="#how-it-works" className="text-sm font-medium text-white/70 hover:text-white transition-colors">How it works</a>
+            <a href="#book-demo" className="text-sm font-medium text-white/70 hover:text-white transition-colors">Book a demo</a>
 
             {/* <a href="#faq" className="text-sm font-medium text-white/70 hover:text-white transition-colors">FAQ</a> */}
             <Link href="/candidates" className="text-sm font-medium text-white/70 hover:text-white transition-colors">For Candidates</Link>
@@ -191,7 +186,7 @@ export function CompanyLandingPage() {
               }}
             >
               <div className="space-y-1 relative z-10">
-                <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">How it works</a>
+                <a href="#book-demo" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">Book a demo</a>
 
                 {/* <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">FAQ</a> */}
                 <Link href="/candidates" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-3 text-base font-medium text-white/80 hover:bg-white/10 hover:text-white rounded-xl transition-colors">For Candidates</Link>
@@ -230,7 +225,7 @@ export function CompanyLandingPage() {
         <div className="relative z-10 mx-auto max-w-6xl px-4 md:pt-6 md:pb-8">
           <div className="grid items-center gap-10 md:grid-cols-2">
             <div>
-              <h1 className="mt-4 text-9xl font-semibold leading-tight tracking-tight md:text-7xl text-zinc-1600" style={{ fontFamily: 'Ivy Journal, serif' }}>
+              <h1 className="mt-4 text-9xl font-semibold leading-tight tracking-tight md:text-7xl text-zinc-1600" style={{ fontFamily: 'var(--font-ivy), serif' }}>
                 Hire 11x Engineers at 5x the speed
               </h1>
 
@@ -366,8 +361,67 @@ export function CompanyLandingPage() {
 
 
 
-      {/* How It Works (Company Process) */}
-      <CompanyHowItWorks />
+      {/* Book a Demo Section */}
+      <section id="book-demo" className="py-20 px-4 bg-gradient-to-b from-white to-zinc-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight mb-4" style={{ fontFamily: 'var(--font-ivy), serif' }}>
+              See Agencity in Action
+            </h2>
+            <p className="text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed">
+              Schedule a personalized demo to discover how Agencity helps you hire 11x engineers at 5x the speed.
+            </p>
+          </div>
+
+          {/* Calendly Embed */}
+          <div className="relative rounded-3xl border border-zinc-200 bg-white shadow-xl overflow-hidden">
+            <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-sky-400/10 to-amber-500/10 blur-xl" />
+            <div className="relative bg-white rounded-2xl p-2">
+              <iframe
+                src="https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran?hide_gdpr_banner=1&background_color=ffffff&text_color=18181b&primary_color=18181b"
+                width="100%"
+                height="700"
+                frameBorder="0"
+                className="rounded-xl"
+                title="Schedule a Demo"
+              />
+            </div>
+          </div>
+
+          {/* Benefits below Calendly */}
+          <div className="mt-12 grid md:grid-cols-3 gap-6">
+            <div className="text-center p-6 rounded-2xl bg-white border border-zinc-100">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-emerald-50 flex items-center justify-center">
+                <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-zinc-900 mb-2">Evidence-First Hiring</h3>
+              <p className="text-sm text-zinc-600">See exactly what candidates have proven through code and contributions</p>
+            </div>
+
+            <div className="text-center p-6 rounded-2xl bg-white border border-zinc-100">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-sky-50 flex items-center justify-center">
+                <svg className="w-6 h-6 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-zinc-900 mb-2">5x Faster Process</h3>
+              <p className="text-sm text-zinc-600">Cut your time-to-hire from weeks to days with verified data</p>
+            </div>
+
+            <div className="text-center p-6 rounded-2xl bg-white border border-zinc-100">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-amber-50 flex items-center justify-center">
+                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-zinc-900 mb-2">6,000+ Engineers</h3>
+              <p className="text-sm text-zinc-600">Access a curated pool of vetted technical talent</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
 
 
@@ -382,7 +436,7 @@ export function CompanyLandingPage() {
       {/* Access form */}
       <section id="access" className="py-16 px-4 text-center">
         <div className="max-w-3xl mx-auto space-y-8">
-          <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'Ivy Journal, serif' }}>
+          <h2 className="text-4xl md:text-5xl font-semibold text-zinc-900 tracking-tight" style={{ fontFamily: 'var(--font-ivy), serif' }}>
             Stop guessing. Start hiring with proof.
           </h2>
           <p className="text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed">
@@ -420,7 +474,7 @@ export function CompanyLandingPage() {
               <p className="mt-1 text-sm text-zinc-500">Evidence-first hiring for early startups.</p>
             </div>
             <div className="flex gap-5 text-sm text-zinc-500">
-              <a href="#how-it-works" className="hover:text-zinc-900 transition-colors">How it works</a>
+              <a href="#book-demo" className="hover:text-zinc-900 transition-colors">Book a demo</a>
 
               {/* <a href="#faq" className="hover:text-zinc-900 transition-colors">FAQ</a> */}
             </div>
