@@ -129,77 +129,22 @@ export default function CompanyFormPage() {
                 }
             }
 
-            // 2. Prepare hiring description
-            let hiring_for_text = `[Company: ${formData.companyName}] `;
-            if (formData.hiringFor) {
-                hiring_for_text += formData.hiringFor;
-            } else if (file) {
-                hiring_for_text += `Uploaded job posting: ${file.name}`;
-            }
+            // 2. Save all data to startup_users table
+            const { error: saveError } = await supabase
+                .from('startup_users')
+                .upsert({
+                    user_id: userId,
+                    company_name: formData.companyName,
+                    website: formData.website,
+                    hiring_for: formData.hiringFor,
+                    job_posting_file_url: jobPostingUrl || null,
+                    role: 'founder',
+                    onboarding_completed: true
+                }, { onConflict: 'user_id' });
 
-            // 3. Build operating model (skip location/team size inputs, use defaults)
-            const operatingModel = {
-                pace: 'fast',
-                quality_bar: 'balanced',
-                priorities: [],
-                culture_description: formData.hiringFor, // Fallback to hiring text
-                github_repo_url: null,
-                codebase_provided: false
-            };
-
-            // 4. Save to intro_requests
-            await supabase
-                .from('intro_requests')
-                .insert([
-                    {
-                        founder_email: userEmail || "anonymous@agencity.ai",
-                        hiring_for: hiring_for_text,
-                        status: 'pending'
-                    }
-                ]);
-
-            // 5. Create/update startup
-            const { data: existingStartup } = await supabase
-                .from('startups')
-                .select('id')
-                .eq('founder_emails', userEmail)
-                .single();
-
-            const startupData = {
-                name: formData.companyName,
-                website: formData.website,
-                location: '', // No longer collecting location
-                founder_emails: userEmail,
-                operating_model: operatingModel
-            };
-
-            let startupId = existingStartup?.id;
-
-            if (existingStartup) {
-                await supabase
-                    .from('startups')
-                    .update(startupData)
-                    .eq('id', existingStartup.id);
-            } else {
-                const { data: newStartup, error: createError } = await supabase
-                    .from('startups')
-                    .insert([startupData])
-                    .select('id')
-                    .single();
-
-                if (createError) throw createError;
-                startupId = newStartup.id;
-            }
-
-            // 6. Create startup_users connection
-            if (userId && startupId) {
-                await supabase
-                    .from('startup_users')
-                    .upsert({
-                        startup_id: startupId,
-                        user_id: userId,
-                        role: 'owner'
-                    }, { onConflict: 'startup_id,user_id' });
+            if (saveError) {
+                console.error("Error saving to startup_users:", saveError);
+                throw saveError;
             }
 
             // Open Calendly in new tab and show success screen
@@ -209,6 +154,7 @@ export default function CompanyFormPage() {
 
         } catch (err: any) {
             console.error("Error submitting form:", err?.message || err || "Unknown error");
+            setError(err?.message || "Failed to save your information. Please try again.");
             // Fallback to Calendly even on error
             window.open("https://calendly.com/aidan-nt76/coldreach-aidan-nguyen-tran", "_blank");
             setIsSubmitting(false);
