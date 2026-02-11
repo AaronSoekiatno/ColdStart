@@ -22,7 +22,7 @@ export const UniversityCarousel = ({ title = "TRUSTED BY STUDENTS AT", className
     { name: "Carnegie Mellon University", logoUrl: "https://logos-world.net/wp-content/uploads/2023/08/Carnegie-Mellon-University-Logo.png" },
     { name: "University of Illinois Urbana-Champaign", logoUrl: "https://assets.foleon.com/eu-central-1/de-uploads-7e3kk3/49120/university-wordmark-full-color-rgb.11f4586744e5.png?ext=webp" },
     { name: "Harvard", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Harvard_University_logo.svg/1200px-Harvard_University_logo.svg.png?20240103220517" },
-    { name: "MIT", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/MIT_logo.svg/500px-MIT_logo.svg.png?20250128192424" },
+    { name: "MIT", logoUrl: "https://download.logo.wine/logo/Massachusetts_Institute_of_Technology/Massachusetts_Institute_of_Technology-Logo.wine.png" },
     { name: "Purdue", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/Purdue_Boilermakers_logo.svg/500px-Purdue_Boilermakers_logo.svg.png?20200422051240" },
     { name: "Cal Tech", logoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Caltech_Logo.svg/330px-Caltech_Logo.svg.png?20190819082906" },
   ];
@@ -37,28 +37,26 @@ export const UniversityCarousel = ({ title = "TRUSTED BY STUDENTS AT", className
 
       <div className="relative w-full overflow-hidden grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-500">
         <div
-          className="flex w-max animate-scroll group-hover:[animation-play-state:paused] items-center gap-12 sm:gap-24 md:gap-32"
+          className="flex w-max animate-scroll group-hover:[animation-play-state:paused] items-center gap-16 sm:gap-32 md:gap-40"
           style={{ animationDuration: '60s' }}
         >
           {/* Three sets of universities for seamless looping with 33% scroll keyframe */}
-          {[...Array(3)].map((_, setIndex) => (
-            <div key={`set-${setIndex}`} className="flex items-center gap-12 sm:gap-24 md:gap-32">
-              {universities.map((university, index) => (
-                <div
-                  key={`uni-${setIndex}-${index}`}
-                  className="flex-shrink-0 px-2 py-2 flex items-center justify-center relative"
-                >
-                  <img
-                    src={university.logoUrl}
-                    alt={university.name}
-                    className={university.name === "Carnegie Mellon University"
-                      ? "h-10 md:h-12 w-auto object-contain"
-                      : "h-7 md:h-8 w-auto object-contain"}
-                  />
-                </div>
-              ))}
-            </div>
-          ))}
+          {[...Array(3)].flatMap((_, setIndex) =>
+            universities.map((university, index) => (
+              <div
+                key={`uni-${setIndex}-${index}`}
+                className="flex-shrink-0 px-6 py-4 flex items-center justify-center relative min-w-[120px] max-w-[200px]"
+              >
+                <img
+                  src={university.logoUrl}
+                  alt={university.name}
+                  className={university.name === "Carnegie Mellon University"
+                    ? "h-10 md:h-12 w-full object-contain"
+                    : "h-7 md:h-8 w-full object-contain"}
+                />
+              </div>
+            ))
+          )}
         </div>
       </div>
     </section>
